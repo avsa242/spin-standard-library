@@ -9,19 +9,19 @@
 
 CON
 
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
-
-OBJ
-
-    term : "com.serial.terminal"
 
 VAR
 
 
-PUB Main
+OBJ
 
-    term.Start(115200)
+
+PUB null
+''This is not a top-level object
+
+PUB Start
+
+PRI
 
 
 DAT

@@ -9,20 +9,20 @@
 
 CON
 
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+  _clkmode = cfg#_clkmode
+  _xinfreq = cfg#_xinfreq
 
 OBJ
 
-    term : "com.serial.terminal"
+  cfg   : "core.con.client.parraldev"
+  time  : "time"
 
 VAR
 
 
 PUB Main
 
-    term.Start(115200)
-
+  
 
 DAT
 {

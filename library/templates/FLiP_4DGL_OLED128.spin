@@ -9,20 +9,29 @@
 
 CON
 
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+  _clkmode  = cfg#_clkmode
+  _xinfreq  = cfg#_xinfreq
+
+  OLED_RX   = 5
+  OLED_TX   = 6
+  OLED_RST  = 7
+  OLED_BAUD = 115_200
 
 OBJ
 
-    term : "com.serial.terminal"
+  cfg   : "core.con.client.flip"
+  ser   : "com.serial.terminal"
+  time  : "time"
+  oled  : "display.oled.4dgl.128x128"
 
 VAR
 
 
 PUB Main
 
-    term.Start(115200)
-
+  oled.Start (OLED_RX, OLED_TX, OLED_RST, OLED_BAUD)
+  ser.Start (115_200)
+  
 
 DAT
 {

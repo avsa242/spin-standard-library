@@ -9,20 +9,66 @@
 
 CON
 
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
-
-OBJ
-
-    term : "com.serial.terminal"
+  SLAVE_ADDR        = YOUR_7BIT_DEVICE_SLAVE_ADDR << 1  'Replace with 7bit address, or 8bit and remove the left shift
+  SLAVE_ADDR_W      = SLAVE_ADDR
+  SLAVE_ADDR_R      = SLAVE_ADDR|1
+  
+  SCL               = 28
+  SDA               = 29
+  HZ                = 400_000
+  I2C_MAX_BUS_FREQ  = 1_000_000
 
 VAR
 
 
-PUB Main
+OBJ
 
-    term.Start(115200)
+  i2c : "jm_i2c_fast"
 
+PUB null
+''This is not a top-level object
+
+PUB Start: okay                                         'Default to "standard" Propeller I2C pins and 400kHz
+
+  okay := Startx (SCL, SDA, HZ)
+
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ)
+
+  if lookdown(SCL_PIN: 0..31)                           'Validate pins
+    if lookdown(SDA_PIN: 0..31)
+      if SCL_PIN <> SDA_PIN
+        if I2C_HZ =< I2C_MAX_BUS_FREQ
+          return i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)
+        else
+          return FALSE
+      else
+        return FALSE
+    else
+      return FALSE
+  else
+    return FALSE
+
+PUB readOne: readbyte
+
+  readX (@readbyte, 1)
+
+PUB readX(ptr_buff, num_bytes)
+
+  i2c.start
+  i2c.write (SLAVE_ADDR_R)
+  i2c.pread (ptr_buff, num_bytes, TRUE)
+  i2c.stop
+
+PUB writeOne(data)
+
+  WriteX (data, 1)
+
+PUB WriteX(ptr_buff, num_bytes)
+
+  i2c.start
+  i2c.write (SLAVE_ADDR_W)
+  i2c.pwrite (ptr_buff, num_bytes)
+  i2c.stop
 
 DAT
 {
