@@ -9,5 +9,8 @@ CON
   SD_MISO     = 14
   SD_CS       = 15
 
+  SCL         = 28
+  SDA         = 29
+
 PUB null
 '' This is not a top-level object

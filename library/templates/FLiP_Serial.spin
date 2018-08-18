@@ -20,11 +20,17 @@ OBJ
 
 VAR
 
+  long _ser_cog
 
 PUB Main
 
-  ser.Start (115_200)
-  
+
+PUB Setup
+
+  repeat until _ser_cog := ser.Start (115_200)
+  ser.Clear
+  ser.Str(string("Serial terminal started", ser#NL))
+
 
 DAT
 {
