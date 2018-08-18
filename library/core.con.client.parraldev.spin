@@ -1,9 +1,10 @@
 CON
-  '' I/O SETTINGS
-  '' Parral Labs Dev Board
+'' Parral Labs Dev Board
+'' Clock Settings
   _CLKMODE      = XTAL1 + PLL16X
   _XINFREQ      = 5_000_000
   
+'' Pin definitions
   BUTTON1       = 14  '' Onboard push-button switches
   BUTTON2       = 15
 

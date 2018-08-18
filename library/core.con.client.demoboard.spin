@@ -1,10 +1,10 @@
 CON
-'' I/O SETTINGS
 '' Propeller Demoboard
 '' Parallax #32100
-  _clkmode  = xtal1 + pll16x
-  _xinfreq  = 5_000_000
+  _CLKMODE  = XTAL1 + PLL16X
+  _XINFREQ  = 5_000_000
 
+'' Pin definitions
   MIC_IN    = 8   '' Electret Mic
   MIC_FB    = 9
 
@@ -36,5 +36,5 @@ CON
   SCL       = 28  '' I2C
   SDA       = 29
 
-PUB null
+PUB Null
 '' This is not a top-level object

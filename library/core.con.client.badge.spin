@@ -1,11 +1,11 @@
 CON
-  '' I/O SETTINGS
-  '' Hackable badge
-  '' Parallax #20000, 20100, 20200
+'' Hackable badge
+'' Parallax #20000, 20100, 20200
+'' Clock Settings
   _CLKMODE    = XTAL1 + PLL16X
   _XINFREQ    = 5_000_000
 
-  '' I/O Pin definitions
+'' Pin definitions
 
   RCT_V       = 0
   RGBA        = 1
@@ -31,8 +31,8 @@ CON
   OLED_CLK    = 21
   OLED_DAT    = 22
 
-  IR_IN       = 23  '' IR comms
-  IR_OUT      = 24
+  IR_RX       = 23  '' IR comms
+  IR_TX       = 24
   PADR_1      = 25
   PADR_2      = 26
   PADR_3      = 27

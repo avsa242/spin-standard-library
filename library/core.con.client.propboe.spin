@@ -1,10 +1,11 @@
 CON
-  '' I/O SETTINGS
-  '' Propeller Board of Education (PropBOE)
-  '' Parallax #32900
+'' Propeller Board of Education (PropBOE)
+'' Parallax #32900
+'' Clock Settings
   _CLKMODE    = XTAL1 + PLL16X
   _XINFREQ    = 5_000_000
 
+'' Pin definitions
   SERVO1      = 14        '' 6 3-pin servo headers
   SERVO2      = 15
   SERVO3      = 16
@@ -21,7 +22,7 @@ CON
   SD_CS       = 25
 
   SD_MISO     = 22        '' uSD socket (alternate names)
-{ SD_CLK      = 23 }
+{ SD_CLK      = 23 }	  '' (this line included just for illustrative purposes)
   SD_MOSI     = 24
   SD_CD       = 25
 

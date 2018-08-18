@@ -1,10 +1,11 @@
 CON
-  '' I/O SETTINGS
-  '' FLiP Propeller Module
-  '' Parallax #32123
+'' FLiP Propeller Module
+'' Parallax #32123
+'' Clock Settings
   _CLKMODE      = XTAL1 + PLL16X
   _XINFREQ      = 5_000_000
   
+'' Pin definitions
   LED1          = 26
   LED2          = 27  ''Onboard green LEDs
 

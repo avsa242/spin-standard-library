@@ -1,10 +1,11 @@
 CON
-  '' I/O SETTINGS
-  '' Propeller Touchscreen Platform (PTP) 3.5"
-  '' Ray Allen (Rayman)
+'' Propeller Touchscreen Platform (PTP) 3.5"
+'' Ray Allen (Rayman)
+'' Clock Settings
   _CLKMODE      = XTAL1 + PLL16X
   _XINFREQ      = 5_000_000
 
+'' Pin definitions
   SD_DO         = 0         '' uSD socket
   SD_CLK        = 1
   SD_DI         = 2

@@ -1,14 +1,14 @@
 CON
-  '' I/O SETTINGS
-  '' Quickstart Human Interface Board (HIB)
-  '' Parallax #40003
-  '' NOTE: This is just an optional daughterboard for
-  ''  the Parallax QuickStart #40000.
-  ''  It doesn't contain a Propeller MCU.
+'' Quickstart Human Interface Board (HIB)
+'' Parallax #40003
+'' NOTE: This is just an optional daughterboard for
+''  the Parallax QuickStart #40000.
+''  It doesn't contain a Propeller MCU.
+'' Clock Settings
   _CLKMODE    = XTAL1 + PLL16X
   _XINFREQ    = 5_000_000
 
-  '' I/O Pin definitions
+'' Pin definitions
 
   SD_MISO     = 0   '' uSD Socket
   SD_CLK      = 1

@@ -1,11 +1,11 @@
 CON
-  '' I/O SETTINGS
-  '' Spinneret Web Server
-  '' Parallax #32203
+'' Spinneret Web Server
+'' Parallax #32203
+'' Clock Settings
   _CLKMODE    = XTAL1 + PLL16X
   _XINFREQ    = 5_000_000
 
-  '' I/O Pin definitions
+'' Pin definitions
 
   DATA0       = 0   '' Wiznet W5100
   DATA1       = 1
@@ -42,7 +42,7 @@ CON
   SD_MOSI     = 20
   SD_CLK      = 21
 
-  SCL         = 28    '' I2C
+  SCL         = 28  '' I2C
   SDA         = 29
 
 PUB Null
