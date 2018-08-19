@@ -1,12 +1,11 @@
 CON
-  '' I/O SETTINGS
-  '' QuickStart
-  '' Parallax #40000
+'' QuickStart
+'' Parallax #40000
+'' Clock Settings
   _CLKMODE    = XTAL1 + PLL16X
   _XINFREQ    = 5_000_000
 
-  '' I/O Pin definitions
-
+'' Pin definitions
   BUTTON1     = 0   '' Touch buttons
   BUTTON2     = 1
   BUTTON3     = 2
