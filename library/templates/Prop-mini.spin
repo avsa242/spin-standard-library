@@ -9,13 +9,13 @@
 
 CON
 
-  _clkmode = cfg#_clkmode
-  _xinfreq = cfg#_xinfreq
+    _clkmode = cfg#_clkmode
+    _xinfreq = cfg#_xinfreq
 
 OBJ
 
-  cfg   : "core.con.client.propmini"
-  time  : "time"
+    cfg   : "core.con.client.propmini"
+    time  : "time"
 
 VAR
 

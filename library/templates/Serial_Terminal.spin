@@ -14,15 +14,21 @@ CON
 
 OBJ
 
-    term : "com.serial.terminal"
+    ser : "com.serial.terminal"
 
 VAR
 
+    byte _ser_cog
 
 PUB Main
 
-    term.Start(115200)
+    Setup
 
+PUB Setup
+
+    repeat until _ser_cog := ser.Start (115_200)
+    ser.Clear
+    ser.Str(string("Serial terminal started", ser#NL))
 
 DAT
 {

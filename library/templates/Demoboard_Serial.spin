@@ -9,21 +9,28 @@
 
 CON
 
-  _clkmode = cfg#_clkmode
-  _xinfreq = cfg#_xinfreq
+    _clkmode = cfg#_clkmode
+    _xinfreq = cfg#_xinfreq
 
 OBJ
 
-  cfg   : "core.con.client.demoboard"
-  ser   : "com.serial.terminal"
-  time  : "time"
+    cfg   : "core.con.client.demoboard"
+    ser   : "com.serial.terminal"
+    time  : "time"
 
 VAR
 
+    byte _ser_cog
 
 PUB Main
 
-  ser.Start (115_200)
+    Setup
+
+PUB Setup
+
+    repeat until _ser_cog := ser.Start (115_200)
+    ser.Clear
+    ser.Str(string("Serial terminal started", ser#NL))
 
 DAT
 {

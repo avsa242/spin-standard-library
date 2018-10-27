@@ -9,22 +9,19 @@
 
 CON
 
-  _clkmode = cfg#_clkmode
-  _xinfreq = cfg#_xinfreq
+    _clkmode = cfg#_clkmode
+    _xinfreq = cfg#_xinfreq
 
 OBJ
 
-  cfg   : "core.con.client.activityboard"
-  lcd   : "display.lcd.serial"
-  time  : "time"
+    cfg   : "core.con.client.quickstart"
+    time  : "time"
 
 VAR
 
 
 PUB Main
 
-  lcd.Start (19_200)
-  
 
 DAT
 {

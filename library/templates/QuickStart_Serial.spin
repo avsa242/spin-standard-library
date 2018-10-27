@@ -9,29 +9,28 @@
 
 CON
 
-  _clkmode  = cfg#_clkmode
-  _xinfreq  = cfg#_xinfreq
-
-  OLED_RX   = 5
-  OLED_TX   = 6
-  OLED_RST  = 7
-  OLED_BAUD = 115_200
+    _clkmode = cfg#_clkmode
+    _xinfreq = cfg#_xinfreq
 
 OBJ
 
-  cfg   : "core.con.client.flip"
-  ser   : "com.serial.terminal"
-  time  : "time"
-  oled  : "display.oled.4dgl.128x128"
+    cfg   : "core.con.client.quickstart"
+    ser   : "com.serial.terminal"
+    time  : "time"
 
 VAR
 
+    byte _ser_cog
 
 PUB Main
 
-  oled.Start (OLED_RX, OLED_TX, OLED_RST, OLED_BAUD)
-  ser.Start (115_200)
-  
+    Setup
+
+PUB Setup
+
+    repeat until _ser_cog := ser.Start (115_200)
+    ser.Clear
+    ser.Str(string("Serial terminal started", ser#NL))
 
 DAT
 {
