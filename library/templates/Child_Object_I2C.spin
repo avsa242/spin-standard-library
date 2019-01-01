@@ -39,17 +39,10 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
         if I2C_HZ =< core#I2C_MAX_FREQ
             if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
                 time.MSleep (1)
-                if Ping                                         'Response from device?
+                if i2c.present (SLAVE_WR)                       'Response from device?
                     return okay
 
     return FALSE                                                'If we got here, something went wrong
-
-PUB Ping
-'' "Pings" device and returns TRUE if present
-    i2c.start
-    result := i2c.write (SLAVE_WR)
-    i2c.stop
-    return (result == i2c#ACK)
 
 PRI readOne: readbyte
 
