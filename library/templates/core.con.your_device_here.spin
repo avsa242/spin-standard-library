@@ -1,10 +1,11 @@
 {
     --------------------------------------------
-    Filename: core.con.your_device_here
+    Filename:
     Author:
+    Description:
     Copyright (c) 20__
-    Started:
-    Updated:
+    Started Month Day, Year
+    Updated Month Day, Year
     See end of file for terms of use.
     --------------------------------------------
 }

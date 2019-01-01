@@ -2,7 +2,10 @@
     --------------------------------------------
     Filename:
     Author:
+    Description:
     Copyright (c) 20__
+    Started Month Day, Year
+    Updated Month Day, Year
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -14,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.client.hybrid"
+    cfg   : "core.con.boardcfg.hybrid"
     time  : "time"
 
 VAR

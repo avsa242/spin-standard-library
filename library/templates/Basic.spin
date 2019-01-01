@@ -2,10 +2,14 @@
     --------------------------------------------
     Filename:
     Author:
-    Copyright (c) 2015
+    Description:
+    Copyright (c) 20__
+    Started Month Day, Year
+    Updated Month Day, Year
     See end of file for terms of use.
     --------------------------------------------
 }
+
 CON
 
     _clkmode = xtal1 + pll16x
