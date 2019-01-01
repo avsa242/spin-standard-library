@@ -2,73 +2,72 @@
     --------------------------------------------
     Filename:
     Author:
+    Description:
     Copyright (c) 20__
+    Started Month Day, Year
+    Updated Month Day, Year
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-  SLAVE_ADDR        = YOUR_7BIT_DEVICE_SLAVE_ADDR << 1  'Replace with 7bit address, or 8bit and remove the left shift
-  SLAVE_ADDR_W      = SLAVE_ADDR
-  SLAVE_ADDR_R      = SLAVE_ADDR|1
-  
-  SCL               = 28
-  SDA               = 29
-  HZ                = 400_000
-  I2C_MAX_BUS_FREQ  = 1_000_000
+    SLAVE_WR          = core#SLAVE_ADDR
+    SLAVE_RD          = core#SLAVE_ADDR|1
+
+    DEF_SCL           = 28
+    DEF_SDA           = 29
+    DEF_HZ            = 400_000
+    I2C_MAX_FREQ      = core#I2C_MAX_FREQ
 
 VAR
 
 
 OBJ
 
-  i2c : "jm_i2c_fast"
+    i2c : "jm_i2c_fast"                                         'PASM I2C Driver
+    core: "core.con.your_device_here"                           'File containing your device's register set
+    time: "time"                                                'Basic timing functions
 
-PUB null
+PUB Null
 ''This is not a top-level object
 
-PUB Start: okay                                         'Default to "standard" Propeller I2C pins and 400kHz
+PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
 
-  okay := Startx (SCL, SDA, HZ)
+    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ)
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
 
-  if lookdown(SCL_PIN: 0..31)                           'Validate pins
-    if lookdown(SDA_PIN: 0..31)
-      if SCL_PIN <> SDA_PIN
-        if I2C_HZ =< I2C_MAX_BUS_FREQ
-          return i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)
-        else
-          return FALSE
-      else
-        return FALSE
-    else
-      return FALSE
-  else
-    return FALSE
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
+        if I2C_HZ =< core#I2C_MAX_FREQ
+            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
+                time.MSleep (1)
+                if i2c.present (SLAVE_WR)                       'Response from device?
+                    return okay
 
-PUB readOne: readbyte
+    return FALSE                                                'If we got here, something went wrong
 
-  readX (@readbyte, 1)
+PRI readOne: readbyte
 
-PUB readX(ptr_buff, num_bytes)
+    readX (@readbyte, 1)
 
-  i2c.start
-  i2c.write (SLAVE_ADDR_R)
-  i2c.pread (ptr_buff, num_bytes, TRUE)
-  i2c.stop
+PRI readX(ptr_buff, num_bytes)
+'' Read num_bytes from the slave device into the address stored in ptr_buff
+    i2c.start
+    i2c.write (SLAVE_RD)
+    i2c.pread (ptr_buff, num_bytes, TRUE)
+    i2c.stop
 
-PUB writeOne(data)
+PRI writeOne(data)
 
-  WriteX (data, 1)
+    WriteX (data, 1)
 
-PUB WriteX(ptr_buff, num_bytes)
-
-  i2c.start
-  i2c.write (SLAVE_ADDR_W)
-  i2c.pwrite (ptr_buff, num_bytes)
-  i2c.stop
+PRI WriteX(ptr_buff, num_bytes)
+'' Write num_bytes to the slave device from the address stored in ptr_buff
+    i2c.start
+    i2c.write (SLAVE_WR)
+    i2c.pwrite (ptr_buff, num_bytes)
+    i2c.stop
 
 DAT
 {

@@ -2,7 +2,10 @@
     --------------------------------------------
     Filename:
     Author:
+    Description:
     Copyright (c) 20__
+    Started Month Day, Year
+    Updated Month Day, Year
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -14,17 +17,23 @@ CON
 
 OBJ
 
-  cfg   : "core.con.client.hydra"
+  cfg   : "core.con.boardcfg.hydra"
   ser   : "com.serial.terminal"
   time  : "time"
 
 VAR
 
+    byte _ser_cog
 
 PUB Main
 
-  ser.Start (115_200)
-  
+    Setup
+
+PUB Setup
+
+    repeat until _ser_cog := ser.Start (115_200)
+    ser.Clear
+    ser.Str(string("Serial terminal started", ser#NL))
 
 DAT
 {

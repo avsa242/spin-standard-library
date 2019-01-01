@@ -2,36 +2,29 @@
     --------------------------------------------
     Filename:
     Author:
+    Description:
     Copyright (c) 20__
+    Started Month Day, Year
+    Updated Month Day, Year
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-  _clkmode  = cfg#_clkmode
-  _xinfreq  = cfg#_xinfreq
-
-  OLED_RX   = 5
-  OLED_TX   = 6
-  OLED_RST  = 7
-  OLED_BAUD = 115_200
+    _clkmode = cfg#_clkmode
+    _xinfreq = cfg#_xinfreq
 
 OBJ
 
-  cfg   : "core.con.client.flip"
-  ser   : "com.serial.terminal"
-  time  : "time"
-  oled  : "display.oled.4dgl.128x128"
+    cfg   : "core.con.boardcfg.quickstart"
+    time  : "time"
 
 VAR
 
 
 PUB Main
 
-  oled.Start (OLED_RX, OLED_TX, OLED_RST, OLED_BAUD)
-  ser.Start (115_200)
-  
 
 DAT
 {
