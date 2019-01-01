@@ -1,5 +1,7 @@
 # The Spin Standard Library
 
+NOTE: This is a fork of the Parallax, Inc. repository by the same name. It is not officially sanctioned by Parallax, Inc.
+
 The Spin Standard Library is designed to be a definitive starting point for Spin programming. It contains a
 curated collection of Spin objects that have been organized and formatted for consistency, covering a wide array of functionality.
 
