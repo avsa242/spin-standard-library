@@ -1,23 +1,31 @@
 {{
     Basic object for setting Propeller pins.
-
-    > Because I can't remember how to use registers when I need them.
 }}
+CON
+
+    IO_OUT      = 1
+    IO_IN       = 0
+    IO_HIGH     = 1
+    IO_LOW      = 0
+
 PUB Output(pin)
 
-    dira[pin]~~
+    dira[pin] := IO_OUT
 
 PUB Input(pin)
 
-    dira[pin]~
+    dira[pin] := IO_IN
+    result := ina[pin]
 
 PUB High(pin)
 
-    outa[pin]~~
+    dira[pin] := IO_OUT
+    outa[pin] := IO_HIGH
 
 PUB Low(pin)
 
-    outa[pin]~
+    dira[pin] := IO_OUT
+    outa[pin] := IO_LOW
 
 PUB Toggle(pin)
 
