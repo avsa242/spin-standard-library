@@ -25,7 +25,7 @@ VAR
 
 OBJ
 
-    i2c : "jm_i2c_fast"                                         'PASM I2C Driver
+    i2c : "com.i2c"                                             'PASM I2C Driver
     core: "core.con.your_device_here"                           'File containing your device's register set
     time: "time"                                                'Basic timing functions
 
@@ -47,27 +47,34 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
 
     return FALSE                                                'If we got here, something went wrong
 
-PRI readOne: readbyte
+PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
+'' Read num_bytes from the slave device into the address stored in buff_addr
+    case reg                                                    'Basic register validation
+        $00..$FF:                                               ' Consult your device's datasheet!
+            cmd_packet.byte[0] := SLAVE_WR
+            cmd_packet.byte[1] := reg
+            i2c.start
+            i2c.wr_block (@cmd_packet, 2)
+            i2c.start
+            i2c.rd_block (buff_addr, nr_bytes, TRUE)
+            i2c.stop
+        OTHER:
+            return
 
-    readX (@readbyte, 1)
+PRI writeReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
+'' Write num_bytes to the slave device from the address stored in buff_addr
+    case reg                                                    'Basic register validation
+        $00..$FF:                                               ' Consult your device's datasheet!
+            cmd_packet.byte[0] := SLAVE_WR
+            cmd_packet.byte[1] := reg
+            i2c.start
+            i2c.wr_block (@cmd_packet, 2)
+            repeat tmp from 0 to nr_bytes-1
+                i2c.write (byte[buff_addr][tmp])
+            i2c.stop
+        OTHER:
+            return
 
-PRI readX(ptr_buff, num_bytes)
-'' Read num_bytes from the slave device into the address stored in ptr_buff
-    i2c.start
-    i2c.write (SLAVE_RD)
-    i2c.pread (ptr_buff, num_bytes, TRUE)
-    i2c.stop
-
-PRI writeOne(data)
-
-    WriteX (data, 1)
-
-PRI WriteX(ptr_buff, num_bytes)
-'' Write num_bytes to the slave device from the address stored in ptr_buff
-    i2c.start
-    i2c.write (SLAVE_WR)
-    i2c.pwrite (ptr_buff, num_bytes)
-    i2c.stop
 
 DAT
 {

@@ -20,6 +20,7 @@ VAR
     long _disp_width, _disp_height
     long _buff_sz
     long _font_width, _font_height, _font_addr
+    long _fgcolor, _bgcolor, _max_color
 
 PUB Null
 ''This is not a top-level object
@@ -36,16 +37,22 @@ PUB Start(disp_width, disp_height, bpp, disp_addr)
     case bpp
         1:
             _buff_sz := (_disp_width * _disp_height) / 8
+            _max_color := 1
         2:
             _buff_sz := (_disp_width * _disp_height) / 4
+            _max_color := 3
         4:
             _buff_sz := (_disp_width * _disp_height) / 2
+            _max_color := 15
         8:
             _buff_sz := (_disp_width * _disp_height)
+            _max_color := 255
         16:
             _buff_sz := (_disp_width * _disp_height) * 2
-        24:
+            _max_color := 65535
+        24, 32:
             _buff_sz := (_disp_width * _disp_height) * 3
+            _max_color := 16777215
 
     Address (disp_addr)
     
@@ -57,15 +64,56 @@ PUB Address(addr)
         OTHER:
             return _buff_addr
 
+PUB BGColor (col)
+
+    return _bgcolor := col
+
 PUB Clear
 ' Clear the display buffer
     longfill(_buff_addr, $00, _buff_sz/4)
 
-PUB Char (ch) | i
+PUB Char (ch) | i, j, mask, r
 ' Write a character to the display @ row and column (character cell)
-    repeat i from 0 to 7
-        byte[_buff_addr][_row << 7 + _col << 3 + i] := byte[_font_addr + 8 * ch + i]
+    case _max_color
+        1:
+            repeat i from 0 to 7
+                byte[_buff_addr][_row << 7 + _col << 3 + i] := byte[_font_addr + 8 * ch + i]
+        65535:
+'            repeat i from 0 to 7
+'                byte[_buff_addr][_row << 7{*_disp_width-1} + _col << 3{*_font_width} + i] := byte[_font_addr + 8 * ch + i]
+            repeat j from 0 to 7
+                mask := $00000001
+                repeat i from 0 to 7
+                    r := byte[_font_addr][8 * ch + j]
+                    if r & mask
+                        word[_buff_addr][(_row * _disp_width) + (_col * _font_width)] := _fgcolor.word[0]
+'                        byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width)] := _fgcolor.byte[0]
+    '                    word[_buff_addr][x + (y * _disp_width)] := c
+                    else
+'                        byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width)] := _bgcolor
+'                        byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width)] := _bgcolor
+                        word[_buff_addr][(_row * _disp_width) + (_col * _font_width)] := _bgcolor.word[0]
+                    mask <<= 1
 
+{            repeat j from 0 to 7
+              mask := $00000001  
+              repeat i from 0 to 7
+                r := byte[_font_addr + 8 * ch + i]'byte[@Font5x7][8*ch+j]
+                if(r & mask)              ' If the bit is set...
+                   'byte[h][k]|=bset      ' Set the column bit
+'                   ssd1331_Data(RG16bitColor(RGB))
+'                   ssd1331_Data(GB16bitColor(RGB))
+                    byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width + i)] := _color
+                    byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width + i)+1] := _color
+                else
+                    byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width + i)] := 0
+                    byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width + i)+1] := 0
+                 
+                   'byte[h][k]&=!bset     ' Clear the column bit
+'                   ssd1331_Data(RG16bitColor(BRGB))
+'                   ssd1331_Data(GB16bitColor(BRGB))
+                mask:=mask<<1           
+}
 PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
 ' Draw a circle at x0, y0
     x := radius - 1
@@ -93,6 +141,10 @@ PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
             x--
             cdx += 2
             err += cdx - (radius << 1)
+
+PUB FGColor (col)
+
+    return _fgcolor := col
 
 PUB FontAddress(addr)
 ' Set address of font definition
@@ -178,20 +230,37 @@ PUB Plot (x, y, c)
         OTHER:
             return
 
-    case c
+    case _max_color
         1:
-            byte[_buff_addr][x + (y>>3)*_disp_width] |= (1 << (y&7))
-        0:
-            byte[_buff_addr][x + (y>>3)*_disp_width] &= (1 << (y&7))
-        -1:
-            byte[_buff_addr][x + (y>>3)*_disp_width] ^= (1 << (y&7))
+            case c
+                1:
+                    byte[_buff_addr][x + (y>>3)*_disp_width] |= (1 << (y&7))
+                0:
+                    byte[_buff_addr][x + (y>>3)*_disp_width] &= (1 << (y&7))
+                -1:
+                    byte[_buff_addr][x + (y>>3)*_disp_width] ^= (1 << (y&7))
+                OTHER:
+                    return
+        65535:
+            word[_buff_addr][x + (y * _disp_width)] := c
+
+PUB Point (x, y, c)
+' Get pixel value at x, y
+    case x
+        0.._disp_width-1:
         OTHER:
             return
+    case y
+        0.._disp_height-1:
+        OTHER:
+            return
+    result := byte[_buff_addr][x + (y>>3) * _disp_width]
 
 PUB Position(col, row)
 ' Set text draw position, in character-cell col and row
     _col := col &= (_disp_width / 8) - 1    'Clamp position based on
     _row := row &= (_disp_height / 8) - 1   ' screen's dimensions
+
 
 PUB Str (string_addr) | i
 ' Write string at string_addr to the display @ row and column.
