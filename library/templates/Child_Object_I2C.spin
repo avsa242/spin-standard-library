@@ -47,6 +47,10 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
 
     return FALSE                                                'If we got here, something went wrong
 
+PUB Stop
+' Put any other housekeeping code here required/recommended by your device before shutting down
+    i2c.terminate
+
 PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
 '' Read num_bytes from the slave device into the address stored in buff_addr
     case reg                                                    'Basic register validation
