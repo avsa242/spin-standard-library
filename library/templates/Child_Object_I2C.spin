@@ -60,6 +60,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
             i2c.start
             i2c.wr_block (@cmd_packet, 2)
             i2c.start
+            i2c.write (SLAVE_RD)
             i2c.rd_block (buff_addr, nr_bytes, TRUE)
             i2c.stop
         OTHER:
