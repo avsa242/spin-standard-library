@@ -19,16 +19,17 @@ CON
 PUB SensirionCRC8(data, len): crc | currbyte, i, j
 
     crc := $FF
-    repeat j from len-1 to 0
-        currbyte := byte[data][j]
+    repeat i from 0 to len-1
+        currbyte := byte[data][(len-1)-i]
         crc := crc ^ currbyte
 
-        repeat i from 8 to 1
+        repeat j from 0 to 7
             if (crc & $80)
                 crc := (crc << 1) ^ POLYNOMIAL8_SENSIRION
             else
                 crc := (crc << 1)
-    return
+    crc ^= $00
+    return crc & $FF
 
 PUB DallasMaximCRC8(data, len): crc | currbyte, i, j, mix
 
