@@ -78,42 +78,7 @@ PUB Char (ch) | i, j, mask, r
         1:
             repeat i from 0 to 7
                 byte[_buff_addr][_row << 7 + _col << 3 + i] := byte[_font_addr + 8 * ch + i]
-        65535:
-'            repeat i from 0 to 7
-'                byte[_buff_addr][_row << 7{*_disp_width-1} + _col << 3{*_font_width} + i] := byte[_font_addr + 8 * ch + i]
-            repeat j from 0 to 7
-                mask := $00000001
-                repeat i from 0 to 7
-                    r := byte[_font_addr][8 * ch + j]
-                    if r & mask
-                        word[_buff_addr][(_row * _disp_width) + (_col * _font_width)] := _fgcolor.word[0]
-'                        byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width)] := _fgcolor.byte[0]
-    '                    word[_buff_addr][x + (y * _disp_width)] := c
-                    else
-'                        byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width)] := _bgcolor
-'                        byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width)] := _bgcolor
-                        word[_buff_addr][(_row * _disp_width) + (_col * _font_width)] := _bgcolor.word[0]
-                    mask <<= 1
 
-{            repeat j from 0 to 7
-              mask := $00000001  
-              repeat i from 0 to 7
-                r := byte[_font_addr + 8 * ch + i]'byte[@Font5x7][8*ch+j]
-                if(r & mask)              ' If the bit is set...
-                   'byte[h][k]|=bset      ' Set the column bit
-'                   ssd1331_Data(RG16bitColor(RGB))
-'                   ssd1331_Data(GB16bitColor(RGB))
-                    byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width + i)] := _color
-                    byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width + i)+1] := _color
-                else
-                    byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width + i)] := 0
-                    byte[_buff_addr][(_row * _disp_width - 1) + (_col * _font_width + i)+1] := 0
-                 
-                   'byte[h][k]&=!bset     ' Clear the column bit
-'                   ssd1331_Data(RG16bitColor(BRGB))
-'                   ssd1331_Data(GB16bitColor(BRGB))
-                mask:=mask<<1           
-}
 PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
 ' Draw a circle at x0, y0
     x := radius - 1
