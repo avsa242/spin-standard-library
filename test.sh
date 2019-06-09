@@ -13,12 +13,12 @@ fi
 
 while read line
 do
-    ${SPINC} -L ./library "$line" >/dev/null
+    ${SPINC} -L "./library" "$line" >/dev/null
     if [ $? != 0 ]
     then 
         echo
-        echo "${SPINC} -L . $line"
-        ${SPINC} -L . "$line"
+        echo "${SPINC} -L ./library $line"
+        ${SPINC} -L ./library "$line"
         echo
     fi
 done < <(find . -name \*.spin)

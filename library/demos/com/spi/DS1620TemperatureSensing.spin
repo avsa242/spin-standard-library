@@ -35,7 +35,7 @@ CON
 
 OBJ
 
-    spi  : "com.spi"
+    spi  : "com.spi.3w"
     term : "com.serial.terminal"
     num  : "string.integer"
 

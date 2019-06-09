@@ -51,8 +51,8 @@ PUB Main | newlevel, oldlevel
         ser.Char (CLREOL)
         oldlevel := newlevel                                        ' Setup to detect change
         repeat
-            newlevel := gray.read                                   ' Poll encoder                                   
-        until (newlevel <> oldlevel)                                '   until it changes  
+            newlevel := gray.read                                   ' Poll encoder
+        until (newlevel <> oldlevel)                                '   until it changes
 
 PUB Setup
 

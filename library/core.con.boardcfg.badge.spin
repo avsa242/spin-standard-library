@@ -42,7 +42,7 @@ CON
 
   '' TV output modes and channels
 
-  COMPOSITE   = %0101 
+  COMPOSITE   = %0101
   BROADCAST   = %0100
 
   CH2         = 55_250_000

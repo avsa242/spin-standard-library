@@ -15,7 +15,7 @@ CON
 
   MIC_FB      = 20        '' Onboard mic
   MIC_IN      = 21
-  
+
   SD_DO       = 22        '' uSD socket
   SD_CLK      = 23
   SD_DI       = 24
@@ -29,10 +29,10 @@ CON
   SOUND       = 26        '' Sound
   SOUND_L     = 26
   SOUND_R     = 27
-  
+
   LED1        = 26        '' Two amber LEDs D1 and D2
   LED2        = 27
-  
+
   DA0         = 26        '' Two DAC outputs
   DA1         = 27
 

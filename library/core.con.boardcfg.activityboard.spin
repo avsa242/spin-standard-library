@@ -26,10 +26,10 @@ CON
   SOUND       = 26  '' Sound
   SOUND_L     = 26
   SOUND_R     = 27
-  
+
   LED1        = 26  '' Two amber LEDs
   LED2        = 27
-  
+
   DA0         = 26  '' Two DAC outputs
   DA1         = 27
 

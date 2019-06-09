@@ -22,7 +22,7 @@ VAR
 
 OBJ
 
-   time : "system.clock"
+   time : "time"
 
 PUB start(PingPin,CoilPin,ReadPin,COILAddress)
 
@@ -57,7 +57,7 @@ repeat
 PRI CoilCore(PingPin,ReadPin)
        dira[PingPin] := 1                                   'Make PingPin an OUTPUT
        outa[PingPin] := 1                                   'Make PingPin HIGH                          'Ping the COIL for 10uS'
-       time.PauseUSec(10)                                    'Pause for 10uS
+       time.USleep(10)                                    'Pause for 10uS
        outa[PingPin] := 0                                   'Make PingPin LOW
        CoilTemp := cnt                                      'grab clock tick counter value
        WAITPEQ(0,|< ReadPin,0)                              'wait until ReadPin goes LOW
@@ -67,12 +67,12 @@ PRI CoilCore(PingPin,ReadPin)
 
 
 
-       'time.PauseMSec(5)                                    'Allow things to settle for 5mS
+       'time.MSleep(5)                                    'Allow things to settle for 5mS
 
 'Below is a test to read the coils 500x faster than the above statement that pauses for 5mS
 '
        outa[ReadPin] := 0                                   'Preset ReadPin as a LOW
        dira[ReadPin] := 1                                   'Make ReadPin an OUTPUT
-       time.PauseUSec(10)                                    'Allow things to settle for 10µS
+       time.USleep(10)                                    'Allow things to settle for 10µS
        dira[ReadPin] := 0                                   'Make ReadPin an INPUT
 

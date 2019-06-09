@@ -25,7 +25,7 @@ VAR
 
 PUB Main
 
-  
+
 
 DAT
 {

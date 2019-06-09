@@ -14,7 +14,7 @@ CON
   SOUND         = 10        '' Sound
   SOUND_L       = 10
   SOUND_R       = 11
-  
+
   LCD_RESET     = 12        '' LCD Panel and Touchscreen
   LCD_LSDI      = 13
   LCD_LCLK      = 14
@@ -31,13 +31,13 @@ CON
   LCD_PCLK      = 25
   LCD_BL        = 26
   TS_IRQ        = 27
-  
+
   SCL           = 28        '' I2C
   SDA           = 29
 
   TSC2003_SLAVE = $48 << 1  '' Default TSC2003 Slave Address
   TSC2003_MAX_HZ= 3_400_000
   TSC2003_FASTHZ= 1_000_000
-  
+
 PUB Null
 '' This is not a top-level object

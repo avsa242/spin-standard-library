@@ -22,7 +22,7 @@
 ''               Copyright (c) 2010 Jon McPhalen
 ''               -- see below for terms of use
 ''   E-mail..... jon@jonmcphalen.com
-''   Started.... 
+''   Started....
 ''   Updated.... 06 MAR 2010
 ''
 '' =================================================================================================
@@ -65,7 +65,7 @@ PUB Start(base, has_detent, lo, hi, preset): okay
 
     basepin   := base                                             ' set LSB of inputs
     enctiming := clkfreq / 500                                    ' sample @500Hz
-  
+
     if has_detent
         detent  := true                                             ' x4 for detented encoder
         lolimit := lo << 2
@@ -78,7 +78,7 @@ PUB Start(base, has_detent, lo, hi, preset): okay
         encoder := preset
 
     okay := cog := cognew(@grayenc, @encoder) + 1                 ' start the cog
-  
+
     return okay
 
 PUB Stop
@@ -102,10 +102,10 @@ PUB Set(value)
     if detent
         value <<= 2
 
-    encoder := lolimit #> value <# hilimit  
+    encoder := lolimit #> value <# hilimit
 
 DAT
-' processes 2-bit, graycode input stream 
+' processes 2-bit, graycode input stream
 '
 '   ---------------------------->>
 '   00 <-> 01 <-> 11 <-> 10 <-> 00                              ' encoder outputs
@@ -121,15 +121,15 @@ grayenc                 rdlong  tmp1, par                       ' force preset t
                         wrlong  tmp1, par
 
                         mov     oldscan, ina                    ' get start-up inputs
-                        shr     oldscan, basepin                ' z-align scan   
+                        shr     oldscan, basepin                ' z-align scan
                         and     oldscan, #%11                   ' clear other bits
 
                         mov     timer, cnt                      ' sync with system cnt
-                        add     timer, enctiming                ' set loop timing                        
+                        add     timer, enctiming                ' set loop timing
 
 encloop                 waitcnt timer, enctiming                ' hold for loop timing
 
-scan                    mov     newscan, ina                    ' get current inputs     
+scan                    mov     newscan, ina                    ' get current inputs
                         shr     newscan, basepin                ' z-align scan
                         and     newscan, #%11                   ' clear other bits
                         cmp     newscan, oldscan        wz      ' check for change
@@ -142,19 +142,19 @@ case00                  cmp     oldscan, #%00           wz      ' oldscan == %00
 
 case01                  cmp     oldscan, #%01           wz
               if_ne     jmp     #case11
-                        cmp     newscan, #%11           wz   
+                        cmp     newscan, #%11           wz
                         jmp     #update
 
 case11                  cmp     oldscan, #%11           wz
               if_ne     jmp     #case10
-                        cmp     newscan, #%10           wz   
+                        cmp     newscan, #%10           wz
                         jmp     #update
 
 case10                  cmp     oldscan, #%10           wz
               if_ne     jmp     #encloop                        ' (should never happen)
-                        cmp     newscan, #%00           wz   
-'                       jmp     #update                  
-                                             
+                        cmp     newscan, #%00           wz
+'                       jmp     #update
+
 update                  rdlong  tmp2, par                       ' read current value from hub
               if_nz     jmp     #decvalue                       ' inc or dec?
 
@@ -162,16 +162,16 @@ incvalue                cmps    tmp2, hilimit           wz, wc  ' below high lim
               if_b      adds    tmp2, #1                        ' increment
               if_a      mov     tmp2, hilimit                   ' fix bad value
               if_ne     wrlong  tmp2, par                       ' update hub if changed
-                        mov     oldscan, newscan                ' reset                   
+                        mov     oldscan, newscan                ' reset
                         jmp     #encloop
 
 decvalue                cmps    tmp2, lolimit           wz, wc  ' above low limit?
               if_a      subs    tmp2, #1                        ' decrement
               if_b      mov     tmp2, lolimit                   ' fix bad value
               if_ne     wrlong  tmp2, par                       ' update hub if changed
-                        mov     oldscan, newscan                ' reset                   
+                        mov     oldscan, newscan                ' reset
                         jmp     #encloop
-                        
+
 ' --------------------------------------------------------------------------------------------------
 
 basepin                 long    0-0                             ' lsb of encoder group
@@ -187,7 +187,7 @@ timer                   res     1                               ' for loop delay
 tmp1                    res     1                               ' work variables
 tmp2                    res     1
 
-                        fit     492                                    
+                        fit     492
 
 DAT
 {

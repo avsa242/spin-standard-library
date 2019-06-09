@@ -55,7 +55,7 @@ PUB Start(disp_width, disp_height, bpp, disp_addr)
             _max_color := 16777215
 
     Address (disp_addr)
-    
+
 PUB Address(addr)
 ' Set framebuffer address
     case addr

@@ -70,7 +70,7 @@ VAR
   byte  cmIdx                                           'Clock Mode array index
 
 OBJ
-  clk           : "system.clock"
+  clk           : "time.clock"
 
 PUB Main
 {{Launch cog to scroll LEDs right/left and occasionally switch clock sources (indicated by

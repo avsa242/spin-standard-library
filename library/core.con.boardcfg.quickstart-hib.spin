@@ -32,7 +32,7 @@ CON
   LED6        = 21
   LED7        = 22
   LED8        = 23
-  
+
   VGA         = 16  '' VGA
 
   MOUSE_DATA  = 24  '' PS/2 Mouse
@@ -43,7 +43,7 @@ CON
 
   '' TV output modes and channels
 
-  COMPOSITE   = %0101 
+  COMPOSITE   = %0101
   BROADCAST   = %0100 '' Default on HIB
 
   CH2         = 55_250_000

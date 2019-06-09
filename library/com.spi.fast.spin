@@ -1,15 +1,15 @@
 CON
-  
+
     CMD_RESERVED     = 0             'This is the default state - means ASM is waiting for command
     CMD_READ      = 1 << 16
     CMD_WRITE     = 2 << 16
     CMD_LAST      = 17 << 16      'Place holder for last command
-    
+
 VAR
 
     long _cog                     'cog flag/id
-  
-DAT              
+
+DAT
 
 ' Command setup
     command         long    0               'stores command and arguments for the ASM driver
@@ -42,7 +42,7 @@ PUB Stop
     if _cog                                                'Is cog non-zero?
         cogstop(_cog~ - 1)                                   'Yes, stop the cog and then make value zero
         longfill(@SCSmask, 0, 5)                            'Clear all masks
-  
+
 PUB MutexInit
 ' Initialize mutex lock semaphore. Called once at driver initialization if application level locking is needed.
 '
@@ -69,10 +69,10 @@ PUB Read(register, buff_addr, nr_bytes)
 
 'Send the command
     command := CMD_READ + @register
-   
+
 'Wait for the command to complete
     repeat while command
-   
+
 PUB Write(block, buff_addr, nr_bytes)
 '
 '  params:  block if true will wait for ASM routine to send before continuing
@@ -81,7 +81,7 @@ PUB Write(block, buff_addr, nr_bytes)
 
 'Send the command
     command := CMD_WRITE + @buff_addr
-   
+
 'Wait for the command to complete or just move on
     if block
         repeat while command
@@ -163,8 +163,8 @@ LastCMD_ret ret                                 'Command execution complete
 ' NOTE: RAM, Reg, and CTR setup must be done before calling this routine
 '-----------------------------------------------------------------------------------------------------
 WriteMulti
-                 
-:bytes        
+
+:bytes
               rdbyte    data,   ram             'Read the byte from hubram
               call      #wSPI_Data              'Write one byte
 
@@ -181,7 +181,7 @@ WriteMulti_ret ret                              'Return to the calling code
 
 ReadMulti     mov       dataLen, ctr            '# of bytes to read in one burst
               call      #rSPI                   'send the burst read command
-:bytes         
+:bytes
               call      #rSPI_Data              'Read one data byte 1.15us
               and       data, _bytemask         'Ensure there is only a byte    +20 clocks in this loop = 1.4us/byte
               wrbyte    data, ram               'Write the byte to hubram
@@ -224,7 +224,7 @@ wSPI_Data_ret ret                               'Return to the calling loop
 rSPI
 'High speed serial driver utilizing the counter modules. Counter A is the clock while Counter B is used as a special register
 'to get the data on the output line in one clock cycle. This code is meant to run on 80MHz. Processor and the code clocks data
-'at 10MHz. 
+'at 10MHz.
 
               andn      outa, SCLKmask          'turn the clock off, ensure it is low before placing data on the line
 
@@ -238,7 +238,7 @@ rSPI
 
               mov       frqa, frq20             'Setup the writing frequency  for 20MHz 08/15/2012
               mov       phsa, phs20             'Setup the writing phase of data/clock for 20MHz 08/15/2012
-              
+
               mov       ctra, ctramode          'Turn on Counter A to start clocking
               rol       phsb, #1                'NOTE: First bit is clocked just as soon as the clock turns on
               rol       phsb, #1
@@ -279,23 +279,23 @@ rSPI_Data
               mov       phsa, phs10             'start phs for clock   | 2-instructions per bit read code 08/15/2012
               nop
               mov       ctra, ctramode          'Start clocking
-              test      MISOmask, ina wc        'Gather data, to be clocked in       
+              test      MISOmask, ina wc        'Gather data, to be clocked in
               rcl       data, #1                'Data bit 0
-              test      MISOmask, ina wc        
-              rcl       data, #1                'Data bit 1 
-              test      MISOmask, ina wc        
-              rcl       data, #1                'Data bit 2 
-              test      MISOmask, ina wc        
-              rcl       data, #1                'Data bit 3  
-              test      MISOmask, ina wc        
-              rcl       data, #1                'Data bit 4 
-              test      MISOmask, ina wc        
-              rcl       data, #1                'Data bit 5 
-              test      MISOmask, ina wc        
-              rcl       data, #1                'Data bit 6 
-              test      MISOmask, ina wc        
-              mov       ctra, #0                'Turn off the clocking immediately, otherwise might get odd behavior 
-              rcl       data, #1                'Data bit 7 
+              test      MISOmask, ina wc
+              rcl       data, #1                'Data bit 1
+              test      MISOmask, ina wc
+              rcl       data, #1                'Data bit 2
+              test      MISOmask, ina wc
+              rcl       data, #1                'Data bit 3
+              test      MISOmask, ina wc
+              rcl       data, #1                'Data bit 4
+              test      MISOmask, ina wc
+              rcl       data, #1                'Data bit 5
+              test      MISOmask, ina wc
+              rcl       data, #1                'Data bit 6
+              test      MISOmask, ina wc
+              mov       ctra, #0                'Turn off the clocking immediately, otherwise might get odd behavior
+              rcl       data, #1                'Data bit 7
 rSPI_Data_ret ret                               'Return to the calling loop
 
 '==========================================================================================================

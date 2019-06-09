@@ -15,7 +15,7 @@ CON
     POLYNOMIAL8_DALLASMAX   = $8C
     POLYNOMIAL8_SENSIRION   = $31
     POLYNOMIAL16_DALLASMAX  = $A001
-  
+
 PUB SensirionCRC8(data, len): crc | currbyte, i, j
 
     crc := $FF
@@ -33,7 +33,7 @@ PUB SensirionCRC8(data, len): crc | currbyte, i, j
 
 PUB DallasMaximCRC8(data, len): crc | currbyte, i, j, mix
 
-    crc := $00     
+    crc := $00
     repeat i from 0 to len-1
         currbyte := byte[data][i]
         repeat j from 0 to 7
@@ -47,7 +47,7 @@ PUB DallasMaximCRC8(data, len): crc | currbyte, i, j, mix
 
 PUB DallasMaximCRC16(data, len): crc | currbyte, i, j, mix
 
-    crc := $00     
+    crc := $00
     repeat i from 0 to len-1
         currbyte := byte[data][i]
         repeat j from 0 to 7

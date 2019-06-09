@@ -19,7 +19,7 @@ VAR
 
 OBJ
 
-    spi : "SPI_Asm"                                             'PASM SPI Driver
+    spi : "com.spi.4w"                                             'PASM SPI Driver
     core: "core.con.your_spi_device_here"                       'File containing your device's register set
     time: "time"                                                'Basic timing functions
 
@@ -57,7 +57,7 @@ PRI readRegX(reg, nr_bytes, buf_addr) | i
 
     outa[_CS] := 0
     spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
-    
+
     repeat i from 0 to nr_bytes
         byte[buf_addr][i] := spi.SHIFTIN(_MISO, _SCK, core#MISO_BITORDER, 8)
     outa[_CS] := 1

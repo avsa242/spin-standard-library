@@ -19,12 +19,10 @@ VAR
 OBJ
 
 
-PUB null
-''This is not a top-level object
+PUB Null
+' This is not a top-level object
 
 PUB Start
-
-PRI
 
 
 DAT
