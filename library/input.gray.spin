@@ -6,10 +6,26 @@
     Description: Input driver for 2-bit graycode encoder
     Copyright (c) 2019
     Started May 18, 2019
-    Updated Mar 18, 2019
+    Updated Jun 9, 2019
     See end of file for terms of use.
     --------------------------------------------
+    NOTE: This is a derivative of jm_grayenc_demo.spin,
+        originally written by Jon McPhalen. Original header
+        preserved below.
 }
+
+'' =================================================================================================
+''
+''   File....... jm_grayenc_demo.spin
+''   Purpose.... Greycode encoder test program
+''   Author..... Jon "JonnyMac" McPhalen (aka Jon Williams)
+''               Copyright (c) 2010 Jon McPhalen
+''               -- see below for terms of use
+''   E-mail..... jon@jonmcphalen.com
+''   Started.... 
+''   Updated.... 06 MAR 2010
+''
+'' =================================================================================================
 
 {{
     Connection:
