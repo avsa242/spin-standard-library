@@ -3,7 +3,6 @@
     Filename: com.onewire.com
     Author: Jesse Burt
     Description: One-wire protocol driver
-    Copyright (c) 2019
     Started Jul 13, 2019
     Updated Jul 14, 2019
     See end of file for terms of use.
@@ -297,7 +296,7 @@ tmp2                    res     1
                         fit     492
 
 
-dat
+DAT
 
 {{
 
