@@ -34,7 +34,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal"
     time    : "time"
-    imu     : "sensor.imu.tri.lsm9ds1"
+    imu     : "sensor.imu.9dof.lsm9ds1.spi"
     int     : "string.integer"
 
 VAR
