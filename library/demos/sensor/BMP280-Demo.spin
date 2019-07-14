@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2019
     Created: Sep 16, 2018
-    Updated: Feb 25, 2019
+    Updated: Jul 14, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,7 +20,7 @@ OBJ
     cfg : "core.con.boardcfg.flip"
     ser : "com.serial.terminal"
     time: "time"
-    bmp : "sensor.baro-alt.bmp280.i2c"
+    bmp : "sensor.baro_temp.bmp280.i2c"
     umath : "umath"
 
 VAR
