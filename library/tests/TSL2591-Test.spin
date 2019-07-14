@@ -18,7 +18,7 @@ OBJ
   ser   : "com.serial.terminal"
   int   : "string.integer"
   time  : "time"
-  lux   : "sensor.lux.tsl2591"
+  lux   : "sensor.lux.tsl2591.i2c"
   debug : "debug"
 
 VAR

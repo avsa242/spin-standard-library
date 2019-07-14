@@ -29,7 +29,7 @@ OBJ
     ser   : "com.serial.terminal"
     int   : "string.integer"
     time  : "time"
-    lux   : "sensor.lux.tsl2591"
+    lux   : "sensor.lux.tsl2591.i2c"
     fs    : "string.float"
 
 PUB Main | atime_ms, againx, lux1, cpl, ch0, ch1, scale
