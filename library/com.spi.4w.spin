@@ -1,4 +1,4 @@
-{{      
+{{
 ************************************************
 * Propeller SPI Engine                    v1.2 *
 * Author: Beau Schwabe                         *
@@ -8,11 +8,11 @@
 
 Revision History:
          V1.0   - original program
-         
+
          V1.1   - fixed problem with SHIFTOUT MSBFIRST option
                 - fixed argument allocation in the SPI Engines main loop
 
-         V1.2   - Added Clock delay option and fixed bug in SHIFTIN function       
+         V1.2   - Added Clock delay option and fixed bug in SHIFTIN function
 }}
 CON
 
@@ -47,10 +47,10 @@ PUB SHIFTOUT(Dpin, Cpin, Mode, Bits, Value)             ''If SHIFTOUT is called 
 PUB SHIFTIN(Dpin, Cpin, Mode, Bits)|Value,Flag          ''If SHIFTIN is called with 'Bits' set to Zero, then the COG will shut
                                                         ''down.  Another way to shut the COG down is to call 'stop' from Spin.
 
-    Flag := 1                                           ''Set Flag                                           
+    Flag := 1                                           ''Set Flag
     setcommand(_SHIFTIN, @Dpin)
     repeat until Flag == 0                              ''Wait for Flag to clear ... data is ready
-    
+
     Result := Value
 '------------------------------------------------------------------------------------------------------------------------------
 PUB start(Delay,State) : okay
@@ -68,8 +68,8 @@ PUB start(Delay,State) : okay
                                 ''     300ns + 14 * 50ns = 1000ns = 1us
 
          State := 1             '' 0 - Start Clock LOW
-                                '' 1 - Start Clock HIGH                                                         
-                                
+                                '' 1 - Start Clock HIGH
+
 
 }}
 
@@ -89,7 +89,7 @@ PRI setcommand(cmd, argptr)
     repeat while command                                ''wait for command to be cleared, signifying receipt
 '################################################################################################################
 DAT           org
-'  
+'
 '' SPI Engine - main loop
 '
 loop          rdlong  t1,par          wz                ''wait for command
@@ -128,15 +128,15 @@ SHIFTOUT_                                               ''SHIFTOUT Entry
               muxz    outa,           t1                ''          PreSet DataPin LOW
               muxnz   dira,           t1                ''          Set DataPin to an OUTPUT
               mov     t2,             #1        wz      ''     Configure ClockPin
-              shl     t2,             arg1              ''          Set Mask             
+              shl     t2,             arg1              ''          Set Mask
               test    ClockState,     #1        wc      ''          Determine Starting State
     if_nc     muxz    outa,           t2                ''          PreSet ClockPin LOW
-    if_c      muxnz   outa,           t2                ''          PreSet ClockPin HIGH              
+    if_c      muxnz   outa,           t2                ''          PreSet ClockPin HIGH
               muxnz   dira,           t2                ''          Set ClockPin to an OUTPUT
               sub     _LSBFIRST,      arg2    wz,nr     ''     Detect LSBFIRST mode for SHIFTOUT
     if_z      jmp     #LSBFIRST_
               sub     _MSBFIRST,      arg2    wz,nr     ''     Detect MSBFIRST mode for SHIFTOUT
-    if_z      jmp     #MSBFIRST_             
+    if_z      jmp     #MSBFIRST_
               jmp     #loop                             ''     Go wait for next command
 '------------------------------------------------------------------------------------------------------------------------------
 
@@ -147,10 +147,10 @@ SHIFTIN_                                                ''SHIFTIN Entry
               shl     t1,             arg0
               muxz    dira,           t1                ''          Set DataPin to an INPUT
               mov     t2,             #1        wz      ''     Configure ClockPin
-              shl     t2,             arg1              ''          Set Mask             
+              shl     t2,             arg1              ''          Set Mask
               test    ClockState,     #1        wc      ''          Determine Starting State
     if_nc     muxz    outa,           t2                ''          PreSet ClockPin LOW
-    if_c      muxnz   outa,           t2                ''          PreSet ClockPin HIGH              
+    if_c      muxnz   outa,           t2                ''          PreSet ClockPin HIGH
               muxnz   dira,           t2                ''          Set ClockPin to an OUTPUT
               sub     _MSBPRE,        arg2    wz,nr     ''     Detect MSBPRE mode for SHIFTIN
     if_z      jmp     #MSBPRE_
@@ -161,18 +161,18 @@ SHIFTIN_                                                ''SHIFTIN Entry
               sub     _LSBPOST,       arg2    wz,nr     ''     Detect LSBPOST mode for SHIFTIN
     if_z      jmp     #LSBPOST_
               jmp     #loop                             ''     Go wait for next command
-         
-'------------------------------------------------------------------------------------------------------------------------------              
+
+'------------------------------------------------------------------------------------------------------------------------------
 MSBPRE_                                                 ''     Receive Data MSBPRE
 MSBPRE_Sin    test    t1,             ina     wc        ''          Read Data Bit into 'C' flag
               rcl     t3,             #1                ''          rotate "C" flag into return value
               call    #PreClock                         ''          Send clock pulse
               djnz    t4,             #MSBPRE_Sin       ''          Decrement t4 ; jump if not Zero
               jmp     #Update_SHIFTIN                   ''     Pass received data to SHIFTIN receive variable
-'------------------------------------------------------------------------------------------------------------------------------              
+'------------------------------------------------------------------------------------------------------------------------------
 'tested OK
 LSBPRE_                                                 ''     Receive Data LSBPRE
-              add     t4,             #1                
+              add     t4,             #1
 LSBPRE_Sin    test    t1,             ina       wc      ''          Read Data Bit into 'C' flag
               rcr     t3,             #1                ''          rotate "C" flag into return value
               call    #PreClock                         ''          Send clock pulse
@@ -219,7 +219,7 @@ MSBFIRST_                                               ''     Send Data MSBFIRS
               shl     t5,             arg3              ''          Shift "1" N number of bits to the left.
               shr     t5,             #1                ''          Shifting the number of bits left actually puts
                                                         ''          us one more place to the left than we want. To
-                                                        ''          compensate we'll shift one position right.              
+                                                        ''          compensate we'll shift one position right.
 MSB_Sout      test    t3,             t5      wc        ''          Test MSB of DataValue
               muxc    outa,           t1                ''          Set DataBit HIGH or LOW
               shr     t5,             #1                ''          Prepare for next DataBit
@@ -227,7 +227,7 @@ MSB_Sout      test    t3,             t5      wc        ''          Test MSB of 
               djnz    t4,             #MSB_Sout         ''          Decrement t4 ; jump if not Zero
               mov     t3,             #0      wz        ''          Force DataBit LOW
               muxnz   outa,           t1
-              
+
               jmp     #loop                             ''     Go wait for next command
 '------------------------------------------------------------------------------------------------------------------------------
 'tested OK
@@ -242,27 +242,27 @@ Update_SHIFTIN
 'tested OK
 PreClock
               mov     t2,             #0      nr        ''     Clock Pin
-              test    t2,             ina     wz        ''          Read ClockPin                                        
+              test    t2,             ina     wz        ''          Read ClockPin
               muxz    outa,           t2                ''          Set ClockPin to opposite  of read value
-              call    #ClkDly              
+              call    #ClkDly
               muxnz   outa,           t2                ''          Restore ClockPin to original read value
-              call    #ClkDly              
+              call    #ClkDly
 PreClock_ret  ret                                       ''          return
 '------------------------------------------------------------------------------------------------------------------------------
 'tested OK
 PostClock
               mov     t2,             #0      nr        ''     Clock Pin
               test    t2,             ina     wz        ''          Read ClockPin
-              call    #ClkDly                                                      
+              call    #ClkDly
               muxz    outa,           t2                ''          Set ClockPin to opposite  of read value
-              call    #ClkDly              
+              call    #ClkDly
               muxnz   outa,           t2                ''          Restore ClockPin to original read value
 PostClock_ret ret                                       ''          return
 '------------------------------------------------------------------------------------------------------------------------------
 'tested OK
 ClkDly
               mov       t6,     ClockDelay
-ClkPause      djnz      t6,     #ClkPause                               
+ClkPause      djnz      t6,     #ClkPause
 ClkDly_ret    ret
 '------------------------------------------------------------------------------------------------------------------------------
 'tested OK
@@ -291,7 +291,7 @@ ClockDelay              long    0
 ClockState              long    0
 
                                                         ''temp variables
-t1                      long    0                       ''     Used for DataPin mask     and     COG shutdown 
+t1                      long    0                       ''     Used for DataPin mask     and     COG shutdown
 t2                      long    0                       ''     Used for CLockPin mask    and     COG shutdown
 t3                      long    0                       ''     Used to hold DataValue SHIFTIN/SHIFTOUT
 t4                      long    0                       ''     Used to hold # of Bits
@@ -307,9 +307,9 @@ arg4                    long    0
 
 {{
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                   TERMS OF USE: MIT License                                                  │                                                            
+│                                                   TERMS OF USE: MIT License                                                  │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    │ 
+│Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    │
 │files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    │
 │modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software│
 │is furnished to do so, subject to the following conditions:                                                                   │
