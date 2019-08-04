@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: One-wire protocol driver
     Started Jul 13, 2019
-    Updated Jul 14, 2019
+    Updated Aug 4, 2019
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This driver is a modified version of jm_1-wire.spin, originally
@@ -39,9 +39,9 @@ CON
 
 VAR
 
-    long  cog
-    long  owcmd                                                 ' command to 1-Wire interface
-    long  owio                                                  ' data in/out
+    long _cog
+    long _owcmd                                                 ' command to 1-Wire interface
+    long _owio                                                  ' data in/out
 
 PUB Start(pin): okay
 ' Starts 1-Wire object
@@ -50,19 +50,19 @@ PUB Start(pin): okay
     if lookdown(pin: 0..31)
         US_001   := clkfreq / 1_000_000                         ' initialize cog parameters
         owmask   := |< pin
-        cmdpntr  := @owcmd
-        iopntr   := @owio
+        cmdpntr  := @_owcmd
+        iopntr   := @_owio
 
     dira[pin] := 0                                              ' float OW pin
-    owcmd := 0                                                  ' clear command
-    okay := cog := cognew(@onewire, 0) + 1                      ' start cog
+    _owcmd := 0                                                  ' clear command
+    okay := _cog := cognew(@onewire, 0) + 1                      ' start cog
 
     return
 
 PUB Stop
 ' Stops 1-Wire driver; frees a cog
-    if cog
-        cogstop(cog~ - 1)
+    if _cog
+        cogstop(_cog~ - 1)
 
 
 PUB Reset
@@ -73,51 +73,51 @@ PUB Reset
 '   %10 = good bus & presence detection
 '   %11 = no device
     iopntr := 0
-    owcmd := 1
-    repeat while owcmd
+    _owcmd := 1
+    repeat while _owcmd
 
-    return owio
+    return _owio
 
 
 PUB Write(b)
 ' Write byte b to 1-Wire bus
-    owio := b & $FF
-    owcmd := 2
-    repeat while owcmd
+    _owio := b & $FF
+    _owcmd := 2
+    repeat while _owcmd
 
 PUB WrBit(b)
 ' Write bit b to 1-Wire bus
-    owio := b & %1
-    owcmd := 3
-    repeat while owcmd
+    _owio := b & %1
+    _owcmd := 3
+    repeat while _owcmd
 
 PUB Read
 ' Reads byte from 1-Wire bus
-    owio := 0
-    owcmd := 4
-    repeat while owcmd
+    _owio := 0
+    _owcmd := 4
+    repeat while _owcmd
 
-    return owio & $FF
+    return _owio & $FF
 
 
 PUB RdBit
 ' Reads bit from 1-Wire bus
 ' -- useful for monitoring device busy status
-    owio := 0
-    owcmd := 5
-    repeat while owcmd
+    _owio := 0
+    _owcmd := 5
+    repeat while _owcmd
 
-    return owio & 1
+    return _owio & 1
 
 
 PUB CRC8(pntr, n)
 ' Returns CRC8 of n bytes at pntr
 ' -- interface to PASM code by Cam Thompson
-    owio := pntr
-    owcmd := (n << 8) + 6                                       ' pack count into command
-    repeat while owcmd
+    _owio := pntr
+    _owcmd := (n << 8) + 6                                       ' pack count into command
+    repeat while _owcmd
 
-    return owio
+    return _owio
 
 DAT
 
