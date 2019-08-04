@@ -12,7 +12,6 @@
 
 CON
 
-    TPOR        = 100_000 'us
     TRXSETTLE   = 130 'us
     TTXSETTLE   = 130 'us
     THCE        = 10  'us
@@ -61,7 +60,6 @@ PUB Startx(CE_PIN, CSN_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
 
     if lookdown(CE_PIN: 0..31) and lookdown(CSN_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
         if okay := spi.start (core#CLK_DELAY, core#CPOL)
-            time.USleep (TPOR)  'XXX remove
             _CE := CE_PIN
             _CSN := CSN_PIN
             _SCK := SCK_PIN
@@ -88,7 +86,7 @@ PUB Stop
     spi.stop
 
 PUB CE(state)
-
+' Set state of Chip-Enable pin
     outa[_CE] := state
     time.USleep (THCE)
 
@@ -167,7 +165,7 @@ PUB CRCEncoding(bytes) | tmp
     writeRegX (core#NRF24_CONFIG, 1, @tmp)
 
 PUB CW(enabled) | tmp
-' Enable continuous carrier transmit (intended for testing only)
+' Enable continuous wave carrier transmit (intended for testing only)
 '   Valid values: FALSE: Disable, TRUE (-1 or 1): Enable.
 '   Any other value polls the chip and returns the current setting
     readRegX (core#NRF24_RF_SETUP, 1, @tmp)
@@ -182,7 +180,7 @@ PUB CW(enabled) | tmp
     writeRegX (core#NRF24_RF_SETUP, 1, @tmp)
 
 PUB DataReady(clear_intr) | tmp
-' Query or clear Data Ready RX FIFO interrupt
+' Query or clear Data Ready (received) interrupt
 '   Valid values: TRUE (-1 or 1): Clear interrupt flag
 '   Any other value queries the chip and returns TRUE if new data in FIFO, FALSE otherwise
     readRegX (core#NRF24_STATUS, 1, @tmp)
@@ -197,7 +195,7 @@ PUB DataReady(clear_intr) | tmp
     writeRegX (core#NRF24_STATUS, 1, @tmp)
 
 PUB DataSent(clear_intr) | tmp
-' Query or clear Data Sent TX FIFO interrupt
+' Query or clear Data Sent interrupt
 '   Valid values: TRUE (-1 or 1): Clear interrupt flag
 '   Any other value polls the chip and returns TRUE if packet transmitted, FALSE otherwise
     readRegX (core#NRF24_STATUS, 1, @tmp)
@@ -279,11 +277,11 @@ PUB EnablePipe(mask) | tmp
     writeRegX (core#NRF24_EN_RXADDR, 1, @tmp)
 
 PUB FlushRX
-
+' Flush receive FIFO
     writeRegX(core#NRF24_FLUSH_RX, 0, 0)
 
 PUB FlushTX
-
+' Flush transmit FIFO
     writeRegX(core#NRF24_FLUSH_TX, 0, 0)
 
 PUB DynamicACK(enabled) | tmp
@@ -345,9 +343,9 @@ PUB IntMask(mask) | tmp
     writeRegX (core#NRF24_CONFIG, 1, @tmp)
 
 PUB LostPackets
-' Count lost packets
-'   Returns: Number of lost packets since last write to RF_CH reg.
-'   Max value is 15
+' Count lost packets, to a maximum of 15
+'   Returns: Number of lost packets since channel was set
+'   NOTE: To clear the count, the channel must be re-set
     readRegX (core#NRF24_OBSERVE_TX, 1, @result)
     result := (result >> core#FLD_PLOS_CNT) & core#BITS_PLOS_CNT
 
@@ -401,6 +399,7 @@ PUB Rate(kbps) | tmp, lo, hi, tmp2, tmp3
 ' Set RF data rate in kbps
 '   Valid values: 250, 1000, 2000
 '   Any other value polls the chip and returns the current setting
+'   NOTE: Auto-acknowledgment/ShockBurst is only available at 1000 and 2000kbps
     readRegX (core#NRF24_RF_SETUP, 1, @tmp)
     case kbps
         1000:
@@ -445,11 +444,10 @@ PUB RFPower(power) | tmp
 PUB RPD
 ' Received Power Detector
 '   Returns:
-'   FALSE/0: No Carrier
-'   TRUE/-1: Carrier Detected
+'      FALSE/0: No Carrier
+'      TRUE/-1: Carrier Detected
     readRegX (core#NRF24_RPD, 1, @result)
-    
-'    result *= TRUE
+    return (result & %1) * TRUE
 
 PUB RXAddr(pipe, buff_addr) | tmp[2], i, addr_test
 ' Set receive address of pipe number 'pipe' from buffer at address buff_addr
@@ -482,18 +480,19 @@ PUB RXAddr(pipe, buff_addr) | tmp[2], i, addr_test
             return
 
 PUB RXData(nr_bytes, buff_addr) | tmp
-
+' Read data from the receive FIFO
+'   NOTE: Buffer at address buff_addr must be at least nr_bytes bytes in length
     readRegX (core#NRF24_R_RX_PAYLOAD, nr_bytes, buff_addr)
 
 PUB RXFIFO_Empty
-' Queries the FIFO_STATUS register for RX FIFO empty flag
+' Queries the chip to check if the receive FIFO is empty
 '   Returns TRUE if empty, FALSE if there's data in RX FIFO
     readRegX (core#NRF24_FIFO_STATUS, 1, @result)
     return (result & %1) * TRUE
 
 PUB RXFIFO_Full
-' Queries the FIFO_STATUS register for RX FIFO full flag
-'   Returns TRUE if full, FALSE if there're available locations in the RX FIFO
+' Queries the chip to check if the receive FIFO is full
+'   Returns TRUE if full, FALSE if not
     readRegX (core#NRF24_FIFO_STATUS, 1, @result)
     result >>= core#FLD_RXFIFO_FULL  
     result &= %1
@@ -582,7 +581,10 @@ PUB TXAddr(buff_addr) | tmp[2], i, addr_test
         writeRegX (core#NRF24_TX_ADDR, 5, buff_addr)
 
 PUB TXData(nr_bytes, buff_addr) | cmd_packet, tmp
-
+' Adds data to the transmit FIFO
+'   Valid values:
+'       nr_bytes: 1..32
+'   Any other value is ignored
     case nr_bytes
         1..32:
             writeRegX(core#NRF24_W_TX_PAYLOAD, nr_bytes, buff_addr)
@@ -590,19 +592,20 @@ PUB TXData(nr_bytes, buff_addr) | cmd_packet, tmp
             return FALSE
 
 PUB TXFIFO_Empty
-' Queries the FIFO_STATUS register for TX FIFO empty flag
-'   Returns TRUE if empty, FALSE if there's data in TX FIFO
+' Queries the chip to check if the transmit FIFO is empty
+'   Returns: TRUE if empty, FALSE if there's data in TX FIFO
     readRegX (core#NRF24_FIFO_STATUS, 1, @result)
-    result &= (1 << core#FLD_TXFIFO_EMPTY) * TRUE
+    return ((result >> core#FLD_TXFIFO_EMPTY) & %1) * TRUE
 
 PUB TXFIFO_Full
-' Returns TX FIFO full flag
-'   Returns: TRUE if full, FALSE if locations available in TX FIFO
-    result := (Status & core#FLD_TX_FULL) * TRUE
+' Queries the chip to check if the transmit FIFO is full
+'   Returns: TRUE if full, FALSE if space still available in TX FIFO
+    readRegX (core#NRF24_FIFO_STATUS, 1, @result)
+    return ((result >> core#FLD_TXFIFO_FULL) & %1) * TRUE
 
 PUB TXReuse
-' Queries the FIFO_STATUS register for TX_REUSE flag
-'   Returns TRUE if re-using last transmitted payload, FALSE if not
+' Queries the chip to check if the last transmitted payload will be re-used
+'   Returns: TRUE if re-using last transmitted payload, FALSE if not
     readRegX (core#NRF24_FIFO_STATUS, 1, @result)
     result &= (1 << core#FLD_TXFIFO_REUSE) * TRUE
 
