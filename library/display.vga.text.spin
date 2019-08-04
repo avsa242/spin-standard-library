@@ -57,7 +57,7 @@ PUB Start(basepin) : okay
 '' requires at least 80MHz system clock
 
     setcolors(@palette)
-    out(0)
+    Char(0)
 
     longmove(@vga_status, @vga_params, vga_count)
     vga_pins := basepin | %000_111
@@ -75,40 +75,9 @@ PUB Bin(value, digits)
 '' Print a binary number
     value <<= 32 - digits
     repeat digits
-        out((value <-= 1) & 1 + "0")
+        Char((value <-= 1) & 1 + "0")
 
-PUB Dec(value) | i
-'' Print a decimal number
-    if value < 0
-        -value
-        out("-")
-
-    i := 1_000_000_000
-
-    repeat 10
-        if value => i
-            out(value / i + "0")
-            value //= i
-            result~~
-        elseif result or i == 1
-            out("0")
-        i /= 10
-
-PUB Hex(value, digits)
-'' Print a hexadecimal number
-    value <<= (8 - digits) << 2
-    repeat digits
-        out(lookupz((value <-= 4) & $F : "0".."9", "A".."F"))
-
-PUB Newline | i
-
-    col := 0
-    if ++row == rows
-        row--
-        wordmove(@screen, @screen[cols], lastrow)   'scroll lines
-        wordfill(@screen[lastrow], $220, cols)      'clear new line
-
-PUB Out(c) | i, k
+PUB Char(c) | i, k
 '' Output a character
 ''
 ''     $00 = clear screen
@@ -146,6 +115,37 @@ PUB Out(c) | i, k
         $0C: color := c & 7
     flag := 0
 
+PUB Dec(value) | i
+'' Print a decimal number
+    if value < 0
+        -value
+        Char("-")
+
+    i := 1_000_000_000
+
+    repeat 10
+        if value => i
+            Char(value / i + "0")
+            value //= i
+            result~~
+        elseif result or i == 1
+            Char("0")
+        i /= 10
+
+PUB Hex(value, digits)
+'' Print a hexadecimal number
+    value <<= (8 - digits) << 2
+    repeat digits
+        Char(lookupz((value <-= 4) & $F : "0".."9", "A".."F"))
+
+PUB Newline | i
+
+    col := 0
+    if ++row == rows
+        row--
+        wordmove(@screen, @screen[cols], lastrow)   'scroll lines
+        wordfill(@screen[lastrow], $220, cols)      'clear new line
+
 PUB SetColors(colorptr) | i, fore, back
 '' Override default color palette
 '' colorptr must point to a list of up to 8 colors
@@ -166,7 +166,7 @@ PUB SetColors(colorptr) | i, fore, back
 PUB Str(stringptr)
 '' Print a zero-terminated string
     repeat strsize(stringptr)
-        out(byte[stringptr++])
+        Char(byte[stringptr++])
 
 PRI print(c)
 

@@ -7,28 +7,27 @@
 
 CON
 
-  _clkmode = xtal1 + pll16x
-  _xinfreq = 5_000_000
+    _clkmode = xtal1 + pll16x
+    _xinfreq = 5_000_000
 
 
 OBJ
 
-  text : "display.vga.text"
+    text : "display.vga.text"
 
+PUB Start | i
 
-PUB start | i
-
-  'start term
-  text.start(16)
-  text.str(string(13,"   VGA Text Demo...",13,13,$C,5," OBJ and VAR require only 2.6KB ",$C,1))
-  repeat 14
-    text.out(" ")
-  repeat i from $0E to $FF
-    text.out(i)
-  text.str(string($C,6,"     Uses internal ROM font     ",$C,2))
-  repeat
-    text.str(string($A,12,$B,14))
-    text.hex(i++, 8)
+    'start term
+    text.Start(16)
+    text.Str(string(13,"   VGA Text Demo...",13,13,$C,5," OBJ and VAR require only 2.6KB ",$C,1))
+    repeat 14
+        text.Char(" ")
+    repeat i from $0E to $FF
+        text.Char(i)
+    text.Str(string($C,6,"     Uses internal ROM font     ",$C,2))
+    repeat
+        text.Str(string($A,12,$B,14))
+        text.Hex(i++, 8)
 
 {{
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐

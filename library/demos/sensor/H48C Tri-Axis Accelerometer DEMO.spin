@@ -89,7 +89,7 @@ PUB DEMO_TEST
   'start and setup Accelerometer
   H48C.start(CS,DIO,CLK)
 
-  VGA.out($01)
+  VGA.Char($01)
   VGA.str(string("H48C Tri-Axis Accelerometer"))
 
   VGA.str(string($A,4,$B,4))
