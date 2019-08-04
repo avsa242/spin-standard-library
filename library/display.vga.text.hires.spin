@@ -22,59 +22,60 @@ CON
 '{
 ' 1024 x 768 @ 57Hz settings: 128 x 64 characters
 
-  hp = 1024     'horizontal pixels
-  vp = 768      'vertical pixels
-  hf = 16       'horizontal front porch pixels
-  hs = 96       'horizontal sync pixels
-  hb = 176      'horizontal back porch pixels
-  vf = 1        'vertical front porch lines
-  vs = 3        'vertical sync lines
-  vb = 28       'vertical back porch lines
-  hn = 1        'horizontal normal sync state (0|1)
-  vn = 1        'vertical normal sync state (0|1)
-  pr = 60       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
+    hp = 1024     'horizontal pixels
+    vp = 768      'vertical pixels
+    hf = 16       'horizontal front porch pixels
+    hs = 96       'horizontal sync pixels
+    hb = 176      'horizontal back porch pixels
+    vf = 1        'vertical front porch lines
+    vs = 3        'vertical sync lines
+    vb = 28       'vertical back porch lines
+    hn = 1        'horizontal normal sync state (0|1)
+    vn = 1        'vertical normal sync state (0|1)
+    pr = 60       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
 '}
 {
 ' 800 x 600 @ 75Hz settings: 100 x 50 characters
 
-  hp = 800      'horizontal pixels
-  vp = 600      'vertical pixels
-  hf = 40       'horizontal front porch pixels
-  hs = 128      'horizontal sync pixels
-  hb = 88       'horizontal back porch pixels
-  vf = 1        'vertical front porch lines
-  vs = 4        'vertical sync lines
-  vb = 23       'vertical back porch lines
-  hn = 0        'horizontal normal sync state (0|1)
-  vn = 0        'vertical normal sync state (0|1)
-  pr = 50       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
+    hp = 800      'horizontal pixels
+    vp = 600      'vertical pixels
+    hf = 40       'horizontal front porch pixels
+    hs = 128      'horizontal sync pixels
+    hb = 88       'horizontal back porch pixels
+    vf = 1        'vertical front porch lines
+    vs = 4        'vertical sync lines
+    vb = 23       'vertical back porch lines
+    hn = 0        'horizontal normal sync state (0|1)
+    vn = 0        'vertical normal sync state (0|1)
+    pr = 50       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
 }
 {
 ' 640 x 480 @ 69Hz settings: 80 x 40 characters
 
-  hp = 640      'horizontal pixels
-  vp = 480      'vertical pixels
-  hf = 24       'horizontal front porch pixels
-  hs = 40       'horizontal sync pixels
-  hb = 128      'horizontal back porch pixels
-  vf = 9        'vertical front porch lines
-  vs = 3        'vertical sync lines
-  vb = 28       'vertical back porch lines
-  hn = 1        'horizontal normal sync state (0|1)
-  vn = 1        'vertical normal sync state (0|1)
-  pr = 30       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
+    hp = 640      'horizontal pixels
+    vp = 480      'vertical pixels
+    hf = 24       'horizontal front porch pixels
+    hs = 40       'horizontal sync pixels
+    hb = 128      'horizontal back porch pixels
+    vf = 9        'vertical front porch lines
+    vs = 3        'vertical sync lines
+    vb = 28       'vertical back porch lines
+    hn = 1        'horizontal normal sync state (0|1)
+    vn = 1        'vertical normal sync state (0|1)
+    pr = 30       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
 }
 
 ' columns and rows
 
-  cols = hp / 8
-  rows = vp / 12
+    cols = hp / 8
+    rows = vp / 12
 
 
-VAR long cog[2]
+VAR
 
-PUB start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
+    long cog[2]
 
+PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
 '' Start VGA driver - starts two COGs
 '' returns false if two COGs not available
 ''
@@ -119,67 +120,62 @@ PUB start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
 ''               can be avoided. You must clear it each time if you want to see
 ''               it re-trigger.
 
-  'if driver is already running, stop it
-  stop
+    'if driver is already running, stop it
+    Stop
 
-  'implant pin settings
-  reg_vcfg := $200000FF + (BasePin & %111000) << 6
-  i := $FF << (BasePin & %011000)
-  j := BasePin & %100000 == 0
-  reg_dira := i & j
-  reg_dirb := i & !j
+    'implant pin settings
+    reg_vcfg := $200000FF + (BasePin & %111000) << 6
+    i := $FF << (BasePin & %011000)
+    j := BasePin & %100000 == 0
+    reg_dira := i & j
+    reg_dirb := i & !j
 
-  'implant CNT value to sync COGs to
-  sync_cnt := cnt + $10000
+    'implant CNT value to sync COGs to
+    sync_cnt := cnt + $10000
 
-  'implant pointers
-  longmove(@screen_base, @ScreenPtr, 3)
-  font_base := @font
+    'implant pointers
+    longmove(@screen_base, @ScreenPtr, 3)
+    font_base := @font
 
-  'implant unique settings and launch first COG
-  vf_lines.byte := vf
-  vb_lines.byte := vb
-  font_third := 1
-  cog[1] := cognew(@d0, SyncPtr) + 1
+    'implant unique settings and launch first COG
+    vf_lines.byte := vf
+    vb_lines.byte := vb
+    font_third := 1
+    cog[1] := cognew(@d0, SyncPtr) + 1
 
-  'allow time for first COG to launch
-  waitcnt($2000 + cnt)
+    'allow time for first COG to launch
+    waitcnt($2000 + cnt)
 
-  'differentiate settings and launch second COG
-  vf_lines.byte := vf+4
-  vb_lines.byte := vb-4
-  font_third := 0
-  cog[0] := cognew(@d0, SyncPtr) + 1
+    'differentiate settings and launch second COG
+    vf_lines.byte := vf+4
+    vb_lines.byte := vb-4
+    font_third := 0
+    cog[0] := cognew(@d0, SyncPtr) + 1
 
-  'if both COGs launched, return true
-  if cog[0] and cog[1]
-    return true
+    'if both COGs launched, return true
+    if cog[0] and cog[1]
+        return true
 
-  'else, stop any launched COG and return false
-  else
-    stop
+    'else, stop any launched COG and return false
+    else
+        Stop
 
 
-PUB stop | i
-
+PUB Stop | i
 '' Stop VGA driver - frees two COGs
-
   repeat i from 0 to 1
     if cog[i]
       cogstop(cog[i]~ - 1)
 
-
 CON
 
-  #1, scanbuff[128], scancode[128*2-1+3], maincode      'enumerate COG RAM usage
+    #1, scanbuff[128], scancode[128*2-1+3], maincode      'enumerate COG RAM usage
 
-  main_size = $1F0 - maincode                           'size of main program
+    main_size = $1F0 - maincode                           'size of main program
 
-  hv_inactive = (hn << 1 + vn) * $0101                  'H,V inactive states
-
+    hv_inactive = (hn << 1 + vn) * $0101                  'H,V inactive states
 
 DAT
-
 '*****************************************************
 '* Assembly language VGA high-resolution text driver *
 '*****************************************************
