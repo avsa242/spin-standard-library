@@ -85,16 +85,11 @@ PUB Write(b)
     owcmd := 2
     repeat while owcmd
 
-PUB WrBit(b)
-' Write bit b to 1-Wire bus
-    owio := b & %1
-    owcmd := 3
-    repeat while owcmd
 
 PUB Read
 ' Reads byte from 1-Wire bus
     owio := 0
-    owcmd := 4
+    owcmd := 3
     repeat while owcmd
 
     return owio & $FF
@@ -104,7 +99,7 @@ PUB RdBit
 ' Reads bit from 1-Wire bus
 ' -- useful for monitoring device busy status
     owio := 0
-    owcmd := 5
+    owcmd := 4
     repeat while owcmd
 
     return owio & 1
@@ -114,7 +109,7 @@ PUB CRC8(pntr, n)
 ' Returns CRC8 of n bytes at pntr
 ' -- interface to PASM code by Cam Thompson
     owio := pntr
-    owcmd := (n << 8) + 6                                       ' pack count into command
+    owcmd := (n << 8) + 5                                       ' pack count into command
     repeat while owcmd
 
     return owio
@@ -130,7 +125,7 @@ owmain                  rdlong  tmp1, cmdpntr           wz      ' get command
                 if_z    jmp     #owmain                         ' wait for valid command
                         mov     bytecount, tmp1                 ' make copy (for crc byte count)
                         and     tmp1, #$FF                      ' strip off count
-                        max     tmp1, #7                        ' truncate command
+                        max     tmp1, #6                        ' truncate command
 
                         add     tmp1, #owcommands               ' add cmd table base
                         jmp     tmp1                            ' jump to command handler
@@ -138,11 +133,10 @@ owmain                  rdlong  tmp1, cmdpntr           wz      ' get command
 owcommands              jmp     #owbadcmd                       ' place holder
 owcmd1                  jmp     #owreset
 owcmd2                  jmp     #owwrbyte
-owcmd3                  jmp     #owwrbit
-owcmd4                  jmp     #owrdbyte
-owcmd5                  jmp     #owrdbit
-owcmd6                  jmp     #owcalccrc
-owcmd7                  jmp     #owbadcmd
+owcmd3                  jmp     #owrdbyte
+owcmd4                  jmp     #owrdbit
+owcmd5                  jmp     #owcalccrc
+owcmd6                  jmp     #owbadcmd
 
 owbadcmd                wrlong  ZERO, cmdpntr                   ' clear command
                         jmp     #owmain
@@ -193,19 +187,6 @@ wrloop                  shr     value, #1               wc      ' value.0 -> C, 
                 if_nc   mov     usecs, #10                      ' pad for 0
                         call    #pauseus
                         djnz    bitcount, #wrloop               ' all bits done?
-                        wrlong  ZERO, cmdpntr                   ' yes, update hub
-                        jmp     #owmain
-
-owwrbit                 rdlong  value, iopntr                   ' get byte from hub
-                        shr     value, #1               wc      ' value.0 -> C, value >>= 1
-                if_c    mov     usecs, #6                       ' write 1
-                if_nc   mov     usecs, #60                      ' write 0
-                        or      dira, owmask                    ' pull bus low
-                        call    #pauseus
-                        andn    dira, owmask                    ' release bus
-                if_c    mov     usecs, #64                      ' pad for 1
-                if_nc   mov     usecs, #10                      ' pad for 0
-                        call    #pauseus
                         wrlong  ZERO, cmdpntr                   ' yes, update hub
                         jmp     #owmain
 
