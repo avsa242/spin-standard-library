@@ -142,6 +142,14 @@ PUB Out(c) | i, k
         $0C: color := c & 7
     flag := 0
 
+PUB Newline | i
+
+    col := 0
+    if ++row == rows
+        row--
+        wordmove(@screen, @screen[cols], lastrow)   'scroll lines
+        wordfill(@screen[lastrow], $220, cols)      'clear new line
+
 PUB SetColors(colorptr) | i, fore, back
 '' Override default color palette
 '' colorptr must point to a list of up to 8 colors
@@ -164,14 +172,6 @@ PRI print(c)
     screen[row * cols + col] := (color << 1 + c & 1) << 10 + $200 + c & $FE
     if ++col == cols
         newline
-
-PRI newline | i
-
-    col := 0
-    if ++row == rows
-        row--
-        wordmove(@screen, @screen[cols], lastrow)   'scroll lines
-        wordfill(@screen[lastrow], $220, cols)      'clear new line
 
 DAT
 
