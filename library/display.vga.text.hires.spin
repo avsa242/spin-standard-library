@@ -22,53 +22,53 @@ CON
 '{
 ' 1024 x 768 @ 57Hz settings: 128 x 64 characters
 
-    hp = 1024     'horizontal pixels
-    vp = 768      'vertical pixels
-    hf = 16       'horizontal front porch pixels
-    hs = 96       'horizontal sync pixels
-    hb = 176      'horizontal back porch pixels
-    vf = 1        'vertical front porch lines
-    vs = 3        'vertical sync lines
-    vb = 28       'vertical back porch lines
-    hn = 1        'horizontal normal sync state (0|1)
-    vn = 1        'vertical normal sync state (0|1)
-    pr = 60       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
+    HP = 1024     'horizontal pixels
+    VP = 768      'vertical pixels
+    HF = 16       'horizontal front porch pixels
+    HS = 96       'horizontal sync pixels
+    HB = 176      'horizontal back porch pixels
+    VF = 1        'vertical front porch lines
+    VS = 3        'vertical sync lines
+    VB = 28       'vertical back porch lines
+    HN = 1        'horizontal normal sync state (0|1)
+    VN = 1        'vertical normal sync state (0|1)
+    PR = 60       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
 '}
 {
 ' 800 x 600 @ 75Hz settings: 100 x 50 characters
 
-    hp = 800      'horizontal pixels
-    vp = 600      'vertical pixels
-    hf = 40       'horizontal front porch pixels
-    hs = 128      'horizontal sync pixels
-    hb = 88       'horizontal back porch pixels
-    vf = 1        'vertical front porch lines
-    vs = 4        'vertical sync lines
-    vb = 23       'vertical back porch lines
-    hn = 0        'horizontal normal sync state (0|1)
-    vn = 0        'vertical normal sync state (0|1)
-    pr = 50       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
+    HP = 800      'horizontal pixels
+    VP = 600      'vertical pixels
+    HF = 40       'horizontal front porch pixels
+    HS = 128      'horizontal sync pixels
+    HB = 88       'horizontal back porch pixels
+    VF = 1        'vertical front porch lines
+    VS = 4        'vertical sync lines
+    VB = 23       'vertical back porch lines
+    HN = 0        'horizontal normal sync state (0|1)
+    VN = 0        'vertical normal sync state (0|1)
+    PR = 50       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
 }
 {
 ' 640 x 480 @ 69Hz settings: 80 x 40 characters
 
-    hp = 640      'horizontal pixels
-    vp = 480      'vertical pixels
-    hf = 24       'horizontal front porch pixels
-    hs = 40       'horizontal sync pixels
-    hb = 128      'horizontal back porch pixels
-    vf = 9        'vertical front porch lines
-    vs = 3        'vertical sync lines
-    vb = 28       'vertical back porch lines
-    hn = 1        'horizontal normal sync state (0|1)
-    vn = 1        'vertical normal sync state (0|1)
-    pr = 30       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
+    HP = 640      'horizontal pixels
+    VP = 480      'vertical pixels
+    HF = 24       'horizontal front porch pixels
+    HS = 40       'horizontal sync pixels
+    HB = 128      'horizontal back porch pixels
+    VF = 9        'vertical front porch lines
+    VS = 3        'vertical sync lines
+    VB = 28       'vertical back porch lines
+    HN = 1        'horizontal normal sync state (0|1)
+    VN = 1        'vertical normal sync state (0|1)
+    PR = 30       'pixel rate in MHz at 80MHz system clock (5MHz granularity)
 }
 
 ' columns and rows
 
-    cols = hp / 8
-    rows = vp / 12
+    COLS = HP / 8
+    ROWS = VP / 12
 
 
 VAR
@@ -138,8 +138,8 @@ PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
     font_base := @font
 
     'implant unique settings and launch first COG
-    vf_lines.byte := vf
-    vb_lines.byte := vb
+    vf_lines.byte := VF
+    vb_lines.byte := VB
     font_third := 1
     cog[1] := cognew(@d0, SyncPtr) + 1
 
@@ -147,8 +147,8 @@ PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
     waitcnt($2000 + cnt)
 
     'differentiate settings and launch second COG
-    vf_lines.byte := vf+4
-    vb_lines.byte := vb-4
+    vf_lines.byte := VF+4
+    vb_lines.byte := VB-4
     font_third := 0
     cog[0] := cognew(@d0, SyncPtr) + 1
 
@@ -160,12 +160,11 @@ PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
     else
         Stop
 
-
 PUB Stop | i
 '' Stop VGA driver - frees two COGs
-  repeat i from 0 to 1
-    if cog[i]
-      cogstop(cog[i]~ - 1)
+    repeat i from 0 to 1
+        if cog[i]
+            cogstop(cog[i]~ - 1)
 
 CON
 
@@ -173,7 +172,7 @@ CON
 
     main_size = $1F0 - maincode                           'size of main program
 
-    hv_inactive = (hn << 1 + vn) * $0101                  'H,V inactive states
+    hv_inactive = (HN << 1 + VN) * $0101                  'H,V inactive states
 
 DAT
 '*****************************************************
@@ -223,17 +222,17 @@ d0                      long    1 << 9                  'd0 always resides here 
                         add     :shr,d1                 'waitvid color,scanbuff+1
                         add     i0,#1                   'shr     scanbuff+1,#8
                         add     i1,d0                   '...
-                        djnz    scan_ctr,#:waitvid      'waitvid color,scanbuff+cols-1
+                        djnz    scan_ctr,#:waitvid      'waitvid color,scanbuff+COLS-1
 
-                        mov     scancode+cols*2-1,i2    'mov     vscl,#hf
-                        mov     scancode+cols*2+0,i3    'waitvid hvsync,#0
-                        mov     scancode+cols*2+1,i4    'jmp     #scanret
+                        mov     scancode+COLS*2-1,i2    'mov     vscl,#HF
+                        mov     scancode+COLS*2+0,i3    'waitvid hvsync,#0
+                        mov     scancode+COLS*2+1,i4    'jmp     #scanret
 
                         'Init I/O registers and sync COGs' video circuits
 
                         mov     dira,reg_dira           'set pin directions
                         mov     dirb,reg_dirb
-                        movi    frqa,#(pr / 5) << 2     'set pixel rate
+                        movi    frqa,#(PR / 5) << 2     'set pixel rate
                         mov     vcfg,reg_vcfg           'set video configuration
                         mov     vscl,#1                 'set video to reload on every pixel
                         waitcnt sync_cnt,colormask      'wait for start value in cnt, add ~1ms
@@ -250,11 +249,11 @@ d0                      long    1 << 9                  'd0 always resides here 
 d0s0                    long    1 << 9 + 1
 d1                      long    1 << 10
 main_ctr                long    main_size
-scan_ctr                long    cols
+scan_ctr                long    COLS
 
 i0                      waitvid x,scanbuff+0
 i1                      shr     scanbuff+0,#8
-i2                      mov     vscl,#hf
+i2                      mov     vscl,#HF
 i3                      waitvid hvsync,#0
 i4                      jmp     #scanret
 
@@ -271,16 +270,16 @@ main_begin              org     maincode                'main code follows (gets
 
 ' Main loop, display field - each COG alternately builds and displays four scan lines
 
-vsync                   mov     x,#vs                   'do vertical sync lines
+vsync                   mov     x,#VS                   'do vertical sync lines
                         call    #blank_vsync
 
-vb_lines                mov     x,#vb                   'do vertical back porch lines (# set at runtime)
+vb_lines                mov     x,#VB                   'do vertical back porch lines (# set at runtime)
                         call    #blank_vsync
 
                         mov     screen_ptr,screen_base  'reset screen pointer to upper-left character
                         mov     color_ptr,color_base    'reset color pointer to first row
                         mov     row,#0                  'reset row counter for cursor insertion
-                        mov     fours,#rows * 3 / 2     'set number of 4-line builds for whole screen
+                        mov     fours,#ROWS * 3 / 2     'set number of 4-line builds for whole screen
 
                         'Build four scan lines into scanbuff
 
@@ -295,7 +294,7 @@ fourline                mov     font_ptr,font_third     'get address of appropri
                         mov     vscl,vscl_line2x        '..pixel counter is limited to twelve bits
 
 :halfrow                waitvid underscore,#0           'output lows to let other COG drive VGA pins
-                        mov     x,#cols/2               '..for 2 scan lines, ready for half a row
+                        mov     x,#COLS/2               '..for 2 scan lines, ready for half a row
 
 :column                 rdbyte  z,screen_ptr            'get character from screen memory
                         ror     z,#7                    'get inverse flag into bit 0, keep chr high
@@ -310,7 +309,7 @@ fourline                mov     font_ptr,font_third     'get address of appropri
 
                         djnz    y,#:halfrow             'loop to do 2nd half-row, time for 2nd WAITVID
 
-                        sub     screen_ptr,#cols        'back up to start of same row in screen memory
+                        sub     screen_ptr,#COLS        'back up to start of same row in screen memory
 
                         'Insert cursors into scanbuff
 
@@ -318,7 +317,7 @@ fourline                mov     font_ptr,font_third     'get address of appropri
 
 :cursor                 rdbyte  x,cursor_base           'x in range?
                         add     cursor_base,#1
-                        cmp     x,#cols         wc
+                        cmp     x,#COLS         wc
 
                         rdbyte  y,cursor_base           'y match?
                         add     cursor_base,#1
@@ -360,18 +359,18 @@ fourline                mov     font_ptr,font_third     'get address of appropri
 
 scanline                mov     vscl,vscl_chr           'set pixel rate for characters
                         jmp     #scancode               'jump to scanbuff display routine in scancode
-scanret                 mov     vscl,#hs                'do horizontal sync pixels
+scanret                 mov     vscl,#HS                'do horizontal sync pixels
                         waitvid hvsync,#1               '#1 makes hsync active
-                        mov     vscl,#hb                'do horizontal back porch pixels
+                        mov     vscl,#HB                'do horizontal back porch pixels
                         waitvid hvsync,#0               '#0 makes hsync inactive
-                        shr     scanbuff+cols-1,#8      'shift last column's pixels right by 8
+                        shr     scanbuff+COLS-1,#8      'shift last column's pixels right by 8
                         djnz    y,#scanline             'another scan line?
 
                         'Next group of four scan lines
 
                         add     font_third,#2           'if font_third + 2 => 3, subtract 3 (new row)
                         cmpsub  font_third,#3   wc      'c=0 for same row, c=1 for new row
-        if_c            add     screen_ptr,#cols        'if new row, advance screen pointer
+        if_c            add     screen_ptr,#COLS        'if new row, advance screen pointer
         if_c            add     color_ptr,#2            'if new row, advance color pointer
         if_c            add     row,#1                  'if new row, increment row counter
                         djnz    fours,#fourline         'another 4-line build/display?
@@ -380,7 +379,7 @@ scanret                 mov     vscl,#hs                'do horizontal sync pixe
 
                         wrlong  longmask,par            'write -1 to refresh indicator
 
-vf_lines                mov     x,#vf                   'do vertical front porch lines (# set at runtime)
+vf_lines                mov     x,#VF                   'do vertical front porch lines (# set at runtime)
                         call    #blank
 
                         jmp     #vsync                  'new field, loop to vsync
@@ -391,11 +390,11 @@ blank_vsync             xor     hvsync,#$101            'flip vertical sync bits
 
 blank                   mov     vscl,hx                 'do blank pixels
                         waitvid hvsync,#0
-                        mov     vscl,#hf                'do horizontal front porch pixels
+                        mov     vscl,#HF                'do horizontal front porch pixels
                         waitvid hvsync,#0
-                        mov     vscl,#hs                'do horizontal sync pixels
+                        mov     vscl,#HS                'do horizontal sync pixels
                         waitvid hvsync,#1
-                        mov     vscl,#hb                'do horizontal back porch pixels
+                        mov     vscl,#HB                'do horizontal back porch pixels
                         waitvid hvsync,#0
                         djnz    x,#blank                'another line?
 blank_ret
@@ -410,8 +409,8 @@ cursor_base             long    0                       'set at runtime
 font_base               long    0                       'set at runtime
 font_third              long    0                       'set at runtime
 
-hx                      long    hp                      'visible pixels per scan line
-vscl_line2x             long    (hp + hf + hs + hb) * 2 'total number of pixels per 2 scan lines
+hx                      long    HP                      'visible pixels per scan line
+vscl_line2x             long    (HP + HF + HS + HB) * 2 'total number of pixels per 2 scan lines
 vscl_chr                long    1 << 12 + 8             '1 clock per pixel and 8 pixels per set
 colormask               long    $FCFC                   'mask to isolate R,G,B bits from H,V
 longmask                long    $FFFFFFFF               'all bits set
