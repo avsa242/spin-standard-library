@@ -7,20 +7,19 @@
 
 CON
 
-    cols = 32
-    rows = 15
+    COLS        = 32
+    ROWS        = 15
 
-    screensize = cols * rows
-    lastrow = screensize - cols
+    SCREENSIZE  = COLS * ROWS
+    LASTROW     = SCREENSIZE - COLS
 
-    vga_count = 21
-
+    VGA_COUNT   = 21
 
 VAR
 
     long  col, row, color, flag
 
-    word  screen[screensize]
+    word  screen[SCREENSIZE]
     long  colors[8 * 2]
 
     long  vga_status    '0/1/2 = off/visible/invisible      read-only   (21 longs)
@@ -45,7 +44,6 @@ VAR
     long  vga_vb        'vertical back porch lines          write-only
     long  vga_rate      'tick rate (Hz)                     write-only
 
-
 OBJ
 
     vga : "display.vga"
@@ -56,10 +54,10 @@ PUB Start(basepin) : okay
 ''
 '' requires at least 80MHz system clock
 
-    setcolors(@palette)
+    SetColors(@palette)
     Char(0)
 
-    longmove(@vga_status, @vga_params, vga_count)
+    longmove(@vga_status, @vga_params, VGA_COUNT)
     vga_pins := basepin | %000_111
     vga_screen := @screen
     vga_colors := @colors
@@ -93,7 +91,7 @@ PUB Char(c) | i, k
         $00:
             case c
                 $00:
-                    wordfill(@screen, $220, screensize)
+                    wordfill(@screen, $220, SCREENSIZE)
                     col := row := 0
                 $01:
                     col := row := 0
@@ -108,10 +106,11 @@ PUB Char(c) | i, k
                     flag := c
                     return
                 $0D:
-                    newline
-                other: print(c)
-        $0A: col := c // cols
-        $0B: row := c // rows
+                    Newline
+                other:
+                    print(c)
+        $0A: col := c // COLS
+        $0B: row := c // ROWS
         $0C: color := c & 7
     flag := 0
 
@@ -141,10 +140,10 @@ PUB Hex(value, digits)
 PUB Newline | i
 
     col := 0
-    if ++row == rows
+    if ++row == ROWS
         row--
-        wordmove(@screen, @screen[cols], lastrow)   'scroll lines
-        wordfill(@screen[lastrow], $220, cols)      'clear new line
+        wordmove(@screen, @screen[COLS], LASTROW)   'scroll lines
+        wordfill(@screen[LASTROW], $220, COLS)      'clear new line
 
 PUB SetColors(colorptr) | i, fore, back
 '' Override default color palette
@@ -170,8 +169,8 @@ PUB Str(stringptr)
 
 PRI print(c)
 
-    screen[row * cols + col] := (color << 1 + c & 1) << 10 + $200 + c & $FE
-    if ++col == cols
+    screen[row * COLS + col] := (color << 1 + c & 1) << 10 + $200 + c & $FE
+    if ++col == COLS
         newline
 
 DAT
@@ -182,8 +181,8 @@ vga_params              long    0               'status
                         long    %1000           'mode
                         long    0               'videobase
                         long    0               'colorbase
-                        long    cols            'hc
-                        long    rows            'vc
+                        long    COLS            'hc
+                        long    ROWS            'vc
                         long    1               'hx
                         long    1               'vx
                         long    0               'ho
@@ -208,4 +207,3 @@ palette                 byte    %%333, %%001    '0    white / dark blue
                         byte    %%020, %%232    '5    green / gray-green
                         byte    %%100, %%311    '6      red / pink
                         byte    %%033, %%003    '7     cyan / blue
-

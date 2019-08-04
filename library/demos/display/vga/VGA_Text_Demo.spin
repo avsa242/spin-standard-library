@@ -7,18 +7,18 @@
 
 CON
 
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
-
+    _clkmode = cfg#_CLKMODE
+    _xinfreq = cfg#_XINFREQ
 
 OBJ
 
-    text : "display.vga.text"
+    cfg     : "core.con.boardcfg.demoboard"
+    text    : "display.vga.text"
 
 PUB Start | i
 
     'start term
-    text.Start(16)
+    text.Start(cfg#VGA)
     text.Str(string(13,"   VGA Text Demo...",13,13,$C,5," OBJ and VAR require only 2.6KB ",$C,1))
     repeat 14
         text.Char(" ")
