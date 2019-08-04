@@ -359,7 +359,7 @@ PUB MaxRetrans(clear_intr) | tmp
         1:
             clear_intr := %1 << core#FLD_MAX_RT
         OTHER:
-            tmp := ((tmp >> core#FLD_MAX_RT) & core#BITS_MAX_RT) * TRUE
+            return ((tmp >> core#FLD_MAX_RT) & core#BITS_MAX_RT) * TRUE
 
     tmp &= core#MASK_MAX_RT
     tmp := (tmp | clear_intr) & core#NRF24_STATUS_MASK
