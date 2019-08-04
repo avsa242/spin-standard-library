@@ -71,10 +71,11 @@ PUB Stop
 '' Stop terminal - frees a cog
     vga.stop
 
-PUB Str(stringptr)
-'' Print a zero-terminated string
-    repeat strsize(stringptr)
-        out(byte[stringptr++])
+PUB Bin(value, digits)
+'' Print a binary number
+    value <<= 32 - digits
+    repeat digits
+        out((value <-= 1) & 1 + "0")
 
 PUB Dec(value) | i
 '' Print a decimal number
@@ -99,11 +100,13 @@ PUB Hex(value, digits)
     repeat digits
         out(lookupz((value <-= 4) & $F : "0".."9", "A".."F"))
 
-PUB Bin(value, digits)
-'' Print a binary number
-    value <<= 32 - digits
-    repeat digits
-        out((value <-= 1) & 1 + "0")
+PUB Newline | i
+
+    col := 0
+    if ++row == rows
+        row--
+        wordmove(@screen, @screen[cols], lastrow)   'scroll lines
+        wordfill(@screen[lastrow], $220, cols)      'clear new line
 
 PUB Out(c) | i, k
 '' Output a character
@@ -118,37 +121,30 @@ PUB Out(c) | i, k
 ''     $0D = return
 ''  others = printable characters
     case flag
-        $00: case c
-            $00:
-                wordfill(@screen, $220, screensize)
-                col := row := 0
-            $01:
-                col := row := 0
-            $08:
-                if col
-                    col--
-            $09:
-                repeat
-                    print(" ")
-                while col & 7
-            $0A..$0C:
-                flag := c
-                return
-            $0D:
-                newline
-            other: print(c)
+        $00:
+            case c
+                $00:
+                    wordfill(@screen, $220, screensize)
+                    col := row := 0
+                $01:
+                    col := row := 0
+                $08:
+                    if col
+                        col--
+                $09:
+                    repeat
+                        print(" ")
+                    while col & 7
+                $0A..$0C:
+                    flag := c
+                    return
+                $0D:
+                    newline
+                other: print(c)
         $0A: col := c // cols
         $0B: row := c // rows
         $0C: color := c & 7
     flag := 0
-
-PUB Newline | i
-
-    col := 0
-    if ++row == rows
-        row--
-        wordmove(@screen, @screen[cols], lastrow)   'scroll lines
-        wordfill(@screen[lastrow], $220, cols)      'clear new line
 
 PUB SetColors(colorptr) | i, fore, back
 '' Override default color palette
@@ -166,6 +162,11 @@ PUB SetColors(colorptr) | i, fore, back
         back := byte[colorptr][i << 1 + 1] << 2
         colors[i << 1]     := fore << 24 + back << 16 + fore << 8 + back
         colors[i << 1 + 1] := fore << 24 + fore << 16 + back << 8 + back
+
+PUB Str(stringptr)
+'' Print a zero-terminated string
+    repeat strsize(stringptr)
+        out(byte[stringptr++])
 
 PRI print(c)
 
