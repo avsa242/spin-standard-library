@@ -11,36 +11,29 @@
 
 CON
 
-  paramcount    = 21
-  colortable    = $180  'start of colortable inside cog
-
+    PARAMCOUNT    = 21
+    COLORTABLE    = $180  'start of colortable inside cog
 
 VAR
 
-  long  cog
+    long cog
 
-
-PUB start(vgaptr) : okay
-
+PUB Start(vgaptr) : okay
 '' Start VGA driver - starts a cog
 '' returns false if no cog available
 ''
 ''   vgaptr = pointer to VGA parameters
 
-  stop
-  okay := cog := cognew(@entry, vgaptr) + 1
+    Stop
+    okay := cog := cognew(@entry, vgaptr) + 1
 
-
-PUB stop
-
+PUB Stop
 '' Stop VGA driver - frees a cog
 
-  if cog
-    cogstop(cog~ - 1)
-
+    if cog
+        cogstop(cog~ - 1)
 
 DAT
-
 '********************************
 '* Assembly language VGA driver *
 '********************************
@@ -72,7 +65,7 @@ field                   wrlong  visible,par             'set status to visible
 
                         tjz     vb,#:nobl               'do any visible back porch lines
                         mov     x,vb
-                        movd    bcolor,#colortable
+                        movd    bcolor,#COLORTABLE
                         call    #blank_line
 :nobl
                         mov     screen,_screen          'point to first tile (upper-leftmost)
@@ -83,7 +76,7 @@ field                   wrlong  visible,par             'set status to visible
 
                         tjz     hb,#:nobp               'do any visible back porch pixels
                         mov     vscl,hb
-                        waitvid colortable,#0
+                        waitvid COLORTABLE,#0
 :nobp
                         mov     x,_ht                   'set horizontal tiles
                         mov     vscl,hx                 'set horizontal expand
@@ -95,14 +88,14 @@ field                   wrlong  visible,par             'set status to visible
                         shr     tile,#10+6              'set tile colors
                         movd    :color,tile
                         add     screen,#2               'point to next tile
-:color                  waitvid colortable,pixels       'pass colors and pixels to video
+:color                  waitvid COLORTABLE,pixels       'pass colors and pixels to video
                         djnz    x,#:tile                'another tile?
 
                         sub     screen,hc2x             'repoint to first tile in same line
 
                         tjz     hf,#:nofp               'do any visible front porch pixels
                         mov     vscl,hf
-                        waitvid colortable,#0
+                        waitvid COLORTABLE,#0
 :nofp
                         mov     x,#1                    'do hsync
                         call    #blank_hsync            '(x=0)
@@ -117,7 +110,7 @@ field                   wrlong  visible,par             'set status to visible
 
                         tjz     vf,#:nofl               'do any visible front porch lines
                         mov     x,vf
-                        movd    bcolor,#colortable
+                        movd    bcolor,#COLORTABLE
                         call    #blank_line
 :nofl
         if_nz           xor     interlace,#1    wc,wz   'get interlace and field1 into nz (c=0/?)
@@ -176,7 +169,7 @@ blank_vsync_ret         ret
 '
 tasks                   mov     t1,par                  'load parameters
                         movd    :par,#_enable           '(skip _status)
-                        mov     t2,#paramcount - 1
+                        mov     t2,#PARAMCOUNT - 1
 :load                   add     t1,#4
 :par                    rdlong  0,t1
                         add     :par,d0
@@ -290,7 +283,7 @@ tasks                   mov     t1,par                  'load parameters
                         rdlong  t2,t2
                         and     t2,colormask
                         or      t2,hvbase
-:color                  mov     colortable,t2
+:color                  mov     COLORTABLE,t2
                         add     :color,d0
                         andn    :color,d6
                         djnz    t1,#:loop               '+158
@@ -394,7 +387,7 @@ _vs                     res     1       '1+             read-only
 _vb                     res     1       '2+             read-only
 _rate                   res     1       '500_000+       read-only
 
-                        fit     colortable              'fit underneath colortable ($180-$1BF)
+                        fit     COLORTABLE              'fit underneath COLORTABLE ($180-$1BF)
 
 
 ''
