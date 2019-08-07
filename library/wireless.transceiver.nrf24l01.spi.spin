@@ -482,6 +482,7 @@ PUB RXAddr(pipe, buff_addr) | tmp[2], i, addr_test
 PUB RXData(nr_bytes, buff_addr) | tmp
 ' Read data from the receive FIFO
 '   NOTE: Buffer at address buff_addr must be at least nr_bytes bytes in length
+    bytefill(buff_addr, 0, 32)      'Ensure the buffer is clear before reading in new data
     readRegX (core#NRF24_R_RX_PAYLOAD, nr_bytes, buff_addr)
 
 PUB RXFIFO_Empty
