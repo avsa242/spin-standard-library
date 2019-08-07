@@ -67,13 +67,17 @@ CON
 
 ' columns and rows
 
-    COLS = HP / 8
-    ROWS = VP / 12
-
+    COLS    = HP / 8
+    ROWS    = VP / 12
+    CHARS   = COLS * ROWS
+    LASTCOL = COLS-1
+    LASTROW = ROWS-1
 
 VAR
 
     long cog[2]
+    long _screenptr
+    long _row, _col
 
 PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
 '' Start VGA driver - starts two COGs
@@ -130,6 +134,7 @@ PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
     reg_dira := i & j
     reg_dirb := i & !j
 
+    _screenptr := ScreenPtr
     'implant CNT value to sync COGs to
     sync_cnt := cnt + $10000
 
@@ -165,6 +170,72 @@ PUB Stop | i
     repeat i from 0 to 1
         if cog[i]
             cogstop(cog[i]~ - 1)
+
+PUB Clear
+
+    bytefill(_screenptr, $20, CHARS)
+
+PUB Char(c)
+
+    byte[_screenptr][_row * COLS + _col] := c
+    case _col
+        0..LASTCOL-1:
+            _col++
+        LASTCOL:
+            Newline
+
+PUB Dec(value) | i
+'' Print a decimal number
+    if value < 0
+        -value
+        Char("-")
+
+    i := 1_000_000_000
+
+    repeat 10
+        if value => i
+            Char(value / i + "0")
+            value //= i
+            result~~
+        elseif result or i == 1
+            Char("0")
+        i /= 10
+
+PUB Hex(value, digits)
+
+'' Print a hexadecimal number
+
+    value <<= (8 - digits) << 2
+    repeat digits
+        Char(lookupz((value <-= 4) & $F : "0".."9", "A".."F"))
+
+PUB Newline | i
+
+    _col := 0
+    if ++_row == ROWS
+        _row--
+        bytemove(@_screenptr, @_screenptr[COLS], LASTROW)   'scroll lines
+        bytefill(@_screenptr[LASTROW], $20, COLS)      'clear new line
+
+PUB Position(xpos, ypos)
+
+    _col := 0 #> xpos <# LASTCOL
+    _row := 0 #> ypos <# LASTROW
+
+PUB PositionX(xpos)
+
+    _col := 0 #> xpos <# LASTCOL
+
+PUB PositionY(ypos)
+
+    _row := 0 #> ypos <# LASTROW
+
+PUB Str(stringptr)
+
+'' Print a zero-terminated string
+
+    repeat strsize(stringptr)
+        Char(byte[stringptr++])
 
 CON
 
