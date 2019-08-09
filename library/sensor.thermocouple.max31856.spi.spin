@@ -44,9 +44,14 @@ CON
     FAULT_OV_UV     = 1 << core#FLD_OV_UV
     FAULT_OPEN      = 1 << core#FLD_OPEN
 
+' Temperature scales
+    SCALE_C         = 0
+    SCALE_F         = 1
+
 VAR
 
     byte _CS, _MOSI, _MISO, _SCK
+    byte _temp_scale
 
 OBJ
 
@@ -132,7 +137,16 @@ PUB ColdJuncTemp
     result.byte[1] := result.byte[2]
     result.byte[2] := 0
     result >>=2
-    return umath.multdiv (result, CJ_RES, 10_000)
+    result := umath.multdiv (result, CJ_RES, 10_000)
+    case _temp_scale
+        SCALE_F:
+            if result > 0
+                result := result * 9 / 5 + 32_00
+            else
+                result := 32_00 - (||result * 9 / 5)
+        OTHER:
+            return result
+
 
 PUB ConversionMode(mode) | tmp
 ' Enable automatic conversion mode
@@ -273,6 +287,19 @@ PUB NotchFilter(Hz) | tmp, cmode_tmp
     if cmode_tmp
         ConversionMode (CMODE_AUTO)
 
+PUB Scale(temp_scale)
+' Set scale of temperature data returned by Temperature method
+'   Valid values:
+'      *SCALE_C (0): Celsius
+'       SCALE_F (1): Fahrenheit
+'   Any other value returns the current setting
+    case temp_scale
+        SCALE_F, SCALE_C:
+            _temp_scale := temp_scale
+            return _temp_scale
+        OTHER:
+            return _temp_scale
+
 PUB ThermoCoupleAvg(samples) | tmp
 ' Set number of samples averaged during thermocouple conversion
 '   Valid values: 1*, 2, 4, 8, 16
@@ -319,6 +346,15 @@ PUB ThermoCoupleTemp
     swapByteOrder(@result)
     result >>= 5
     result := umath.multdiv (result, TC_RES, 100_000)
+    case _temp_scale
+        SCALE_F:
+            if result > 0
+                result := result * 9 / 5 + 32_00
+            else
+                result := 32_00 - (||result * 9 / 5)
+        OTHER:
+            return result
+
     return
 
 PUB ThermoCoupleType(type) | tmp
