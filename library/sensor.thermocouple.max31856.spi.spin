@@ -340,22 +340,30 @@ PUB ThermocoupleLowFault(thresh) | tmp
 
     writeRegX (core#LTLFTH, 2, @thresh)
 
-PUB ThermoCoupleTemp
+PUB ThermoCoupleTemp | tmp
 ' Read the Thermocouple temperature
+    result := 0
+    tmp := 0
     readRegX (core#LTCBH, 3, @result)
     swapByteOrder(@result)
     result >>= 5
-    result := umath.multdiv (result, TC_RES, 100_000)
+    if result & $40000
+        result |= $FFFF0000
+
+    tmp := umath.multdiv (result, TC_RES, 100_000)
     case _temp_scale
         SCALE_F:
-            if result > 0
-                result := result * 9 / 5 + 32_00
+            result := 0
+            if tmp > 0
+                result := tmp * 9 / 5 + 32_00
             else
-                result := 32_00 - (||result * 9 / 5)
+                tmp |= $FFFF0000
+                result := 32_00 - ||tmp * 9 / 5
         OTHER:
-            return result
+            tmp |= $FFFF0000
+            return tmp
 
-    return
+    return result
 
 PUB ThermoCoupleType(type) | tmp
 ' Set type of thermocouple
