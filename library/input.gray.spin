@@ -1,10 +1,9 @@
 {
     --------------------------------------------
     Filename: input.gray.spin
-    Author: Jesse Burt
-    Based on jm_grayenc2.spin, Copyright by Jon McPhalen
+    Author: Jon McPhalen
+    Modified by: Jesse Burt
     Description: Input driver for 2-bit graycode encoder
-    Copyright (c) 2019
     Started May 18, 2019
     Updated Jun 9, 2019
     See end of file for terms of use.

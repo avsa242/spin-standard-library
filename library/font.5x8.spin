@@ -5,7 +5,6 @@
     Author: Jesse Burt
     Bitmap font author unknown, reference Thomas P. Sullivan's
         SSD1331 OLED driver
-    Copyright (c) 2018
     Created: Apr 26, 2018
     Updated: May 19, 2019
     See end of file for terms of use.

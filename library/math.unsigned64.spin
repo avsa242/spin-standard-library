@@ -2,7 +2,8 @@
     --------------------------------------------
     Filename: math.unsigned64.spin
     Description: Unsigned 64-bit int multiply and divide
-    Author: Jesse Burt
+    Author: Philip C. Pilgrim
+    Modified by: Jesse Burt
     Created Jun 11, 2019
     Updated Jun 11, 2019
     See end of file for terms of use.

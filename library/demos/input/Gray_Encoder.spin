@@ -1,7 +1,8 @@
 {
     --------------------------------------------
     Filename: Gray_Encoder.spin
-    Author: Jesse Burt
+    Author: Jon McPhalen
+    Modified by: Jesse Burt
     Description: Simple demo/test of the input.gray.spin Gray-code encoder driver
     Based on jm_grayenc_demo.spin, Copyright by Jon McPhalen
     Copyright (c) 2019
@@ -9,6 +10,9 @@
     Updated May 18, 2019
     See end of file for terms of use.
     --------------------------------------------
+
+    NOTE: This is a derivative of jm_grayenc_demo.spin, by
+        Jon McPhalen (original header preserved below)
 }
 
 CON

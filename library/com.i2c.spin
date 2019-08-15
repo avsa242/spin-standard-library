@@ -1,7 +1,8 @@
 {
     --------------------------------------------
     Filename: com.i2c.spin
-    Author: Jesse Burt
+    Author: Jon McPhalen
+    Modified by: Jesse Burt
     Description: PASM I2C Driver
     Started Mar 9, 2019
     Updated May 27, 2019

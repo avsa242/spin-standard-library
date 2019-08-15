@@ -1,7 +1,8 @@
 {
     --------------------------------------------
     Filename: tiny.com.i2c.spin
-    Author: Jesse Burt
+    Author: Jon McPhalen
+    Modified by: Jesse Burt
     Description: SPIN I2C Driver
     Started Jun 9, 2019
     Updated Jun 9, 2019

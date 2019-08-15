@@ -1,7 +1,8 @@
 {
     --------------------------------------------
     Filename: display.oled.4dgl.uart.spin
-    Author: Jesse Burt
+    Author: Beau Schwabe
+    Modified by: Jesse Burt
     Description: Driver for 4D Systems Goldelox series OLED displays
     Copyright (c) 2019
     Started Jun 1, 2019

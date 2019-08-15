@@ -1,7 +1,8 @@
 {
     --------------------------------------------
     Filename: com.onewire.com
-    Author: Jesse Burt
+    Author: Jon McPhalen
+    Modified by: Jesse Burt
     Description: One-wire protocol driver
     Started Jul 13, 2019
     Updated Aug 4, 2019

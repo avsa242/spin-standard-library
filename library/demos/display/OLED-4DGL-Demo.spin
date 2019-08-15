@@ -1,7 +1,8 @@
 {
     --------------------------------------------
     Filename: oled-4DGL-Demo.spin
-    Author: Jesse Burt
+    Author: Beau Schwabe
+    Modified by: Jesse Burt
     Description: Demo of the 4D Systems Goldelox series OLED display driver
     Copyright (c) 2019
     Started Jun 9, 2019
@@ -41,7 +42,7 @@ VAR
 
 OBJ
 
-    cfg     : "core.con.boardcfg.parraldev"
+    cfg     : "core.con.boardcfg.flip"
     oled    : "display.oled.4dgl.uart"
     ser     : "com.serial.terminal"                                 ''Used ONLY For DEBUGGING
     time    : "time"
