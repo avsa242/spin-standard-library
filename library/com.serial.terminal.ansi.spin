@@ -262,15 +262,21 @@ PUB PositionX(x)
     Position cursor at column x of current row.
 }}
 
-    ser.Char(PX)
-    ser.Char(x)
+    ser.Char (27)
+    ser.Char ("[")
+    Dec (x)
+    ser.Char ("G")
 
 PUB PositionY(y)
 {{
     Position cursor at row y of current column.
 }}
-    ser.Char(PY)
-    ser.Char(y)
+
+    ser.Char (27)
+    ser.Char ("[")
+    ser.Char ("P")
+    ser.Dec (y)
+    ser.Char ("d")
 
 PUB MoveLeft(x)
 {{
