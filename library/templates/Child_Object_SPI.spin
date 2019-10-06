@@ -46,7 +46,7 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_DELAY, SCK_CPOL): okay
 
     return FALSE                                                'If we got here, something went wrong
 
-PRI readRegX(reg, nr_bytes, buf_addr) | i
+PRI readReg(reg, nr_bytes, buf_addr) | i
 ' Read nr_bytes from register 'reg' to address 'buf_addr'
 
 ' Handle quirky registers on a case-by-case basis
@@ -58,17 +58,17 @@ PRI readRegX(reg, nr_bytes, buf_addr) | i
     outa[_CS] := 0
     spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
 
-    repeat i from 0 to nr_bytes
+    repeat i from 0 to nr_bytes-1
         byte[buf_addr][i] := spi.SHIFTIN(_MISO, _SCK, core#MISO_BITORDER, 8)
     outa[_CS] := 1
 
-PRI writeRegX(reg, nr_bytes, buf_addr) | i
+PRI writeReg(reg, nr_bytes, buf_addr) | i
 ' Write nr_bytes to register 'reg' stored at buf_addr
 
     outa[_CS] := 0
     spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
 
-    repeat i from 0 to nr_bytes
+    repeat i from 0 to nr_bytes-1
         spi.SHIFTOUT(_MOSI, _SCK, core#MISO_BITORDER, 8, byte[buf_addr][i])
 
     outa[_CS] := 1
