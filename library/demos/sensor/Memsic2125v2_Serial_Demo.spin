@@ -10,7 +10,7 @@ OBJ
 
     term    : "com.serial.terminal"
     num     : "string.integer"
-    MM2125  : "sensor.accel.dual.memsic2125"
+    MM2125  : "sensor.accel.2dof.memsic2125.analog-pwm"
 
 PUB Main | a, b, c, d, e, f, clk_scale
 

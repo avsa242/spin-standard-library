@@ -63,7 +63,7 @@ OBJ     ''Setup Object references that make this demo work
 
     tv    :     "display.tv"
     gr    :     "display.tv.graphics"
-    HM55B :     "sensor.compass.hm55b"
+    HM55B :     "sensor.compass.2dof.hm55b.spi"
     Calibrate : "Calibration"
 
 PUB DEMO_Initialization | i,dx,dy

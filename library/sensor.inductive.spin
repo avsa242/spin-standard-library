@@ -119,7 +119,7 @@ Note: The reported resonate frequency is NOT the actual resonate LC frequency.  
 }}
 OBJ
    Freq   : "signal.synth"
-   ADC    : "signal.adc"
+   ADC    : "signal.adc.sigmadelta"
    gr     : "display.tv.graphics"
    Num    : "misc.numbers"
 CON

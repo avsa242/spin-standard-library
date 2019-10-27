@@ -60,7 +60,7 @@ OBJ
 
   tv            : "display.tv"
   gr            : "display.tv.graphics"
-  MM2125        : "sensor.accel.dual.memsic2125"
+  MM2125        : "sensor.accel.2dof.memsic2125.analog-pwm"
 
 PUB start | i, dx, dy, clk_scale,d,e,f,fdeg,Offset,Bar,dx1,dy1,dx2,dy2,cordlength,size
 

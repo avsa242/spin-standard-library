@@ -9,7 +9,7 @@ CON
         _XinFREQ = 5_000_000
 OBJ
   term : "display.tv.text"
-  lfs  : "sensor.light2frequency.tsl230"
+  lfs  : "sensor.light.tsl230.analog-freq"
 
 PUB Go
   term.start(12)
