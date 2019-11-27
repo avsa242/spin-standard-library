@@ -29,7 +29,7 @@ PUB Low(pin)
 
 PUB Toggle(pin)
 
-    ~outa[pin]
+    !outa[pin]
 
 PUB Set(pin, enabled)
 
