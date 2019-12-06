@@ -87,7 +87,7 @@ PUB Count
 }}
 
     result := rx_head - rx_tail
-    result -= BUFFER_LENGTH*(count < 0)
+    result -= BUFFER_LENGTH*(result < 0)
 
 PUB Flush
 {{
