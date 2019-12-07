@@ -275,7 +275,7 @@ PUB PositionY(y)
     ser.Char (27)
     ser.Char ("[")
     ser.Char ("P")
-    ser.Dec (y)
+    Dec (y)
     ser.Char ("d")
 
 PUB MoveLeft(x)
