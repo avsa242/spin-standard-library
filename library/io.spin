@@ -19,12 +19,10 @@ PUB Input(pin)
 
 PUB High(pin)
 
-    dira[pin] := IO_OUT
     outa[pin] := IO_HIGH
 
 PUB Low(pin)
 
-    dira[pin] := IO_OUT
     outa[pin] := IO_LOW
 
 PUB Toggle(pin)
