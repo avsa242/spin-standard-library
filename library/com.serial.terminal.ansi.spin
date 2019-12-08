@@ -17,27 +17,17 @@ CON
 
     '' Control Character Constants
 
-    CS = 16  ' Clear Screen
-    CE = 11  ' Clear to End of line
-    CB = 12  ' Clear lines Below
+    ESC             = 27
+    CS              = 16  ' Clear Screen
+    CE              = 11  ' Clear to End of line
+    CB              = 12  ' Clear lines Below
 
-    HM =  1  ' HoMe cursor
-    PC =  2  ' Position Cursor in x,y
-    PX = 14  ' Position cursor in X
-    PY = 15  ' Position cursor in Y
+    CR              = 13  ' New Line
+    LF              = 10  ' Line Feed
+    TB              =  9  ' TaB
+    BS              =  8  ' BackSpace
 
-    NL = 13  ' New Line
-    LF = 10  ' Line Feed
-    ML =  3  ' Move cursor Left
-    MR =  4  ' Move cursor Right
-    MU =  5  ' Move cursor Up
-    MD =  6  ' Move cursor Down
-    TB =  9  ' TaB
-    BS =  8  ' BackSpace
-
-CON
-
-   MAXSTR_LENGTH = 49                                   ' Maximum length of received numerical string (not including zero terminator).
+    MAXSTR_LENGTH   = 49                                   ' Maximum length of received numerical string (not including zero terminator).
 
 OBJ
 
@@ -90,19 +80,26 @@ PUB Stop
 
     ser.Stop
 
-PUB Count
+PUB Bin(value, digits)
 {{
-    Get count of characters in receive buffer.
+    Send value as binary characters up to digits in length.
+
+    Parameters:
+        value  - byte, word, or long value to send as binary characters.
+        digits - number of binary digits to send.  Will be zero padded if necessary.
 }}
 
-    return ser.Count
+    Str(num.Bin(value,digits))
 
-PUB Flush
+PUB BinIn
 {{
-    Flush receive buffer.
+    Receive carriage return terminated string of characters representing a binary value.
+
+    Returns: the corresponding binary value.
 }}
 
-    ser.Flush
+    StrInMax(@str_buffer, MAXSTR_LENGTH)
+    return num.StrToBase(@str_buffer, 2)
 
 PUB Char(ch)
 {{
@@ -110,6 +107,13 @@ PUB Char(ch)
 }}
 
     ser.Char(ch)
+
+PUB CharIn
+{{
+    Receive single-byte character.  Waits until character received.
+}}
+
+    return ser.CharIn
 
 PUB Chars(ch, size)
 {{
@@ -119,12 +123,79 @@ PUB Chars(ch, size)
     repeat size
         ser.Char(ch)
 
-PUB CharIn
+PUB Count
 {{
-    Receive single-byte character.  Waits until character received.
+    Get count of characters in receive buffer.
 }}
 
-    return ser.CharIn
+    return ser.Count
+
+PUB Dec(value)
+{{
+    Send value as decimal characters.
+    Parameter:
+        value - byte, word, or long value to send as decimal characters.
+}}
+
+    Str(num.Dec(value))
+
+PUB DecIn
+{{
+    Receive carriage return terminated string of characters representing a decimal value.
+
+    Returns: the corresponding decimal value.
+}}
+
+    StrInMax(@str_buffer, MAXSTR_LENGTH)
+    return num.StrToBase(@str_buffer, 10)
+
+PUB Flush
+{{
+    Flush receive buffer.
+}}
+
+    ser.Flush
+
+PUB Hex(value, digits)
+{{
+    Send value as hexadecimal characters up to digits in length.
+    Parameters:
+        value  - byte, word, or long value to send as hexadecimal characters.
+        digits - number of hexadecimal digits to send.  Will be zero padded if necessary.
+}}
+
+    Str(num.Hex(value, digits))
+
+PUB HexIn
+{{
+    Receive carriage return terminated string of characters representing a hexadecimal value.
+
+    Returns: the corresponding hexadecimal value.
+}}
+
+    StrInMax(@str_buffer, MAXSTR_LENGTH)
+    return num.StrToBase(@str_buffer, 16)
+
+PUB NewLine
+{{
+    Clear screen and place cursor at top-left.
+}}
+
+    Str(string(CR, LF))
+
+PUB ReadLine(line, maxline) : size | c
+
+    repeat
+        case c := CharIn
+            BS:     if size
+                        size--
+                        Char(c)
+            CR, LF: byte[line][size] := 0
+                    Char(c)
+                    quit
+            other:  if size < maxline
+                        byte[line][size++] := c
+                        Char(c)
 
 PUB Str(stringptr)
 {{
@@ -161,165 +232,8 @@ PUB StrInMax(stringptr, maxcount)
 }}
 
     repeat while (maxcount--)                                                     'While maxcount not reached
-        if (byte[stringptr++] := ser.CharIn) == NL                                      'Get chars until NL
+        if (byte[stringptr++] := ser.CharIn) == CR                                      'Get chars until NL
             quit
-    byte[stringptr+(byte[stringptr-1] == NL)]~                                    'Zero terminate string; overwrite NL or append 0 char
+    byte[stringptr+(byte[stringptr-1] == CR)]~                                    'Zero terminate string; overwrite NL or append 0 char
 
-PUB Dec(value)
-{{
-    Send value as decimal characters.
-    Parameter:
-        value - byte, word, or long value to send as decimal characters.
-}}
-
-    Str(num.Dec(value))
-
-PUB DecIn
-{{
-    Receive carriage return terminated string of characters representing a decimal value.
-
-    Returns: the corresponding decimal value.
-}}
-
-    StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return num.StrToBase(@str_buffer, 10)
-
-PUB Bin(value, digits)
-{{
-    Send value as binary characters up to digits in length.
-
-    Parameters:
-        value  - byte, word, or long value to send as binary characters.
-        digits - number of binary digits to send.  Will be zero padded if necessary.
-}}
-
-    Str(num.Bin(value,digits))
-
-PUB BinIn
-{{
-    Receive carriage return terminated string of characters representing a binary value.
-
-    Returns: the corresponding binary value.
-}}
-
-    StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return num.StrToBase(@str_buffer, 2)
-
-PUB Hex(value, digits)
-{{
-    Send value as hexadecimal characters up to digits in length.
-    Parameters:
-        value  - byte, word, or long value to send as hexadecimal characters.
-        digits - number of hexadecimal digits to send.  Will be zero padded if necessary.
-}}
-
-    Str(num.Hex(value, digits))
-
-PUB HexIn
-{{
-    Receive carriage return terminated string of characters representing a hexadecimal value.
-
-    Returns: the corresponding hexadecimal value.
-}}
-
-    StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return num.StrToBase(@str_buffer, 16)
-
-PUB Clear
-{{
-    Clear screen and place cursor at top-left.
-}}
-
-    ser.Char (27)
-    ser.Char ("[")
-    ser.Char ("2")
-    ser.Char ("J")
-    ser.Char (27)
-    ser.Char ("[")
-    ser.Char ("f")
-
-PUB NewLine
-{{
-    Clear screen and place cursor at top-left.
-}}
-
-    Str(string(NL, LF))
-
-PUB Position(x, y)
-{{
-    Position cursor at column x, row y (from top-left).
-}}
-
-    ser.Char (27)
-    ser.Char ("[")
-    Dec (y)
-    ser.Char (";")
-    Dec (x)
-    ser.Char ("f")
-
-PUB PositionX(x)
-{{
-    Position cursor at column x of current row.
-}}
-
-    ser.Char (27)
-    ser.Char ("[")
-    Dec (x)
-    ser.Char ("G")
-
-PUB PositionY(y)
-{{
-    Position cursor at row y of current column.
-}}
-
-    ser.Char (27)
-    ser.Char ("[")
-    ser.Char ("P")
-    Dec (y)
-    ser.Char ("d")
-
-PUB MoveLeft(x)
-{{
-    Move cursor left x characters.
-}}
-
-    repeat x
-        ser.Char(ML)
-
-PUB MoveRight(x)
-{{
-    Move cursor right x characters.
-}}
-
-    repeat x
-        ser.Char(MR)
-
-PUB MoveUp(y)
-{{
-    Move cursor up y lines.
-}}
-
-    repeat y
-        ser.Char(MU)
-
-PUB MoveDown(y)
-{{
-    Move cursor down y lines.
-}}
-
-    repeat y
-        ser.Char(MD)
-
-PUB ReadLine(line, maxline) : size | c
-
-    repeat
-        case c := CharIn
-            BS:     if size
-                        size--
-                        Char(c)
-            NL, LF: byte[line][size] := 0
-                    Char(c)
-                    quit
-            other:  if size < maxline
-                        byte[line][size++] := c
-                        Char(c)
+#include "lib.ansiterminal.spin"
