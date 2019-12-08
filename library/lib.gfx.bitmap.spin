@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: display.gfx.bitmap.spin
+    Filename: library.gfx.bitmap.spin2
     Author: Jesse Burt
-    Description: Generic bitmap-oriented graphics rendering routines
+    Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2019
     Started May 19, 2019
-    Updated May 19, 2019
+    Updated Dec 8, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,69 +15,65 @@ CON
 
 VAR
 
-    long _buff_addr
     long _row, _col
-    long _disp_width, _disp_height
-    long _buff_sz
     long _font_width, _font_height, _font_addr
-    long _fgcolor, _bgcolor, _max_color
-
-PUB Null
-''This is not a top-level object
-
-PUB Start(disp_width, disp_height, bpp, disp_addr)
-' Set parameters for bitmap graphics object
-'   disp_width  - Display's width, in pixels
-'   disp_height - Display's height, in pixels
-'   bpp         - Bits per pixel/color depth
-'   disp_addr   - Address of display buffer
-    _disp_width := disp_width
-    _disp_height := disp_height
-
-    case bpp
-        1:
-            _buff_sz := (_disp_width * _disp_height) / 8
-            _max_color := 1
-        2:
-            _buff_sz := (_disp_width * _disp_height) / 4
-            _max_color := 3
-        4:
-            _buff_sz := (_disp_width * _disp_height) / 2
-            _max_color := 15
-        8:
-            _buff_sz := (_disp_width * _disp_height)
-            _max_color := 255
-        16:
-            _buff_sz := (_disp_width * _disp_height) * 2
-            _max_color := 65535
-        24, 32:
-            _buff_sz := (_disp_width * _disp_height) * 3
-            _max_color := 16777215
-
-    Address (disp_addr)
-
-PUB Address(addr)
-' Set framebuffer address
-    case addr
-        $0004..$7FFF:
-            _buff_addr := addr
-        OTHER:
-            return _buff_addr
+    long _fgcolor, _bgcolor
 
 PUB BGColor (col)
-
+' Set background color for subsequent drawing
     return _bgcolor := col
+
+PUB Bitmap(bitmap_addr, bitmap_size, offset)
+
+    bytemove(_draw_buffer + offset, bitmap_addr, bitmap_size)
+
+PUB Box(x0, y0, x1, y1, color, filled) | x, y
+
+    x0 := 0 #> x0 <# _disp_width-1
+    y0 := 0 #> y0 <# _disp_height-1
+    x1 := 0 #> x1 <# _disp_width-1
+    y1 := 0 #> y1 <# _disp_height-1
+
+    case filled
+        FALSE:
+            repeat x from x0 to x1
+                Plot(x, y0, color)
+                Plot(x, y1, color)
+            repeat y from y0 to y1
+                Plot(x0, y, color)
+                Plot(x1, y, color)
+        TRUE:
+            repeat y from y0 to y1
+                repeat x from x0 to x1
+                    Plot(x, y, color)
 
 PUB Clear
 ' Clear the display buffer
-    longfill(_buff_addr, $00, _buff_sz/4)
+    bytefill(_draw_buffer, $00, _buff_sz)
 
-PUB Char (ch) | i, j, mask, r
-' Write a character to the display @ row and column (character cell)
-    case _max_color
+PUB ClearAll
+
+    ClearAccel
+    Clear
+    Update
+
+PUB Char (ch) | glyph_col, glyph_row, glyph_data, x, y
+' Write a character to the display
+    case MAX_COLOR
         1:
-            repeat i from 0 to 7
-                byte[_buff_addr][_row << 7 + _col << 3 + i] := byte[_font_addr + 8 * ch + i]
+            repeat glyph_col from 0 to _font_height-1
+                byte[_draw_buffer][(_row * _disp_width) + (_col * _font_width) + glyph_col] := byte[_font_addr + 8 * ch + glyph_col]
+
+        65535:
+            repeat glyph_col from 0 to _font_width-1
+                repeat glyph_row from 0 to _font_height-1
+                    glyph_data := byte[_font_addr][{8 *}ch << 3 + glyph_col]
+                    x := (_col * _font_width) + glyph_col
+                    y := (_row * _font_height) + glyph_row
+                    if glyph_data & (1 << (glyph_row))
+                        Plot(x, y, _fgcolor)
+                    else
+                        Plot(x, y, _bgcolor)
 
 PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
 ' Draw a circle at x0, y0
@@ -107,6 +103,22 @@ PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
             cdx += 2
             err += cdx - (radius << 1)
 
+PUB Copy (sx, sy, ex, ey, dx, dy) | x, y, tmp
+' Copy rectangular region at (sx, sy, ex, ey) to (dx, dy)
+    repeat y from sy to ey
+        repeat x from sx to ex
+            tmp := Point(x, y)
+            Plot((dx + x)-sx, (dy + y)-sy, tmp)
+
+PUB Cut (sx, sy, ex, ey, dx, dy) | x, y, tmp
+' Cut region of size width, height starting at sx, sy to dx, dy
+'   Clears original region to background color
+    repeat y from sy to ey
+        repeat x from sx to ex
+            tmp := Point(x, y)
+            Plot((dx + x)-sx, (dy + y)-sy, tmp)             ' Copy to destination region
+            Plot(x, y, _bgcolor)                            ' Cut the original region
+
 PUB FGColor (col)
 
     return _fgcolor := col
@@ -119,124 +131,187 @@ PUB FontAddress(addr)
         OTHER:
             return _font_addr
 
+PUB FontHeight
+' Return the set font height
+    return _font_height
+
 PUB FontSize(width, height)
 ' Set expected dimensions of font, in pixels
+'   NOTE: This doesn't have to be the same as the size of the font glyphs.
+'       e.g., if you have a 5x8 font, you may want to set the width to 6 or 8.
+'       This will affect the number of text columns
     _font_width := width
     _font_height := height
 
+PUB FontWidth
+' Return the set font width
+    return _font_width
+
 PUB Line(x1, y1, x2, y2, c) | sx, sy, ddx, ddy, err, e2
 ' Draw line from x1, y1 to x2, y2, in color c
-    ddx := ||(x2-x1)
-    ddy := ||(y2-y1)
-    err := ddx-ddy
+'   xxx add case for determining if a line is straight horiz or vert,
+'       and add code to draw those lines faster than using Bresenham's algo below
+    x1 := 0 #> x1 <# _disp_width-1
+    y1 := 0 #> y1 <# _disp_height-1
+    x2 := 0 #> x2 <# _disp_width-1
+    y2 := 0 #> y2 <# _disp_height-1
 
-    sx := -1
-    if (x1 < x2)
-        sx := 1
+    case x1 == x2 or y1 == y2
+        TRUE:
+            if x1 == x2                     ' X's are the same - use Plot to draw a straight V-line
+                repeat sy from y1 to y2
+                    Plot(x1, sy, c)
+            if y1 == y2                     ' Y's are the same - use Plot to draw a straight H-line
+                repeat sx from x1 to x2
+                    Plot(sx, y1, c)
+        FALSE:                              ' Both are different - use Bresenham's line algo to draw diag. line
+            ddx := ||(x2-x1)
+            ddy := ||(y2-y1)
+            err := ddx-ddy
 
-    sy := -1
-    if (y1 < y2)
-        sy := 1
+            sx := -1
+            if (x1 < x2)
+                sx := 1
 
-    case c
-        1:
-            repeat until ((x1 == x2) AND (y1 == y2))
-                byte[_buff_addr][x1 + (y1>>3{/8})*_disp_width] |= (1 << (y1&7))'try >>3 instead of /8
+            sy := -1
+            if (y1 < y2)
+                sy := 1
 
-                e2 := err << 1
-
-                if e2 > -ddy
-                    err := err - ddy
-                    x1 := x1 + sx
-
-                if e2 < ddx
-                    err := err + ddx
-                    y1 := y1 + sy
-
-        0:
-            repeat until ((x1 == x2) AND (y1 == y2))
-                byte[_buff_addr][x1 + (y1>>3{/8})*_disp_width] &= (1 << (y1&7))
-
-                e2 := err << 1
-
-                if e2 > -ddy
-                    err := err - ddy
-                    x1 := x1 + sx
-
-                if e2 < ddx
-                    err := err + ddx
-                    y1 := y1 + sy
-
-        -1:
-            repeat until ((x1 == x2) AND (y1 == y2))
-                byte[_buff_addr][x1 + (y1>>3{/8})*_disp_width] ^= (1 << (y1&7))
-
-                e2 := err << 1
-
-                if e2 > -ddy
-                    err := err - ddy
-                    x1 := x1 + sx
-
-                if e2 < ddx
-                    err := err + ddx
-                    y1 := y1 + sy
-
-        OTHER:
-            return
-
-PUB Plot (x, y, c)
-' Plot pixel at x, y, color c
-    case x
-        0.._disp_width-1:
-        OTHER:
-            return
-    case y
-        0.._disp_height-1:
-        OTHER:
-            return
-
-    case _max_color
-        1:
-            case c
+            case MAX_COLOR
                 1:
-                    byte[_buff_addr][x + (y>>3)*_disp_width] |= (1 << (y&7))
+                    case c
+                        1:
+                            repeat until ((x1 == x2) AND (y1 == y2))
+                                byte[_draw_buffer][x1 + (y1>>3{/8})*_disp_width] |= (1 << (y1&7))
+
+                                e2 := err << 1
+
+                                if e2 > -ddy
+                                    err := err - ddy
+                                    x1 := x1 + sx
+
+                                if e2 < ddx
+                                    err := err + ddx
+                                    y1 := y1 + sy
+
+                        0:
+                            repeat until ((x1 == x2) AND (y1 == y2))
+                                byte[_draw_buffer][x1 + (y1>>3{/8})*_disp_width] &= (1 << (y1&7))
+
+                                e2 := err << 1
+
+                                if e2 > -ddy
+                                    err := err - ddy
+                                    x1 := x1 + sx
+
+                                if e2 < ddx
+                                    err := err + ddx
+                                    y1 := y1 + sy
+                        -1:
+                            repeat until ((x1 == x2) AND (y1 == y2))
+                                byte[_draw_buffer][x1 + (y1>>3{/8})*_disp_width] ^= (1 << (y1&7))
+
+                                e2 := err << 1
+
+                                if e2 > -ddy
+                                    err := err - ddy
+                                    x1 := x1 + sx
+
+                                if e2 < ddx
+                                    err := err + ddx
+                                    y1 := y1 + sy
+
+                        OTHER:
+                            return
+                65535:
+                    repeat until ((x1 == x2) AND (y1 == y2))
+                        word[_draw_buffer][x1 + (y1 * _disp_width)] := c
+
+                            e2 := err << 1
+
+                            if e2 > -ddy
+                                err := err - ddy
+                                x1 := x1 + sx
+
+                            if e2 < ddx
+                                err := err + ddx
+                                y1 := y1 + sy
+
+PUB Plot (x, y, color)
+' Plot pixel at x, y, color c
+    x := 0 #> x <# _disp_width-1
+    y := 0 #> y <# _disp_height-1
+    case MAX_COLOR
+        1:
+            case color
+                1:
+                    byte[_draw_buffer][x + (y>>3{/8})*_disp_width] |= (1 << (y&7))
                 0:
-                    byte[_buff_addr][x + (y>>3)*_disp_width] &= (1 << (y&7))
+                    byte[_draw_buffer][x + (y>>3{/8})*_disp_width] &= (1 << (y&7))
                 -1:
-                    byte[_buff_addr][x + (y>>3)*_disp_width] ^= (1 << (y&7))
+                    byte[_draw_buffer][x + (y>>3{/8})*_disp_width] ^= (1 << (y&7))
                 OTHER:
                     return
         65535:
-            word[_buff_addr][x + (y * _disp_width)] := c
+'            color.byte[3] := color.byte[0]
+'            color.byte[0] := color.byte[1]
+'            color.byte[1] := color.byte[3]
+'            color.byte[3] := 0
+'            word[_draw_buffer][x + (y * _disp_width)] := color
+            word[_draw_buffer][x + (y * _disp_width)] := ((color >> 8) & $FF) | ((color << 8) & $FF00)
+            'TODO: Compare cost of both of these methods
 
-PUB Point (x, y, c)
-' Get pixel value at x, y
-    case x
-        0.._disp_width-1:
-        OTHER:
-            return
-    case y
-        0.._disp_height-1:
-        OTHER:
-            return
-    result := byte[_buff_addr][x + (y>>3) * _disp_width]
+PUB Point (x, y)
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_width-1
+    y := 0 #> y <# _disp_height-1
+
+    case MAX_COLOR
+        1:
+            result := byte[_draw_buffer][x + (y>>3{/8}) * _disp_width]
+        65535:
+            result := word[_draw_buffer][x + (y * _disp_width)]
 
 PUB Position(col, row)
 ' Set text draw position, in character-cell col and row
-    _col := col &= (_disp_width / 8) - 1    'Clamp position based on
-    _row := row &= (_disp_height / 8) - 1   ' screen's dimensions
+'    _col := col &= (_disp_width / _font_width) - 1    'Clamp position based on
+'    _row := row &= (_disp_height / _font_height) - 1   ' screen's dimensions
+    col := 0 #> col <# (_disp_width / _font_width)-1
+    row := 0 #> row <# (_disp_height / _font_height)-1
+    _col := col
+    _row := row
 
+PUB RGB565_R5 (rgb565)
+' Return 5-bit red component of 16-bit RGB color
+    return (((rgb565 & $F800) >> 11) * 527 + 23 ) >> 6
+
+PUB RGB565_G6 (rgb565)
+' Return 6-bit green component of 16-bit RGB color
+    return (((rgb565 & $7E0) >> 5)  * 259 + 33 ) >> 6
+
+PUB RGB565_B5 (rgb565)
+' Return 5-bit blue component of 16-bit RGB color
+    return ((rgb565 & $1F) * 527 + 23 ) >> 6
+
+PUB Scale (sx, sy, ex, ey, offsx, offsy, size) | x, y, dx, dy, in
+' Scale a region of the display up by size
+    repeat y from sy to ey
+        repeat x from sx to ex
+            in := Point(x, y)
+            dx := offsx + (x*size)-(sx*size)
+            dy := offsy + (y*size)-(sy*size)
+            Box(dx, dy, dx + size, dy + size, in, TRUE)
 
 PUB Str (string_addr) | i
 ' Write string at string_addr to the display @ row and column.
 '   NOTE: Wraps to the left at end of line and to the top-left at end of display
     repeat i from 0 to strsize(string_addr)-1
-        char(byte[string_addr][i])
+        Char(byte[string_addr][i])
         _col++
-        if _col > (_disp_width / 8) - 1
+        if _col > (_disp_width / _font_width) - 1
             _col := 0
             _row++
-            if _row > (_disp_height / 8) - 1
+            if _row > (_disp_height / _font_height) - 1
                 _row := 0
 
 DAT
