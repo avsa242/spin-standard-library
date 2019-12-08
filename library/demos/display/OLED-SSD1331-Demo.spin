@@ -41,7 +41,7 @@ OBJ
     time    : "time"
     oled    : "display.oled.ssd1331.spi"
     int     : "string.integer"
-    gfx     : "display.gfx.bitmap"
+    gfx     : "lib.gfx.bitmap"
     fnt5x8  : "font.5x8"
 
 VAR
