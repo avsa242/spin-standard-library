@@ -11,7 +11,10 @@
 }
 
 CON
-'' Register map
+
+    CPOL                                = 0
+    MOSI_BITORDER                       = 5     ' MSBFIRST
+' Register map
     SSD1331_CMD_DRAWLINE                = $21
     SSD1331_CMD_DRAWRECT                = $22
     SSD1331_CMD_COPY                    = $23
