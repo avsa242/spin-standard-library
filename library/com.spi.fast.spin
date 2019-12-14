@@ -62,24 +62,25 @@ PUB MutexReturn
 ' Returns mutex lock to semaphore pool.
     lockret(lock)
 
-PUB Read(register, buff_addr, nr_bytes)
+PUB Read(buff_addr, nr_bytes)
 '  params:  register is the 2 byte register address.  See the constant block with register definitions
 '           buff_addr is the place to return the byte(s) of data read (use the @ in front of the byte variable)
 '           nr_bytes is the number of bytes to read
 
 'Send the command
-    command := CMD_READ + @register
+    command := CMD_READ + @buff_addr
 
 'Wait for the command to complete
     repeat while command
 
-PUB Write(block, buff_addr, nr_bytes)
+PUB Write(block, buff_addr, nr_bytes, deselect_after)
 '
 '  params:  block if true will wait for ASM routine to send before continuing
 '           buff_addr is a pointer to the byte(s) of data to be written (use the @ in front of the byte variable)
 '           nr_bytes is the number of bytes to write
 
 'Send the command
+    deselect_after := (||deselect_after) <# 1
     command := CMD_WRITE + @buff_addr
 
 'Wait for the command to complete or just move on
@@ -111,11 +112,8 @@ CmdWait
               rdlong    paramB, t1              'Get parameter B value
               add       t1, #4                  'Increment the address pointer by four bytes
               rdlong    paramC, t1              'Get parameter C value
-              add       t1, #4                  'Increment the address pointer by four bytes
-              rdlong    paramD, t1              'Get parameter D value
-              add       t1, #4                  'Increment the address pointer by four bytes
-              rdlong    paramE, t1              'Get parameter E value
 
+              add       t1, #4                  'Increment the address pointer by four bytesi
               mov       t0, cmdAdrLen           'Take a copy of the command/address combo to work on
               shr       t0, #16            wz   'Get the command
               cmp       t0, #(CMD_LAST>>16)+1 wc'Check for valid command
@@ -138,9 +136,8 @@ CmdWait
               jmp       #CmdWait                'Go back to waiting for a new command
 
 rSPIcmd
-              mov       reg,    paramA          'Move the register address into a variable for processing
-              mov       ram,    ParamB          'Move the address of the returned byte into a variable for processing
-              mov       ctr,    ParamC          'Set up a counter for number of bytes to process
+              mov       ram,    ParamA          'Move the address of the returned byte into a variable for processing
+              mov       ctr,    ParamB          'Set up a counter for number of bytes to process
 
               call      #ReadMulti              'Read the byte
 
@@ -149,7 +146,7 @@ rSPIcmd_ret ret                                 'Command execution complete
 wSPIcmd
               mov       ram,    paramA          'Move the data byte into a variable for processing
               mov       ctr,    ParamB          'Set up a counter for number of bytes to process
-
+              mov       deselect, ParamC        'Flag indicating if slave should be deselected after writing
               call      #writeMulti             'Write the byte
 
 wSPIcmd_ret ret                                 'Command execution complete
@@ -168,10 +165,10 @@ WriteMulti
               rdbyte    data,   ram             'Read the byte from hubram
               call      #wSPI_Data              'Write one byte
 
-              add       reg, #1                 'Increment the register address by one byte
               add       ram, #1                 'Increment the hubram address by one byte
               djnz      ctr, #:bytes            'Check if there is another byte, if so, process it
-              or        outa, scsmask           'De-assert CS
+              test      deselect, #1    wc      'Should we deselect the slave after writing?
+        if_c  or        outa, scsmask           'If yes, de-assert CS
 WriteMulti_ret ret                              'Return to the calling code
 
 '-----------------------------------------------------------------------------------------------------
@@ -180,12 +177,10 @@ WriteMulti_ret ret                              'Return to the calling code
 '-----------------------------------------------------------------------------------------------------
 
 ReadMulti     mov       dataLen, ctr            '# of bytes to read in one burst
-              call      #rSPI                   'send the burst read command
 :bytes
               call      #rSPI_Data              'Read one data byte 1.15us
               and       data, _bytemask         'Ensure there is only a byte    +20 clocks in this loop = 1.4us/byte
               wrbyte    data, ram               'Write the byte to hubram
-              add       reg, #1                 'Increment the register address by one byte
               add       ram, #1                 'Increment the hubram address by one byte
               djnz      ctr, #:bytes            'Check if there is another if so, process it
               or        outa, scsmask           'Finally de-assert CS
@@ -215,64 +210,7 @@ wSPI_Data
               rol       phsb, #1
               rol       phsb, #1
               mov       ctra, #0                '8 bits sent - Turn off the clocking
-
-'              or        phsb,   #1             'XXX JMB if LSB isn't set, MOSI doesn't return to high idle
-'              shl       phsb,   #31
-
 wSPI_Data_ret ret                               'Return to the calling loop
-
-rSPI
-'High speed serial driver utilizing the counter modules. Counter A is the clock while Counter B is used as a special register
-'to get the data on the output line in one clock cycle. This code is meant to run on 80MHz. Processor and the code clocks data
-'at 10MHz.
-
-              andn      outa, SCLKmask          'turn the clock off, ensure it is low before placing data on the line
-
-              mov       phsb, reg               'Add register address (16 bits) to the packet
-              shl       phsb, #1                'Make room (1 bit) for the write operation (OpCode)
-              or        phsb, #0                'Add in a read operation in phsb (OpCode)
-              shl       phsb, #15               'Make room (15 bits) for the and Data Length
-              or        phsb, dataLen           'Add Data Length - 32 bits added, buffer full!
-
-              andn      outa, SCSmask           'Begin the data transmission by enabling SPI mode - making line go low
-
-              mov       frqa, frq20             'Setup the writing frequency  for 20MHz 08/15/2012
-              mov       phsa, phs20             'Setup the writing phase of data/clock for 20MHz 08/15/2012
-
-              mov       ctra, ctramode          'Turn on Counter A to start clocking
-              rol       phsb, #1                'NOTE: First bit is clocked just as soon as the clock turns on
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              rol       phsb, #1
-              mov       ctra, #0                '32 bits sent - Turn off the clocking
-rSPI_ret      ret
 
 rSPI_Data
               mov       frqa, frq10             '10MHz read frequency  | Read speed the same 'cause we can't shorten the
@@ -340,10 +278,8 @@ cmdAdrLen     res 1     'Combo of address, ocommand and data length into ASM
 paramA        res 1     'Parameter A
 paramB        res 1     'Parameter B
 paramC        res 1     'Parameter C
-paramD        res 1     'Parameter D
-paramE        res 1     'Parameter E
 
-reg           res 1     'Register address for processing
+deselect      res 1     'Flag indicating if CS should be deselected after the write
 dataLen       res 1     'Data Length for packet
 data          res 1     'Data read to/from
 ram           res 1     'Ram address of Prop Hubram for reading/writing data from
