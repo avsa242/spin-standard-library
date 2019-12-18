@@ -42,7 +42,7 @@ CON
 OBJ
 
     ser : "com.serial"
-    num : "string.integer"
+    int : "string.integer"
 
 VAR
 
@@ -172,7 +172,7 @@ PUB Dec(value)
         value - byte, word, or long value to send as decimal characters.
 }}
 
-    Str(num.Dec(value))
+    Str(int.Dec(value))
 
 PUB DecIn
 {{
@@ -182,7 +182,7 @@ PUB DecIn
 }}
 
     StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return num.StrToBase(@str_buffer, 10)
+    return int.StrToBase(@str_buffer, 10)
 
 PUB Bin(value, digits)
 {{
@@ -193,7 +193,7 @@ PUB Bin(value, digits)
         digits - number of binary digits to send.  Will be zero padded if necessary.
 }}
 
-    Str(num.Bin(value,digits))
+    Str(int.Bin(value,digits))
 
 PUB BinIn
 {{
@@ -203,7 +203,7 @@ PUB BinIn
 }}
 
     StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return num.StrToBase(@str_buffer, 2)
+    return int.StrToBase(@str_buffer, 2)
 
 PUB Hex(value, digits)
 {{
@@ -213,7 +213,7 @@ PUB Hex(value, digits)
         digits - number of hexadecimal digits to send.  Will be zero padded if necessary.
 }}
 
-    Str(num.Hex(value, digits))
+    Str(int.Hex(value, digits))
 
 PUB HexIn
 {{
@@ -223,7 +223,7 @@ PUB HexIn
 }}
 
     StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return num.StrToBase(@str_buffer, 16)
+    return int.StrToBase(@str_buffer, 16)
 
 PUB Clear
 {{
@@ -308,3 +308,6 @@ PUB ReadLine(line, maxline) : size | c
             other:  if size < maxline
                         byte[line][size++] := c
                         Char(c)
+
+#include "lib.termwidgets.spin"
+
