@@ -112,7 +112,7 @@ PUB Conceal(mode)
 ' Set Conceal attribute
     SGR(mode)
 
-PUB CursorPosition(enabled)
+PUB CursorPositionReporting(enabled)
 ' Enable/disable mouse cursor position reporting
     CSI
     case enabled
@@ -166,6 +166,41 @@ PUB Italic
 ' Set italicized attribute
     SGR(SGR_ITALIC)
 
+PUB MouseCursorPosition | tmp, token, place
+' Report Current mouse position (press mouse button to update)
+' Read serial
+' If ESC, discard + proceed, otherwise, NEXT
+'       If LBRACKET, discard + proceed, otherwise, NEXT
+'               If "<", discard + proceed, otherwise, NEXT
+'                       If isnum, echo to term, NEXT
+'                               if ";", echo to term, NEXT
+'                                       if "M", quit
+    repeat
+        tmp := CharIn
+        case tmp
+            ESC:
+                token := 1
+            LBRACKET:
+                token := 2
+            "<":
+                token := 3
+            "0".."9":
+                case token
+                    3:  'Mouse button
+                        Char(tmp)
+                    4:  'X
+                        Char(tmp)
+                    5:  'Y
+                        Char(tmp)
+            ";":
+                Char(";")
+                token++
+                place := 0
+            "M":
+                quit
+            OTHER:
+    until tmp == "M"
+
 PUB MoveDown(rows)
 ' Move cursor down 1 or more rows
     CSI
@@ -215,41 +250,6 @@ PUB PositionY(y)
     Char("P")
     Dec(y)
     Char("d")
-
-PUB RCP | tmp, token, place
-' Report Current mouse position (press mouse button to update)
-' Read serial
-' If ESC, discard + proceed, otherwise, NEXT
-'       If LBRACKET, discard + proceed, otherwise, NEXT
-'               If "<", discard + proceed, otherwise, NEXT
-'                       If isnum, echo to term, NEXT
-'                               if ";", echo to term, NEXT
-'                                       if "M", quit
-    repeat
-        tmp := CharIn
-        case tmp
-            ESC:
-                token := 1
-            LBRACKET:
-                token := 2
-            "<":
-                token := 3
-            "0".."9":
-                case token
-                    3:  'Mouse button
-                        Char(tmp)
-                    4:  'X
-                        Char(tmp)
-                    5:  'Y
-                        Char(tmp)
-            ";":
-                Char(";")
-                token++
-                place := 0
-            "M":
-                quit
-            OTHER:
-    until tmp == "M"
 
 PUB Reset
 ' Reset terminal attributes
