@@ -1,103 +1,116 @@
 {
     --------------------------------------------
-    Filename: SSD1306-OLED-Demo.spin
-    Description: Demo of the ssd1306 i2c driver
+    Filename: SSD1306-Demo.spin
+    Description: Demo of the SSD1306 driver
     Author: Jesse Burt
-    Copyright (c) 2018
+    Copyright (c) 2019
     Created: Apr 26, 2018
-    Updated: Mar 12, 2019
+    Updated: Dec 28, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
+
+#define FPS_MON_ENABLE  ' Optionally undef/comment out to disable the terminal framerate monitor
 
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-    SSD1306_SCL = 28
-    SSD1306_SDA = 29
-    SSD1306_HZ  = 1_000_000
-
-    WIDTH       = 128
-    HEIGHT      = 32
     BUFFSZ      = (WIDTH * HEIGHT) / 8
     XMAX        = WIDTH-1
     YMAX        = HEIGHT-1
 
+' User-modifiable constants:
+    WIDTH       = 128
+    HEIGHT      = 32
+
+    I2C_SCL     = 28
+    I2C_SDA     = 29
+    I2C_HZ      = 1_000_000
+
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
+
+    LED         = cfg#LED1
+
 OBJ
 
-    cfg : "core.con.boardcfg.flip"
-    ser : "com.serial.terminal"
-    time: "time"
-    oled: "display.oled.ssd1306.i2c"
-    int : "string.integer"
+    cfg         : "core.con.boardcfg.flip"
+    ser         : "com.serial.terminal.ansi"
+    time        : "time"
+    io          : "io"
+    oled        : "display.oled.ssd1306.i2c"
+    int         : "string.integer"
+    fnt5x8      : "font.5x8"
 
 VAR
 
-    byte _framebuff[BUFFSZ]
-    byte _fps, _fps_mon_cog
     long _fps_mon_stack[50]
     long _rndSeed
+    byte _framebuff[BUFFSZ]
+    byte _frames, _fps_mon_cog, _ser_cog
+    byte _ser_row
 
-    long bx, by, dx, dy
+PUB Main
 
-PUB Main | x, y, ch
-
-    _fps := 0
+    _frames := 0
+    _ser_row := 3
     Setup
-    ClearScreen
+    oled.ClearAll
 
-'                           |0   |5  1|0  1|5
-    oled.Str (0, 0, string("SSD1306 on the"))
-    oled.Str (0, 1, string("Parallax P8X32A"))
-    oled.Str (0, 3, int.DecPadded (WIDTH, 3))
-    oled.Str (3, 3, string("x"))
-    oled.Str (4, 3, int.DecPadded (HEIGHT, 2))
+    oled.MirrorH(TRUE)
+    oled.MirrorV(TRUE)
 
-    oled.writeBuffer
+    Demo_Greet
     time.Sleep (5)
+    oled.ClearAll
 
-    Demo_Sine (500)
-    ClearScreen
+    Demo_SineWave (500)
+    oled.ClearAll
 
-    Demo_Wave (500)
-    ClearScreen
+    Demo_TriWave (500)
+    oled.ClearAll
 
-    Demo_MEMScroller($1000, $2000)
-    ClearScreen
+    Demo_MEMScroller($0000, $FFFF-BUFFSZ)
+    oled.ClearAll
 
-    Demo_DrawBitmap (@bitmap1, 500)
-    ClearScreen
+    Demo_Bitmap (@Beanie, 500)
+    oled.ClearAll
 
     Demo_LineSweep(2)
-    ClearScreen
+    oled.ClearAll
 
-    Demo_LineRND (500)
-    ClearScreen
+    Demo_Line (500)
+    oled.ClearAll
 
-    Demo_PlotRND (500)
-    ClearScreen
+    Demo_Plot (500)
+    oled.ClearAll
 
     Demo_BouncingBall (500, 5)
-    ClearScreen
+    oled.ClearAll
 
-    Demo_ExpandingCircle(5)
-    ClearScreen
+    Demo_Circle(500)
+    oled.ClearAll
 
-    Demo_Wander (2000)
-    ClearScreen
+    Demo_Wander (1000)
+    oled.ClearAll
 
-    Demo_Text (300)
-    ClearScreen
+    Demo_Text (20)
 
     Demo_Contrast(2, 1)
-    ClearScreen
+    oled.ClearAll
 
     Stop
+    FlashLED(LED, 100)
 
-PUB Demo_BouncingBall(frames, radius)
-'' Draws a simple ball bouncing off screen edges
+PUB Demo_BouncingBall(frames, radius) | bx, by, dx, dy
+' Draws a simple ball bouncing off screen edges
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_BouncingBall"))
+
     bx := (rnd(XMAX) // (WIDTH - radius * 4)) + radius * 2  'Pick a random screen location to
     by := (rnd(YMAX) // (HEIGHT - radius * 4)) + radius * 2 ' start from
     dx := rnd(4) // 2 * 2 - 1                               'Pick a random direction to
@@ -111,33 +124,43 @@ PUB Demo_BouncingBall(frames, radius)
         if (bx =< radius OR bx => WIDTH - radius)           'Ditto with the left or right sides
             dx *= -1
 
-        oled.DrawCircle (bx, by, radius, 1)
-        oled.writeBuffer
-        _fps++
+        oled.Circle (bx, by, radius, 1)
+        oled.Update
+        _frames++
         oled.Clear
 
-PUB Demo_DrawBitmap(addr_bitmap, reps)' XXX stock bitmap unsuitable for 64-height display
-'' Continuously redraws bitmap at address 'addr_bitmap' (e.g., Demo_DrawBitmap(@bitmap1, 500)
-'' Visually unexciting - just for demonstrating the max blit speed
-    repeat reps
-'        bytemove(@_framebuff, addr_bitmap, BUFFSZ)
-        oled.DrawBitmap (addr_bitmap)
-        oled.writeBuffer
-        _fps++
+PUB Demo_Bitmap(bitmap_addr, reps)
+' Continuously redraws bitmap at address bitmap_addr
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Bitmap"))
 
-PUB Demo_ExpandingCircle(reps) | i, x, y
-'' Draws circles at random locations, expanding in radius
+    repeat reps
+        oled.Bitmap (bitmap_addr, BUFFSZ, 0)
+        oled.Update
+        _frames++
+
+PUB Demo_Circle(reps) | x, y, r
+' Draws circles at random locations
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Circle"))
+
     repeat reps
         x := rnd(XMAX)
         y := rnd(YMAX)
-        repeat i from 1 to 31
-            oled.DrawCircle (x{WIDTH/4}, y{HEIGHT/4}, ||i, -1)
-            oled.writeBuffer
-            _fps++
-            oled.Clear
+        r := rnd(YMAX/2)
+        oled.Circle (x, y, r, -1)
+        oled.Update
+        _frames++
 
 PUB Demo_Contrast(reps, delay_ms) | contrast_level
-'' Fades out and in display contrast
+' Fades out and in display contrast
+    _ser_row++
+    _frames := 0
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Contrast"))
+
     repeat reps
         repeat contrast_level from 255 to 1
             oled.Contrast (contrast_level)
@@ -146,47 +169,93 @@ PUB Demo_Contrast(reps, delay_ms) | contrast_level
             oled.Contrast (contrast_level)
             time.MSleep (delay_ms)
 
-PUB Demo_LineRND (reps)' | x, y
-'' Draws random lines with color -1 (invert)
+PUB Demo_Greet
+' Display the banner/greeting on the OLED
+    _ser_row++
+    _frames := 0
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Greet"))
+
+    oled.FGColor(1)
+    oled.BGColor(0)
+    oled.Position (0, 0)
+    oled.Str (string("SSD1306 on the"))
+
+    oled.Position (0, 1)
+    oled.Str (string("Parallax"))
+
+    oled.Position (0, 2)
+    oled.Str (string("P8X32A @ "))
+    oled.Str (int.Dec(clkfreq/1_000_000))
+    oled.Str (string("MHz"))
+
+    oled.Position (0, 3)
+    oled.Str (int.DecPadded (WIDTH, 3))
+
+    oled.Position (3, 3)
+    oled.Str (string("x"))
+
+    oled.Position (4, 3)
+    oled.Str (int.DecPadded (HEIGHT, 2))
+    oled.Update
+
+PUB Demo_Line (reps)
+' Draws random lines with color -1 (invert)
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Line"))
+
     repeat reps
-        oled.DrawLine (rnd(XMAX{WIDTH}), rnd(YMAX{empty??}), rnd(XMAX), rnd(YMAX), -1)
-        oled.writeBuffer
-        _fps++
+        oled.Line (rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), -1)
+        oled.Update
+        _frames++
 
 PUB Demo_LineSweep (reps) | x, y
-'' Draws lines top left to lower-right, sweeping across the screen, then
-''  from the top-down
+' Draws lines top left to lower-right, sweeping across the screen, then
+'  from the top-down
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_LineSweep"))
+
     repeat reps
         repeat x from 0 to XMAX step 1
-            oled.DrawLine (x, 0, XMAX-x, YMAX, -1)
-            oled.writeBuffer
-            _fps++
+            oled.Line (x, 0, XMAX-x, YMAX, -1)
+            oled.Update
+            _frames++
 
         repeat y from 0 to YMAX step 1
-            oled.DrawLine (XMAX, y, 0, YMAX-y, -1)
-            oled.writeBuffer
-            _fps++
+            oled.Line (XMAX, y, 0, YMAX-y, -1)
+            oled.Update
+            _frames++
 
 PUB Demo_MEMScroller(start_addr, end_addr) | pos, st, en
-'' Dumps Propeller Hub RAM (or ROM) to the framebuffer
-'' Very meta/introspective/magic mirror-looking if dumping covers the area of RAM
-''  occupied by this program's variables!
-    repeat pos from start_addr to end_addr
-'        bytemove(@_framebuff, pos, BUFFSZ)
-        oled.DrawBitmap (pos)
-        oled.writeBuffer
-        _fps++
+' Dumps Propeller Hub RAM (and/or ROM) to the display buffer
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_MEMScroller"))
 
-PUB Demo_PlotRND (reps) | x, y
-'' Draws random pixels to the screen, with color -1 (invert)
+    repeat pos from start_addr to end_addr step 128
+        oled.Bitmap (pos, BUFFSZ, 0)
+        oled.Update
+        _frames++
+
+PUB Demo_Plot (reps) | x, y
+' Draws random pixels to the screen, with color -1 (invert)
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Plot"))
+
     repeat reps
-        oled.DrawPixel (rnd(XMAX), rnd(YMAX), -1)
-        oled.writeBuffer
-        _fps++
+        oled.Plot (rnd(XMAX), rnd(YMAX), -1)
+        oled.Update
+        _frames++
 
-PUB Demo_Sine(reps) | x, y, modifier, offset, div
-'' Draws a sine wave the length of the screen, influenced by
-''  the system counter
+PUB Demo_Sinewave(reps) | x, y, modifier, offset, div
+' Draws a sine wave the length of the screen, influenced by the system counter
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Sinewave"))
+
     case HEIGHT
         32:
             div := 4096
@@ -201,16 +270,21 @@ PUB Demo_Sine(reps) | x, y, modifier, offset, div
         repeat x from 0 to XMAX
             modifier := (||cnt / 1_000_000)           ' Use system counter as modifier
             y := offset + sin(x * modifier) / div
-            oled.DrawPixel(x, y, 1)
-        oled.writeBuffer
-        _fps++
+            oled.Plot(x, y, 1)
+        oled.Update
+        _frames++
         oled.Clear
 
 PUB Demo_Text(reps) | col, row, maxcol, maxrow, ch, st
-'' Sequentially draws the whole font table to the screen, for half of 'reps'
-''  then random characters for the second half
-    maxcol := (WIDTH/8)-1   'XXX In the future, pull part of this from a font def file,
-    maxrow := (HEIGHT/8)-1  ' based on its size
+' Sequentially draws the whole font table to the screen, then random characters
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Text"))
+
+    oled.FGColor(1)
+    oled.BGColor(0)
+    maxcol := (WIDTH/oled.FontWidth)-1
+    maxrow := (HEIGHT/oled.FontHeight)-1
     ch := $00
     repeat reps/2
         repeat row from 0 to maxrow
@@ -218,19 +292,25 @@ PUB Demo_Text(reps) | col, row, maxcol, maxrow, ch, st
                 ch++
                 if ch > $7F
                     ch := $00
-                oled.Char (col, row, ch)
-        oled.writeBuffer
-        _fps++
+                oled.Position (col, row)
+                oled.Char (ch)
+        oled.Update
+        _frames++
 
     repeat reps/2
         repeat row from 0 to maxrow
             repeat col from 0 to maxcol
-                oled.Char (col, row, rnd(127))
-        oled.writeBuffer
-        _fps++
+                oled.Position (col, row)
+                oled.Char (rnd(127))
+        oled.Update
+        _frames++
 
-PUB Demo_Wave(frames) | x, y, ydir
-'' Draws a simple triangular wave
+PUB Demo_TriWave(frames) | x, y, ydir
+' Draws a simple triangular wave
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Triwave"))
+
     ydir := 1
     y := 0
     repeat frames
@@ -240,120 +320,170 @@ PUB Demo_Wave(frames) | x, y, ydir
             if y == 0
                 ydir := 1
             y := y + ydir
-            oled.DrawPixel (x, y, 1)
-        oled.writeBuffer
-        _fps++
+            oled.Plot (x, y, 1)
+        oled.Update
+        _frames++
         oled.Clear
 
 PUB Demo_Wander(reps) | x, y, d
-'' Draws randomly wandering pixels
+' Draws randomly wandering pixels
+    _ser_row++
+    ser.Position(0, _ser_row)
+    ser.Str(string("Demo_Wander"))
+
     _rndSeed := cnt
     x := XMAX/2
     y := YMAX/2
     repeat reps
         case d := rnd(4)
             1:
-                x += 1
+                x += 2
                 if x > XMAX
                     x := 0
             2:
-                x -= 1
+                x -= 2
                 if x < 0
                     x := XMAX
             3:
-                y += 1
+                y += 2
                 if y > YMAX
                     y := 0
             4:
-                y -= 1
+                y -= 2
                 if y < 0
                     y := YMAX
-        oled.DrawPixel (x, y, -1)
-        oled.writeBuffer
+        oled.Plot (x, y, -1)
+        oled.Update
+        _frames++
 
-PUB ClearScreen
-
-    oled.Clear
-    oled.writeBuffer
-
-PUB Cos(angle)                  'Cos angle is 13-bit ; Returns a 16-bit signed value
-'' Return Cosine of angle
-    result := sin(angle + $800)
-
-PUB Sin(angle)                  'Sin angle is 13-bit ; Returns a 16-bit signed value
-
+PUB Sin(angle)
+' Return the sine of angle
     result := angle << 1 & $FFE
     if angle & $800
-       result := word[$F000 - result]
+       result := word[$F000 - result]   ' Use sine table from ROM
     else
        result := word[$E000 + result]
     if angle & $1000
        -result
 
-PUB RND(upperlimit) | i       'Returns a random number between 0 and upperlimit
-
+PUB RND(maxval) | i
+' Return random number up to maxval
     i :=? _rndSeed
     i >>= 16
-    i *= (upperlimit + 1)
+    i *= (maxval + 1)
     i >>= 16
 
     return i
 
-PUB fps_mon
-'' Sit in another cog and tell us (more or less) how many frames per second we're rendering
-    ser.Position (0, 4)
-    ser.Str (string("FPS: "))
+PUB FPS_mon
+' Display to the serial terminal approximate render speed, in frames per second
     repeat
         time.MSleep (1000)
-        ser.Position (5, 4)
-        ser.Str (int.DecZeroed (_fps, 3))
-        _fps := 0
+        ser.Position (20, _ser_row)
+        ser.Str (string("FPS: "))
+        ser.Str (int.DecZeroed (_frames, 3))
+        _frames := 0
 
 PUB Setup
 
-    repeat until ser.Start (115_200)
+    repeat until ser.StartRXTX (SER_RX, SER_TX, %0000, SER_BAUD)
+    time.MSleep(100)
     ser.Clear
-    ser.Str (string("Serial terminal started", ser#NL))
-    if oled.Startx (WIDTH, HEIGHT, SSD1306_SCL, SSD1306_SDA, SSD1306_HZ, 0)
+    ser.Str (string("Serial terminal started", ser#CR, ser#LF))
+    if oled.Start (WIDTH, HEIGHT, I2C_SCL, I2C_SDA, I2C_HZ, @_framebuff, 0)
+        ser.Str (string("SSD1306 driver started. Draw buffer @ $"))
+        ser.Hex (oled.Address (-2), 8)
         oled.Defaults
-        ser.Str (string("SSD1306 object started. Draw buffer @"))
-        ser.Hex (oled.DrawBuffer (@_framebuff), 8)
+        oled.OscFreq (407)
+        oled.FontSize (6, 8)
+        oled.FontAddress (fnt5x8.BaseAddr)
     else
-        ser.Str (string("SSD1306 object failed to start - halting"))
-        oled.Stop
-        time.MSleep (100)
-        ser.Stop
-    ser.Str (string(" - Ready.", ser#NL))
-    _fps_mon_cog := cognew(fps_mon, @_fps_mon_stack)  'Start framerate monitor in another cog/core
+        ser.Str (string("SSD1306 driver failed to start - halting"))
+        Stop
+        FlashLED (LED, 500)
+
+#ifdef FPS_MON_ENABLE
+    _fps_mon_cog := cognew(FPS_mon, @_fps_mon_stack)  'Start framerate monitor in another cog/core
+#endif
 
 PUB Stop
-
-    ser.Position (0, 6)
-    ser.Str (string("Press a key to power off", ser#NL))
-    ser.CharIn
 
     oled.DisplayOff
     oled.Stop
 
-    cogstop(_fps_mon_cog)
+    if _fps_mon_cog
+        cogstop(_fps_mon_cog)
+    if _ser_cog
+        cogstop(_ser_cog)
 
-    ser.Position (0, 7)
-    ser.Str (string("Halted", ser#NL))
-    time.MSleep (1)
-    ser.Stop
+#include "lib.utility.spin"
 
 DAT
 
-
-    bitmap1 byte    $F,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,$F,{
-}                   $F,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$F,{
-}                   $F,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$F,{
-}                   $F,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,$F
-
-    bitmap2 byte    $A,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,$F,{
-}                   $A,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$F,{
-}                   $A,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,$F,{
-}                   $A,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,$F
+    Beanie      byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $80, $C0
+                byte    $C0, $C0, $C0, $C0, $C0, $C0, $C0, $C0, $80, $80, $80, $80, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $80
+                byte    $80, $00, $00, $00, $80, $80, $80, $80, $C0, $C0, $C0, $C0, $C0, $E0, $E0, $E0
+                byte    $E0, $E0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0
+                byte    $E0, $E0, $80, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $0F, $1F, $3F
+                byte    $3F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $3F, $3F, $3F, $3F
+                byte    $3F, $3F, $1F, $1F, $1E, $1E, $1E, $0E, $0E, $0E, $0E, $06, $06, $06, $F7, $FF
+                byte    $FF, $F7, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $07
+                byte    $07, $07, $07, $07, $07, $0F, $0F, $0F, $0F, $0F, $1F, $1F, $1F, $1F, $1F, $1F
+                byte    $0F, $0F, $07, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $80, $C0, $C0, $E0, $E0, $60, $70, $30, $30, $18, $18, $C8, $FF, $FF, $FF
+                byte    $FF, $FF, $FF, $C8, $18, $18, $30, $30, $70, $60, $E0, $E0, $C0, $C0, $80, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $80, $C0, $E0, $F0, $F8, $FC, $FE, $7F
+                byte    $3F, $0F, $07, $03, $01, $00, $00, $00, $00, $C0, $FC, $FF, $FF, $FF, $FF, $FF
+                byte    $FF, $FF, $FF, $FF, $FF, $FC, $C0, $00, $00, $00, $00, $01, $03, $07, $0F, $3F
+                byte    $7F, $FE, $FC, $F8, $F0, $E0, $C0, $80, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $80, $E0, $F8, $FC, $FF, $FF, $FF, $FF, $FF, $3F, $07, $01, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $F8, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+                byte    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F8, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $01, $07, $3F, $FF, $FF, $FF, $FF, $FF, $FC, $F8, $E0, $80, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $C0, $FC, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $BF, $81, $80, $80, $80, $C0
+                byte    $C0, $C0, $C0, $C0, $C0, $C0, $C0, $F0, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+                byte    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F0, $C0, $C0, $C0, $C0, $C0, $C0, $C0
+                byte    $C0, $80, $80, $80, $81, $BF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FC, $C0, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $78, $FF, $FF, $FF, $FF, $FF, $FF, $CF, $CF, $CF, $CF, $CF, $C7, $87, $87, $87
+                byte    $87, $87, $87, $87, $87, $87, $87, $07, $03, $03, $03, $03, $03, $03, $03, $03
+                byte    $03, $03, $03, $03, $03, $03, $03, $03, $07, $87, $87, $87, $87, $87, $87, $87
+                byte    $87, $87, $87, $C7, $CF, $CF, $CF, $CF, $CF, $FF, $FF, $FF, $FF, $FF, $FF, $78
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $01, $01, $03, $03, $03, $03, $03, $07, $07, $07, $07, $07, $07, $07
+                byte    $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+                byte    $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
+                byte    $07, $07, $07, $07, $07, $07, $07, $03, $03, $03, $03, $03, $01, $01, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 
 {
     --------------------------------------------------------------------------------------------------------
