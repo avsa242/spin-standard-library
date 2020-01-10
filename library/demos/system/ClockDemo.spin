@@ -1,7 +1,7 @@
-{{
+i{{
 ┌──────────────────────────────────────────────────────────────┐
 │ Object File: Clock Demo.spin                                 │
-│ Version:     1.01 (for Clock v1.2)                            │
+│ Version:     1.01 (for Clock v1.2)                           │
 │ Date:        July 16, 2012                                   │
 │ Author:      Jeff Martin                                     │
 │ Company:     Parallax Semiconductor                          │
@@ -70,27 +70,29 @@ VAR
   byte  cmIdx                                           'Clock Mode array index
 
 OBJ
+
   clk           : "time.clock"
+  time          : "time"
 
 PUB Main
 {{Launch cog to scroll LEDs right/left and occasionally switch clock sources (indicated by
 flash on all LEDs).}}
 
-  clk.Init(5_000_000)                                   'Initialize Clock object
+  clk.SetClock(5_000_000)                               'Initialize Clock object
   dira[SLED..ELED]~~                                    'Drive LEDs
   cognew(ScrollLeds, @stack)                            'Launch cog to scroll time-dependant LEDs
 
   repeat                                                'Loop
     clk.SetMode(clockMode[cmIdx++])                     'Switch to new clockmode
     FlashLeds                                           '  Flash LEDs
-    clk.PauseSec(3)                                     '  Wait before repeating
+    time.Sleep(3)                                     '  Wait before repeating
     if ~~clockMode[cmIdx] == true                       '  Check clock mode list; reached end?
       cmIdx~                                            '    Reset back to with first entry
 
 PRI ScrollLeds
 {Scroll a single lit LED left/right across display at a clock-dependant speed.}
 
-  clk.PauseMSec(10)                                     'Wait a little before driving LED
+  time.MSleep(10)                                     'Wait a little before driving LED
   dira[SLED..ELED]~~                                    'Drive LEDs
   outa[ELED]~~                                          'Turn on only last LED
 
@@ -106,7 +108,7 @@ PRI FlashLeds
 {Flash all LEDs briefly.}
 
   outa[SLED..ELED]~~                                    'All LEDs on
-  clk.PauseMSec(125)                                    'Pause
+  time.MSleep(125)                                    'Pause
   outa[SLED..ELED]~                                     'LEDs back to normal
 
 DAT

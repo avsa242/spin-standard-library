@@ -47,7 +47,7 @@ CON
     XTAL3_PLL8X     = %0_1_1_11_110
     XTAL3_PLL16X    = %0_1_1_11_111
 
-PUB SetClock(xinfrequency, mode): newFreq
+PUB SetClock(xinfrequency)
 {{
     Set the system clock to mode `mode` and input frequency `xinfrequency`.
 
@@ -73,7 +73,9 @@ PUB SetClock(xinfrequency, mode): newFreq
     xinFreq := xinfrequency                                                     ' Update xinFreq
     oscDelay[2] := xinFreq / 100 #> WMIN                                        ' Update oscDelay for XINPUT 10 ms delay
 
-    ifnot (clkmode & $18) and (mode & $18)                                      ' If switching from a non-feedback to a feedback-based clock source
+PUB SetMode(mode): newFreq
+
+    if not (clkmode & $18) and (mode & $18)                                      ' If switching from a non-feedback to a feedback-based clock source
         clkset(clkmode & $07 | mode & $78, clkfreq)                             '   first rev up oscillator and possibly PLL circuits (using current clock source RCSLOW, RCFAST, XINPUT, or XINPUT + PLLxxx)
         waitcnt(oscDelay[clkmode & $7 <# 2] * |<(clkmode & $7 - 3 #> 0) + cnt)  '   and wait 10 ms to stabilize, accounting for worst-case IRC speed (or XIN + PLL speed)
 
