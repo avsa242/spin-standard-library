@@ -78,7 +78,7 @@ VAR
     long vref,x,y,z,ThetaA,ThetaB,ThetaC
 
 OBJ
-    H48C  :     "sensor.accel.tri.h48c"
+    H48C  :     "sensor.accel.3dof.h48c.spi"
     VGA   :     "display.vga.text"
 
 PUB DEMO_TEST

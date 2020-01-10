@@ -58,7 +58,7 @@ OBJ
     core    : "core.con.max31856"
     spi     : "com.spi.4w"
     types   : "system.types"
-    umath   : "umath"
+    u64     : "math.unsigned64"
 
 PUB Null
 ''This is not a top-level object
@@ -137,7 +137,7 @@ PUB ColdJuncTemp
     result.byte[1] := result.byte[2]
     result.byte[2] := 0
     result >>=2
-    result := umath.multdiv (result, CJ_RES, 10_000)
+    result := u64.multdiv (result, CJ_RES, 10_000)
     case _temp_scale
         SCALE_F:
             if result > 0
@@ -350,7 +350,7 @@ PUB ThermoCoupleTemp | tmp
     if result & $40000
         result |= $FFFF0000
 
-    tmp := umath.multdiv (result, TC_RES, 100_000)
+    tmp := u64.multdiv (result, TC_RES, 100_000)
     case _temp_scale
         SCALE_F:
             result := 0

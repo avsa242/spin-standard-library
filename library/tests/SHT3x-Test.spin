@@ -19,6 +19,7 @@ CON
     SCL_PIN         = 28            ' Change these to match your I2C pin configuration
     SDA_PIN         = 29
     I2C_HZ          = 1_000_000     ' SHT3x supports I2C bus speeds up to FM+ (1MHz)
+    ADDR_BIT        = 0             ' 0 for default slave address, 1 for alternate
 
     TERM_RX         = 31            ' Change these to suit your terminal settings
     TERM_TX         = 30
@@ -84,7 +85,7 @@ PUB Setup
     repeat until _ser_cog := ser.Start (115_200)
     ser.Clear
     ser.Str(string("Serial terminal started", ser#NL))
-    if _sht3x_cog := sht3x.Startx(SCL_PIN, SDA_PIN, I2C_HZ)
+    if _sht3x_cog := sht3x.Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BIT)
         ser.Str (string("SHT3x driver (S/N "))
         ser.Hex (sht3x.SerialNum, 8)
         ser.Str (string(") started"))

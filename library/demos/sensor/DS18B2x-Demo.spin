@@ -48,7 +48,7 @@ PUB Main | sn_byte, temp
     ser.Position(0, 4)
     ser.Str(string("Temp res: "))
     ser.Dec(ds.Resolution(-2))
-    ser.Str(string("bits", ser#NL, ser#LF))
+    ser.Str(string("bits", ser#CR, ser#LF))
 
     ser.Str(string("SN: "))
     ds.SN(@_sn)
@@ -73,13 +73,13 @@ PUB Setup
     repeat until _ser_cog := ser.Start (SER_BAUD)
     time.MSleep(200)
     ser.Clear
-    ser.Str(string("Serial terminal started", ser#NL, ser#LF))
+    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
     if ds.Start (OW_PIN)
         ser.Str (string("DS18B2x driver started (DS18B"))
         ser.Dec (ds.Family)
         ser.Str(string(" found)"))
     else
-        ser.Str (string("DS18B2x driver failed to start - halting", ser#NL, ser#LF))
+        ser.Str (string("DS18B2x driver failed to start - halting", ser#CR, ser#LF))
         ds.Stop
         time.MSleep (500)
         ser.Stop

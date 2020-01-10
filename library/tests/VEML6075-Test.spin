@@ -90,15 +90,6 @@ PUB UV_IT(reps) | tmp, read
             read := uv.IntegrationTime (-2)
             Message (string("UV_IT"), lookup(tmp: 50, 100, 200, 400, 800), read)
 
-PUB Dumpregs | i, tmp
-
-    repeat i from $00 to $0C
-        ser.Hex (i, 2)
-        ser.Str (string(": "))
-        uv.readReg (i, 2, @tmp)
-        ser.Hex (tmp, 4)
-        ser.NewLine
-
 PUB Message(field, arg1, arg2)
 
     case _expanded

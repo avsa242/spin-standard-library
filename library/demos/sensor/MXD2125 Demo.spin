@@ -68,7 +68,7 @@ VAR
 OBJ
     tv    :       "display.tv"                                  'located in default Library
     gr    :       "display.tv.graphics"                            'located in default Library
-    accel :       "sensor.accel.dual.mxd2125"
+    accel :       "sensor.accel.2dof.mxd2125.analog-pwm"
 
 PUB Setup
   offset := 90 * (clkfreq / 200)                        'offset value for sensor data conversion

@@ -16,7 +16,7 @@ VAR
 OBJ
 
     term : "display.lcd.serial"
-    ping : "sensor.ping"
+    ping : "sensor.range.ultrasonic"
     num  : "string.integer"
 
 PUB Start

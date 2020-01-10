@@ -740,7 +740,7 @@ PRI writeReg(trans_type, nr_bytes, buff_addr) | tmp
         OTHER:
             return
 
-    spi.write (TRUE, buff_addr, nr_bytes) ' Write SPI transaction with blocking enabled
+    spi.write (TRUE, buff_addr, nr_bytes, TRUE) ' Write SPI transaction with blocking enabled
 
 {{
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐

@@ -1,8 +1,8 @@
 {
     --------------------------------------------
-    Filename: CC1101-Test.spin
+    Filename: CC2500-Test.spin
     Author: Jesse Burt
-    Description: Test object for the cc1101 driver
+    Description: Test object for the cc2500 driver
     Copyright (c) 2019
     Started Mar 25, 2019
     Updated Dec 22, 2019
@@ -16,9 +16,9 @@ CON
     _xinfreq    = cfg#_xinfreq
 
     CS_PIN      = 0
-    SCK_PIN     = 3
+    SCK_PIN     = 1
     MOSI_PIN    = 2
-    MISO_PIN    = 1
+    MISO_PIN    = 3
 
     COL_REG     = 0
     COL_SET     = 25
@@ -28,9 +28,9 @@ CON
 OBJ
 
     cfg : "core.con.boardcfg.flip"
-    ser : "com.serial.terminal"
+    ser : "com.serial.terminal.ansi"
     time: "time"
-    rf  : "wireless.transceiver.cc1101.spi"
+    rf  : "wireless.transceiver.cc2500.spi"
 
 VAR
 
@@ -375,9 +375,9 @@ PUB Setup
     ser.Clear
     ser.Str(string("Serial terminal started", ser#CR, ser#LF))
     if rf.Start (CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.Str (string("CC1101 driver started", ser#CR, ser#LF))
+        ser.Str (string("CC2500 driver started", ser#CR, ser#LF))
     else
-        ser.Str (string("CC1101 driver failed to start - halting", ser#CR, ser#LF))
+        ser.Str (string("CC2500 driver failed to start - halting", ser#CR, ser#LF))
         rf.Stop
         time.MSleep (500)
         ser.Stop
