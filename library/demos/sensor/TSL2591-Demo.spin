@@ -3,9 +3,9 @@
     Filename: TSL2591-Demo.spin
     Description: Demo for the TSL2591 driver
     Author: Jesse Burt
-    Copyright (c) 2018
-    Started Feb 17, 2018
-    Updated Jun 11, 2019
+    Copyright (c) 2020
+    Started Nov 23, 2019
+    Updated Jan 10, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,110 +16,123 @@ CON
     _xinfreq    = cfg#_xinfreq
 
     LED         = cfg#LED1
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
+
+    I2C_SCL     = 28
+    I2C_SDA     = 29
+    I2C_HZ      = 400_000
 
     GA          = 1             ' Glass attenuation factor
-    DF          = 53            ' Device factor
+    DF          = 408 '53       ' Device factor
 
     COL         = 26            ' Column to display measurements
     PADDING     = 6
 
 OBJ
 
-    cfg   : "core.con.boardcfg.flip"
-    ser   : "com.serial.terminal"
-    int   : "string.integer"
-    time  : "time"
-    lux   : "sensor.lux.tsl2591.i2c"
-    fs    : "string.float"
+    cfg     : "core.con.boardcfg.flip"
+    ser     : "com.serial.terminal.ansi"
+    int     : "string.integer"
+    time    : "time"
+    io      : "io"
+    tsl2591 : "sensor.lux.tsl2591.i2c"
 
-PUB Main | atime_ms, againx, lux1, cpl, ch0, ch1, scale
+VAR
+
+    byte _ser_cog, _tsl2591_cog
+
+PUB Main | atime_ms, againx, Lux1, cpl, ch0, ch1, scale
 
     Setup
 
-    lux.Gain (1)                ' 1, 25, 428, 9876
-    lux.IntegrationTime (100)   ' 100, 200, 300, 400, 500, 600
+    tsl2591.Gain (1)                                                ' Gain factor (x): 1, 25, 428, 9876
+    tsl2591.IntegrationTime (100)                                   ' ADC Integration Time (ms): 100, 200, 300, 400, 500, 600
 
-    scale := 1
-    ATIME_ms := lux.IntegrationTime (-2)
-    AGAINx:= lux.Gain (-2)
+    scale := 1_000
+    ATIME_ms := tsl2591.IntegrationTime(-2)
+    AGAINx:= tsl2591.Gain(-2)
     CPL := ((ATIME_ms * AGAINx) * scale) / (GA * DF)
 
-    ser.Position (0, 3)
-    ser.Str (string("ATIME_ms: "))
-    ser.Position (COL, 3)
-    ser.Dec (ATIME_ms)
-    ser.NewLine
+    ser.Position (0, 4)
+    ser.str(string("Integration time: "))
+    ser.dec(ATIME_ms)
+    ser.newline
 
-    ser.Str (string("AGAINx: "))
-    ser.PositionX (COL)
-    ser.Dec (AGAINx)
-    ser.NewLine
+    ser.str(string("Gain: "))
+    ser.dec(AGAINx)
+    ser.newline
 
-    ser.Str (string("GA: "))
-    ser.PositionX (COL)
-    ser.Dec (GA)
-    ser.NewLine
+    ser.str(string("Glass attenuation: "))
+    ser.dec(GA)
+    ser.newline
 
-    ser.Str (string("DF: "))
-    ser.PositionX (COL)
-    ser.Dec (DF)
-    ser.NewLine
+    ser.str(string("Device Factor: "))
+    ser.dec(DF)
+    ser.newline
 
-    ser.Str (string("CPL: "))
-    ser.PositionX (COL)
-    ser.Dec (CPL)
-    ser.NewLine
+    ser.str(string("Counts per Lux: "))
+    ser.dec(CPL)
+    ser.newline
 
     repeat
-        lux.Luminosity (3)
-        ch0 := lux.LastFull
-        ch1 := lux.LastIR
-        Lux1 := (ch0 - (2 * ch1)) / CPL
+        repeat until tsl2591.DataReady
+        tsl2591.Measure (tsl2591#BOTH)
+        ch0 := tsl2591.LastFull * scale
+        ch1 := tsl2591.LastIR * scale
+        Lux1 := ((ch0 - ch1) * ((1 * scale) - (ch1 / ch0))) / CPL   ' XXX Unverified
+        ser.Position (0, 10)
+        ser.str(string("CH0: "))
+        ser.str(int.DecPadded (ch0 / scale, PADDING))
+        ser.newline
+        ser.str(string("CH1: "))
+        ser.str(int.DecPadded (ch1 / scale, PADDING))
+        ser.newline
+        ser.str(string("(CH0 - CH1): "))
+        ser.str(int.DecPadded ((ch0 - ch1), PADDING))
+        ser.newline
 
-        ser.Position (0, 9)
-        ser.Str (string("CH0: "))
-        ser.PositionX (COL-PADDING+1)
-        ser.Str (int.DecPadded (ch0, PADDING))
-        ser.NewLine
+        ser.str(string("1 - (CH0 - CH1): "))
+        ser.str(int.DecPadded ((1 * scale) - (ch1 / ch0), PADDING))
+        ser.newline
+        ser.str(string("Lux: "))
+        Frac (Lux1, scale)
 
-        ser.Str (string("CH1: "))
-        ser.PositionX (COL-PADDING+1)
-        ser.Str (int.DecPadded (ch1, PADDING))
-        ser.NewLine
+PUB Frac(scaled, divisor) | whole, part, places, tmp
+' Display a scaled up number in its natural form (#.###...) - scale it back down by divisor
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
 
-        ser.Str (string("(CH0 - (2 * CH1)): "))
-        ser.PositionX (COL-PADDING+1)
-        ser.Str (int.DecPadded (ch0-(2 * ch1), PADDING))
-        ser.NewLine
-
-        ser.Str (string("Lux: "))
-        ser.PositionX (COL-PADDING+1)
-        ser.Str (int.DecPadded (Lux1, PADDING))
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    part := int.DecZeroed(||(scaled // divisor), places)
+    ser.dec(whole)
+    ser.char(".")
+    ser.str(part)
+    ser.char(" ")
 
 PUB Setup
 
-    repeat until ser.Start (115_200)
+    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
+    time.MSleep(100)
     ser.Clear
-    ser.Str (string("Serial terminal started", ser#NL))
-    if lux.Start
-        ser.Str (string("TSL2591 object started"))
-        lux.Reset
-        lux.Power (TRUE)
-        lux.Sensor (TRUE)
-
+    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+    if _tsl2591_cog := tsl2591.Startx(I2C_SCL, I2C_SDA, I2C_HZ)
+        ser.str(string("TSL2591 driver started", ser#CR, ser#LF))
     else
-        ser.Str (string("TSL2591 object failed to start - halting", ser#NL))
+        ser.str(string("TSL2591 driver failed to start - halting", ser#CR, ser#LF))
         time.MSleep (1)
-        lux.Stop
-        ser.Stop
-        Flash (LED, 500)
+        tsl2591.Stop
+        FlashLED (LED, 500)
+    tsl2591.Reset
+    tsl2591.Powered (TRUE)
+    tsl2591.SensorEnabled (TRUE)
 
-PUB Flash(led_pin, delay_ms)
-
-    dira[led_pin] := 1
-    repeat
-        !outa[led_pin]
-        time.MSleep (delay_ms)
+#include "lib.utility.spin"
 
 DAT
 {
