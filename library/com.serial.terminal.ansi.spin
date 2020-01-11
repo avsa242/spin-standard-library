@@ -178,7 +178,7 @@ PUB HexIn
 
 PUB NewLine
 {{
-    Clear screen and place cursor at top-left.
+    Move cursor to beginning of next line
 }}
 
     Str(string(CR, LF))
@@ -196,6 +196,11 @@ PUB ReadLine(line, maxline) : size | c
             other:  if size < maxline
                         byte[line][size++] := c
                         Char(c)
+
+PUB RxCheck
+' Check if character received; return immediately.
+'   Returns: -1 if no byte received, $00..$FF if character received.
+    return ser.RxCheck
 
 PUB Str(stringptr)
 {{

@@ -120,7 +120,7 @@ PUB CharIn
 
     repeat while (result := RxCheck) < 0
 
-PRI RxCheck
+PUB RxCheck
 {
     Check if character received; return immediately.
 
