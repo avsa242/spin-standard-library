@@ -1,3 +1,20 @@
+{
+    --------------------------------------------
+    Filename: lib.ansiterminal.spin
+    Description: Library to add ANSI terminal functionality to a
+        terminal driver
+    Requires: Terminal driver that provides the following methods:
+        Char(ch)    - Output one character to terminal
+        CharIn      - Read one character from terminal
+        Dec(num)    - Output a decimal number to terminal
+    Author: Jesse Burt
+    Copyright (c) 2020
+    Created: Jun 18, 2019
+    Updated: Jan 11, 2020
+    See end of file for terms of use.
+    --------------------------------------------
+}
+
 CON
 
     LBRACKET            = $5B
@@ -166,40 +183,34 @@ PUB Italic
 ' Set italicized attribute
     SGR(SGR_ITALIC)
 
-PUB MouseCursorPosition | tmp, token, place
+PUB MouseCursorPosition | b, x, y
 ' Report Current mouse position (press mouse button to update)
-' Read serial
-' If ESC, discard + proceed, otherwise, NEXT
-'       If LBRACKET, discard + proceed, otherwise, NEXT
-'               If "<", discard + proceed, otherwise, NEXT
-'                       If isnum, echo to term, NEXT
-'                               if ";", echo to term, NEXT
-'                                       if "M", quit
-    repeat
-        tmp := CharIn
-        case tmp
-            ESC:
-                token := 1
-            LBRACKET:
-                token := 2
-            "<":
-                token := 3
-            "0".."9":
-                case token
-                    3:  'Mouse button
-                        Char(tmp)
-                    4:  'X
-                        Char(tmp)
-                    5:  'Y
-                        Char(tmp)
-            ";":
-                Char(";")
-                token++
-                place := 0
-            "M":
-                quit
-            OTHER:
-    until tmp == "M"
+'   Returns: Button pressed, X, Y coordinates (packed into long)
+'       byte 0: X coordinate
+'       byte 1: Y coordinate
+'       byte 2: Button pressed/wheel movement:
+'           0 - Left
+'           1 - Middle
+'           2 - Right
+'           3 - Released
+'           64- Mouse wheel up
+'           65- Mouse wheel down
+'   NOTE: The position is only updated when a mouse button is pressed or wheel is moved
+    if CharIn == ESC
+        if CharIn == LBRACKET
+            if CharIn == "M"
+'               If we made it this far, it's a mouse position event
+            else
+                return 0
+        else
+            return 0
+    else
+        return 0
+
+    b := ser.charin-32                  ' The data are sent as a byte with the value 32 added to it
+    x := ser.charin-33                  ' We offset by 33 for position, so that the upper-left
+    y := ser.charin-33                  '   coordinates are 0, 0 instead of 1, 1
+    result := (b << 16) | (y << 8) | x  ' Pack all three into the return value
 
 PUB MoveDown(rows)
 ' Move cursor down 1 or more rows
@@ -293,3 +304,25 @@ PRI SGR(mode)
     CSI
     Dec(mode)
     Char("m")
+
+DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
