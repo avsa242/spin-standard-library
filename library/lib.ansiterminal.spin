@@ -242,6 +242,8 @@ PUB Overline
 
 PUB Position(x, y)
 ' Position cursor at column x, row y (from top-left)
+    y++                                             ' Need to add 1 because the coords
+    x++                                             ' are not 0-based, but 1-based
     CSI
     Dec(y)
     Char(";")
@@ -250,15 +252,14 @@ PUB Position(x, y)
 
 PUB PositionX(column)
 ' Set horizontal position of cursor
-'   Default value: column 1
     CSI
-    Dec(column)
+    Dec(column+1)
     Char("G")
 
 PUB PositionY(y)                                                                                                 
-
-    CSI
-    Char("P")
+' Set vertical position of cursor
+    y++                                             ' Need to add 1 because the coords
+    CSI                                             ' are not 0-based, but 1-based
     Dec(y)
     Char("d")
 
