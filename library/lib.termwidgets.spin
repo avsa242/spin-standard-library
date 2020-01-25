@@ -36,7 +36,7 @@ PUB Frac(scaled, divisor) | whole[4], part[4], places, tmp
     Char (".")
     Str (part)
 
-PUB HexDump(buff_addr, base_addr, nr_bytes, columns, x, y) | digits, offset, col, hexcol, asccol, row, currbyte
+PUB HexDump(buff_addr, base_addr, nr_bytes, columns, x, y) | digits, offset, col, hexcol, asccol, row, currbyte, maxcol
 ' Display a hexdump of a region of memory
 '   buff_addr: Start address of memory
 '   base_addr: Address used to display as base address in hex dump (affects display only)
@@ -46,9 +46,10 @@ PUB HexDump(buff_addr, base_addr, nr_bytes, columns, x, y) | digits, offset, col
     digits := 5
     hexcol := asccol := col := 0
     row := y
+    maxcol := columns-1
     repeat offset from 0 to nr_bytes-1
         currbyte := byte[buff_addr][offset]
-        if col > (columns - 1)
+        if col > maxcol
             row++
             col := 0
 
@@ -57,8 +58,8 @@ PUB HexDump(buff_addr, base_addr, nr_bytes, columns, x, y) | digits, offset, col
             Hex (base_addr+offset, digits)
             Str (string(": "))
 
-        hexcol := x + (offset & (columns-1)) * 3 + (digits + 2) + 1
-        asccol := x + (offset & (columns-1)) + (columns * 3) + (digits + 3)
+        hexcol := x + offset * 3 + (digits + 2) + 1
+        asccol := x + offset + (columns * 3) + (digits + 3)
 
         Position (hexcol, row)
         Hex (currbyte, 2)
