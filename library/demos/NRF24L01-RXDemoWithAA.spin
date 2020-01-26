@@ -91,7 +91,7 @@ PUB Receive | tmp, from_node, addr[2], i, count, recv_pipe
     nrf24.RXAddr (@addr, 5, nrf24#WRITE)                    ' Set pipe 5 address
 
 
-    nrf24.RX(0)                                             ' Set transceiver to receive mode (0 = stay in RX mode)
+    nrf24.RXMode                                            ' Set transceiver to receive mode (0 = stay in RX mode)
     nrf24.FlushRX                                           ' Empty the receive FIFO
     nrf24.CRCCheckEnabled(TRUE)                             ' TRUE, FALSE (enable CRC generation, checking)
     nrf24.CRCLength(2)                                      ' 1, 2 bytes (CRC length)

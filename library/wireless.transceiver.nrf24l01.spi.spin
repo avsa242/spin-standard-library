@@ -104,6 +104,16 @@ PUB AddressWidth(bytes) | tmp
     tmp := (tmp | bytes) & core#NRF24_SETUP_AW_MASK
     writeReg (core#NRF24_SETUP_AW, 1, @tmp)
 
+PUB AfterRX (next_state)
+' Define state to transition to after packet rcvd
+'   0: Remain in active RX state, ready to receive packets
+'   Any other value: Change to RX state, but immediately enter a lower-power Idle/Standby state
+    RXTX(ROLE_RX)
+    if next_state
+        Idle
+    else
+        CE(1)
+
 PUB AutoAckEnabledPipes(pipe_mask) | tmp
 ' Enable the Auto Acknowledgement function (aka Enhanced ShockBurst - (TM) NORDIC Semi.)
 '   per set data pipe mask:
@@ -501,18 +511,6 @@ PUB RSSI
         FALSE:
             return -255
 
-PUB RX(idle_state)
-' Change chip state to RX (receive)
-'   Valid values:
-'       idle:
-'           FALSE(0): Remain in active RX state, ready to receive packets
-'           Any other value: Change to RX state, but immediately enter a lower-power Idle/Standby state
-    RXTX(ROLE_RX)
-    if idle_state
-        Idle
-    else
-        CE(1)
-
 PUB RXAddr(buff_addr, pipe, rw) | tmp[2]
 ' Set receive address of pipe number 'pipe' from buffer at address buff_addr
 '   Valid values:
@@ -559,6 +557,15 @@ PUB RXFIFOFull
     readReg (core#NRF24_FIFO_STATUS, 1, @result)
     result >>= core#FLD_RXFIFO_FULL
     result &= %1
+
+PUB RXMode
+' Change chip state to RX (receive)
+'   Valid values:
+'       idle:
+'           FALSE(0): Remain in active RX state, ready to receive packets
+'           Any other value: Change to RX state, but immediately enter a lower-power Idle/Standby state
+    RXTX(ROLE_RX)
+    CE(1)
 
 PUB RXPayload(nr_bytes, buff_addr) | tmp
 ' Receive payload stored in FIFO
@@ -633,6 +640,21 @@ PUB TXAddr(buff_addr, rw) | tmp[2]
 
     writeReg (core#NRF24_TX_ADDR, 5, buff_addr)
 
+PUB TXFIFOEmpty
+' Queries the FIFO_STATUS register for TX FIFO empty flag
+'   Returns TRUE if empty, FALSE if there's data in TX FIFO
+    readReg (core#NRF24_FIFO_STATUS, 1, @result)
+    result &= (1 << core#FLD_TXFIFO_EMPTY) * TRUE
+
+PUB TXFIFOFull
+' Returns TX FIFO full flag
+'   Returns: TRUE if full, FALSE if locations available in TX FIFO
+    result := (Status & core#FLD_TX_FULL) * TRUE
+
+PUB TXMode
+' Change chip state to TX (transmit)
+    RXTX(ROLE_TX)
+
 PUB TXPayload(nr_bytes, buff_addr, deferred) | cmd_packet, tmp
 ' Queue payload to be transmitted
 '   Valid values:
@@ -648,21 +670,6 @@ PUB TXPayload(nr_bytes, buff_addr, deferred) | cmd_packet, tmp
                 CE(0)
         OTHER:
             return FALSE
-
-PUB TXFIFO_Empty
-' Queries the FIFO_STATUS register for TX FIFO empty flag
-'   Returns TRUE if empty, FALSE if there's data in TX FIFO
-    readReg (core#NRF24_FIFO_STATUS, 1, @result)
-    result &= (1 << core#FLD_TXFIFO_EMPTY) * TRUE
-
-PUB TXFIFO_Full
-' Returns TX FIFO full flag
-'   Returns: TRUE if full, FALSE if locations available in TX FIFO
-    result := (Status & core#FLD_TX_FULL) * TRUE
-
-PUB TX
-' Change chip state to TX (transmit)
-    RXTX(ROLE_TX)
 
 PUB TXPower(dBm) | tmp
 ' Set RF output power in TX mode, in dBm
@@ -688,7 +695,7 @@ PUB TXReuse
     readReg (core#NRF24_FIFO_STATUS, 1, @result)
     result &= (1 << core#FLD_TXFIFO_REUSE) * TRUE
 
-PUB Status
+PRI Status
 ' Returns status of last SPI transaction
     readReg (core#NRF24_STATUS, 1, @result)
 

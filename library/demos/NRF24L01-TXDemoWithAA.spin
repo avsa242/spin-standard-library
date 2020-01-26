@@ -67,7 +67,7 @@ PUB Transmit | count, tmp, addr[2], to_node, i, max_retrans, pkts_retrans, lost_
     nrf24.NodeAddress (@addr)                               ' Set TX and RX address to the same
                                                             ' (RX pipe is used for receipt of Auto-Acknowledgement)
 
-    nrf24.TX                                                ' Set to Transmit mode and
+    nrf24.TXMode                                            ' Set to Transmit mode and
     nrf24.FlushTX                                           '   empty the transmit FIFO
     nrf24.CRCCheckEnabled(TRUE)                             ' TRUE, FALSE (enable CRC generation, checking)
     nrf24.CRCLength (2)                                     ' 1, 2 bytes (CRC length)
