@@ -58,8 +58,8 @@ PUB HexDump(buff_addr, base_addr, nr_bytes, columns, x, y) | digits, offset, col
             Hex (base_addr+offset, digits)
             Str (string(": "))
 
-        hexcol := x + offset * 3 + (digits + 2) + 1
-        asccol := x + offset + (columns * 3) + (digits + 3)
+        hexcol := x + (offset & maxcol) * 3 + (digits + 2) + 1
+        asccol := x + (offset & maxcol) + (columns * 3) + (digits + 3)
 
         Position (hexcol, row)
         Hex (currbyte, 2)
