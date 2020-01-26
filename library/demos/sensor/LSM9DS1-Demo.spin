@@ -1,11 +1,12 @@
 {
     --------------------------------------------
-    Filename: LSM9DS1-Test.spin
+    Filename: LSM9DS1-Demo.spin
     Author: Jesse Burt
-    Description: Test harness for LSM9DS1 driver
-    Copyright (c) 2019
+    Description: Simple demo of the LSM9DS1 driver that
+        outputs live data from the chip.
+    Copyright (c) 2020
     Started Aug 12, 2017
-    Updated Feb 18, 2019
+    Updated Jan 12, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,21 +16,25 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-    SCL_PIN     = 0
-    SDIO_PIN    = 1
-    CS_AG_PIN   = 2
-    CS_M_PIN    = 3
-    INT_AG_PIN  = 4
-    INT_M_PIN   = 5
+    SCL_PIN     = 1
+    SDIO_PIN    = 2
+    CS_AG_PIN   = 4
+    CS_M_PIN    = 5
+    INT_AG_PIN  = 6
+    INT_M_PIN   = 8
 
     LED         = cfg#LED1
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
+    ser     : "com.serial.terminal.ansi"
     time    : "time"
-    imu     : "sensor.imu.9dof.lsm9ds1.spi"
+    io      : "io"
+    imu     : "sensor.imu.9dof.lsm9ds1.3wspi"
     int     : "string.integer"
 
 VAR
@@ -40,31 +45,84 @@ PUB Main
 
     Setup
 
-    waitkey(string("Press any key to calibrate Accelerometer & Gyroscope...", ser#NL))
-    ser.Str (string("Calibrating..."))
-    imu.CalibrateAG
-
-    waitkey(string("Press any key to calibrate Magnetometer", ser#NL))
-    ser.Str (string("Calibrating..."))
-    imu.CalibrateMag (512)
-
-    ser.Clear
+    imu.MagDataRate(80_000)
+    ser.HideCursor
 
     repeat
-        ser.Position (0, 0)
-        AccelRaw
-        ser.Position (0, 1)
-        GyroRaw
-        ser.Position (0, 2)
-        MagRaw
         ser.Position (0, 3)
+        AccelCalc
+        ser.Position (0, 4)
+        GyroCalc
+        ser.Position (0, 5)
+        MagCalc
+        ser.Position (0, 6)
         TempRaw
 
-        time.MSleep (100)
+        time.MSleep (10)
+
+{
+    repeat
+        ser.Position (0, 3)
+        AccelRaw
+        ser.Position (0, 4)
+        GyroRaw
+        ser.Position (0, 5)
+        MagRaw
+        ser.Position (0, 6)
+        TempRaw
+
+        time.MSleep (10)
+}
+
+        case ser.RxCheck
+            27:
+                quit
+            "c", "C":
+                Calibrate
+
+    ser.ShowCursor
+    FlashLED(LED, 100)
+
+PUB Calibrate
+
+    ser.Position (0, 8)
+    ser.Str(string("Calibrating..."))
+    imu.CalibrateXLG
+    imu.CalibrateMag (10)
+    ser.Position (0, 8)
+    ser.Str(string("              "))
+
+PUB AccelCalc | ax, ay, az
+
+    repeat until imu.AccelDataReady
+    imu.AccelG (@ax, @ay, @az)
+    ser.Str (string("Accel: "))
+    ser.Str (int.DecPadded (ax, 10))
+    ser.Str (int.DecPadded (ay, 10))
+    ser.Str (int.DecPadded (az, 10))
+
+PUB GyroCalc | gx, gy, gz
+
+    repeat until imu.GyroDataReady
+    imu.GyroDPS (@gx, @gy, @gz)
+    ser.Str (string("Gyro:  "))
+    ser.Str (int.DecPadded (gx, 10))
+    ser.Str (int.DecPadded (gy, 10))
+    ser.Str (int.DecPadded (gz, 10))
+
+PUB MagCalc | mx, my, mz
+
+    repeat until imu.MagDataReady
+    imu.MagGauss (@mx, @my, @mz)
+    ser.Str (string("Mag:   "))
+    ser.Str (int.DecPadded (mx, 10))
+    ser.Str (int.DecPadded (my, 10))
+    ser.Str (int.DecPadded (mz, 10))
 
 PUB AccelRaw | ax, ay, az
 
-    imu.ReadAccel (@ax, @ay, @az)
+    repeat until imu.AccelDataReady
+    imu.AccelData (@ax, @ay, @az)
     ser.Str (string("Accel: "))
     ser.Str (int.DecPadded (ax, 7))
     ser.Str (int.DecPadded (ay, 7))
@@ -72,7 +130,8 @@ PUB AccelRaw | ax, ay, az
 
 PUB GyroRaw | gx, gy, gz
 
-    imu.ReadGyro (@gx, @gy, @gz)
+    repeat until imu.GyroDataReady
+    imu.GyroData (@gx, @gy, @gz)
     ser.Str (string("Gyro:  "))
     ser.Str (int.DecPadded (gx, 7))
     ser.Str (int.DecPadded (gy, 7))
@@ -80,7 +139,8 @@ PUB GyroRaw | gx, gy, gz
 
 PUB MagRaw | mx, my, mz
 
-    imu.ReadMag (@mx, @my, @mz)
+    repeat until imu.MagDataReady
+    imu.MagData (@mx, @my, @mz)
     ser.Str (string("Mag:  "))
     ser.Str (int.DecPadded (mx, 7))
     ser.Str (int.DecPadded (my, 7))
@@ -93,29 +153,25 @@ PUB TempRaw
 
 PUB Setup
 
-    repeat until _ser_cog := ser.Start (115_200)
+    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, %0000, SER_BAUD)
+    time.MSleep(20)
     ser.Clear
-    ser.Str (string("Serial terminal started", ser#NL))
+    ser.Str (string("Serial terminal started", ser#CR, ser#LF))
     if _imu_cog := imu.Start (SCL_PIN, SDIO_PIN, CS_AG_PIN, CS_M_PIN, INT_AG_PIN, INT_M_PIN)
-        ser.Str (string("LSM9DS1 driver started", ser#NL))
+        ser.Str (string("LSM9DS1 driver started", ser#CR, ser#LF))
     else
-        ser.Str (string("LSM9DS1 driver failed to start- halting", ser#NL))
+        ser.Str (string("LSM9DS1 driver failed to start - halting", ser#CR, ser#LF))
         imu.Stop
         time.MSleep (5)
         ser.Stop
-        Flash(LED, 500)
+        FlashLED(LED, 500)
 
-PUB waitkey(message)
+PRI waitkey(message)
 
     ser.Str (message)
     ser.CharIn
 
-PUB Flash(led_pin, delay_ms)
-
-    dira[led_pin] := 1
-    repeat
-        !outa[led_pin]
-        time.MSleep (delay_ms)
+#include "lib.utility.spin"
 
 DAT
 {

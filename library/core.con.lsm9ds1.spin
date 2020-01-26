@@ -12,13 +12,16 @@
 
 CON
 ' SPI Configuration
-    CPOL                    = 0
-    CLK_DELAY               = 10
+    CPOL                    = 1
+    CLK_DELAY               = 1
+    SCK_MAX_FREQ            = 10_000_000
     MOSI_BITORDER           = 5             'MSBFIRST
-    MISO_BITORDER           = 0             'MSBPRE
+    MISO_BITORDER           = 2             'MSBPOST
+
     WHOAMI_AG_RESP          = $68
     WHOAMI_M_RESP           = $3D
     WHOAMI_BOTH_RESP        = (WHOAMI_AG_RESP << 8) | WHOAMI_M_RESP
+
 ' LSM9DS1 Register map
     ACT_THS                 = $04
     ACT_THS_MASK            = $FF
@@ -301,7 +304,19 @@ CON
         MASK_MD             = CTRL_REG3_M_MASK ^ (BITS_MD << FLD_MD)
 
     CTRL_REG4_M             = $23
+    CTRL_REG4_M_MASK        = $0E
+        FLD_OMZ             = 2
+        FLD_BLE_M           = 1
+        BITS_OMZ            = %11
+        MASK_OMZ            = CTRL_REG4_M_MASK ^ (BITS_OMZ << FLD_OMZ)
+        MASK_BLE_M          = CTRL_REG4_M_MASK ^ (1 << FLD_BLE_M)
+
     CTRL_REG5_M             = $24
+    CTRL_REG5_M_MASK        = $C0
+        FLD_FAST_READ       = 7
+        FLD_BDU_M           = 6
+        MASK_FAST_READ      = CTRL_REG5_M_MASK ^ (1 << FLD_FAST_READ)
+        MASK_BDU_M          = CTRL_REG5_M_MASK ^ (1 << FLD_BDU_M)
 
     STATUS_REG_M            = $27
     STATUS_REG_M_MASK       = $FF
@@ -309,8 +324,8 @@ CON
         FLD_ZYXDA           = 3
         FLD_OR              = 4
         FLD_ZYXOR           = 7
-        BITS_DA             = %111
-        BITS_OR             = %111
+        BITS_DA             = %1111
+        BITS_OR             = %1111
         MASK_DA             = STATUS_REG_M_MASK ^ (BITS_DA << FLD_DA)
         MASK_OR             = STATUS_REG_M_MASK ^ (BITS_OR << FLD_OR)
         MASK_ZYXOR          = STATUS_REG_M_MASK ^ (1 << FLD_ZYXOR)
@@ -322,12 +337,33 @@ CON
     OUT_Y_H_M               = $2B
     OUT_Z_L_M               = $2C
     OUT_Z_H_M               = $2D
+
     INT_CFG_M               = $30
+    INT_CFG_M_MASK          = $E7
+        FLD_IEN             = 0
+        FLD_IEL             = 1
+        FLD_IEA             = 2
+        FLD_XYZIEN          = 5
+        BITS_XYZIEN         = %111
+        MASK_IEN            = INT_CFG_M_MASK ^ (1 << FLD_IEN)
+        MASK_IEL            = INT_CFG_M_MASK ^ (1 << FLD_IEL)
+        MASK_IEA            = INT_CFG_M_MASK ^ (1 << FLD_IEA)
+        MASK_XYZIEN         = INT_CFG_M_MASK ^ (BITS_XYZIEN << FLD_XYZIEN)
+
     INT_SRC_M               = $31
+        FLD_PTH_X           = 7
+        FLD_PTH_Y           = 6
+        FLD_PTH_Z           = 5
+        FLD_NTH_X           = 4
+        FLD_NTH_Y           = 3
+        FLD_NTH_Z           = 2
+        FLD_MROI            = 1
+        FLD_INT             = 0
+        BITS_PTH            = %111
+        BITS_NTH            = %111
+
     INT_THS_L_M             = $32
     INT_THS_H_M             = $33
-    WHO_AM_I_AG_RSP         = $68
-    WHO_AM_I_M_RSP          = $3D
 
     FIFO_OFF                = 0
     FIFO_THS                = 1

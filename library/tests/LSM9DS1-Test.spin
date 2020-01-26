@@ -2,10 +2,10 @@
     --------------------------------------------
     Filename: LSM9DS1-Test.spin
     Author: Jesse Burt
-    Description: Test harness for LSM9DS1 driver
-    Copyright (c) 2019
+    Description: Test app for the LSM9DS1 driver
+    Copyright (c) 2020
     Started Feb 9, 2019
-    Updated Apr 17, 2019
+    Updated Jan 12, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,26 +15,31 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-    SCL_PIN     = 0
-    SDIO_PIN    = 1
-    CS_AG_PIN   = 2
-    CS_M_PIN    = 3
-    INT_AG_PIN  = 4
-    INT_M_PIN   = 5
-
     COL_REG     = 0
     COL_SET     = COL_REG+20
     COL_READ    = COL_REG+32
     COL_PF      = COl_REG+48
 
+' User modifiable constants
     LED         = cfg#LED1
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
+
+    SCL_PIN     = 1
+    SDIO_PIN    = 2
+    CS_AG_PIN   = 4
+    CS_M_PIN    = 5
+    INT_AG_PIN  = 6
+    INT_M_PIN   = 8
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
+    ser     : "com.serial.terminal.ansi"
     time    : "time"
-    imu     : "sensor.imu.9dof.lsm9ds1.spi"
+    io      : "io"
+    imu     : "sensor.imu.9dof.lsm9ds1.3wspi"
     int     : "string.integer"
 
 VAR
@@ -73,8 +78,7 @@ PUB Main
     FTH(1)
     MAG_DO (1)
 
-'    ser.Str (string("Completed"))
-    Flash(LED, 100)
+    FlashLED(LED, 100)
 
 PUB MAG_DO(reps) | tmp, read
 
@@ -140,8 +144,8 @@ PUB FIFO_EN(reps) | tmp, read
     _row++
     repeat reps
         repeat tmp from 0 to -1
-            imu.FIFO (tmp)
-            read := imu.FIFO (-2)
+            imu.FIFOEnabled (tmp)
+            read := imu.FIFOEnabled (-2)
             Message (string("FIFO_EN"), tmp, read)
 
 PUB SLEEP_G(reps) | tmp, read
@@ -175,21 +179,21 @@ PUB XLDA(reps) | read
 ' XXX No verification
     _row++
     repeat reps
-        read := imu.AccelAvail
+        read := imu.AccelDataReady
         Message (string("XLDA"), read, read)
 
 PUB GDA(reps) | read
 ' XXX No verification
     _row++
     repeat reps
-        read := imu.GyroNewData
+        read := imu.GyroDataReady
         Message (string("GDA"), read, read)
 
 PUB TDA(reps) | read
 ' XXX No verification
     _row++
     repeat reps
-        read := imu.TempNewData
+        read := imu.TempDataReady
         Message (string("TDA"), read, read)
 
 PUB IG_INACT (reps) | read
@@ -203,14 +207,14 @@ PUB IG_G (reps) | read
 ' XXX No verification
     _row++
     repeat reps
-        read := imu.IntGyro
+        read := imu.GyroInt
         Message (string("IG_G"), read, read)
 
 PUB IG_XL (reps) | read
 ' XXX No verification
     _row++
     repeat reps
-        read := imu.IntAccel
+        read := imu.AccelInt
         Message (string("IG_XL"), read, read)
 
 PUB OUT_TEMP(reps) | read
@@ -245,8 +249,8 @@ PUB ODR(reps) | tmp, read
     _row++
     repeat reps
         repeat tmp from 1 to 7
-            imu.AGDataRate (lookup(tmp: 0, 14{.9}, 59{.5}, 119, 238, 476, 952))
-            read := imu.AGDataRate (-2)
+            imu.XLGDataRate (lookup(tmp: 0, 14{.9}, 59{.5}, 119, 238, 476, 952))
+            read := imu.XLGDataRate (-2)
             Message (string("ODR"), lookup(tmp: 0, 14{.9}, 59{.5}, 119, 238, 476, 952), read)
 
 PUB H_LACTIVE(reps) | tmp, read
@@ -254,8 +258,8 @@ PUB H_LACTIVE(reps) | tmp, read
     _row++
     repeat reps
         repeat tmp from 0 to 1
-            imu.IntLevel (tmp)
-            read := imu.IntLevel (-2)
+            imu.XLGIntLevel (tmp)
+            read := imu.XLGIntLevel (-2)
             Message (string("H_LACTIVE"), tmp, read)
 
 PUB BDU(reps) | tmp, read
@@ -263,8 +267,8 @@ PUB BDU(reps) | tmp, read
     _row++
     repeat reps
         repeat tmp from 0 to -1
-            imu.BlockUpdate (tmp)
-            read := imu.BlockUpdate (-2)
+            imu.MagBlockUpdate (tmp)
+            read := imu.MagBlockUpdate (-2)
             Message (string("BDU"), tmp, read)
 
 PUB BLE(reps) | tmp, read
@@ -275,22 +279,6 @@ PUB BLE(reps) | tmp, read
             imu.Endian (tmp)
             read := imu.Endian (-2)
             Message (string("BLE"), tmp, read)
-
-PUB Setup
-
-    repeat until _ser_cog := ser.Start (115_200)
-    ser.Clear
-    ser.Str (string("Serial terminal started", ser#NL))
-
-    if _imu_cog := imu.Start (SCL_PIN, SDIO_PIN, CS_AG_PIN, CS_M_PIN, INT_AG_PIN, INT_M_PIN)
-        ser.Str (string("LSM9DS1 driver started", ser#NL))
-        _max_cols := 4
-    else
-        ser.Str (string("Failed to start LSM9DS1 driver - halting", ser#NL))
-        imu.Stop
-        time.MSleep (5)
-        ser.Stop
-        repeat
 
 PUB Message(field, arg1, arg2)
 
@@ -343,15 +331,27 @@ PUB PassFail(num)
 
 PUB waitkey
 
-    ser.Str (string("Press any key", ser#NL))
+    ser.Str (string("Press any key", ser#CR, ser#LF))
     ser.CharIn
 
-PUB Flash(led_pin, delay_ms)
+PUB Setup
 
-    dira[led_pin] := 1
-    repeat
-        !outa[led_pin]
-        time.MSleep (100)
+    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, %0000, SER_BAUD)
+    time.MSleep(20)
+    ser.Clear
+    ser.Str (string("Serial terminal started", ser#CR, ser#LF))
+
+    if _imu_cog := imu.Start (SCL_PIN, SDIO_PIN, CS_AG_PIN, CS_M_PIN, INT_AG_PIN, INT_M_PIN)
+        ser.Str (string("LSM9DS1 driver started", ser#CR, ser#LF))
+        _max_cols := 4
+    else
+        ser.Str (string("Failed to start LSM9DS1 driver - halting", ser#CR, ser#LF))
+        imu.Stop
+        time.MSleep (5)
+        ser.Stop
+        FlashLED(LED, 500)
+
+#include "lib.utility.spin"
 
 DAT
 {
