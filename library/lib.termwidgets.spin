@@ -3,9 +3,9 @@
     Filename: lib.termwidgets.spin
     Author: Jesse Burt
     Description: Library of terminal widgets
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Dec 14, 2019
-    Updated Dec 18, 2019
+    Updated Jan 27, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,7 +17,7 @@
 '           Dec (param)
 '           Char (param)
 '           Str (param)
-'           Hex (param)
+'           Hex (param, digits)
 '           Position (x, y)
 
 PUB Frac(scaled, divisor) | whole[4], part[4], places, tmp
