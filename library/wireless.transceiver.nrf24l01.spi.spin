@@ -5,17 +5,12 @@
     Description: Driver for Nordic Semi. nRF24L01+
     Copyright (c) 2020
     Started Jan 6, 2019
-    Updated Jan 24, 2020
+    Updated Feb 3, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
-
-    TPOR        = 100_000 'us
-    TRXSETTLE   = 130 'us
-    TTXSETTLE   = 130 'us
-    THCE        = 10  'us
 
     ROLE_TX     = 0
     ROLE_RX     = 1
@@ -23,23 +18,9 @@ CON
 ' RXAddr and TXAddr constants
     READ        = 0
     WRITE       = 1
-' Recommended states:
-' Power down:
-'   PWR_UP = 1: XO Start (wait Tpd2stby) transition to Standby I
-'   Tpd2stby:
-'       150uS Ext clock
-'       1.5ms Ext xtal, Ls < 30mH
-'       3.0ms Ext xtal, Ls < 60mH
-'       4.5ms Ext xtal, Ls < 90mH
 
-' Standby-I:
-'   TX_FIFO not empty, PRIM_RX = 0, CE = 1 for >= 10uS: -> TX Settling 130uS -> TX Mode
-'   TX finished with one packet, CE = 0: -> Standby-I
-
-'   PRIM_RX = 1, CE = 1: -> RX Settling 130uS -> RX Mode
-'   CE = 0 to return to Standby-I
-
-'   PWR-UP = 0 to return to Power Down
+' Can be used as a parameter for PayloadReady, PayloadSent, MaxRetransReached to clear interrupts
+    CLEAR       = 1
 
 VAR
 
@@ -56,37 +37,92 @@ OBJ
 PUB Null
 ''This is not a top-level object
 
-PUB Startx(CE_PIN, CSN_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
+PUB Startx(CE_PIN, CSN_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay | tmp[2], i
 
     if lookdown(CE_PIN: 0..31) and lookdown(CSN_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
         if okay := spi.start (core#CLK_DELAY, core#CPOL)
-            time.USleep (TPOR)  'XXX remove
             _CE := CE_PIN
             _CSN := CSN_PIN
             _SCK := SCK_PIN
             _MOSI := MOSI_PIN
             _MISO := MISO_PIN
-            time.MSleep(core#TPOR)
-            time.MSleep(core#TPD2STBY)
+            time.USleep(core#TPOR)
+            time.USleep(core#TPD2STBY)
 
             io.Low(_CE)
             io.Output(_CE)
             io.High(_CSN)
             io.Output(_CSN)
-            return okay
 
-    return FALSE                                                'If we got here, something went wrong
+            Defaults                                            ' The nRF24L01+ has no RESET pin or function,
+                                                                '   so set defaults
+            RXAddr(@tmp, 0, READ)                               ' There's also no 'ID' register, so read in the
+            repeat i from 0 to 4                                '   address for pipe #0.
+                if tmp.byte[i] <> $E7                           ' If bytes read back are different from the default,
+                    return FALSE                                '   there's either a connection problem, or
+            return okay                                         '   no nRF24L01+ connected.
+                                                                ' NOTE: This is only guaranteed to work after
+                                                                '   setting defaults.
+    return FALSE                                                ' If we got here, something went wrong
 
 PUB Stop
 
     io.High(_CSN)
     io.Low(_CE)
+    Sleep
     spi.Stop
 
-PUB CE(state)
+PUB Defaults | tmp[2]
+' The nRF24L01+ has no RESET pin or function to restore the chip to a known initial operating state,
+'   so use this method to establish default settings, per the datasheet
+    CRCCheckEnabled(TRUE)
+    CRCLength(1)
+    Sleep
+    TXMode
+    AutoAckEnabledPipes(%000000)
+    PipesEnabled(%000011)
+    AddressWidth(5)
+    AutoRetransmitDelay(250)
+    AutoRetransmitCount(3)
+    Channel(2)
+    TESTCW(FALSE)
+    PLL_Lock(FALSE)
+    DataRate(2000)
+    TXPower(0)
+    PayloadReady(CLEAR)
+    PayloadSent(CLEAR)
+    MaxRetransReached(CLEAR)
+    tmp := string($E7, $E7, $E7, $E7, $E7)
+    RXAddr(tmp, 0, WRITE)
+    tmp := string($C2, $C2, $C2, $C2, $C2)
+    RXAddr(tmp, 1, WRITE)
+    tmp := $C3
+    RXAddr(@tmp, 2, WRITE)
+    tmp := $C4
+    RXAddr(@tmp, 3, WRITE)
+    tmp := $C5
+    RXAddr(@tmp, 4, WRITE)
+    tmp := $C6
+    RXAddr(@tmp, 5, WRITE)
+    tmp := string($E7, $E7, $E7, $E7, $E7)
+    TXAddr(tmp, WRITE)
+    repeat tmp from 0 to 5
+        PayloadLen(0, tmp)
+    DynamicPayload(%000000)
+    DynPayloadEnabled(FALSE)
+    EnableACK(FALSE)
 
+PUB CE(state)
+' Set state of nRF24L01+ Chip Enable pin
+'   Valid values:
+'       TX mode:
+'           0: Enter Idle mode
+'           1: Initiate transmission of queued data
+'       RX mode:
+'           0: Enter Idle mode
+'           1: Active receive mode
     io.Set(_CE, state)
-    time.USleep (THCE)
+    time.USleep (core#THCE)
 
 PUB AddressWidth(bytes) | tmp
 ' Set width, in bytes, of RX/TX address field
@@ -560,10 +596,6 @@ PUB RXFIFOFull
 
 PUB RXMode
 ' Change chip state to RX (receive)
-'   Valid values:
-'       idle:
-'           FALSE(0): Remain in active RX state, ready to receive packets
-'           Any other value: Change to RX state, but immediately enter a lower-power Idle/Standby state
     RXTX(ROLE_RX)
     CE(1)
 
@@ -672,7 +704,7 @@ PUB TXPayload(nr_bytes, buff_addr, deferred) | cmd_packet, tmp
             return FALSE
 
 PUB TXPower(dBm) | tmp
-' Set RF output power in TX mode, in dBm
+' Set transmit mode RF output power, in dBm
 '   Valid values: -18, -12, -6, 0
 '   Any other value polls the chip and returns the current setting
     readReg (core#NRF24_RF_SETUP, 1, @tmp)
