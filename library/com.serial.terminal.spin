@@ -309,5 +309,3 @@ PUB ReadLine(line, maxline) : size | c
                         byte[line][size++] := c
                         Char(c)
 
-#include "lib.termwidgets.spin"
-
