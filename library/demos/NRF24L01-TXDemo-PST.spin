@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: NRF24L01-TXDemo.spin
+    Filename: NRF24L01-TXDemo-PST.spin
     Author: Jesse Burt
-    Description: nRF24L01+ Transmit demo (no ShockBurst/Auto Acknowledgement)
+    Description: nRF24L01+ Transmit demo (no ShockBurst/Auto Acknowledgement, PST-compatible)
     Copyright (c) 2020
     Started Nov 23, 2019
-    Updated Feb 3, 2020
+    Updated Feb 5, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
