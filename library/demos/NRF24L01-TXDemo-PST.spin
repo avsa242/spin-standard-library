@@ -151,7 +151,12 @@ PUB Setup
         ser.str(string("NRF24L01+ driver failed to start - halting", ser#NL, ser#LF))
         FlashLED (LED, 500)
 
-#include "lib.utility.spin"
+PUB FlashLED(led_pin, delay_ms)
+
+    io.Output(led_pin)
+    repeat
+        io.Toggle (led_pin)
+        time.MSleep (delay_ms)
 
 DAT
 
