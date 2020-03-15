@@ -19,8 +19,9 @@ VAR
 
 OBJ
 
-    spi : "com.spi.4w"                                             'PASM SPI Driver
+    spi : "com.spi.4w"                                          'PASM SPI Driver
     core: "core.con.your_spi_device_here"                       'File containing your device's register set
+    io  : "io"
     time: "time"                                                'Basic timing functions
 
 PUB Null
@@ -32,46 +33,61 @@ PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN) : okay
 
 PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_DELAY, SCK_CPOL): okay
     if SCK_DELAY => 1 and lookdown(SCK_CPOL: 0, 1)
-        if okay := spi.start (SCK_DELAY, SCK_CPOL)              'SPI Object Started?
-            time.MSleep (1)                                     'Add startup delay appropriate to your device (consult its datasheet)
+        if okay := spi.start (SCK_DELAY, SCK_CPOL)              ' SPI engine started?
+            time.MSleep (1)                                     ' Device startup time
             _CS := CS_PIN
             _MOSI := MOSI_PIN
             _MISO := MISO_PIN
             _SCK := SCK_PIN
 
-            outa[_CS] := 1
-            dira[_CS] := 1
+            io.High(_CS)
+            io.Output(_CS)
 
             return okay
+    return FALSE                                                ' If we got here, something went wrong
 
-    return FALSE                                                'If we got here, something went wrong
+PUB Stop
 
-PRI readReg(reg, nr_bytes, buf_addr) | i
-' Read nr_bytes from register 'reg' to address 'buf_addr'
+PUB Defaults
+' Set factory defaults
 
-' Handle quirky registers on a case-by-case basis
+PUB DeviceID
+' Read device identification
+
+PUB Reset
+' Reset the device
+
+PRI readReg(reg, nr_bytes, buff_addr) | tmp
+' Read nr_bytes from register 'reg' to address 'buff_addr'
     case reg
+        $00:                                                    ' Validate register number
         core#REG_NAME:
             'Special handling for register REG_NAME
         OTHER:
+            return FALSE
 
-    outa[_CS] := 0
+    io.Low(_CS)
     spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
 
-    repeat i from 0 to nr_bytes-1
-        byte[buf_addr][i] := spi.SHIFTIN(_MISO, _SCK, core#MISO_BITORDER, 8)
-    outa[_CS] := 1
+    repeat tmp from 0 to nr_bytes-1
+        byte[buff_addr][tmp] := spi.SHIFTIN(_MISO, _SCK, core#MISO_BITORDER, 8)
+    io.High(_CS)
 
-PRI writeReg(reg, nr_bytes, buf_addr) | i
-' Write nr_bytes to register 'reg' stored at buf_addr
+PRI writeReg(reg, nr_bytes, buff_addr) | tmp
+' Write nr_bytes to register 'reg' stored at buff_addr
+    case reg
+        $00:                                                    ' Validate register number
+        core#REG_NAME:
+            'Special handling for register REG_NAME
+        OTHER:
+            return FALSE
 
-    outa[_CS] := 0
+    io.Low(_CS)
     spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
 
-    repeat i from 0 to nr_bytes-1
-        spi.SHIFTOUT(_MOSI, _SCK, core#MISO_BITORDER, 8, byte[buf_addr][i])
-
-    outa[_CS] := 1
+    repeat tmp from 0 to nr_bytes-1
+        spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][tmp])
+    io.High(_CS)
 
 DAT
 {
