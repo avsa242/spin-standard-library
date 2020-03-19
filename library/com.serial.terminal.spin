@@ -165,6 +165,7 @@ PUB StrInMax(stringptr, maxcount)
             quit
     byte[stringptr+(byte[stringptr-1] == NL)]~                                    'Zero terminate string; overwrite NL or append 0 char
 
+
 PUB Dec(value)
 {{
     Send value as decimal characters.
@@ -231,6 +232,10 @@ PUB Clear
 }}
 
     ser.Char(CS)
+
+PUB ClearLine
+' Clear from cursor to end of line
+    ser.Char(CE)
 
 PUB NewLine
 {{
