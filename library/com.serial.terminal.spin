@@ -309,3 +309,8 @@ PUB ReadLine(line, maxline) : size | c
                         byte[line][size++] := c
                         Char(c)
 
+PUB RxCheck
+' Check if character received; return immediately.
+'   Returns: -1 if no byte received, $00..$FF if character received.
+    return ser.RxCheck
+
