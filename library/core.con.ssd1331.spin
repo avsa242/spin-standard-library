@@ -5,7 +5,7 @@
     Description: Low-level constants
     Copyright (c) 2019
     Started: Nov 18, 2018
-    Updated: May 4, 2019
+    Updated: Dec 31, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -13,7 +13,9 @@
 CON
 
     CPOL                                = 0
-    MOSI_BITORDER                       = 5     ' MSBFIRST
+    MOSI_BITORDER                       = 5             ' MSBFIRST
+    SCK_MAX_FREQ                        = 30_000_000    ' Don't actually know...just put something for now
+
 ' Register map
     SSD1331_CMD_DRAWLINE                = $21
     SSD1331_CMD_DRAWRECT                = $22

@@ -3,9 +3,9 @@
     Filename: SSD1331-Demo.spin
     Author: Jesse Burt
     Description: Simple demo for the SSD1331 driver
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Nov 3, 2019
-    Updated Dec 8, 2019
+    Updated Feb 8, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -150,6 +150,7 @@ PUB Demo_Text(reps) | r, fg, bg, ch, col, row
         if row > 7
             row := 0
         oled.Update
+    oled.BGColor(0)
 
 PUB Demo_Sine(reps) | r, x, y, modifier, offset, div
 ' Draw a sine wave the length of the screen, influenced by
@@ -302,13 +303,6 @@ PUB Demo_PlotBitmap(reps) | x, y, c
         oled.Update
         _bench_iter++
 
-PUB FlashLED(led_pin, delay)
-' Flash LED forever
-    io.Output(led_pin)
-    repeat
-        io.Toggle(led_pin)
-        time.MSleep (delay)
-
 PUB FPS
 ' Displays approximation of frame rate on terminal
 ' Send the _bench_iter value to the terminal once every second, and clear it
@@ -441,6 +435,8 @@ PUB Stop
         cogstop(_bench_cog)
     time.MSleep (5)
     ser.Stop
+
+#include "lib.utility.spin"
 
 {PRI SwapBMBytes| i, tmp
 ' Reverse the byte order of the bitmap at address 'splash'

@@ -3,18 +3,21 @@
     Filename: display.oled.ssd1331.spi.spin
     Author: Jesse Burt
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started: Apr 28, 2019
-    Updated: Dec 8, 2019
+    Updated: Feb 8, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
+#define SSD1331
 #include "lib.gfx.bitmap.spin"
 
 CON
 
     _DISP_WIDTH = 96
     _DISP_HEIGHT= 64
+    _DISP_XMAX  = _DISP_WIDTH-1
+    _DISP_YMAX  = _DISP_HEIGHT-1
     _BUFF_SZ    = _DISP_WIDTH * _DISP_HEIGHT * 2
     MAX_COLOR   = 65535
 
