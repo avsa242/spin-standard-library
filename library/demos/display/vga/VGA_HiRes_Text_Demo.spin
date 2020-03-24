@@ -52,7 +52,7 @@ OBJ
 
     cfg     : "core.con.boardcfg.demoboard"
     vgatext : "display.vga.text.hires"
-    mouse   : "input.mouse"
+    mouse   : "input.mouse.ps2"
 
 VAR
 

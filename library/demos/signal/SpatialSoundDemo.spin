@@ -27,7 +27,7 @@ OBJ
 
   v : "signal.synth.speech"
   s : "signal.spatializer"
-  m : "input.mouse"
+  m : "input.mouse.ps2"
 
 
 VAR

@@ -18,7 +18,7 @@ OBJ
 
   v     : "signal.synth.speech"
   sm    : "signal.spatializer"
-  m     : "input.mouse"
+  m     : "input.mouse.ps2"
   di    : "signal.dither"
 
 

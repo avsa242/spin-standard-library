@@ -45,7 +45,7 @@ OBJ
 
   tv    : "display.tv"
   gr    : "display.tv.graphics"
-  mouse : "input.mouse"
+  mouse : "input.mouse.ps2"
 
 
 PUB start | x, y, i, c, k

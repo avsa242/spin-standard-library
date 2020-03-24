@@ -7,7 +7,7 @@ CON
 OBJ
 
     term : "display.tv.terminal"
-    kb   : "input.keyboard"
+    kb   : "input.keyboard.ps2"
 
 PUB start
 

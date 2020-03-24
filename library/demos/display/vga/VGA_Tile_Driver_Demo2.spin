@@ -26,7 +26,7 @@ CON
 OBJ
 
   vga     : "display.vga.tile.1280x1024"
-  mouse   : "input.mouse"
+  mouse   : "input.mouse.ps2"
 
 
 VAR

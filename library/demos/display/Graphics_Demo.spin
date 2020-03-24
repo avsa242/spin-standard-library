@@ -55,7 +55,7 @@ OBJ
 
   tv    : "display.tv"
   gr    : "display.tv.graphics"
-  mouse : "input.mouse"
+  mouse : "input.mouse.ps2"
 
 
 PUB start | i, j, k, kk, dx, dy, pp, pq, rr, numx, numchr

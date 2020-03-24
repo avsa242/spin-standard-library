@@ -7,7 +7,7 @@ fi
 
 if [ "$1" == "clean" ]
 then
-    find . -name \*.binary -exec rm {} \;
+    find . -name \*.binary \*.pasm -exec rm {} \;
     exit
 fi
 
@@ -21,5 +21,5 @@ do
         ${SPINC} -L ./library "$line"
         echo
     fi
-done < <(find . -name \*.spin)
+done < <(cat MANIFEST|grep spin)
 
