@@ -173,7 +173,7 @@ library/display.vga.tile.1600x1200.spin
 library/filesystem.block.fat.spin
 library/font.5x8.spin
 library/identification.ssn.ds28cm00.i2c.spin
-library/input.gray.spin
+library/input.encoder.graycode.spin
 library/input.keyboard.ps2.spin
 library/input.keypad.4x4.spin
 library/input.mouse.ps2.spin
