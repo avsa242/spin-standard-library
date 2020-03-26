@@ -62,6 +62,7 @@ library/demos/NRF24L01-RXDemoWithAA.spin
 library/demos/NRF24L01-TXDemo-PST.spin
 library/demos/NRF24L01-TXDemo.spin
 library/demos/NRF24L01-TXDemoWithAA.spin
+library/demos/SD-FAT-Demo1.spin
 library/demos/char/Types.spin
 library/demos/com/serial/DataBlast.spin
 library/demos/com/serial/HelloWorld.spin
@@ -169,6 +170,7 @@ library/display.vga.text.hires.spin
 library/display.vga.text.spin
 library/display.vga.tile.1280x1024.spin
 library/display.vga.tile.1600x1200.spin
+library/filesystem.block.fat.spin
 library/font.5x8.spin
 library/identification.ssn.ds28cm00.i2c.spin
 library/input.gray.spin
@@ -184,6 +186,7 @@ library/math.float.spin
 library/math.random.spin
 library/math.rctime.spin
 library/math.unsigned64.spin
+library/memory.flash.sd.spi.spin
 library/memory.fram.mb85rc.i2c.spin
 library/memory.sram.23lcxxxx.spi.spin
 library/misc.coilread.spin
