@@ -79,8 +79,8 @@ library/demos/debug/StackLength.spin
 library/demos/display/Graphics_Demo.spin
 library/demos/display/Graphics_Palette.spin
 library/demos/display/OLED-4DGL-Demo.spin
-library/demos/display/OLED-SSD1306-Demo.spin
 library/demos/display/OLED-US2066-Demo.spin
+library/demos/display/SSD1306-Demo.spin
 library/demos/display/SSD1331-Demo.spin
 library/demos/display/TV_Terminal_Demo.spin
 library/demos/display/TV_Text_Demo.spin
