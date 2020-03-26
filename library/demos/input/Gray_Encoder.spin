@@ -3,11 +3,9 @@
     Filename: Gray_Encoder.spin
     Author: Jon McPhalen
     Modified by: Jesse Burt
-    Description: Simple demo/test of the input.gray.spin Gray-code encoder driver
-    Based on jm_grayenc_demo.spin, Copyright by Jon McPhalen
-    Copyright (c) 2019
+    Description: Simple demo/test of the input.encoder.graycode.spin Gray-code encoder driver
     Started May 18, 2019
-    Updated May 18, 2019
+    Updated Mar 26, 2020
     See end of file for terms of use.
     --------------------------------------------
 
@@ -15,15 +13,34 @@
         Jon McPhalen (original header preserved below)
 }
 
+'' =================================================================================================
+''
+''   File....... jm_grayenc_demo.spin
+''   Purpose.... Greycode encoder test program
+''   Author..... Jon "JonnyMac" McPhalen (aka Jon Williams)
+''               Copyright (c) 2010 Jon McPhalen
+''               -- see below for terms of use
+''   E-mail..... jon@jonmcphalen.com
+''   Started....
+''   Updated.... 06 MAR 2010
+''
+'' =================================================================================================
+
 CON
 
     _clkmode    = cfg#_CLKMODE
     _xinfreq    = cfg#_XINFREQ
 
-    LED_PIN     = cfg#LED1                                          ' Pin with LED connected
-    SWITCH_PIN  = 0                                                 ' Encoder switch pin, if equipped
-    ENC_BASEPIN = 16                                                ' First of two consecutive I/O pins encoder
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
+    LED         = cfg#LED1                                          ' Pin with LED connected
+
+    SWITCH_PIN  = 15                                                ' Encoder switch pin, if equipped
+    ENC_BASEPIN = 11                                                ' First of two consecutive I/O pins encoder
                                                                     '   is connected to
+    SW_LED_PIN  = cfg#LED2
+
     ENC_DETENT  = TRUE                                              ' Encoder has detents? TRUE or FALSE
     ENC_LOW     = 0                                                 ' Low-end limit value returned by encoder driver
     ENC_HIGH    = 100                                               ' High-end limit value returned by encoder driver
@@ -34,64 +51,63 @@ CON
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
-    gray    : "input.gray"
+    ser     : "com.serial.terminal.ansi"
+    encoder : "input.encoder.graycode"
     time    : "time"
+    io      : "io"
 
 VAR
 
-    long _ser_cog, _gray_cog, _watch_cog
+    long _ser_cog, _encoder_cog, _watch_cog
     long _swstack[50]
 
 PUB Main | newlevel, oldlevel
 
     Setup
     time.MSleep (1)
-    newlevel := gray.read                                           ' Read initial value
+    newlevel := encoder.read                                        ' Read initial value
     repeat
         ser.Position (0, 3)                                         ' Display it
         ser.Str(string("Encoder: "))
         ser.Dec(newlevel)
-        ser.Char (CLREOL)
+        ser.ClearLine(0)
         oldlevel := newlevel                                        ' Setup to detect change
         repeat
-            newlevel := gray.read                                   ' Poll encoder
+            newlevel := encoder.read                                ' Poll encoder
         until (newlevel <> oldlevel)                                '   until it changes
 
 PUB Setup
 
-    repeat until _ser_cog := ser.Start (115_200)
+    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
+    time.MSleep(30)
     ser.Clear
-    ser.Str (string("Serial terminal started", ser#NL))
-    if _gray_cog := gray.Start (ENC_BASEPIN, ENC_DETENT, ENC_LOW, ENC_HIGH, ENC_PRESET)
+    ser.Str (string("Serial terminal started", ser#CR, ser#LF))
+    if _encoder_cog := encoder.Start (ENC_BASEPIN, ENC_DETENT, ENC_LOW, ENC_HIGH, ENC_PRESET)
         ser.Str (string("Gray-code encoder input driver started"))
     else
         ser.Str (string("Gray-code encoder input driver failed to start - halting"))
         Stop
-    _watch_cog := cognew(Watchsw, @_swstack)
+    _watch_cog := cognew(WatchSwitch, @_swstack)
 
 PUB Stop
 
     time.MSleep (5)
-    gray.Stop
+    encoder.Stop
     ser.Stop
     cogstop(_watch_cog)
-    Flash (LED_PIN, 500)
+    FlashLED (LED, 500)
 
-PUB Flash(ledpin, delay_ms)
-
-    dira[ledpin] := 1
-    repeat
-        !outa[ledpin]
-        time.MSleep (delay_ms)
-
-PUB Watchsw
+PUB WatchSwitch
 ' Watch for I/O pin connected to switch to go low
-'   and light LED on LED_PIN if so
-    dira[LED_PIN] := 1
-    dira[SWITCH_PIN] := 0
+'   and light LED if so
+    io.Low (SW_LED_PIN)
+    io.Output(SW_LED_PIN)
+
+    io.Input(SWITCH_PIN)
     repeat
-        ifnot ina[SWITCH_PIN]
-            outa[LED_PIN] := 1
+        ifnot io.Input (SWITCH_PIN)
+            io.High(SW_LED_PIN)
         else
-            outa[LED_PIN] := 0
+            io.Low(SW_LED_PIN)
+
+#include "lib.utility.spin"
