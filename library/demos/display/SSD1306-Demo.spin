@@ -3,14 +3,13 @@
     Filename: SSD1306-Demo.spin
     Description: Demo of the SSD1306 driver
     Author: Jesse Burt
-    Copyright (c) 2019
+    Copyright (c) 2020
     Created: Apr 26, 2018
-    Updated: Dec 28, 2019
+    Updated: Mar 28, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
 
-#define FPS_MON_ENABLE  ' Optionally undef/comment out to disable the terminal framerate monitor
 
 CON
 
@@ -23,7 +22,7 @@ CON
 
 ' User-modifiable constants:
     WIDTH       = 128
-    HEIGHT      = 32
+    HEIGHT      = 64
 
     I2C_SCL     = 28
     I2C_SDA     = 29
@@ -47,16 +46,14 @@ OBJ
 
 VAR
 
-    long _fps_mon_stack[50]
+    long _stack_timer[50]
+    long _timer_set
     long _rndSeed
     byte _framebuff[BUFFSZ]
-    byte _frames, _fps_mon_cog, _ser_cog
-    byte _ser_row
+    byte _timer_cog, _ser_cog
 
-PUB Main
+PUB Main | time_ms
 
-    _frames := 0
-    _ser_row := 3
     Setup
     oled.ClearAll
 
@@ -67,37 +64,47 @@ PUB Main
     time.Sleep (5)
     oled.ClearAll
 
-    Demo_SineWave (500)
+    time_ms := 5_000
+
+    ser.position (0, 3)
+
+    Demo_SineWave (time_ms)
     oled.ClearAll
 
-    Demo_TriWave (500)
+    Demo_TriWave (time_ms)
     oled.ClearAll
 
-    Demo_MEMScroller($0000, $FFFF-BUFFSZ)
+    Demo_MEMScroller(time_ms, $0000, $FFFF-BUFFSZ)
     oled.ClearAll
 
-    Demo_Bitmap (@Beanie, 500)
+    Demo_Bitmap (time_ms, @Beanie)
     oled.ClearAll
 
-    Demo_LineSweep(2)
+    Demo_LineSweepX(time_ms)
     oled.ClearAll
 
-    Demo_Line (500)
+    Demo_LineSweepY(time_ms)
     oled.ClearAll
 
-    Demo_Plot (500)
+    Demo_Line (time_ms)
     oled.ClearAll
 
-    Demo_BouncingBall (500, 5)
+    Demo_Plot (time_ms)
     oled.ClearAll
 
-    Demo_Circle(500)
+    Demo_BouncingBall (time_ms, 5)
     oled.ClearAll
 
-    Demo_Wander (1000)
+    Demo_Circle(time_ms)
     oled.ClearAll
 
-    Demo_Text (20)
+    Demo_Wander (time_ms)
+    oled.ClearAll
+
+    Demo_SeqText (time_ms)
+    oled.ClearAll
+
+    Demo_RndText (time_ms)
 
     Demo_Contrast(2, 1)
     oled.ClearAll
@@ -105,18 +112,18 @@ PUB Main
     Stop
     FlashLED(LED, 100)
 
-PUB Demo_BouncingBall(frames, radius) | bx, by, dx, dy
+PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
 ' Draws a simple ball bouncing off screen edges
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_BouncingBall"))
-
     bx := (rnd(XMAX) // (WIDTH - radius * 4)) + radius * 2  'Pick a random screen location to
     by := (rnd(YMAX) // (HEIGHT - radius * 4)) + radius * 2 ' start from
     dx := rnd(4) // 2 * 2 - 1                               'Pick a random direction to
     dy := rnd(4) // 2 * 2 - 1                               ' start moving
 
-    repeat frames
+    ser.str(string("Demo_BouncingBall - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
         bx += dx
         by += dy
         if (by =< radius OR by => HEIGHT - radius)          'If we reach the top or bottom of the screen,
@@ -126,40 +133,46 @@ PUB Demo_BouncingBall(frames, radius) | bx, by, dx, dy
 
         oled.Circle (bx, by, radius, 1)
         oled.Update
-        _frames++
+        iteration++
         oled.Clear
 
-PUB Demo_Bitmap(bitmap_addr, reps)
-' Continuously redraws bitmap at address bitmap_addr
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Bitmap"))
+    Report(testtime, iteration)
+    return iteration
 
-    repeat reps
+PUB Demo_Bitmap(testtime, bitmap_addr) | iteration
+' Continuously redraws bitmap at address bitmap_addr
+    ser.str(string("Demo_Bitmap - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
         oled.Bitmap (bitmap_addr, BUFFSZ, 0)
         oled.Update
-        _frames++
+        iteration++
 
-PUB Demo_Circle(reps) | x, y, r
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_Circle(testtime) | iteration, x, y, r
 ' Draws circles at random locations
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Circle"))
+    ser.str(string("Demo_Circle - "))
+    _timer_set := testtime
+    iteration := 0
 
-    repeat reps
+    repeat while _timer_set
         x := rnd(XMAX)
         y := rnd(YMAX)
         r := rnd(YMAX/2)
         oled.Circle (x, y, r, -1)
         oled.Update
-        _frames++
+        iteration++
+
+    Report(testtime, iteration)
+    return iteration
 
 PUB Demo_Contrast(reps, delay_ms) | contrast_level
 ' Fades out and in display contrast
-    _ser_row++
-    _frames := 0
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Contrast"))
+    ser.str(string("Demo_Contrast - N/A"))
 
     repeat reps
         repeat contrast_level from 255 to 1
@@ -169,13 +182,10 @@ PUB Demo_Contrast(reps, delay_ms) | contrast_level
             oled.Contrast (contrast_level)
             time.MSleep (delay_ms)
 
+    ser.newline
+
 PUB Demo_Greet
 ' Display the banner/greeting on the OLED
-    _ser_row++
-    _frames := 0
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Greet"))
-
     oled.FGColor(1)
     oled.BGColor(0)
     oled.Position (0, 0)
@@ -199,62 +209,96 @@ PUB Demo_Greet
     oled.Str (int.DecPadded (HEIGHT, 2))
     oled.Update
 
-PUB Demo_Line (reps)
+PUB Demo_Line (testtime) | iteration
 ' Draws random lines with color -1 (invert)
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Line"))
+    ser.str(string("Demo_Line - "))
+    _timer_set := testtime
+    iteration := 0
 
-    repeat reps
+    repeat while _timer_set
         oled.Line (rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), -1)
         oled.Update
-        _frames++
+        iteration++
 
-PUB Demo_LineSweep (reps) | x, y
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_LineSweepX (testtime) | iteration, x
 ' Draws lines top left to lower-right, sweeping across the screen, then
 '  from the top-down
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_LineSweep"))
+    x := 0
 
-    repeat reps
-        repeat x from 0 to XMAX step 1
-            oled.Line (x, 0, XMAX-x, YMAX, -1)
-            oled.Update
-            _frames++
+    ser.str(string("Demo_LineSweepX - "))
+    _timer_set := testtime
+    iteration := 0
 
-        repeat y from 0 to YMAX step 1
-            oled.Line (XMAX, y, 0, YMAX-y, -1)
-            oled.Update
-            _frames++
+    repeat while _timer_set
+        x++
+        if x > XMAX
+            x := 0
+        oled.Line (x, 0, XMAX-x, YMAX, -1)
+        oled.Update
+        iteration++
 
-PUB Demo_MEMScroller(start_addr, end_addr) | pos, st, en
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_LineSweepY (testtime) | iteration, y
+' Draws lines top left to lower-right, sweeping across the screen, then
+'  from the top-down
+    y := 0
+
+    ser.str(string("Demo_LineSweepY - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
+        y++
+        if y > YMAX
+            y := 0
+        oled.Line (XMAX, y, 0, YMAX-y, -1)
+        oled.Update
+        iteration++
+
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, pos, st, en
 ' Dumps Propeller Hub RAM (and/or ROM) to the display buffer
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_MEMScroller"))
+    pos := start_addr
 
-    repeat pos from start_addr to end_addr step 128
+    ser.str(string("Demo_MEMScroller - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
+        pos += 128
+        if pos >end_addr
+            pos := start_addr
         oled.Bitmap (pos, BUFFSZ, 0)
         oled.Update
-        _frames++
+        iteration++
 
-PUB Demo_Plot (reps) | x, y
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_Plot(testtime) | iteration, x, y
 ' Draws random pixels to the screen, with color -1 (invert)
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Plot"))
+    ser.str(string("Demo_Plot - "))
+    _timer_set := testtime
+    iteration := 0
 
-    repeat reps
+    repeat while _timer_set
         oled.Plot (rnd(XMAX), rnd(YMAX), -1)
         oled.Update
-        _frames++
+        iteration++
 
-PUB Demo_Sinewave(reps) | x, y, modifier, offset, div
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_Sinewave(testtime) | iteration, x, y, modifier, offset, div
 ' Draws a sine wave the length of the screen, influenced by the system counter
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Sinewave"))
+    ser.str(string("Demo_Sinewave - "))
 
     case HEIGHT
         32:
@@ -266,27 +310,35 @@ PUB Demo_Sinewave(reps) | x, y, modifier, offset, div
 
     offset := YMAX/2                                    ' Offset for Y axis
 
-    repeat reps
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
         repeat x from 0 to XMAX
             modifier := (||cnt / 1_000_000)           ' Use system counter as modifier
             y := offset + sin(x * modifier) / div
             oled.Plot(x, y, 1)
+
         oled.Update
-        _frames++
+        iteration++
         oled.Clear
 
-PUB Demo_Text(reps) | col, row, maxcol, maxrow, ch, st
-' Sequentially draws the whole font table to the screen, then random characters
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Text"))
+    Report(testtime, iteration)
+    return iteration
 
+PUB Demo_SeqText(testtime) | iteration, col, row, maxcol, maxrow, ch, st
+' Sequentially draws the whole font table to the screen, then random characters
     oled.FGColor(1)
     oled.BGColor(0)
     maxcol := (WIDTH/oled.FontWidth)-1
     maxrow := (HEIGHT/oled.FontHeight)-1
     ch := $00
-    repeat reps/2
+
+    ser.str(string("Demo_SeqText - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
         repeat row from 0 to maxrow
             repeat col from 0 to maxcol
                 ch++
@@ -295,25 +347,47 @@ PUB Demo_Text(reps) | col, row, maxcol, maxrow, ch, st
                 oled.Position (col, row)
                 oled.Char (ch)
         oled.Update
-        _frames++
+        iteration++
 
-    repeat reps/2
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_RndText(testtime) | iteration, col, row, maxcol, maxrow, ch, st
+
+    oled.FGColor(1)
+    oled.BGColor(0)
+    maxcol := (WIDTH/oled.FontWidth)-1
+    maxrow := (HEIGHT/oled.FontHeight)-1
+    ch := $00
+
+    ser.str(string("Demo_RndText - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
         repeat row from 0 to maxrow
             repeat col from 0 to maxcol
+                ch++
+                if ch > $7F
+                    ch := $00
                 oled.Position (col, row)
                 oled.Char (rnd(127))
         oled.Update
-        _frames++
+        iteration++
 
-PUB Demo_TriWave(frames) | x, y, ydir
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_TriWave(testtime) | iteration, x, y, ydir
 ' Draws a simple triangular wave
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Triwave"))
-
     ydir := 1
     y := 0
-    repeat frames
+
+    ser.str(string("Demo_TriWave - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
         repeat x from 0 to XMAX
             if y == YMAX
                 ydir := -1
@@ -322,19 +396,23 @@ PUB Demo_TriWave(frames) | x, y, ydir
             y := y + ydir
             oled.Plot (x, y, 1)
         oled.Update
-        _frames++
+        iteration++
         oled.Clear
 
-PUB Demo_Wander(reps) | x, y, d
-' Draws randomly wandering pixels
-    _ser_row++
-    ser.Position(0, _ser_row)
-    ser.Str(string("Demo_Wander"))
+    Report(testtime, iteration)
+    return iteration
 
+PUB Demo_Wander(testtime) | iteration, x, y, d
+' Draws randomly wandering pixels
     _rndSeed := cnt
     x := XMAX/2
     y := YMAX/2
-    repeat reps
+
+    ser.str(string("Demo_Wander - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
         case d := rnd(4)
             1:
                 x += 2
@@ -354,7 +432,11 @@ PUB Demo_Wander(reps) | x, y, d
                     y := YMAX
         oled.Plot (x, y, -1)
         oled.Update
-        _frames++
+        iteration++
+
+    Report(testtime, iteration)
+    return iteration
+
 
 PUB Sin(angle)
 ' Return the sine of angle
@@ -375,14 +457,48 @@ PUB RND(maxval) | i
 
     return i
 
-PUB FPS_mon
-' Display to the serial terminal approximate render speed, in frames per second
+PRI Report(testtime, iterations) 
+
+    ser.str(string("Total iterations: "))
+    ser.dec(iterations)
+
+    ser.str(string(", Iterations/sec: "))
+    ser.dec(iterations / (testtime/1000))
+
+    ser.str(string(", Iterations/ms: "))
+    Decimal( (iterations * 1_000) / testtime, 1_000)
+    ser.newline
+
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp
+' Display a fixed-point scaled up number in decimal-dot notation - scale it back down by divisor
+'   e.g., Decimal (314159, 100000) would display 3.14159 on the termainl
+'   scaled: Fixed-point scaled up number
+'   divisor: Divide scaled-up number by this amount
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+
     repeat
-        time.MSleep (1000)
-        ser.Position (20, _ser_row)
-        ser.Str (string("FPS: "))
-        ser.Str (int.DecZeroed (_frames, 3))
-        _frames := 0
+        tmp /= 10
+        places++
+    until tmp == 1
+    part := int.DecZeroed(||(scaled // divisor), places)
+
+    ser.Dec (whole)
+    ser.Char (".")
+    ser.Str (part)
+
+PRI cog_Timer | time_left
+
+    repeat
+        repeat until _timer_set
+        time_left := _timer_set
+
+        repeat
+            time_left--
+            time.MSleep(1)
+        while time_left > 0
+        _timer_set := 0
 
 PUB Setup
 
@@ -394,7 +510,7 @@ PUB Setup
         ser.Str (string("SSD1306 driver started. Draw buffer @ $"))
         ser.Hex (oled.Address (-2), 8)
         oled.Defaults
-        oled.OscFreq (407)
+        oled.ClockFreq (407)
         oled.FontSize (6, 8)
         oled.FontAddress (fnt5x8.BaseAddr)
     else
@@ -402,88 +518,17 @@ PUB Setup
         Stop
         FlashLED (LED, 500)
 
-#ifdef FPS_MON_ENABLE
-    _fps_mon_cog := cognew(FPS_mon, @_fps_mon_stack)  'Start framerate monitor in another cog/core
-#endif
+    _timer_cog := cognew(cog_Timer, @_stack_timer)
 
 PUB Stop
 
-    oled.DisplayOff
+    oled.Powered(FALSE)
     oled.Stop
-
-    if _fps_mon_cog
-        cogstop(_fps_mon_cog)
-    if _ser_cog
-        cogstop(_ser_cog)
+    cogstop(_timer_cog)
+    ser.Stop
 
 #include "lib.utility.spin"
-
-DAT
-
-    Beanie      byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $80, $C0
-                byte    $C0, $C0, $C0, $C0, $C0, $C0, $C0, $C0, $80, $80, $80, $80, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $80
-                byte    $80, $00, $00, $00, $80, $80, $80, $80, $C0, $C0, $C0, $C0, $C0, $E0, $E0, $E0
-                byte    $E0, $E0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0
-                byte    $E0, $E0, $80, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $0F, $1F, $3F
-                byte    $3F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $3F, $3F, $3F, $3F
-                byte    $3F, $3F, $1F, $1F, $1E, $1E, $1E, $0E, $0E, $0E, $0E, $06, $06, $06, $F7, $FF
-                byte    $FF, $F7, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $07
-                byte    $07, $07, $07, $07, $07, $0F, $0F, $0F, $0F, $0F, $1F, $1F, $1F, $1F, $1F, $1F
-                byte    $0F, $0F, $07, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $80, $C0, $C0, $E0, $E0, $60, $70, $30, $30, $18, $18, $C8, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $C8, $18, $18, $30, $30, $70, $60, $E0, $E0, $C0, $C0, $80, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $80, $C0, $E0, $F0, $F8, $FC, $FE, $7F
-                byte    $3F, $0F, $07, $03, $01, $00, $00, $00, $00, $C0, $FC, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FC, $C0, $00, $00, $00, $00, $01, $03, $07, $0F, $3F
-                byte    $7F, $FE, $FC, $F8, $F0, $E0, $C0, $80, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $80, $E0, $F8, $FC, $FF, $FF, $FF, $FF, $FF, $3F, $07, $01, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $F8, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F8, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $01, $07, $3F, $FF, $FF, $FF, $FF, $FF, $FC, $F8, $E0, $80, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $C0, $FC, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $BF, $81, $80, $80, $80, $C0
-                byte    $C0, $C0, $C0, $C0, $C0, $C0, $C0, $F0, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F0, $C0, $C0, $C0, $C0, $C0, $C0, $C0
-                byte    $C0, $80, $80, $80, $81, $BF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FC, $C0, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $78, $FF, $FF, $FF, $FF, $FF, $FF, $CF, $CF, $CF, $CF, $CF, $C7, $87, $87, $87
-                byte    $87, $87, $87, $87, $87, $87, $87, $07, $03, $03, $03, $03, $03, $03, $03, $03
-                byte    $03, $03, $03, $03, $03, $03, $03, $03, $07, $87, $87, $87, $87, $87, $87, $87
-                byte    $87, $87, $87, $C7, $CF, $CF, $CF, $CF, $CF, $FF, $FF, $FF, $FF, $FF, $FF, $78
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $01, $01, $03, $03, $03, $03, $03, $07, $07, $07, $07, $07, $07, $07
-                byte    $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-                byte    $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-                byte    $07, $07, $07, $07, $07, $07, $07, $03, $03, $03, $03, $03, $01, $01, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+#include "propeller-beanie-1bpp.spin"
 
 {
     --------------------------------------------------------------------------------------------------------

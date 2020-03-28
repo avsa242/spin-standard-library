@@ -22,15 +22,14 @@ NOTE: Most display drivers are extended with the generic bitmap graphics library
 |`Address (addr)`                               | Set framebuffer/display buffer address                                                |
 |`AddrMode (mode)`                              | Set display internal addressing mode                                                  |
 |`BoxAccel(sx, sy, ex, ey, boxcolor, fillcolor)`| Draw a box, using the display's native/accelerated box function                       |
-|`ChargePumpReg`                                | Enable charge pump regulator when disp power enabled                                  |
+|`ChargePumpReg (enabled)`                      | Enable charge pump regulator when disp power enabled                                  |
 |`ClearAccel`                                   | Use the display's accelerated Clear Display function                                  |
 |`ClockDiv (divider)`                           | Set clock frequency divider used by the display controller                            |
 |`ClockFreq (freq)`                             | Set display internal oscillator frequency                                             |
 |`ColorDepth (format)`                          | Set expected color format of pixel data                                               |
-|`ColumnStartEnd`                               | Set display start and end columns                                                     |
 |`COMHighLogicLevel (level)`                    | Set logic high level threshold of COM pins rel. to Vcc                                |
 |`COMPinCfg`                                    | Configure COMmon pins and L/R remap                                                   |
-|`Contrast`                                     | Set display contrast/brightness                                                       |
+|`Contrast (level)`                             | Set display contrast/brightness                                                       |
 |`ContrastABC (a, b, c)`                        | Set contrast/brightness level of subpixels a, b, c                                    |
 |`CopyAccel (sx, sy, ex, ey, dx, dy)`           | Use the display's accelerated Copy Region function                                    |
 |`CopyAccelInverted(enabled)`                   | Enable inverted colors, when using CopyAccel()                                        |
@@ -48,7 +47,6 @@ NOTE: Most display drivers are extended with the generic bitmap graphics library
 |`LineAccel(sx, sy, ex, ey, rgb)`               | Draw a line, using the display's native/accelerated line function                     |
 |`MirrorH (enabled)`                            | Mirror display, horizontally                                                          |
 |`MirrorV (enabled)`                            | Mirror display, vertically                                                            |
-|`PageRange (pgstart, pgend)`                   | Set start and end page range                                                          |
 |`Phase1Period (clks)`                          | Set discharge/phase 1 period, in display clocks                                       |
 |`Phase2Period (clks)`                          | Set charge/phase 2 period, in display clocks                                          |
 |`Phase3Period (clks)`                          | Set second charge/phase 3 period, in display clocks                                   |
