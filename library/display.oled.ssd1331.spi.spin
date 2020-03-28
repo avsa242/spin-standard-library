@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
     Copyright (c) 2020
     Started: Apr 28, 2019
-    Updated: Feb 8, 2020
+    Updated: Mar 27, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -25,10 +25,16 @@ CON
     TRANS_CMD   = 0
     TRANS_DATA  = 1
 
-' Display on/off modes
-    DISP_OFF    = 0
-    DISP_ON     = 1
-    DISP_ON_DIM = 2
+' Display power modes
+    OFF         = 0
+    ON          = 1
+    DIM         = 2
+
+' Display visibility modes
+    NORMAL      = 0
+    ALL_ON      = 1
+    ALL_OFF     = 2
+    INVERTED    = 3
 
 ' Color depth formats
     COLOR_256   = %00
@@ -36,12 +42,12 @@ CON
     COLOR_65K2  = %10
 
 ' Address increment mode
-    ADDR_HORIZ  = 0
-    ADDR_VERT   = 1
+    HORIZ       = 0
+    VERT        = 1
 
 ' Subpixel order
-    SUBPIX_RGB  = 0
-    SUBPIX_BGR  = 1
+    RGB         = 0
+    BGR         = 1
 
 OBJ
 
@@ -53,76 +59,90 @@ OBJ
 VAR
 
     long _DC, _RES, _MOSI, _SCK, _CS
-    long _draw_buffer
+    long _ptr_framebuffer
     byte _sh_SETCOLUMN, _sh_SETROW, _sh_SETCONTRAST_A, _sh_SETCONTRAST_B, _sh_SETCONTRAST_C
     byte _sh_MASTERCCTRL, _sh_SECPRECHG[3], _sh_REMAPCOLOR, _sh_DISPSTARTLINE, _sh_DISPOFFSET
     byte _sh_DISPMODE, _sh_MULTIPLEX, _sh_DIM, _sh_MASTERCFG, _sh_DISPONOFF, _sh_POWERSAVE
     byte _sh_PHASE12PER, _sh_CLK, _sh_GRAYTABLE, _sh_PRECHGLEV, _sh_VCOMH, _sh_CMDLOCK
     byte _sh_HVSCROLL, _sh_FILL
 
-PUB Start (CS_PIN, DC_PIN, DIN_PIN, CLK_PIN, RES_PIN): okay
+PUB Start (CS_PIN, DC_PIN, DIN_PIN, CLK_PIN, RES_PIN, drawbuffer_address): okay
 
-    if lookdown(CS_PIN: 0..31)
-        if lookdown(DC_PIN: 0..31)
-            if lookdown(DIN_PIN: 0..31)
-                if lookdown(CLK_PIN: 0..31)
-                    if lookdown(RES_PIN: 0..31)
-                        if okay := spi.start (CS_PIN, CLK_PIN, DIN_PIN, -1)
-                            _DC := DC_PIN
-                            _RES := RES_PIN
-                            _MOSI := DIN_PIN
-                            _SCK := CLK_PIN
-                            _CS := CS_PIN
-                            io.Output(_DC)
-                            io.Output(_RES)
-                            Reset
-                            return okay
+    if lookdown(CS_PIN: 0..31) and lookdown(DC_PIN: 0..31) and lookdown(DIN_PIN: 0..31) and lookdown(CLK_PIN: 0..31) and lookdown(RES_PIN: 0..31)
+        if okay := spi.start (CS_PIN, CLK_PIN, DIN_PIN, -1)
+            _DC := DC_PIN
+            _RES := RES_PIN
+            _MOSI := DIN_PIN
+            _SCK := CLK_PIN
+            _CS := CS_PIN
+            io.High(_DC)
+            io.Output(_DC)
+            io.High(_RES)
+            io.Output(_RES)
+            Reset
+            Address (drawbuffer_address)
+            return okay
     return FALSE
 
 PUB Stop
 
-    AllPixelsOff
-    DisplayEnabled (FALSE)
-
-PUB Address(addr)
-
-    _draw_buffer := addr
+    DisplayVisibility(ALL_OFF)
+    Powered (FALSE)
 
 PUB Defaults
-
+' Apply power-on-reset default settings
     ColorDepth (COLOR_65K)
     MirrorH (FALSE)
-    DisplayEnabled (FALSE)
-    AllPixelsOff
-    StartLine (0)
-    VertOffset (0)
-    DispInverted (FALSE)
+    Powered (FALSE)
+    DisplayVisibility(ALL_OFF)
+    DisplayStartLine (0)
+    DisplayOffset (0)
+    DisplayInverted (FALSE)
     DisplayLines (64)
     ExtSupply
     PowerSaving (TRUE)
-    Phase1Adj (7)
-    Phase2Adj (4)
+    Phase1Period (7)
+    Phase2Period (4)
     ClockFreq (956)
     ClockDiv (1)
     PrechargeSpeed (127, 127, 127)
     PrechargeLevel (500)
-    VCOMHDeselect (830)
+    COMHighLogicLevel (830)
     CurrentLimit (16)
     ContrastA (127)
     ContrastB (127)
     ContrastC (127)
-    DisplayEnabled (DISP_ON)
+    Powered (TRUE)
     DisplayBounds (0, 0, 95, 63)
     ClearAccel
+    DisplayVisibility(NORMAL)
 
-PUB AddrIncMode(mode) | tmp
-' Set display addressing mode
+PUB DefaultsCommon
+' Apply some more common default settings
+    Defaults                                                ' Start with POR settings
+    ClockDiv (1)
+    ClockFreq (980)
+    AddrMode (HORIZ)
+    MirrorH (FALSE)
+    SubpixelOrder (RGB)
+    VertAltScan (FALSE)
+    MirrorV (FALSE)
+    Interlaced (FALSE)
+    ColorDepth (COLOR_65K)
+    FillAccelEnabled (TRUE)
+
+PUB Address(addr)
+' Set framebuffer/display buffer address
+    _ptr_framebuffer := addr
+
+PUB AddrMode(mode) | tmp
+' Set display internal addressing mode
 '   Valid values:
-'   ADDR_HORZ (0): Horizontal addressing mode
-'   ADDR_VERT (1): Vertical addressing mode
+'       HORZ (0): Horizontal addressing mode
+'       VERT (1): Vertical addressing mode
     tmp := _sh_REMAPCOLOR
     case mode
-        ADDR_HORIZ, ADDR_VERT:
+        HORIZ, VERT:
         OTHER:
             return (tmp >> core#FLD_ADDRINC) & %1
 
@@ -132,21 +152,7 @@ PUB AddrIncMode(mode) | tmp
     tmp.byte[1] := _sh_REMAPCOLOR
     writeReg (TRANS_CMD, 2, @tmp)
 
-PUB AllPixelsOn | tmp
-' Turn all pixels on
-'   NOTE: Doesn't affect display's RAM contents
-    _sh_DISPMODE := core#SSD1331_CMD_DISPLAYALLON
-    tmp := _sh_DISPMODE
-    writeReg (TRANS_CMD, 1, @tmp)
-
-PUB AllPixelsOff | tmp
-' Turn all pixels off
-'   NOTE: Doesn't affect display's RAM contents
-    _sh_DISPMODE := core#SSD1331_CMD_DISPLAYALLOFF
-    tmp := _sh_DISPMODE
-    writeReg (TRANS_CMD, 1, @tmp)
-
-PUB BoxAccel(sx, sy, ex, ey, box_rgb, fill_rgb) | tmp[3]
+PUB BoxAccel(sx, sy, ex, ey, boxcolor, fillcolor) | tmp[3]
 ' Draw a box, using the display's native/accelerated box function
     sx := 0 #> sx <# _disp_width-1
     sy := 0 #> sy <# _disp_height-1
@@ -158,12 +164,12 @@ PUB BoxAccel(sx, sy, ex, ey, box_rgb, fill_rgb) | tmp[3]
     tmp.byte[2] := sy
     tmp.byte[3] := ex
     tmp.byte[4] := ey
-    tmp.byte[5] := RGB565_R5 (box_rgb)
-    tmp.byte[6] := RGB565_G6 (box_rgb)
-    tmp.byte[7] := RGB565_B5 (box_rgb)
-    tmp.byte[8] := RGB565_R5 (fill_rgb)
-    tmp.byte[9] := RGB565_G6 (fill_rgb)
-    tmp.byte[10] := RGB565_B5 (fill_rgb)
+    tmp.byte[5] := RGB565_R8 (boxcolor)
+    tmp.byte[6] := RGB565_G8 (boxcolor)
+    tmp.byte[7] := RGB565_B8 (boxcolor)
+    tmp.byte[8] := RGB565_R8 (fillcolor)
+    tmp.byte[9] := RGB565_G8 (fillcolor)
+    tmp.byte[10] := RGB565_B8 (fillcolor)
     writeReg (TRANS_CMD, 11, @tmp)
 
 PUB ClearAccel | tmp[2]
@@ -177,7 +183,7 @@ PUB ClearAccel | tmp[2]
     writeReg (TRANS_CMD, 6, @tmp)
 
 PUB ClockDiv(divider) | tmp
-' Set display clock divider
+' Set clock frequency divider used by the display controller
 '   Valid values: 1..16
 '   Any other value returns the current setting
     tmp := _sh_CLK
@@ -194,7 +200,7 @@ PUB ClockDiv(divider) | tmp
     writeReg (TRANS_CMD, 2, @tmp)
 
 PUB ClockFreq(freq) | tmp
-' Set display clock frequency, in kHz
+' Set display internal oscillator frequency, in kHz
 '   Valid values: 800..980, in steps of 12
 '   Any other value returns the current setting
     tmp := _sh_CLK
@@ -234,8 +240,25 @@ PUB ColorDepth(format) | tmp
 
     writeReg (TRANS_CMD, 2, @tmp)
 
+PUB COMHighLogicLevel(mV) | tmp
+' Set logic high level threshold of COM pins rel. to Vcc, in millivolts
+'   Valid values: 440, 520, 610, 710, 830
+'   Any other value returns the current setting
+    tmp := _sh_VCOMH
+    case mV := lookdown(mv: 440, 520, 610, 710, 830)
+        1..5:
+            mV := lookup(mV: $00, $10, $20, $30, $3E)
+        OTHER:
+            result := lookdown(tmp: $00, $10, $20, $30, $3E)
+            return lookup(result: 440, 520, 610, 710, 830)
+
+    _sh_VCOMH := mV
+    tmp.byte[0] := core#SSD1331_CMD_VCOMH
+    tmp.byte[1] := mV
+    writeReg (TRANS_CMD, 2, @tmp)
+
 PUB Contrast(level)
-' Set contrast/brightness level
+' Set display contrast/brightness
 '   Valid values: 0..255
 '   Any other value returns the current setting
     ContrastA (level)
@@ -243,7 +266,7 @@ PUB Contrast(level)
     ContrastC (level)
 
 PUB ContrastA(level) | tmp
-' Set contrast/brightness level for subpixel color A
+' Set contrast/brightness level of subpixel a
 '   Valid values: 0..255
 '   Any other value returns the current setting
     tmp := _sh_SETCONTRAST_A
@@ -258,7 +281,7 @@ PUB ContrastA(level) | tmp
     writeReg (TRANS_CMD, 2, @tmp)
 
 PUB ContrastB(level) | tmp
-' Set contrast/brightness level for subpixel color B
+' Set contrast/brightness level of subpixel b
 '   Valid values: 0..255
 '   Any other value returns the current setting
     tmp := _sh_SETCONTRAST_B
@@ -273,7 +296,7 @@ PUB ContrastB(level) | tmp
     writeReg (TRANS_CMD, 2, @tmp)
 
 PUB ContrastC(level) | tmp
-' Set contrast/brightness level for subpixel color C
+' Set contrast/brightness level of subpixel c
 '   Valid values: 0..255
 '   Any other value returns the current setting
     tmp := _sh_SETCONTRAST_C
@@ -288,7 +311,7 @@ PUB ContrastC(level) | tmp
     writeReg (TRANS_CMD, 2, @tmp)
 
 PUB CopyAccel(sx, sy, ex, ey, dx, dy) | tmp[2]
-' Copy a region of the display to another location, using the display's native/accelerated method
+' Use the display's accelerated Copy Region function
 '   Valid values:
 '       sx, ex, dx: 0..95
 '       sy, ey, dy: 0..63
@@ -332,8 +355,23 @@ PUB CopyAccel(sx, sy, ex, ey, dx, dy) | tmp[2]
     tmp.byte[6] := dy
     writeReg (TRANS_CMD, 7, @tmp)
 
-PUB CurrentLimit(divisor) | tmp
+PUB CopyAccelInverted(enabled) | tmp
+' Enable inverted colors, when using CopyAccel()
+    tmp := _sh_FILL
+    case ||enabled
+        0, 1:
+            enabled := (||enabled << core#FLD_REVCOPY)
+        OTHER:
+            return ((tmp >> core#FLD_REVCOPY) & %1) * TRUE
 
+    _sh_FILL &= core#MASK_REVCOPY
+    _sh_FILL := (_sh_FILL | enabled) & core#SSD1331_CMD_FILL_MASK
+    tmp.byte[0] := core#SSD1331_CMD_FILL
+    tmp.byte[1] := _sh_FILL
+    writeReg (TRANS_CMD, 2, @tmp)
+
+PUB CurrentLimit(divisor) | tmp
+' Set master current limit divisor
     tmp := _sh_MASTERCCTRL
     case divisor
         1..16:
@@ -367,22 +405,15 @@ PUB DisplayBounds(sx, sy, ex, ey) | tmp[2]
 
     writeReg (TRANS_CMD, 3, @tmp)
 
-PUB DisplayEnabled(enabled) | tmp
-' Enable display power
-'   Valid values:
-'       DISP_OFF/FALSE (0): Turn off display power
-'       DISP_ON/TRUE (-1 or 1): Turn on display power
-'       DISP_ON_DIM (2): Turn on display power, at reduced brightness
-'   Any other value returns the current setting
-    tmp := _sh_DISPONOFF
+PUB DisplayInverted(enabled) | tmp
+' Invert display colors
     case ||enabled
-        DISP_OFF, DISP_ON, DISP_ON_DIM:
-            enabled := lookupz(enabled: core#SSD1331_CMD_DISPLAYOFF, core#SSD1331_CMD_DISPLAYON, core#SSD1331_CMD_DISPLAYONDIM)
+        0:
+            DisplayVisibility(NORMAL)
+        1:
+            DisplayVisibility(INVERTED)
         OTHER:
-            return lookdownz(tmp: core#SSD1331_CMD_DISPLAYOFF, core#SSD1331_CMD_DISPLAYON, core#SSD1331_CMD_DISPLAYONDIM)
-
-    _sh_DISPONOFF := enabled
-    writeReg (TRANS_CMD, 1, @_sh_DISPONOFF)
+            return FALSE
 
 PUB DisplayLines(lines) | tmp
 ' Set maximum number of display lines
@@ -400,21 +431,43 @@ PUB DisplayLines(lines) | tmp
     tmp.byte[1] := lines
     writeReg (TRANS_CMD, 2, @tmp)
 
-PUB DispInverted(enabled) | tmp
-' Invert display colors
-'   Valid values: TRUE (-1 or 1), FALSE (0)
-'   Any other value returns the current setting
-    tmp := _sh_DISPMODE
-    case ||enabled
-        0, 1:
-            enabled := lookupz(||enabled: core#SSD1331_CMD_NORMALDISPLAY, core#SSD1331_CMD_INVERTDISPLAY)
+PUB DisplayOffset(lines) | tmp
+' Set display offset/vertical shift
+    tmp := _sh_DISPOFFSET
+    case lines
+        0..63:
         OTHER:
-            result := lookdownz(tmp: core#SSD1331_CMD_NORMALDISPLAY, core#SSD1331_CMD_INVERTDISPLAY)
-            return (result & %1) * TRUE
+            return tmp
 
-    _sh_DISPMODE := enabled
+    _sh_DISPOFFSET := lines
+    tmp.byte[0] := core#SSD1331_CMD_DISPLAYOFFSET
+    tmp.byte[1] := lines
+    writeReg (TRANS_CMD, 2, @tmp)
+
+PUB DisplayStartLine(disp_line) | tmp
+' Set display start line
+    tmp := _sh_DISPSTARTLINE
+    case disp_line
+        0..63:
+        OTHER:
+            return tmp
+
+    _sh_DISPSTARTLINE := disp_line
+    tmp.byte[0] := core#SSD1331_CMD_STARTLINE
+    tmp.byte[1] := disp_line
+    writeReg (TRANS_CMD, 2, @tmp)
+
+PUB DisplayVisibility(mode) | tmp
+' Set display visibility
     tmp := _sh_DISPMODE
-    writeReg (TRANS_CMD, 1, @tmp)
+    case mode
+        NORMAL, ALL_ON, ALL_OFF, INVERTED:
+            mode := mode + core#SSD1331_CMD_NORMALDISPLAY
+        OTHER:
+            return (_sh_DISPMODE - core#SSD1331_CMD_NORMALDISPLAY)
+
+    _sh_DISPMODE := mode
+    writeReg (TRANS_CMD, 1, @mode)
 
 PUB ExtSupply | tmp
 
@@ -422,8 +475,8 @@ PUB ExtSupply | tmp
     tmp.byte[1] := core#MASTERCFG_EXT_VCC
     writeReg (TRANS_CMD, 2, @tmp)
 
-PUB Fill(enabled) | tmp
-' Enable the fill option for the display's native/accelerated Box drawing primitive
+PUB FillAccelEnabled(enabled) | tmp
+' Enable the display's native/accelerated fill function, when using BoxAccel()
     tmp := _sh_FILL
     case ||enabled
         0, 1:
@@ -456,8 +509,8 @@ PUB Interlaced(enabled) | tmp
     tmp.byte[1] := _sh_REMAPCOLOR
     writeReg (TRANS_CMD, 2, @tmp)
 
-PUB LineAccel(sx, sy, ex, ey, rgb) | tmp[2]
-' Draws a line, using the display's native/accelerated line drawing primitive
+PUB LineAccel(sx, sy, ex, ey, color) | tmp[2]
+' Draw a line, using the display's native/accelerated line function
     sx := 0 #> sx <# _disp_width-1
     sy := 0 #> sy <# _disp_height-1
     ex := 0 #> ex <# _disp_width-1
@@ -468,9 +521,9 @@ PUB LineAccel(sx, sy, ex, ey, rgb) | tmp[2]
     tmp.byte[2] := sy
     tmp.byte[3] := ex
     tmp.byte[4] := ey
-    tmp.byte[5] := RGB565_R5 (rgb)
-    tmp.byte[6] := RGB565_G6 (rgb)
-    tmp.byte[7] := RGB565_B5 (rgb)
+    tmp.byte[5] := RGB565_R8 (color)
+    tmp.byte[6] := RGB565_G8 (color)
+    tmp.byte[7] := RGB565_B8 (color)
     writeReg (TRANS_CMD, 8, @tmp)
 
 PUB MirrorH(enabled) | tmp
@@ -508,12 +561,12 @@ PUB MirrorV(enabled) | tmp
     writeReg (TRANS_CMD, 2, @tmp)
 
 PUB NoOp | tmp
-
+' No-operation
     tmp := core#SSD1331_CMD_NOP3
     writeReg (TRANS_CMD, 1, @tmp)
 
-PUB Phase1Adj(clks) | tmp
-
+PUB Phase1Period(clks) | tmp
+' Set discharge/phase 1 period, in display clocks
     tmp := _sh_PHASE12PER
     case clks
         1..15:
@@ -526,8 +579,8 @@ PUB Phase1Adj(clks) | tmp
     tmp.byte[1] := _sh_PHASE12PER
     writeReg (TRANS_CMD, 2, @tmp)
 
-PUB Phase2Adj(clks) | tmp
-
+PUB Phase2Period(clks) | tmp
+' Set charge/phase 2 period, in display clocks
     tmp := _sh_PHASE12PER
     case clks
         1..15:
@@ -541,25 +594,37 @@ PUB Phase2Adj(clks) | tmp
     tmp.byte[1] := _sh_PHASE12PER
     writeReg (TRANS_CMD, 2, @tmp)
 
-PUB PlotAccel(x, y, rgb) | tmp[2]
-' Plot a pixel at x, y in color rgb, using the display's native/accelerated method
+PUB PlotAccel(x, y, color) | tmp[2]
+' Draw a pixel, using the display's native/accelerated plot/pixel function
     x := 0 #> x <# _disp_width-1
     y := 0 #> y <# _disp_height-1
     tmp.byte[0] := core#SSD1331_CMD_SETCOLUMN
     tmp.byte[1] := x
-    tmp.byte[2] := x
+    tmp.byte[2] := 95
     tmp.byte[3] := core#SSD1331_CMD_SETROW
     tmp.byte[4] := y
-    tmp.byte[5] := y
+    tmp.byte[5] := 63
     
     writeReg (TRANS_CMD, 6, @tmp)
 
-    time.USleep (5)
+    time.USleep (3)
 
-    writeReg (TRANS_DATA, 2, @rgb)
+    writeReg (TRANS_DATA, 2, @color)
+
+PUB Powered(enabled) | tmp
+' Enable display power
+    tmp := _sh_DISPONOFF
+    case ||enabled
+        OFF, ON, DIM:
+            enabled := lookupz(enabled: core#SSD1331_CMD_DISPLAYOFF, core#SSD1331_CMD_DISPLAYON, core#SSD1331_CMD_DISPLAYONDIM)
+        OTHER:
+            return lookdownz(tmp: core#SSD1331_CMD_DISPLAYOFF, core#SSD1331_CMD_DISPLAYON, core#SSD1331_CMD_DISPLAYONDIM)
+
+    _sh_DISPONOFF := enabled
+    writeReg (TRANS_CMD, 1, @_sh_DISPONOFF)
 
 PUB PowerSaving(enabled) | tmp
-' Enable power-saving mode
+' Enable display power saving mode
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current setting
     tmp := _sh_POWERSAVE
@@ -575,7 +640,7 @@ PUB PowerSaving(enabled) | tmp
     writeReg (TRANS_CMD, 2, @tmp)
 
 PUB PrechargeLevel(mV) | tmp
-
+' Set first pre-charge voltage level (phase 2) of segment pins, in millivolts
     tmp := _sh_PRECHGLEV
     case mV := lookdown(mv: 100, 110, 130, 140, 150, 170, 180, 190, 200, 220, 230, 240, 260, 270, 280, 300, 310, 320, 330, 350, 360, 370, 390, 400, 410, 430, 440, 450, 460, 480, 490, 500)
         1..32:
@@ -616,47 +681,23 @@ PUB PrechargeSpeed(seg_a, seg_b, seg_c) | tmp[2]
     tmp.byte[5] := seg_c
     writeReg (TRANS_CMD, 6, @tmp)
 
-PUB ReverseCopy(enabled) | tmp
-' Set reverse/invert mode for the display's native Copy
-'   Valid values: TRUE (-1 or 1), FALSE (0)
-'   Any other value returns the current setting
-    tmp := _sh_FILL
-    case ||enabled
-        0, 1:
-            enabled := (||enabled << core#FLD_REVCOPY)
-        OTHER:
-            return ((tmp >> core#FLD_REVCOPY) & %1) * TRUE
-
-    _sh_FILL &= core#MASK_REVCOPY
-    _sh_FILL := (_sh_FILL | enabled) & core#SSD1331_CMD_FILL_MASK
-    tmp.byte[0] := core#SSD1331_CMD_FILL
-    tmp.byte[1] := _sh_FILL
-    writeReg (TRANS_CMD, 2, @tmp)
-
-PUB StartLine(disp_line) | tmp
-' Set display start line
-'   Valid values: 0..63
-'   Any other value returns the current setting
-    tmp := _sh_DISPSTARTLINE
-    case disp_line
-        0..63:
-        OTHER:
-            return tmp
-
-    _sh_DISPSTARTLINE := disp_line
-    tmp.byte[0] := core#SSD1331_CMD_STARTLINE
-    tmp.byte[1] := disp_line
-    writeReg (TRANS_CMD, 2, @tmp)
+PUB Reset
+' Reset the display controller
+    io.High(_RES)
+    time.MSleep (1)
+    io.Low(_RES)
+    time.MSleep (10)
+    io.High(_RES)
 
 PUB SubpixelOrder(order) | tmp
 ' Set subpixel color order
 '   Valid values:
-'       SUBPIX_RGB (0): Red-Green-Blue order
-'       SUBPIX_BGR (1): Blue-Green-Red order
+'       RGB (0): Red-Green-Blue order
+'       BGR (1): Blue-Green-Red order
 '   Any other value returns the current setting
     tmp := _sh_REMAPCOLOR
     case order
-        SUBPIX_RGB, SUBPIX_BGR:
+        RGB, BGR:
             order <<= core#FLD_SUBPIX_ORDER
         OTHER:
             return (tmp >> core#FLD_SUBPIX_ORDER) & %1
@@ -667,22 +708,9 @@ PUB SubpixelOrder(order) | tmp
     tmp.byte[1] := _sh_REMAPCOLOR
     writeReg (TRANS_CMD, 2, @tmp)
 
-PUB VCOMHDeselect(mV) | tmp
-' Set voltage for COM deselect level, in millivolts
-'   Valid values: 440, 520, 610, 710, 830
-'   Any other value returns the current setting
-    tmp := _sh_VCOMH
-    case mV := lookdown(mv: 440, 520, 610, 710, 830)
-        1..5:
-            mV := lookup(mV: $00, $10, $20, $30, $3E)
-        OTHER:
-            result := lookdown(tmp: $00, $10, $20, $30, $3E)
-            return lookup(result: 440, 520, 610, 710, 830)
-
-    _sh_VCOMH := mV
-    tmp.byte[0] := core#SSD1331_CMD_VCOMH
-    tmp.byte[1] := mV
-    writeReg (TRANS_CMD, 2, @tmp)
+PUB Update
+' Write the current display buffer to the display
+    writeReg(TRANS_DATA, _buff_sz, _ptr_framebuffer)
 
 PUB VertAltScan(enabled) | tmp
 ' Alternate Left-Right, Right-Left scanning, every other display line
@@ -701,35 +729,8 @@ PUB VertAltScan(enabled) | tmp
     tmp.byte[1] := _sh_REMAPCOLOR
     writeReg (TRANS_CMD, 2, @tmp)
 
-PUB VertOffset(disp_line) | tmp
-' Set display vertical offset, in lines
-'   Valid values: 0..63
-'   Any other value returns the current setting
-    tmp := _sh_DISPOFFSET
-    case disp_line
-        0..63:
-        OTHER:
-            return tmp
-
-    _sh_DISPOFFSET := disp_line
-    tmp.byte[0] := core#SSD1331_CMD_DISPLAYOFFSET
-    tmp.byte[1] := disp_line
-    writeReg (TRANS_CMD, 2, @tmp)
-
-PUB Reset
-' Reset the display controller
-    io.High(_RES)
-    time.MSleep (1)
-    io.Low(_RES)
-    time.MSleep (10)
-    io.High(_RES)
-
-PUB Update
-' Send the draw buffer to the display
-    writeReg(TRANS_DATA, _buff_sz, _draw_buffer)
-
 PUB WriteBuffer(buff_addr, buff_sz)
-' Send an alternate buffer to the display
+' Write alternate buffer to display
     writeReg(TRANS_DATA, buff_sz, buff_addr)
 
 PRI writeReg(trans_type, nr_bytes, buff_addr) | tmp
@@ -745,20 +746,23 @@ PRI writeReg(trans_type, nr_bytes, buff_addr) | tmp
 
     spi.write (TRUE, buff_addr, nr_bytes, TRUE) ' Write SPI transaction with blocking enabled
 
-{{
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                   TERMS OF USE: MIT License                                                  │                                                            
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    │ 
-│files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    │
-│modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software│
-│is furnished to do so, subject to the following conditions:                                                                   │
-│                                                                                                                              │
-│The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.│
-│                                                                                                                              │
-│THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          │
-│WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         │
-│COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   │
-│ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-}}
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
