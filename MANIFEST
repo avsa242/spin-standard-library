@@ -46,6 +46,7 @@ library/core.con.nrf24l01.spin
 library/core.con.sht3x.spin
 library/core.con.ssd1306.spin
 library/core.con.ssd1331.spin
+library/core.con.st7735.spin
 library/core.con.tcs3x7x.spin
 library/core.con.tsl2591.spin
 library/core.con.us2066.spin
@@ -82,6 +83,7 @@ library/demos/display/OLED-4DGL-Demo.spin
 library/demos/display/OLED-US2066-Demo.spin
 library/demos/display/SSD1306-Demo.spin
 library/demos/display/SSD1331-Demo.spin
+library/demos/display/ST7735-Demo.spin
 library/demos/display/TV_Terminal_Demo.spin
 library/demos/display/TV_Text_Demo.spin
 library/demos/display/lcd/serial/Demo.spin
@@ -153,6 +155,7 @@ library/demos/string/integer/PrintNumbers.spin
 library/demos/system/ClockDemo.spin
 library/demos/system/Counters.spin
 library/display.lcd.serial.spin
+library/display.lcd.st7735.spi.spin
 library/display.oled.4dgl.uart.spin
 library/display.oled.ssd1306.i2c.spin
 library/display.oled.ssd1331.spi.spin
