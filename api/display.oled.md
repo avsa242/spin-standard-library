@@ -29,24 +29,25 @@ NOTE: Most display drivers are extended with the generic bitmap graphics library
 |`ColorDepth (format)`                          | Set expected color format of pixel data                                               |
 |`COMHighLogicLevel (level)`                    | Set logic high level threshold of COM pins rel. to Vcc                                |
 |`COMPinCfg`                                    | Configure COMmon pins and L/R remap                                                   |
-|`Contrast (level)`                             | Set display contrast/brightness                                                       |
+|`Contrast (level)`                             | Set display contrast/brightness of all subpixels to the same value                    |
 |`ContrastABC (a, b, c)`                        | Set contrast/brightness level of subpixels a, b, c                                    |
 |`CopyAccel (sx, sy, ex, ey, dx, dy)`           | Use the display's accelerated Copy Region function                                    |
 |`CopyAccelInverted(enabled)`                   | Enable inverted colors, when using CopyAccel()                                        |
 |`CurrentLimit (divisor)`                       | Set master current limit divisor                                                      |
 |`Defaults`                                     | Apply power-on-reset default settings                                                 |
 |`DefaultsCommon`                               | Apply settings that may be more commonly used but differ from factory settings        |
-|`DisplayBounds(sx, sy, ex, ey)`                | Set displayable area                                                                  |
+|`DisplayBounds(sx, sy, ex, ey)`                | Set drawable display region for subsequent drawing operations                         |
 |`DisplayInverted (enabled)`                    | Invert display colors                                                                 |
 |`DisplayLines (lines)`                         | Set total number of display lines                                                     |
-|`DisplayOffset (lines)`                        | Set display offset/vertical shift                                                     |
+|`DisplayOffset (lines)`                        | Set display offset/vertical shift, in lines                                           |
 |`DisplayStartLine (line)`                      | Set display start line                                                                |
 |`DisplayVisibility (mode)`                     | Set display visibility                                                                |
 |`FillAccelEnabled (enabled)`                   | Enable the display's fill function, when using BoxAccel()                             |
 |`Interlaced (enabled)`                         | Alternate every other display line                                                    |
 |`LineAccel(sx, sy, ex, ey, rgb)`               | Draw a line, using the display's native/accelerated line function                     |
-|`MirrorH (enabled)`                            | Mirror display, horizontally                                                          |
-|`MirrorV (enabled)`                            | Mirror display, vertically                                                            |
+|`LockDisplay (mode)`                           | Lock the display controller from executing commands                                   |
+|`MirrorH (enabled)`                            | Mirror the display, horizontally                                                      |
+|`MirrorV (enabled)`                            | Mirror the display, vertically                                                        |
 |`Phase1Period (clks)`                          | Set discharge/phase 1 period, in display clocks                                       |
 |`Phase2Period (clks)`                          | Set charge/phase 2 period, in display clocks                                          |
 |`Phase3Period (clks)`                          | Set second charge/phase 3 period, in display clocks                                   |
