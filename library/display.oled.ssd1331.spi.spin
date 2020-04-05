@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
     Copyright (c) 2020
     Started: Apr 28, 2019
-    Updated: Mar 27, 2020
+    Updated: Apr 5, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -138,7 +138,7 @@ PUB Address(addr)
 PUB AddrMode(mode) | tmp
 ' Set display internal addressing mode
 '   Valid values:
-'       HORZ (0): Horizontal addressing mode
+'       HORIZ (0): Horizontal addressing mode
 '       VERT (1): Vertical addressing mode
     tmp := _sh_REMAPCOLOR
     case mode
@@ -616,7 +616,7 @@ PUB Powered(enabled) | tmp
     tmp := _sh_DISPONOFF
     case ||enabled
         OFF, ON, DIM:
-            enabled := lookupz(enabled: core#SSD1331_CMD_DISPLAYOFF, core#SSD1331_CMD_DISPLAYON, core#SSD1331_CMD_DISPLAYONDIM)
+            enabled := lookupz(||enabled: core#SSD1331_CMD_DISPLAYOFF, core#SSD1331_CMD_DISPLAYON, core#SSD1331_CMD_DISPLAYONDIM)
         OTHER:
             return lookdownz(tmp: core#SSD1331_CMD_DISPLAYOFF, core#SSD1331_CMD_DISPLAYON, core#SSD1331_CMD_DISPLAYONDIM)
 
