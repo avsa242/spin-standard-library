@@ -46,6 +46,7 @@ library/core.con.nrf24l01.spin
 library/core.con.sht3x.spin
 library/core.con.ssd1306.spin
 library/core.con.ssd1331.spin
+library/core.con.ssd1351.spin
 library/core.con.st7735.spin
 library/core.con.tcs3x7x.spin
 library/core.con.tsl2591.spin
@@ -55,6 +56,8 @@ library/debug.emulator.rtc.spin
 library/debug.shell.spin
 library/debug.stacklength.spin
 library/demos/23LCXXXX-Demo.spin
+library/demos/CC1101-RXDemo.spin
+library/demos/CC1101-TXDemo.spin
 library/demos/CC2500-RXDemo.spin
 library/demos/CC2500-TXDemo.spin
 library/demos/NRF24L01-RXDemo-PST.spin
@@ -83,6 +86,7 @@ library/demos/display/OLED-4DGL-Demo.spin
 library/demos/display/OLED-US2066-Demo.spin
 library/demos/display/SSD1306-Demo.spin
 library/demos/display/SSD1331-Demo.spin
+library/demos/display/SSD1351-Demo.spin
 library/demos/display/ST7735-Demo.spin
 library/demos/display/TV_Terminal_Demo.spin
 library/demos/display/TV_Text_Demo.spin
@@ -159,6 +163,7 @@ library/display.lcd.st7735.spi.spin
 library/display.oled.4dgl.uart.spin
 library/display.oled.ssd1306.i2c.spin
 library/display.oled.ssd1331.spi.spin
+library/display.oled.ssd1351.spi.spin
 library/display.oled.us2066.i2c.spin
 library/display.tv.graphics.spin
 library/display.tv.spin
@@ -232,7 +237,6 @@ library/string.integer.spin
 library/string.spin
 library/string.type.spin
 library/system.types.spin
-library/tests/CC1101-Test.spin
 library/tests/CC2500-Test.spin
 library/tests/DS28CM00-Test-tiny.spin
 library/tests/DS28CM00-Test.spin
