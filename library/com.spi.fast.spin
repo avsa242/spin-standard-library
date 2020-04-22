@@ -9,6 +9,10 @@ VAR
 
     long _cog                     'cog flag/id
 
+OBJ
+
+    counters    : "core.con.counters"
+
 DAT
 
 ' Command setup
@@ -28,8 +32,8 @@ PUB Start(CS, SCLK, MOSI, MISO) : okay
 
 'Counter values setup before calling the ASM cog that will use them.
 '   CounterX     mode  PLL         BPIN        APIN
-    ctramode := %00100_000 << 23 + 0 << 9 + SCLK
-    ctrbmode := %00100_000 << 23 + 0 << 9 + MOSI
+    ctramode := counters#NCO_SINGLEEND | counters#VCO_DIV_128 + SCLK
+    ctrbmode := counters#NCO_SINGLEEND | counters#VCO_DIV_128 + MOSI
 
 'Clear the command buffer - be sure no commands were set before initializing
     command := 0
@@ -42,6 +46,7 @@ PUB Stop
     if _cog                                                'Is cog non-zero?
         cogstop(_cog~ - 1)                                   'Yes, stop the cog and then make value zero
         longfill(@SCSmask, 0, 5)                            'Clear all masks
+        _cog := 0
 
 PUB MutexInit
 ' Initialize mutex lock semaphore. Called once at driver initialization if application level locking is needed.
