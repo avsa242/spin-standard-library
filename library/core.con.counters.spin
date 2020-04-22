@@ -5,54 +5,56 @@ CON
 '   already performed below:
 
 'PLL settings
-    PLLDIV_VCO_DIV_128      = %000 << 23
-    PLLDIV_VCO_DIV_64       = %001 << 23
-    PLLDIV_VCO_DIV_32       = %010 << 23
-    PLLDIV_VCO_DIV_16       = %011 << 23
-    PLLDIV_VCO_DIV_8        = %100 << 23
-    PLLDIV_VCO_DIV_4        = %101 << 23
-    PLLDIV_VCO_DIV_2        = %110 << 23
-    PLLDIV_VCO_DIV_1        = %111 << 23
+    PLLDIV                  = 23
+    VCO_DIV_128             = %000 << PLLDIV
+    VCO_DIV_64              = %001 << PLLDIV
+    VCO_DIV_32              = %010 << PLLDIV
+    VCO_DIV_16              = %011 << PLLDIV
+    VCO_DIV_8               = %100 << PLLDIV
+    VCO_DIV_4               = %101 << PLLDIV
+    VCO_DIV_2               = %110 << PLLDIV
+    VCO_DIV_1               = %111 << PLLDIV
 
 'Counter modes
-    MODE_DISABLE            = %00000 << 26
+    MODE                    = 26
+    DISABLE                 = %00000 << MODE
 
-    MODE_PLL_INTERNAL       = %00001 << 26
-    MODE_PLL_SINGLEEND      = %00010 << 26
-    MODE_PLL_DIFFERENTIAL   = %00011 << 26
+    PLL_INTERNAL            = %00001 << MODE
+    PLL_SINGLEEND           = %00010 << MODE
+    PLL_DIFFERENTIAL        = %00011 << MODE
 
-    MODE_NCO_SINGLEEND      = %00100 << 26
-    MODE_NCO_DIFFERENTIAL   = %00101 << 26
+    NCO_SINGLEEND           = %00100 << MODE
+    NCO_DIFFERENTIAL        = %00101 << MODE
 
-    MODE_DUTY_SINGLEEND     = %00110 << 26
-    MODE_DUTY_DIFFERENTIAL  = %00111 << 26
+    DUTY_SINGLEEND          = %00110 << MODE
+    DUTY_DIFFERENTIAL       = %00111 << MODE
 
-    MODE_POS_DETECT         = %01000 << 26
-    MODE_POS_DETECT_FB      = %01001 << 26
-    MODE_POSEDGE_DETECT     = %01010 << 26
-    MODE_POSEDGE_DETECT_FB  = %01011 << 26
+    POS_DETECT              = %01000 << MODE
+    POS_DETECT_FB           = %01001 << MODE
+    POSEDGE_DETECT          = %01010 << MODE
+    POSEDGE_DETECT_FB       = %01011 << MODE
 
-    MODE_NEG_DETECT         = %01100 << 26
-    MODE_NEG_DETECT_FB      = %01101 << 26
-    MODE_NEGEDGE_DETECT     = %01110 << 26
-    MODE_NEGEDGE_DETECT_FB  = %01111 << 26
+    NEG_DETECT              = %01100 << MODE
+    NEG_DETECT_FB           = %01101 << MODE
+    NEGEDGE_DETECT          = %01110 << MODE
+    NEGEDGE_DETECT_FB       = %01111 << MODE
 
-    MODE_LOGIC_NEVER        = %10000 << 26
-    MODE_LOGIC_NOTA_AND_NOTB= %10001 << 26
-    MODE_LOGIC_A_AND_NOTB   = %10010 << 26
-    MODE_LOGIC_NOTB         = %10011 << 26
-    MODE_LOGIC_NOTA_AND_B   = %10100 << 26
-    MODE_LOGIC_NOTA         = %10101 << 26
-    MODE_LOGIC_A_NE_B       = %10110 << 26
-    MODE_LOGIC_NOTA_OR_NOTB = %10111 << 26
-    MODE_LOGIC_A_AND_B      = %11000 << 26
-    MODE_LOGIC_A_EQ_B       = %11001 << 26
-    MODE_LOGIC_A            = %11010 << 26
-    MODE_LOGIC_A_OR_NOTB    = %11011 << 26
-    MODE_LOGIC_B            = %11100 << 26
-    MODE_LOGIC_NOTA_OR_B    = %11101 << 26
-    MODE_LOGIC_A_OR_B       = %11110 << 26
-    MODE_LOGIC_ALWAYS       = %11111 << 26
+    LOGIC_NEVER             = %10000 << MODE
+    LOGIC_NOTA_AND_NOTB     = %10001 << MODE
+    LOGIC_A_AND_NOTB        = %10010 << MODE
+    LOGIC_NOTB              = %10011 << MODE
+    LOGIC_NOTA_AND_B        = %10100 << MODE
+    LOGIC_NOTA              = %10101 << MODE
+    LOGIC_A_NE_B            = %10110 << MODE
+    LOGIC_NOTA_OR_NOTB      = %10111 << MODE
+    LOGIC_A_AND_B           = %11000 << MODE
+    LOGIC_A_EQ_B            = %11001 << MODE
+    LOGIC_A                 = %11010 << MODE
+    LOGIC_A_OR_NOTB         = %11011 << MODE
+    LOGIC_B                 = %11100 << MODE
+    LOGIC_NOTA_OR_B         = %11101 << MODE
+    LOGIC_A_OR_B            = %11110 << MODE
+    LOGIC_ALWAYS            = %11111 << MODE
 
     FLD_APIN                = 0
     FLD_BPIN                = 9

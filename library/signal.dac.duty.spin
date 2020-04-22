@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: 2-channel DAC object using the duty mode of the counters as output
     Started Feb 16, 2020
-    Updated Feb 17, 2020
+    Updated Apr 22, 2020
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This object is based on the Parallax Simple-Library functionality
@@ -38,7 +38,9 @@ PUB Start(ch0_pin, ch1_pin, dac_res_bits)
 
 PUB Stop
 ' Stop the DAC cog
-    cogstop(_cog-1)
+    if _cog
+        cogstop(_cog-1)
+        _cog := 0
 
 PUB Output(channel, value)
 ' Output value to DAC
@@ -75,8 +77,8 @@ PUB Resolution(bits)
 
 PRI dacLoop | pin
 ' Digital to Analog Converter
-    _ctra := (counters#MODE_DUTY_SINGLEEND + _ch0)       ' Set counters to single-ended duty-cycle mode
-    _ctrb := (counters#MODE_DUTY_SINGLEEND + _ch1)
+    _ctra := (counters#DUTY_SINGLEEND + _ch0)       ' Set counters to single-ended duty-cycle mode
+    _ctrb := (counters#DUTY_SINGLEEND + _ch1)
     repeat
         if _ctra <> CTRA
             if CTRA <> 0
