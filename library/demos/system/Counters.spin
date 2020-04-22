@@ -166,19 +166,22 @@
 
 CON
 
-  _CLKMODE = XTAL1 + PLL16X
-  _XINFREQ = 5_000_000
+    _CLKMODE    = cfg#_clkmode
+    _XINFREQ    = cfg#_xinfreq
 
-  AUDIO_L = 0
-  AUDIO_R = 1
+    AUDIO_L     = cfg#SOUND_L
+    AUDIO_R     = cfg#SOUND_R
 
 OBJ
 
-  term : "com.serial.terminal"
+    cfg         : "core.con.boardcfg.activityboard"
+    term        : "com.serial.terminal"
+    counters    : "core.con.counters"
+    time        : "time"
 
 VAR
 
-  long  ctr, frq
+    long  ctr, frq
 
 PUB Main
 {{
@@ -186,31 +189,33 @@ PUB Main
     also show FRQ values on tv
 }}
 
-    term.start(115200)                     'start tv terminal
+    term.start(115200)
+    time.Sleep(1)
+    SynthFreq(AUDIO_L, 1000)                                ' Determine ctr and frq for pin 0
+    CTRA := ctr                                             ' Set CTRA
+    FRQA := frq                                             ' Set FRQA
+    DIRA[AUDIO_L] := 1                                      ' Make pin output
 
-    SynthFreq(AUDIO_L, 1_000_000)            'determine ctr and frq for pin 0
-    CTRA := ctr                        'set CTRA
-    FRQA := frq                        'set FRQA
-    DIRA[AUDIO_L]~~                          'make pin output
+    term.Str(string("CTRA = "))                             ' Show CTRA value
+    term.Hex(ctr, 8)
+    term.Str(string("  FRQA = "))                           ' Show FRQA value
+    term.Hex(frq, 8)
 
-    term.Str(string("CTRA = "))        'show CTRA value
-    term.Hex(ctr,8)
-    term.Str(string("  FRQA = "))      'show FRQA value
-    term.Hex(frq,8)
+    SynthFreq(AUDIO_R, 500)                                 ' Determine ctr and frq for pin1
+    CTRB := ctr                                             ' Set CTRB
+    FRQB := frq                                             ' Set FRQB
+    DIRA[AUDIO_R] := 1                                      ' Make pin output
 
-    SynthFreq(AUDIO_R, 1_000_001)            'determine ctr and frq for pin1
-    CTRB := ctr                        'set CTRB
-    FRQB := frq                        'set FRQB
-    DIRA[AUDIO_R]~~                          'make pin output
-
-    term.Str(string(13, "CTRB = "))    'show CTRB value
-    term.Hex(ctr,8)
-    term.Str(string("  FRQB = "))      'show FRQB value
-    term.Hex(frq,8)
-    term.Str (string(term#NL, "Playing tone on pins "))
+    term.Str(string(term#NL, term#LF, "CTRB = "))           ' Show CTRB value
+    term.Hex(ctr, 8)
+    term.Str(string("  FRQB = "))                           ' Show FRQB value
+    term.Hex(frq, 8)
+    term.Str (string(term#NL, term#LF, "Playing tone on pins "))
     term.Dec (AUDIO_L)
     term.Str (string(" and "))
     term.Dec (AUDIO_R)
+
+    repeat
 
 PRI SynthFreq(Pin, Freq) | s, d
 
@@ -224,34 +229,33 @@ PRI SynthFreq(Pin, Freq) | s, d
 ''   Uses NCO mode %00100 for 0..499_999 Hz
 ''   Uses PLL mode %00010 for 500_000..128_000_000 Hz
 ''
+    Freq := Freq #> 0 <# 128_000_000                        ' Limit frequency range
 
-  Freq := Freq #> 0 <# 128_000_000     'limit frequency range
+    if Freq < 500_000                                       ' If 0 to 499_999 Hz,
+        ctr := counters#NCO_SINGLEEND                       '   ..set NCO mode
+        s := 1                                              '   ..shift = 1
 
-  if Freq < 500_000                    'if 0 to 499_999 Hz,
-    ctr := constant(%00100 << 26)      '..set NCO mode
-    s := 1                             '..shift = 1
+    else                                                    ' If 500_000 to 128_000_000 Hz,
+        ctr := counters#PLL_SINGLEEND                       '   ..set PLL mode
+        d := >|((Freq - 1) / 1_000_000)                     ' Determine PLLDIV
+        s := 4 - d                                          ' Determine shift
+        ctr |= d << counters#PLLDIV                         ' Set PLLDIV
 
-  else                                 'if 500_000 to 128_000_000 Hz,
-    ctr := constant(%00010 << 26)      '..set PLL mode
-    d := >|((Freq - 1) / 1_000_000)    'determine PLLDIV
-    s := 4 - d                         'determine shift
-    ctr |= d << 23                     'set PLLDIV
-
-  frq := fraction(Freq, CLKFREQ, s)    'Compute FRQA/FRQB value
-  ctr |= Pin                           'set PINA to complete CTRA/CTRB value
+    frq := fraction(Freq, CLKFREQ, s)                       ' Compute FRQA/FRQB value
+    ctr |= Pin                                              ' Set PINA to complete CTRA/CTRB value
 
 
 PRI fraction(a, b, shift) : f
 
-  if shift > 0                         'if shift, pre-shift a or b left
-    a <<= shift                        'to maintain significant bits while
-  if shift < 0                         'insuring proper result
-    b <<= -shift
+    if shift > 0                                            ' If shift, pre-shift a or b left
+        a <<= shift                                         '   to maintain significant bits while
+    if shift < 0                                            '   insuring proper result
+        b <<= -shift
 
-  repeat 32                            'perform long division of a/b
-    f <<= 1
-    if a => b
-      a -= b
-      f++
-    a <<= 1
+    repeat 32                                               ' Perform long division of a/b
+        f <<= 1
+        if a => b
+            a -= b
+            f++
+        a <<= 1
 
