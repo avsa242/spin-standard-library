@@ -31,7 +31,7 @@ PUB Start(AUDIOPIN_L, AUDIOPIN_R)
     if lookdown(AUDIOPIN_L: 0..31) and lookdown(AUDIOPIN_R: 0..31)
         longmove(@_pin_l, @AUDIOPIN_L, 2)
 
-    Preset(TOUCHTONE)
+    Preset(US_TOUCHTONE)
 
 PUB Stop
 

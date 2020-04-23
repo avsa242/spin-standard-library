@@ -230,6 +230,7 @@ library/signal.audio.amp.max9744.i2c.spin
 library/signal.dac.duty.spin
 library/signal.dither.spin
 library/signal.spatializer.spin
+library/signal.synth.audio.dtmf.spin
 library/signal.synth.speech.spin
 library/signal.synth.spin
 library/string.float.spin
