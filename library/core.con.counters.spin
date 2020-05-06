@@ -4,8 +4,15 @@ CON
 '   counter mode. No need to shift bits into position -
 '   already performed below:
 
+' NOTE: #define _PASM_ in your project if you intend to use these constants in a PASM program
+'   with movi, movs, movd instructions (the compiler will complain otherwise)
+
 'PLL settings
-    PLLDIV                  = 23
+#ifdef _PASM_
+    PLLDIV                  = 0                             ' Adjust shift position depending on whether
+#else
+    PLLDIV                  = 23                            ' a PASM or SPIN program is being targeted
+#endif
     VCO_DIV_128             = %000 << PLLDIV
     VCO_DIV_64              = %001 << PLLDIV
     VCO_DIV_32              = %010 << PLLDIV
@@ -16,7 +23,11 @@ CON
     VCO_DIV_1               = %111 << PLLDIV
 
 'Counter modes
+#ifdef _PASM_
+    MODE                    = 3
+#else
     MODE                    = 26
+#endif
     DISABLE                 = %00000 << MODE
 
     PLL_INTERNAL            = %00001 << MODE

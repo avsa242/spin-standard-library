@@ -138,6 +138,7 @@ library/demos/sensor/compass/hm55b/SerialDemo.spin
 library/demos/sensor/compass/hm55b/TVDemo.spin
 library/demos/sensor/tsl230 DEMO.spin
 library/demos/sensor/tsl230 simple DEMO.spin
+library/demos/signal/DTMFDemo.spin
 library/demos/signal/MAX9744-Demo.spin
 library/demos/signal/SingingDemo.spin
 library/demos/signal/SingingDemoSeven.spin

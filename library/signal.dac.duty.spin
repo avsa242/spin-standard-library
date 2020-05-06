@@ -51,7 +51,7 @@ PUB Output(channel, value)
 '   Example:
 '   OBJ
 '
-'       dac : "signal.audio.duty"
+'       dac : "signal.dac.duty"
 '
 '   PUB ExampleDemoMethod
 '
