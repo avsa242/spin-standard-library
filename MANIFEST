@@ -6,6 +6,7 @@ library/com.serial.terminal.ansi.spin
 library/com.serial.terminal.spin
 library/com.spi.3w.spin
 library/com.spi.4w.spin
+library/com.spi.bitbang.spin
 library/com.spi.fast.spin
 library/commandparser.spin
 library/core.con.23lcxxxx.spin
