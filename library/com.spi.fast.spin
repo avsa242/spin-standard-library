@@ -1,13 +1,36 @@
+{
+    --------------------------------------------
+    Filename: com.spi.fast.spin
+    Author: Timothy D. Swieter
+    Modified by: Jesse Burt
+    Description: Fast PASM SPI driver (20MHz W, 10MHz R)
+    Started Oct 13, 2012
+    Updated May 9, 2020
+    See end of file for terms of use.
+    --------------------------------------------
+
+    NOTE: This is an excerpt of Timothy D. Swieter's Wiznet W5200 driver
+        adapted for use as a general-purpose SPI engine.
+        The original header is preserved below.
+
+''  WIZnet W5200 Driver Ver. 1.3
+''
+''  Original source: W5100_SPI_Driver.spin - Timothy D. Swieter (code.google.com/p/spinneret-web-server/source/browse/trunk/W5100_SPI_Driver.spin)
+''  W5200 changes/adaptations: Benjamin Yaroch (BY)
+''  Additional revisions: Jim St. John (JS)
+''
+}
+
 CON
 
-    CMD_RESERVED     = 0             'This is the default state - means ASM is waiting for command
-    CMD_READ      = 1 << 16
-    CMD_WRITE     = 2 << 16
-    CMD_LAST      = 17 << 16      'Place holder for last command
+    CMD_RESERVED    = 0                                     ' Default state - means ASM is waiting for command
+    CMD_READ        = 1 << 16
+    CMD_WRITE       = 2 << 16
+    CMD_LAST        = 17 << 16                              ' Placeholder for last command
 
 VAR
 
-    long _cog                     'cog flag/id
+    long _cog
 
 OBJ
 
@@ -16,22 +39,19 @@ OBJ
 DAT
 
 ' Command setup
-    command         long    0               'stores command and arguments for the ASM driver
-    lock            byte    255             'Mutex semaphore
+    command         long    0                               ' Stores command and arguments for the ASM driver
+    lock            byte    255                             ' Mutex semaphore
 
 PUB Start(CS, SCLK, MOSI, MISO) : okay
-''  params:  the five pins required for SPI
-''  return:  value of cog if started or zero if not started
+
     Stop
 
-'Initialize the I/O for writing the mask data to the memory area that will be copied into a COG.
     SCSmask := |< CS
     SCLKmask := |< SCLK
     MOSImask := |< MOSI
     MISOmask := |< MISO
 
 'Counter values setup before calling the ASM cog that will use them.
-'   CounterX     mode  PLL         BPIN        APIN
     ctramode := counters#NCO_SINGLEEND | counters#VCO_DIV_128 + SCLK
     ctrbmode := counters#NCO_SINGLEEND | counters#VCO_DIV_128 + MOSI
 
@@ -43,15 +63,14 @@ PUB Start(CS, SCLK, MOSI, MISO) : okay
 
 PUB Stop
 
-    if _cog                                                'Is cog non-zero?
-        cogstop(_cog~ - 1)                                   'Yes, stop the cog and then make value zero
-        longfill(@SCSmask, 0, 5)                            'Clear all masks
+    if _cog
+        cogstop(_cog - 1)
+        longfill(@SCSmask, 0, 5)                            ' Clear all masks
         _cog := 0
 
 PUB MutexInit
 ' Initialize mutex lock semaphore. Called once at driver initialization if application level locking is needed.
-'
-' Returns -1 if no more locks available.
+'   Returns: Lock number, or -1 if no more locks available.
     lock := locknew
     return lock
 
@@ -68,27 +87,25 @@ PUB MutexReturn
     lockret(lock)
 
 PUB Read(buff_addr, nr_bytes)
-'  params:  register is the 2 byte register address.  See the constant block with register definitions
-'           buff_addr is the place to return the byte(s) of data read (use the @ in front of the byte variable)
-'           nr_bytes is the number of bytes to read
-
-'Send the command
+' Read nr_bytes from slave device into buff_addr
     command := CMD_READ + @buff_addr
 
-'Wait for the command to complete
     repeat while command
 
 PUB Write(block, buff_addr, nr_bytes, deselect_after)
-'
-'  params:  block if true will wait for ASM routine to send before continuing
-'           buff_addr is a pointer to the byte(s) of data to be written (use the @ in front of the byte variable)
-'           nr_bytes is the number of bytes to write
-
-'Send the command
+' Write nr_bytes from buff_addr into slave device
+'   Valid values:
+'       block:
+'           Non-zero: Wait for ASM routine to finish before returning
+'           0: Return immediately after writing
+'       buff_addr: Pointer to byte(s) of data to be written
+'       nr_bytes: Number of bytes to write
+'       deselect_after:
+'           TRUE (-1 or 1): Deselect slave/Raise CS after writing
+'           FALSE (0): Leave slave selected/Keep CS low after writing; most commonly used for writing a register address that data will subsequently be read from with Read()
     deselect_after := (||deselect_after) <# 1
     command := CMD_WRITE + @buff_addr
 
-'Wait for the command to complete or just move on
     if block
         repeat while command
 
@@ -293,20 +310,25 @@ ctr           res 1     'Counter of bytes for looping
               fit 496   'Ensure the ASM program and defined/res variables fit in a single COG.
 
 DAT
-{{
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                   TERMS OF USE: MIT License                                                  │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    │
-│files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    │
-│modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software│
-│is furnished to do so, subject to the following conditions:                                                                   │
-│                                                                                                                              │
-│The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.│
-│                                                                                                                              │
-│THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          │
-│WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         │
-│COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   │
-│ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-}} 
+
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
+
