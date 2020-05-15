@@ -33,8 +33,8 @@ As with anything though, your mileage may vary!
 
 - OpenSpin (1.00.81) (Supported: lateast release; mature; available on any platform)
 - FastSpin (current) (Partial support, with the major caveat that because the code produced will generally be much larger, many programs may simply not fit in RAM; available on any platform)
-- ~~~Brad's Spin Tool~~~ (Not supported: No preprocessor support; LONG-since abandoned; please do not follow others' advice to use this - it offers little to no advantage over OpenSpin)
-- ~~~Propeller Tool~~~ (Not supported: No preprocessor support; Windows platform only)
+- ~~Brad's Spin Tool~~ (Not supported: No preprocessor support; LONG-since abandoned; please do not follow others' advice to use this - it offers little to no advantage over OpenSpin)
+- ~~Propeller Tool~~ (Not supported: No preprocessor support; Windows platform only)
 
 The library is written with [OpenSpin](https://github.com/parallaxinc/OpenSpin) in mind. Some objects use preprocessor directives so will not be compatible out-of-the-box with the Propeller Tool, or Brad's Spin Tool (bstc). FastSpin will generally work fine as well, though because it produces native code instead of SPIN bytecode, the resulting programs will be *much* larger. Some demos in this library may simply not fit in RAM as a result.
 
