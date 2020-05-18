@@ -27,23 +27,22 @@ OBJ
 PUB Null
 ''This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN) : okay
+PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_DELAY): okay
 
-    okay := Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, core#CLK_DELAY, core#CPOL)
+    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
+        if SCK_DELAY => 1
+            if okay := spi.start (SCK_DELAY, core#CPOL)         ' SPI engine started?
+                time.MSleep (1)                                 ' Device startup time
+                _CS := CS_PIN
+                _MOSI := MOSI_PIN
+                _MISO := MISO_PIN
+                _SCK := SCK_PIN
 
-PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_DELAY, SCK_CPOL): okay
-    if SCK_DELAY => 1 and lookdown(SCK_CPOL: 0, 1)
-        if okay := spi.start (SCK_DELAY, SCK_CPOL)              ' SPI engine started?
-            time.MSleep (1)                                     ' Device startup time
-            _CS := CS_PIN
-            _MOSI := MOSI_PIN
-            _MISO := MISO_PIN
-            _SCK := SCK_PIN
+                io.High(_CS)
+                io.Output(_CS)
 
-            io.High(_CS)
-            io.Output(_CS)
-
-            return okay
+                if DeviceID == core#DEVID_RESP
+                    return okay
     return FALSE                                                ' If we got here, something went wrong
 
 PUB Stop

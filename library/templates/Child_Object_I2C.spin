@@ -17,7 +17,7 @@ CON
 
     DEF_SCL           = 28
     DEF_SDA           = 29
-    DEF_HZ            = 400_000
+    DEF_HZ            = 100_000
     I2C_MAX_FREQ      = core#I2C_MAX_FREQ
 
 VAR
@@ -26,7 +26,7 @@ VAR
 OBJ
 
     i2c : "com.i2c"                                             'PASM I2C Driver
-    core: "core.con.your_device_here"                           'File containing your device's register set
+    core: "core.con.your_i2c_device_here"                       'File containing your device's register set
     time: "time"                                                'Basic timing functions
 
 PUB Null
@@ -43,13 +43,23 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
             if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
                 time.MSleep (1)
                 if i2c.present (SLAVE_WR)                       'Response from device?
-                    return okay
+                    if DeviceID == core#DEVID_RESP
+                        return okay
 
     return FALSE                                                'If we got here, something went wrong
 
 PUB Stop
 ' Put any other housekeeping code here required/recommended by your device before shutting down
     i2c.terminate
+
+PUB Defaults
+' Set factory defaults
+
+PUB DeviceID
+' Read device identification
+
+PUB Reset
+' Reset the device
 
 PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
 '' Read num_bytes from the slave device into the address stored in buff_addr
