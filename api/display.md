@@ -13,7 +13,7 @@ _model_ indicates the manufacturer's model number of the display controller
 
 _int_ indicates the type of interface supported by the driver (e.g., spi, i2c, uart), if applicable
 
-NOTE: Most display drivers are extended with the generic bitmap graphics library [API](lib.gfx.bitmap.md), which is included in each supported driver using the preprocessor. This library provides methods for drawing primitives, such as pixels, lines, boxes, circles, text. The use of this requires a display buffer to be allocated at the application level. The size will of course depend on the resolution of the display and color depth. The address of the display buffer is then passed to the graphics library via the display driver's Start()  method.
+NOTE: Most display drivers (dot-matrix/graphical, not text) are extended with the generic bitmap graphics library [API](lib.gfx.bitmap.md), which is included in each supported driver using the preprocessor. This library provides methods for drawing primitives, such as pixels, lines, boxes, circles, text. The use of this requires a display buffer to be allocated at the application level. The size will of course depend on the resolution of the display and color depth. The address of the display buffer is then passed to the graphics library via the display driver's Start()  method.
 
 ## Methods
 
@@ -34,14 +34,21 @@ NOTE: Most display drivers are extended with the generic bitmap graphics library
 |`CopyAccel (sx, sy, ex, ey, dx, dy)`           | Use the display's accelerated Copy Region function                                    |
 |`CopyAccelInverted(enabled)`                   | Enable inverted colors, when using CopyAccel()                                        |
 |`CurrentLimit (divisor)`                       | Set master current limit divisor                                                      |
+|`CursorBlink(enable)`                          | Enable cursor blinking                                                                |
+|`CursorInvert(enable)`                         | Invert cursor                                                                         |
+|`CursorMode(mode)`                             | Select cursor display mode                                                            |
 |`Defaults`                                     | Apply power-on-reset default settings                                                 |
 |`DefaultsCommon`                               | Apply settings that may be more commonly used but differ from factory settings        |
+|`DisplayBlink(delay)`                          | Gradually fade out/in display                                                         |
 |`DisplayBounds(sx, sy, ex, ey)`                | Set displayable area                                                                  |
+|`DisplayFade(delay)`                           | Gradually fade out display, once                                                      |
 |`DisplayInverted (enabled)`                    | Invert display colors                                                                 |
 |`DisplayLines (lines)`                         | Set total number of display lines                                                     |
 |`DisplayOffset (lines)`                        | Set display offset/vertical shift                                                     |
+|`DisplayShift (direction)`                     | Shift the display left or right by one character cell's width                         |
 |`DisplayStartLine (line)`                      | Set display start line                                                                |
 |`DisplayVisibility (mode)`                     | Set display visibility                                                                |
+|`DoubleHeight (mode)`                          | Set double-height font style mode                                                     |
 |`FillAccelEnabled (enabled)`                   | Enable the display's fill function, when using BoxAccel()                             |
 |`Interlaced (enabled)`                         | Alternate every other display line                                                    |
 |`LineAccel(sx, sy, ex, ey, rgb)`               | Draw a line, using the display's native/accelerated line function                     |
@@ -55,6 +62,9 @@ NOTE: Most display drivers are extended with the generic bitmap graphics library
 |`PrechargePeriod (phs1_clks, phs2_clks)`       | Set display refresh precharge periods                                                 |
 |`PrechargeLevel (mV)`                          | Set first pre-charge voltage level (phase 2) of segment pins, in millivolts           |
 |`Reset`                                        | Reset the display controller                                                          |
+|`SEGVoltageRef (ref)`                          | Select segment voltage reference                                                      |
 |`SubpixelOrder (order)`                        | Set subpixel color order                                                              |
+|`SupplyVoltage (V)`                            | Set supply voltage (enable/disable internal regulator)                                |
+|`TextDirection (direction)`                    | Change mapping between display data column address and segment driver                 |
 |`Update`                                       | Write the current display buffer to the display                                       |
 |`WriteBuffer (buff_addr, buff_sz)`             | Write alternate buffer to display                                                     |
