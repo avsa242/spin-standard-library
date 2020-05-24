@@ -9,7 +9,7 @@ In order to reduce the burden of having to learn a new programming interface wit
 
 Decriptions of the programming interface for the various classes of library can be found in the [API](api) subdirectory.
 At the time of this writing, they are:
-* [display.oled](api/display.oled.md): OLED displays *(NOTE: This generally applies to display.lcd drivers, as well)*
+* [display](api/display.md): Displays, e.g., OLED, LCD, VGA
 * [memory](api/memory.md): Various memory technologies, e.g.: EEPROM, FRAM, SRAM, Flash
 * [signal.adc](api/signal.adc.md): Analog to Digital Converters
 * [sensor.imu](api/sensor.imu.md): IMUs and other motion-related sensors, e.g., accelerometers, gyroscopes, magnetometers
