@@ -1,4 +1,5 @@
 library/char.type.spin
+library/com.can.txrx.spin
 library/com.i2c.spin
 library/com.onewire.spin
 library/com.serial.spin
@@ -69,6 +70,7 @@ library/demos/NRF24L01-TXDemo.spin
 library/demos/NRF24L01-TXDemoWithAA.spin
 library/demos/SD-FAT-Demo1.spin
 library/demos/char/Types.spin
+library/demos/com/CANBus-Loopback-Demo.spin
 library/demos/com/serial/DataBlast.spin
 library/demos/com/serial/HelloWorld.spin
 library/demos/com/serial/LoopBack.spin
@@ -83,15 +85,15 @@ library/demos/debug/RealTimeClockEmulator.spin
 library/demos/debug/StackLength.spin
 library/demos/display/Graphics_Demo.spin
 library/demos/display/Graphics_Palette.spin
+library/demos/display/LCD-Serial-Demo.spin
 library/demos/display/OLED-4DGL-Demo.spin
-library/demos/display/OLED-US2066-Demo.spin
 library/demos/display/SSD1306-Demo.spin
 library/demos/display/SSD1331-Demo.spin
 library/demos/display/SSD1351-Demo.spin
 library/demos/display/ST7735-Demo.spin
 library/demos/display/TV_Terminal_Demo.spin
 library/demos/display/TV_Text_Demo.spin
-library/demos/display/lcd/serial/Demo.spin
+library/demos/display/US2066-Demo.spin
 library/demos/display/vga/VGA_512x384_Bitmap_Demo.spin
 library/demos/display/vga/VGA_Demo.spin
 library/demos/display/vga/VGA_HiRes_Text_Demo.spin

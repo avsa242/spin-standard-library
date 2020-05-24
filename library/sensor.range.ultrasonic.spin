@@ -1,3 +1,20 @@
+{
+    --------------------------------------------
+    Filename: sensor.range.ultrasonic.spin
+    Description: Driver for ultrasonic range sensors
+        such as the Parallax Ping))) sensor (#28015)
+    Author: Chris Savage, Jeff Martin
+    Modified by: Jesse Burt
+    Created May 8, 2006
+    Updated May 24, 2020
+    See end of file for terms of use.
+    --------------------------------------------
+
+    NOTE: This is a derivative of Ping.spin,
+        originally by Chris Savage, Jeff Martin
+        The original header is preserved below
+}
+
 {{
 ***************************************
 *        Ping))) Object V1.2          *
@@ -27,39 +44,31 @@ Each method requires one parameter, Pin, that is the I/O pin that is connected t
 
 CON
 
-  TO_IN = 73_746                                                                ' Inches
-  TO_CM = 29_034                                                                ' Centimeters
+    TO_IN   = 73_746                                                ' Inches
+    TO_CM   = 29_034                                                ' Centimeters
 
-
-PUB Ticks(Pin) : Microseconds | cnt1, cnt2
+PUB Ticks(Pin): Microseconds | cnt1, cnt2
 ''Return Ping)))'s one-way ultrasonic travel time in microseconds
+    outa[Pin] := 0                                                  ' Clear I/O Pin
+    dira[Pin] := 1                                                  ' Make Pin Output
+    outa[Pin] := 1                                                  ' Set I/O Pin
+    outa[Pin] := 0                                                  ' Clear I/O Pin (> 2 µs pulse)
+    dira[Pin] := 0                                                  ' Make I/O Pin Input
+    waitpne(0, |< Pin, 0)                                           ' Wait For Pin To Go HIGH
+    cnt1 := cnt                                                     ' Store Current Counter Value
+    waitpeq(0, |< Pin, 0)                                           ' Wait For Pin To Go LOW
+    cnt2 := cnt                                                     ' Store New Counter Value
+    Microseconds := (||(cnt1 - cnt2) / (clkfreq / 1_000_000)) >> 1  ' Return Time in µs
 
-  outa[Pin]~                                                                    ' Clear I/O Pin
-  dira[Pin]~~                                                                   ' Make Pin Output
-  outa[Pin]~~                                                                   ' Set I/O Pin
-  outa[Pin]~                                                                    ' Clear I/O Pin (> 2 µs pulse)
-  dira[Pin]~                                                                    ' Make I/O Pin Input
-  waitpne(0, |< Pin, 0)                                                         ' Wait For Pin To Go HIGH
-  cnt1 := cnt                                                                   ' Store Current Counter Value
-  waitpeq(0, |< Pin, 0)                                                         ' Wait For Pin To Go LOW
-  cnt2 := cnt                                                                   ' Store New Counter Value
-  Microseconds := (||(cnt1 - cnt2) / (clkfreq / 1_000_000)) >> 1                ' Return Time in µs
-
-
-PUB Inches(Pin) : Distance
+PUB Inches(Pin): Distance
 ''Measure object distance in inches
+    Distance := Ticks(Pin) * 1_000 / TO_IN                          ' Distance In Inches
 
-  Distance := Ticks(Pin) * 1_000 / TO_IN                                        ' Distance In Inches
-
-
-PUB Centimeters(Pin) : Distance
+PUB Centimeters(Pin): Distance
 ''Measure object distance in centimeters
+    Distance := Millimeters(Pin) / 10                               ' Distance In Centimeters
 
-  Distance := Millimeters(Pin) / 10                                             ' Distance In Centimeters
-
-
-PUB Millimeters(Pin) : Distance
+PUB Millimeters(Pin): Distance
 ''Measure object distance in millimeters
-
-  Distance := Ticks(Pin) * 10_000 / TO_CM                                       ' Distance In Millimeters
+    Distance := Ticks(Pin) * 10_000 / TO_CM                         ' Distance In Millimeters
 
