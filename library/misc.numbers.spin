@@ -4,7 +4,7 @@
     Author: Jeff Martin
     Modified by: Jesse Burt
     Description: Object for converting numbers to formatted strings
-        e.g., with digit group separators, radix indicator
+        with optional digit group separators, radix indicator, padding
     Copyright (c) 2020
     Started May 24, 2020
     Updated May 24, 2020
@@ -60,7 +60,6 @@ PUB Config(SymAddr)
 '       4) binary base indicator (default is '%').
     bytemove(@_symbols, SymAddr, 7)
 
-
 PUB ToStr(Num, Format): StrAddr
 ' Convert long Num to z-string using Format
 '   Num:    32-bit signed value to translate to ASCII string.
@@ -68,7 +67,6 @@ PUB ToStr(Num, Format): StrAddr
 '   Returns: String address
     BCXToText(Format >> 19 & 7, Format >> 13 & $3F, Format >> 12 & 1, Format >> 11 & 1, Format >> 5 & $3F, BinToBCX(Num, Format & $1F #> 2 <# 16))
     StrAddr := @_strbuf
-
 
 PUB FromStr(StrAddr, Format): Num | Idx, N, Val, Char, Base, GChar, IChar, Field
 ' Convert z-string to long Num using Format.
@@ -135,7 +133,6 @@ PRI BCXToText(IChar, Group, ShowPlus, SPad, Field, Digits): Size | Idx, GCnt, SC
         byte[@_strbuf][Size-1-Idx-(Idx-1)/Group #> 1] := IChar                                              ' Insert base indicator, if necessary
     byte[@_strbuf][Size] := 0                                                                               ' Zero-terminate string
 
-
 PRI InBaseRange(Char, Base): Value
 ' Compare Char against valid characters for Base (1..16) (adjusting for lower-case automatically).
 '   Returns:
@@ -146,7 +143,6 @@ PRI InBaseRange(Char, Base): Value
 DAT
 
     Default_symbols     byte    ",_$%xxx"                                                                   ' Special, default, symbols ("x" means unused)
-
 
 '
 '
@@ -159,7 +155,7 @@ DAT
 'Standard/Default Features:
 '   * supports full 32-bit signed values
 '   * converts using any base from 2 to 16 (binary to hexadecimal)
-'   * defaults to variable widths (ouputs entire number, regardless of size)
+'   * defaults to variable widths (outputs entire number, regardless of size)
 '   * uses ' ' or '-' for sign character
 '
 'Optional Features
