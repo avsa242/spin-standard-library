@@ -58,16 +58,6 @@ library/debug.emulator.rtc.spin
 library/debug.shell.spin
 library/debug.stacklength.spin
 library/demos/23LCXXXX-Demo.spin
-library/demos/CC1101-RXDemo.spin
-library/demos/CC1101-TXDemo.spin
-library/demos/CC2500-RXDemo.spin
-library/demos/CC2500-TXDemo.spin
-library/demos/NRF24L01-RXDemo-PST.spin
-library/demos/NRF24L01-RXDemo.spin
-library/demos/NRF24L01-RXDemoWithAA.spin
-library/demos/NRF24L01-TXDemo-PST.spin
-library/demos/NRF24L01-TXDemo.spin
-library/demos/NRF24L01-TXDemoWithAA.spin
 library/demos/SD-FAT-Demo1.spin
 library/demos/char/Types.spin
 library/demos/com/CANBus-Loopback-Demo.spin
@@ -132,10 +122,10 @@ library/demos/sensor/MXD2125 Demo.spin
 library/demos/sensor/MXD2125 Simple Demo.spin
 library/demos/sensor/Memsic2125v2_Graphics_Demo.spin
 library/demos/sensor/Memsic2125v2_Serial_Demo.spin
-library/demos/sensor/Ping_Demo.spin
 library/demos/sensor/SHT3x-Demo.spin
 library/demos/sensor/TCS3x7x-Demo.spin
 library/demos/sensor/TSL2591-Demo.spin
+library/demos/sensor/Ultrasonic-LCD-Demo.spin
 library/demos/sensor/compass/hm55b/Calibration.spin
 library/demos/sensor/compass/hm55b/SerialDemo.spin
 library/demos/sensor/compass/hm55b/TVDemo.spin
@@ -162,6 +152,16 @@ library/demos/string/UpperLower.spin
 library/demos/string/integer/PrintNumbers.spin
 library/demos/system/ClockDemo.spin
 library/demos/system/Counters.spin
+library/demos/wireless/CC1101-RXDemo.spin
+library/demos/wireless/CC1101-TXDemo.spin
+library/demos/wireless/CC2500-RXDemo.spin
+library/demos/wireless/CC2500-TXDemo.spin
+library/demos/wireless/NRF24L01-RXDemo-PST.spin
+library/demos/wireless/NRF24L01-RXDemo.spin
+library/demos/wireless/NRF24L01-RXDemoWithAA.spin
+library/demos/wireless/NRF24L01-TXDemo-PST.spin
+library/demos/wireless/NRF24L01-TXDemo.spin
+library/demos/wireless/NRF24L01-TXDemoWithAA.spin
 library/display.lcd.serial.spin
 library/display.lcd.st7735.spi.spin
 library/display.oled.4dgl.uart.spin

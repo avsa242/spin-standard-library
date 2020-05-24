@@ -4,8 +4,8 @@
     Author: Jesse Burt
     Description: US2066 OLED Display driver registers/command set
     Created Dec 30, 2017
-    Updated Jun 10, 2019
-    Copyright (c) 2018
+    Updated Mar 3, 2020
+    Copyright (c) 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -14,6 +14,8 @@ CON
 
     SLAVE_ADDR          = $3C << 1 '$3C - Default slave address of US2066
     I2C_MAX_FREQ        = 400_000  '400kHz - Max operating freq
+    TRES                = 2        ' Reset low width (microseconds)
+    DEVID_RESP          = $21
 
     DATABIT             = $40
     CMDBIT              = $00
