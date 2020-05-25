@@ -101,6 +101,7 @@ library/demos/math/random/WhiteNoise.spin
 library/demos/math/rctime/RCTIME_background_DEMO.spin
 library/demos/math/rctime/RCTIME_foreground_DEMO.spin
 library/demos/misc/COIL_demo.spin
+library/demos/misc/Loader-P8X32A-Demo.spin
 library/demos/motor/Servo.spin
 library/demos/sensor/ADXL345-Demo-ANSI.spin
 library/demos/sensor/ADXL345-Demo.spin
@@ -202,7 +203,7 @@ library/memory.flash.sd.spi.spin
 library/memory.fram.mb85rc.i2c.spin
 library/memory.sram.23lcxxxx.spi.spin
 library/misc.coilread.spin
-library/misc.loader.spin
+library/misc.loader.p8x32a.spin
 library/misc.numbers.spin
 library/motor.servo.ramp.spin
 library/motor.servo.spin
