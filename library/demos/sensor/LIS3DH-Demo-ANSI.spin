@@ -5,27 +5,31 @@
     Description: Demo of the LIS3DH driver
     Copyright (c) 2020
     Started Mar 15, 2020
-    Updated Mar 16, 2020
+    Updated May 31, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
-
+' Uncomment one of the following to choose which interface the LIS3DH is connected to
+'#define LIS3DH_I2C
+#define LIS3DH_SPI
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' User-modifiable constants
+' -- User-modifiable constants
     LED         = cfg#LED1
     SER_RX      = 31
     SER_TX      = 30
     SER_BAUD    = 115_200
 
-    CS_PIN      = 12
-    SCL_PIN     = 15
-    SDA_PIN     = 14
-    SDO_PIN     = 13
-    SCL_DELAY   = 1
+    CS_PIN      = 12                                        ' SPI
+    SCL_PIN     = 15                                        ' SPI, I2C
+    SDA_PIN     = 14                                        ' SPI, I2C
+    SDO_PIN     = 13                                        ' SPI
+    I2C_HZ      = 400_000                                   ' I2C
+    SLAVE_OPT   = 0
+' --
 
 OBJ
 
@@ -34,12 +38,11 @@ OBJ
     time    : "time"
     io      : "io"
     int     : "string.integer"
-    accel   : "sensor.accel.3dof.lis3dh.spi"
+    accel   : "sensor.accel.3dof.lis3dh.i2cspi"
 
 VAR
 
     long _overruns
-    byte _ser_cog
 
 PUB Main | dispmode
 
@@ -73,7 +76,7 @@ PUB Main | dispmode
     ser.dec(accel.IntThresh(-2))                            '
     ser.newline                                             '
     ser.str(string("IntMask: "))                            '
-    ser.bin(accel.IntMask(-2), 8)                           '
+    ser.bin(accel.IntMask(-2), 6)                           '
     ser.newline                                             '
 
     repeat
@@ -145,12 +148,19 @@ PUB Calibrate
 
 PUB Setup
 
-    repeat until _ser_cog := ser.Start (115_200)
+    repeat until ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
     time.MSleep(30)
     ser.Clear
     ser.Str(string("Serial terminal started", ser#CR, ser#LF))
-    if accel.Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN, SCL_DELAY)
-        ser.str(string("LIS3DH driver started", ser#CR, ser#LF))
+#ifdef LIS3DH_SPI
+    if accel.Start(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+        accel.Defaults
+        ser.str(string("LIS3DH driver started (SPI)", ser#CR, ser#LF))
+#elseifdef LIS3DH_I2C
+    if accel.Startx(SCL_PIN, SDA_PIN, I2C_HZ, SLAVE_OPT)
+        accel.Defaults
+        ser.str(string("LIS3DH driver started (I2C)", ser#CR, ser#LF))
+#endif
     else
         ser.str(string("LIS3DH driver failed to start - halting", ser#CR, ser#LF))
         accel.Stop
