@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2020
     Started: Nov 3, 2019
-    Updated: Mar 28, 2020
+    Updated: Jun 6, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -80,6 +80,12 @@ PUB Main | time_ms, r
     Demo_Bitmap (time_ms, $8000)
     oled.ClearAll
 
+    Demo_Box (time_ms)
+    oled.ClearAll
+
+    Demo_BoxFilled (time_ms)
+    oled.ClearAll
+
     Demo_LineSweepX(time_ms)
     oled.ClearAll
 
@@ -112,6 +118,20 @@ PUB Main | time_ms, r
     Stop
     FlashLED(LED, 100)
 
+PUB Demo_Bitmap(testtime, bitmap_addr) | iteration
+' Continuously redraws bitmap at address bitmap_addr
+    ser.str(string("Demo_Bitmap - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
+        oled.Bitmap (bitmap_addr, BUFFSZ, 0)
+        oled.Update
+        iteration++
+
+    Report(testtime, iteration)
+    return iteration
+
 PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
 ' Draws a simple ball bouncing off screen edges
     bx := (rnd(XMAX) // (WIDTH - radius * 4)) + radius * 2  'Pick a random screen location to
@@ -139,14 +159,30 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
     Report(testtime, iteration)
     return iteration
 
-PUB Demo_Bitmap(testtime, bitmap_addr) | iteration
-' Continuously redraws bitmap at address bitmap_addr
-    ser.str(string("Demo_Bitmap - "))
+PUB Demo_Box (testtime) | iteration, c
+' Draws random lines
+    ser.str(string("Demo_Box - "))
     _timer_set := testtime
     iteration := 0
 
     repeat while _timer_set
-        oled.Bitmap (bitmap_addr, BUFFSZ, 0)
+        c := (?_rndseed >> 26) << 11 | (?_rndseed >> 25) << 5 | (?_rndseed >> 26)
+        oled.Box (rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), c, FALSE)
+        oled.Update
+        iteration++
+
+    Report(testtime, iteration)
+    return iteration
+
+PUB Demo_BoxFilled (testtime) | iteration, c, x1, y1, x2, y2
+' Draws random lines
+    ser.str(string("Demo_BoxFilled - "))
+    _timer_set := testtime
+    iteration := 0
+
+    repeat while _timer_set
+        c := (?_rndseed >> 26) << 11 | (?_rndseed >> 25) << 5 | (?_rndseed >> 26)
+        oled.Box (rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), c, TRUE)
         oled.Update
         iteration++
 
