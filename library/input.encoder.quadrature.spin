@@ -154,7 +154,7 @@ To use this object:
 Example Code:
 
 OBJ
-  Encoder : "input.quadrature"
+  Encoder : "input.encoder.quadrature"
 
 VAR
   long Pos[3]                            'Create buffer for two encoders (plus room for delta position support of 1st encoder)
