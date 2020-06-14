@@ -15,6 +15,7 @@
 CON
 
     MAX_COLOR       = 65535
+    BYTESPERPX      = 2
 
 ' Display power on/off modes
     OFF             = 0
@@ -54,8 +55,9 @@ OBJ
 VAR
 
     long _DC, _RES, _MOSI, _SCK, _CS
-    long _ptr_framebuffer
+    long _ptr_drawbuffer
     word _disp_width, _disp_height, _disp_xmax, _disp_ymax, _buff_sz
+    word BYTESPERLN
 
     byte _sh_CLK, _sh_REMAPCOLOR, _sh_PHASE12PER                            ' Shadow registers
 
@@ -77,6 +79,7 @@ PUB Start (CS_PIN, DC_PIN, DIN_PIN, CLK_PIN, RES_PIN, WIDTH, HEIGHT, drawbuffer_
             _disp_xmax := _disp_width - 1
             _disp_ymax := _disp_height - 1
             _buff_sz := _disp_width * _disp_height * 2
+            BYTESPERLN := _disp_width * BYTESPERPX
 
             Address(drawbuffer_address)
             Reset
@@ -96,7 +99,7 @@ PUB Address(addr)
 ' Set address of display buffer
 '   Example:
 '       display.Address(@_framebuffer)
-    _ptr_framebuffer := addr
+    _ptr_drawbuffer := addr
 
 PUB Defaults
 ' Apply power-on-reset default settings
@@ -501,7 +504,7 @@ PUB Reset
 
 PUB Update
 ' Send the draw buffer to the display
-    writeReg(core#WRITERAM, _buff_sz, _ptr_framebuffer)
+    writeReg(core#WRITERAM, _buff_sz, _ptr_drawbuffer)
 
 PRI writeReg(reg, nr_bytes, buff_addr) | tmp
 
