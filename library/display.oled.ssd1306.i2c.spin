@@ -19,6 +19,7 @@ CON
 
     DEF_HZ          = 400_000
     MAX_COLOR       = 1
+    BYTESPERPX      = 1
 
 ' Display visibility modes
     NORMAL          = 0
@@ -33,8 +34,9 @@ OBJ
 
 VAR
 
-    long _ptr_framebuffer
+    long _ptr_drawbuffer
     word _buff_sz
+    word BYTESPERLN
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
     byte _sa0
 
@@ -61,6 +63,8 @@ PUB Start(width, height, SCL_PIN, SDA_PIN, I2C_HZ, dispbuffer_address, SLAVE_LSB
                 _disp_xmax := _disp_width-1
                 _disp_ymax := _disp_height-1
                 _buff_sz := (_disp_width * _disp_height) / 8
+                BYTESPERLN := _disp_width * BYTESPERPX
+
                 Address(dispbuffer_address)
                 return TRUE
     return FALSE                                                'If we got here, something went wrong
@@ -74,7 +78,7 @@ PUB Defaults
 ' Apply power-on-reset default settings
     Powered(FALSE)
     ClockFreq (372)
-    DisplayLines(_disp_height-1)
+    DisplayLines(_disp_height)
     DisplayOffset(0)
     DisplayStartLine(0)
     ChargePumpReg(TRUE)
@@ -99,9 +103,9 @@ PUB Address(addr)
 ' Set framebuffer address
     case addr
         $0004..$7FFF-_buff_sz:
-            _ptr_framebuffer := addr
+            _ptr_drawbuffer := addr
         OTHER:
-            return _ptr_framebuffer
+            return _ptr_drawbuffer
 
 PUB AddrMode(mode)
 ' Set Memory Addressing Mode
@@ -319,7 +323,7 @@ PUB Update | tmp
     i2c.start
     i2c.write (SLAVE_WR | _sa0)
     i2c.write (core#CTRLBYTE_DATA)
-    i2c.Wr_Block(_ptr_framebuffer, _buff_sz)
+    i2c.Wr_Block(_ptr_drawbuffer, _buff_sz)
     i2c.stop
 
 PUB WriteBuffer(buff_addr, buff_sz) | tmp
