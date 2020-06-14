@@ -3,9 +3,9 @@
     Filename: core.con.lsm9ds1.spin
     Author: Jesse Burt
     Description: LSM9DS1 low-level constants
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Feb 9, 2019
-    Updated Apr 17, 2019
+    Updated Jan 12, 2020
     See end of file for terms of use.
     --------------------------------------------
 }

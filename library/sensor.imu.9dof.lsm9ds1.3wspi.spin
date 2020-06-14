@@ -3,9 +3,9 @@
     Filename: sensor.imu.9dof.lsm9ds1.3wspi.spin
     Author: Jesse Burt
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
-    Copyright (c) 2020
+    Copyright (c) 2019
     Started Aug 12, 2017
-    Updated Jan 12, 2020
+    Updated Sep 22, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -122,10 +122,10 @@ PUB Defaults | tmp
     GyroDataRate (952)
     GyroIntSelect (%00)
     GyroHighPass(0)
-    GyroAxisEnabled (TRUE, TRUE, TRUE)
+    GyroAxisEnabled (%111)
 
 'Init Accel
-    AccelAxisEnabled (TRUE, TRUE, TRUE)
+    AccelAxisEnabled (%111)
 
     tmp := $C0                                  '\
     writeReg(XLG, core#CTRL_REG6_XL, 1, @tmp)   ' } Rewrite high-level
@@ -167,20 +167,20 @@ PUB Defaults | tmp
     AccelScale(2)
     MagScale(4)
 
-PUB AccelAxisEnabled(x, y, z) | tmp, bits
+PUB AccelAxisEnabled(xyz_mask) | tmp
 ' Enable data output for Accelerometer - per axis
 '   Valid values: FALSE (0) or TRUE (1 or -1), for each axis
 '   Any other value polls the chip and returns the current setting
     readReg(XLG, core#CTRL_REG5_XL, 1, @tmp)
-    case bits := (||z << 2) | (||y << 1) | ||x
+    case xyz_mask
         %000..%111:
-            bits <<= core#FLD_XEN_XL
+            xyz_mask <<= core#FLD_XEN_XL
         OTHER:
             tmp := (tmp >> core#FLD_XEN_XL) & core#BITS_EN_XL
             return tmp
 
     tmp &= core#MASK_EN_XL
-    tmp := (tmp | bits) & core#CTRL_REG5_XL_MASK
+    tmp := (tmp | xyz_mask) & core#CTRL_REG5_XL_MASK
     writeReg(XLG, core#CTRL_REG5_XL, 1, @tmp)
 
 PUB AccelCal(rw, axBias, ayBias, azBias)
@@ -427,20 +427,20 @@ PUB FIFOUnreadSamples
     readReg(XLG, core#FIFO_SRC, 1, @result)
     result &= core#BITS_FSS
 
-PUB GyroAxisEnabled(x, y, z) | tmp, bits
+PUB GyroAxisEnabled(xyz_mask) | tmp
 ' Enable data output for Gyroscope - per axis
 '   Valid values: FALSE (0) or TRUE (1 or -1), for each axis
 '   Any other value polls the chip and returns the current setting
     readReg(XLG, core#CTRL_REG4, 1, @tmp)
-    case bits := (||z << 2) | (||y << 1) | ||x
+    case xyz_mask
         %000..%111:
-            bits <<= core#FLD_XEN_G
+            xyz_mask <<= core#FLD_XEN_G
         OTHER:
             tmp := (tmp >> core#FLD_XEN_G) & core#BITS_EN_G
             return tmp
 
     tmp &= core#MASK_EN_G
-    tmp := (tmp | bits) & core#CTRL_REG4_MASK
+    tmp := (tmp | xyz_mask) & core#CTRL_REG4_MASK
     writeReg(XLG, core#CTRL_REG4, 1, @tmp)
 
 PUB GyroCal(rw, gxBias, gyBias, gzBias)
