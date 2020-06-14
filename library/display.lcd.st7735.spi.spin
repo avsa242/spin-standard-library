@@ -14,6 +14,8 @@
 
 CON
 
+    MAX_COLOR           = 65535
+
 ' Display visibility modes
     NORMAL              = 0
     ALL_OFF             = 1
@@ -53,7 +55,7 @@ CON
 
 VAR
 
-    long _ptr_framebuffer
+    long _ptr_drawbuffer
     word _buff_sz
     word _framerate
     byte _SDA, _SCK, _RESET, _DC
@@ -172,7 +174,7 @@ PUB Contrast(level)
 
 PUB Address(addr)
 ' Set framebuffer/display buffer address
-    _ptr_framebuffer := addr
+    _ptr_drawbuffer := addr
 
 PUB ClearAccel
 ' Dummy method
@@ -582,7 +584,7 @@ PUB SubpixelOrder(order) | tmp
 
 PUB Update | tmp
 ' Write the draw buffer to the display
-    writeReg(core#RAMWR, _buff_sz, _ptr_framebuffer)
+    writeReg(core#RAMWR, _buff_sz, _ptr_drawbuffer)
 
 {
 PRI readReg(reg, nr_bytes, buff_addr) | tmp         ' * Not possible on Adafruit breakout boards, possibly others
