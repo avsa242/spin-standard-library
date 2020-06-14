@@ -5,7 +5,7 @@
     Description: Driver for Sitronix ST7735-based displays (4W SPI)
     Copyright (c) 2020
     Started Mar 07, 2020
-    Updated Mar 10, 2020
+    Updated Jun 14, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,6 +15,7 @@
 CON
 
     MAX_COLOR           = 65535
+    BYTESPERPX          = 2
 
 ' Display visibility modes
     NORMAL              = 0
@@ -63,6 +64,8 @@ VAR
 '   Shadow registers
     byte _colmod, _madctl, _opmode
 
+    byte BYTESPERLN
+
 OBJ
 
     spi : "com.spi.fast"
@@ -90,7 +93,8 @@ PUB Start(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, disp_width, disp_height, 
         _disp_height := disp_height
         _disp_xmax := _disp_width-1
         _disp_ymax := _disp_height-1
-        _buff_sz := (_disp_width * _disp_height) * 2
+        BYTESPERLN := _disp_width * BYTESPERPX
+        _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
         Reset
         Address(drawbuffer_address)
         return okay

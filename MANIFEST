@@ -205,8 +205,6 @@ library/misc.loader.p8x32a.spin
 library/misc.numbers.spin
 library/motor.servo.ramp.spin
 library/motor.servo.spin
-library/propeller-beanie-16bpp.spin
-library/propeller-beanie-1bpp.spin
 library/sensor.accel.2dof.memsic2125.analog-pwm.spin
 library/sensor.accel.2dof.mxd2125.analog-pwm.spin
 library/sensor.accel.3dof.adxl345.spi.spin
