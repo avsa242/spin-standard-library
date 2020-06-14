@@ -45,7 +45,25 @@ PUB Box(x0, y0, x1, y1, color, filled) | x, y
                 Plot(x0, y, color)
                 Plot(x1, y, color)
         TRUE:
+#ifdef SSD130X
+            repeat y from y0 to y1                          ' Temporary for 1bpp drivers
+                repeat x from x0 to x1
+                    Plot(x, y, color)
+#elseifdef IL3820
+            repeat y from y0 to y1
+                repeat x from x0 to x1
+                    Plot(x, y, color)
+#elseifdef LEDMATRIX_CHARLIEPLEXED
+            repeat y from y0 to y1
+                repeat x from x0 to x1
+                    Plot(x, y, color)
+#elseifdef HT16K33-ADAFRUIT
+            repeat y from y0 to y1
+                repeat x from x0 to x1
+                    Plot(x, y, color)
+#else
             if lookdown(x0: 0.._disp_width) and lookdown(y0: 0.._disp_height) and lookdown(x1: 0.._disp_width) and lookdown(y1: 0.._disp_height)
+
                 x := ||(x1-x0)
                 if x1 < x0
                     repeat y from y0 to y1
@@ -55,6 +73,7 @@ PUB Box(x0, y0, x1, y1, color, filled) | x, y
                         memFill(x0, y, color, x)
             else
                 return FALSE
+#endif
 
 PUB Char (ch) | glyph_col, glyph_row, x, last_glyph_col, last_glyph_row, ch_offset
 ' Write a character to the display
@@ -62,12 +81,12 @@ PUB Char (ch) | glyph_col, glyph_row, x, last_glyph_col, last_glyph_row, ch_offs
     last_glyph_row := _font_height-1
 
     case ch
-        10:
+        LF:
             _row += _font_height
             if _row > _disp_ymax
                 _row := 0
 
-        13:
+        CR:
             _col := 0
 
         32..127:
@@ -81,12 +100,12 @@ PUB Char (ch) | glyph_col, glyph_row, x, last_glyph_col, last_glyph_row, ch_offs
                     else
                         Plot(x, _row + glyph_row, _bgcolor)
 
-    _col += _font_width
-    if _col > _disp_xmax
-        _col := 0
-        _row += _font_height
-        if _row > _disp_ymax
-            _row := 0
+            _col += _font_width
+            if _col > _disp_xmax
+                _col := 0
+                _row += _font_height
+                if _row > _disp_ymax
+                    _row := 0
 
 PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
 ' Draw a circle
@@ -122,23 +141,23 @@ PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
 PUB Clear
 ' Clear the display buffer
 #ifdef IL3820
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef SSD130X
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef SSD1331
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #elseifdef NEOPIXEL
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4) ' XXX verify
+    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef HT16K33-ADAFRUIT
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef ST7735
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #elseifdef SSD1351
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef VGABITMAP6BPP
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
 
 PUB ClearAll
@@ -419,14 +438,14 @@ PUB ScrollDown(sx, sy, ex, ey) | scr_width, src, dest, x, y
 #endif
 
 PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
-' Scroll a region of the display up by 1 pixel
+' Scroll a region of the display left by 1 pixel
     scr_width := ex-sx
     repeat y from sy to ey
 
 #ifdef IL3820
-        Copy(sx, y, ex, y, sx, y-1)                         ' Use Copy() for display types other than VGA, for now (simpler to implement)
+        Copy(sx, y, ex, y, sx-1, y)                         ' Use Copy() for display types other than VGA, for now (simpler to implement)
 #elseifdef SSD130X
-        Copy(sx, y, ex, y, sx, y-1)
+        Copy(sx, y, ex, y, sx-1, y)
 #elseifdef SSD1331
         src := sx + (y * BYTESPERLN)
         dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
@@ -436,7 +455,7 @@ PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
         dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
-        Copy(sx, y, ex, y, sx, y-1)
+        Copy(sx, y, ex, y, sx-1, y)
 #elseifdef ST7735
         src := sx + (y * BYTESPERLN)
         dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
@@ -456,14 +475,14 @@ PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
 #endif
 
 PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y
-' Scroll a region of the display up by 1 pixel
+' Scroll a region of the display right by 1 pixel
     scr_width := ex-sx
     repeat y from sy to ey
 
 #ifdef IL3820
-        Copy(sx, y, ex, y, sx, y)                         ' Use Copy() for display types other than VGA, for now (simpler to implement)
+        Copy(sx, y, ex, y, sx+1, y)                         ' Use Copy() for display types other than VGA, for now (simpler to implement)
 #elseifdef SSD130X
-        Copy(sx, y, ex, y, sx, y)
+        Copy(sx, y, ex, y, sx+1, y)
 #elseifdef SSD1331
         src := sx + (y * BYTESPERLN)
         dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
@@ -473,7 +492,7 @@ PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y
         dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
-        Copy(sx, y, ex, y, sx, y)
+        Copy(sx, y, ex, y, sx+1, y)
 #elseifdef ST7735
         src := sx + (y * BYTESPERLN)
         dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
@@ -545,7 +564,7 @@ PRI memFill(xs, ys, val, count)
 #ifdef IL3820
     bytefill(ptr_start, val, count)
 #elseifdef SSD130X
-    bytefill(ptr_start, val, count)
+    bytefill(_ptr_drawbuffer + (xs + (ys * BYTESPERLN)), val, count)
 #elseifdef SSD1331
     wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * BYTESPERLN)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
 #elseifdef NEOPIXEL
