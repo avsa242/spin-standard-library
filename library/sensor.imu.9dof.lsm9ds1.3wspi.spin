@@ -183,7 +183,7 @@ PUB AccelAxisEnabled(xyz_mask) | tmp
     tmp := (tmp | xyz_mask) & core#CTRL_REG5_XL_MASK
     writeReg(XLG, core#CTRL_REG5_XL, 1, @tmp)
 
-PUB AccelCal(rw, axBias, ayBias, azBias)
+PUB AccelBias(axBias, ayBias, azBias, rw)
 ' Read or write/manually set accelerometer calibration offset values
 '   Valid values:
 '       rw:
@@ -443,7 +443,7 @@ PUB GyroAxisEnabled(xyz_mask) | tmp
     tmp := (tmp | xyz_mask) & core#CTRL_REG4_MASK
     writeReg(XLG, core#CTRL_REG4, 1, @tmp)
 
-PUB GyroCal(rw, gxBias, gyBias, gzBias)
+PUB GyroBias(gxBias, gyBias, gzBias, rw)
 ' Read or write/manually set Gyroscope calibration offset values
 '   Valid values:
 '       rw:
@@ -647,7 +647,7 @@ PUB MagBlockUpdate(enabled)
 '   Any other value polls the chip and returns the current setting
     result := booleanChoice (MAG, core#CTRL_REG5_M, core#FLD_BDU_M, core#MASK_BDU_M, core#CTRL_REG5_M_MASK, enabled, 1)
 
-PUB MagCal(rw, mxBias, myBias, mzBias) | axis, msb, lsb
+PUB MagBias(mxBias, myBias, mzBias, rw) | axis, msb, lsb
 ' Read or write/manually set Magnetometer calibration offset values
 '   Valid values:
 '       rw:
