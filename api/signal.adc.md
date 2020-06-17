@@ -7,7 +7,7 @@ Object filename description:
 
 signal.adc.model.int
 
-_model_ indicates the manufacturer's model number of the display controller
+_model_ indicates the manufacturer's model number of the ADC
 
 _int_ indicates the type of interface supported by the driver (e.g., spi, i2c, uart)
 
