@@ -5,11 +5,13 @@ API for IMU, accelerometer, gyroscope, and magnetometer device drivers
 
 Object filename description:
 
-sensor.type.ndof.int
+sensor.type.ndof.model.int
 
 _type_ is one of: imu, accel, gyroscope, magnetometer (imu sensors incorporate two or more of the others)
 
 _ndof_ indicates the number of axis, or Degrees-of-Freedom the sensor supports (e.g., 3dof)
+
+_model_ indicates the manufacturer's model number of the sensor
 
 _int_ indicates the type of interface supported by the driver (e.g., spi, i2c, uart)
 

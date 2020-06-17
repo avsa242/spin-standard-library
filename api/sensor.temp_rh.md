@@ -10,7 +10,7 @@ sensor.type.model.int
 
 _type_ is one of: temp_rh, temperature, humidity, thermal-array
 
-_model_ indicates the manufacturer's model number of the display controller
+_model_ indicates the manufacturer's model number of the sensor
 
 _int_ indicates the type of interface supported by the driver (e.g., spi, i2c, uart)
 
