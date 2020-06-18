@@ -5,7 +5,7 @@
     Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2020
     Started May 19, 2019
-    Updated Jun 6, 2020
+    Updated Jun 18, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -147,7 +147,7 @@ PUB Clear
 #elseifdef SSD1331
     wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #elseifdef NEOPIXEL
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz)
+    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
 #elseifdef HT16K33-ADAFRUIT
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef ST7735
