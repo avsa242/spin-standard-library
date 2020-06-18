@@ -22,11 +22,12 @@ CON
     SER_BAUD    = 115_200
 
     NEOPIX_PIN  = 23
-    NEOPIX_MODEL= $6812_32
+    NEOPIX_MODEL= $6812_32                                  ' LED array type: $2811, $2812, $2812B, $2813, $6812_24, $6812_32, $1803
 ' --
 
-    WIDTH       = 87
-    HEIGHT      = 1
+    WIDTH       = 87                                        ' Width (or length) of array
+    HEIGHT      = 1                                         ' Height of array (use 1 if array is just arranged in a strip)
+                                                            ' NOTE: Total combined must be between 1 and 1024, inclusive
     BPP         = 4
     BPL         = WIDTH * BPP
     BUFFSZ      = (WIDTH * HEIGHT) * BPP  'in BYTEs - 12288
