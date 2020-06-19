@@ -562,7 +562,7 @@ PRI memFill(xs, ys, val, count)
 '   val: Color
 '   count: Number of consecutive memory locations to write
 #ifdef IL3820
-    bytefill(ptr_start, val, count)
+    bytefill(_ptr_drawbuffer + (xs + (ys * BYTESPERLN)), val, count)
 #elseifdef SSD130X
     bytefill(_ptr_drawbuffer + (xs + (ys * BYTESPERLN)), val, count)
 #elseifdef SSD1331
