@@ -10,7 +10,7 @@
     Author: Jesse Burt
     Copyright (c) 2020
     Created: Jun 18, 2019
-    Updated: Jan 11, 2020
+    Updated: Jun 19, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -66,29 +66,21 @@ CON
 
 
 ' Text colors
-    FG_BLACK            = 30
-    FG_RED              = 31
-    FG_GREEN            = 32
-    FG_YELLOW           = 33
-    FG_BLUE             = 34
-    FG_MAGENTA          = 35
-    FG_CYAN             = 36
-    FG_WHITE            = 37
-    BG_BLACK            = 40
-    BG_RED              = 41
-    BG_GREEN            = 42
-    BG_YELLOW           = 43
-    BG_BLUE             = 44
-    BG_MAGENTA          = 45
-    BG_CYAN             = 46
-    BG_WHITE            = 47
+    BLACK               = 30
+    RED                 = 31
+    GREEN               = 32
+    YELLOW              = 33
+    BLUE                = 34
+    MAGENTA             = 35
+    CYAN                = 36
+    WHITE               = 37
     BRIGHT              = 60
 
 PUB BGColor(bcolor)
 ' Set background color
     CSI
     Char(";")
-    Dec(bcolor)
+    Dec(bcolor+10)
     Char("m")
 
 PUB Blink(mode)
