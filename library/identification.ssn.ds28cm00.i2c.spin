@@ -3,13 +3,11 @@
     Filename: identification.ssn.ds28cm00.i2c.spin
     Author: Jesse Burt
     Description: Driver for the DS28CM00 64-bit I2C Silicon Serial Number
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Feb 16, 2019
-    Updated Oct 27, 2019
+    Updated Jun 24, 2020
     See end of file for terms of use.
     --------------------------------------------
-    NOTE: This driver will start successfully if the Propeller's EEPROM is on
-        the chosen I2C bus and will return data from the EEPROM!
 }
 
 CON
@@ -49,7 +47,8 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
             if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
                 time.MSleep (1)
                 if i2c.present (SLAVE_WR)                       'Response from device?
-                    return okay
+                    if DeviceID == $70
+                        return okay
 
     return FALSE                                                'If we got here, something went wrong
 
@@ -81,7 +80,7 @@ PUB CRCValid | tmp[2]
     readRegX(core#DEV_FAMILY, 7, @tmp)
     return (CRC == crcs.DallasMaximCRC8 (@tmp, 7))
 
-PUB DeviceFamily
+PUB DeviceID
 ' Reads the Device Family Code
 '   Returns $70
     readRegX(core#DEV_FAMILY, 1, @result)
