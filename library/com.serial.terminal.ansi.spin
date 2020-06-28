@@ -19,13 +19,7 @@ CON
 
     ESC             = 27
     CS              = 16  ' Clear Screen
-    CE              = 11  ' Clear to End of line
-    CB              = 12  ' Clear lines Below
 
-    CR              = 13  ' New Line
-    LF              = 10  ' Line Feed
-    TB              =  9  ' TaB
-    BS              =  8  ' BackSpace
 
     MAXSTR_LENGTH   = 49                                   ' Maximum length of received numerical string (not including zero terminator).
 
@@ -80,17 +74,6 @@ PUB Stop
 
     ser.Stop
 
-PUB Bin(value, digits)
-{{
-    Send value as binary characters up to digits in length.
-
-    Parameters:
-        value  - byte, word, or long value to send as binary characters.
-        digits - number of binary digits to send.  Will be zero padded if necessary.
-}}
-
-    Str(int.Bin(value,digits))
-
 PUB BinIn
 {{
     Receive carriage return terminated string of characters representing a binary value.
@@ -130,15 +113,6 @@ PUB Count
 
     return ser.Count
 
-PUB Dec(value)
-{{
-    Send value as decimal characters.
-    Parameter:
-        value - byte, word, or long value to send as decimal characters.
-}}
-
-    Str(int.Dec(value))
-
 PUB DecIn
 {{
     Receive carriage return terminated string of characters representing a decimal value.
@@ -156,16 +130,6 @@ PUB Flush
 
     ser.Flush
 
-PUB Hex(value, digits)
-{{
-    Send value as hexadecimal characters up to digits in length.
-    Parameters:
-        value  - byte, word, or long value to send as hexadecimal characters.
-        digits - number of hexadecimal digits to send.  Will be zero padded if necessary.
-}}
-
-    Str(int.Hex(value, digits))
-
 PUB HexIn
 {{
     Receive carriage return terminated string of characters representing a hexadecimal value.
@@ -175,13 +139,6 @@ PUB HexIn
 
     StrInMax(@str_buffer, MAXSTR_LENGTH)
     return int.StrToBase(@str_buffer, 16)
-
-PUB NewLine
-{{
-    Move cursor to beginning of next line
-}}
-
-    Str(string(CR, LF))
 
 PUB ReadLine(line, maxline) : size | c
 
@@ -201,16 +158,6 @@ PUB RxCheck
 ' Check if character received; return immediately.
 '   Returns: -1 if no byte received, $00..$FF if character received.
     return ser.RxCheck
-
-PUB Str(stringptr)
-{{
-    Send zero-terminated string.
-    Parameter:
-        stringptr - pointer to zero terminated string to send.
-}}
-
-    repeat strsize(stringptr)
-        ser.Char(byte[stringptr++])
 
 PUB StrIn(stringptr)
 {{
@@ -241,6 +188,7 @@ PUB StrInMax(stringptr, maxcount)
             quit
     byte[stringptr+(byte[stringptr-1] == CR)]~                                    'Zero terminate string; overwrite NL or append 0 char
 
+#include "lib.terminal.spin"
 #include "lib.ansiterminal.spin"
 #include "lib.termwidgets.spin"
 
