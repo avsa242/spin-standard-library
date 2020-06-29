@@ -5,7 +5,7 @@
     Description: Library of terminal widgets
     Copyright (c) 2020
     Started Dec 14, 2019
-    Updated Jan 27, 2020
+    Updated Jun 29, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -54,11 +54,10 @@ PUB HexDump(buff_addr, base_addr, nr_bytes, columns, x, y) | maxcol, maxrow, dig
         Position (x, row)
         Hex (base_addr+offset, digits)                          ' Show offset address of row in 'digits'
         Str (string(": "))
-        repeat col from 0 to maxcol
-            currbyte := byte[buff_addr][offset]
-            offset++
-            hexcol := x + (col * 3) + hexoffset                 ' Compute the terminal X position of the hex byte
-            asccol := x + col + ascoffset                       ' and the ASCII character
+        repeat col from x to maxcol
+            currbyte := byte[buff_addr][offset++]
+            hexcol := (col * 3) + hexoffset                 ' Compute the terminal X position of the hex byte
+            asccol := col + ascoffset                       ' and the ASCII character
 
             Position (hexcol, row)                              ' Show the ASCII value in hex
             Hex (currbyte, 2)                                   '   of the current byte

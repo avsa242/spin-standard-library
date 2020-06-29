@@ -7,7 +7,7 @@
         standard terminal routines (Bin, Dec, Hex, PrintF, Str)
     Copyright (c) 2020
     Started Dec 14, 2019
-    Updated May 24, 2020
+    Updated Jun 29, 2020
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is a derivative of std_text_routines.spinh, by Eric Smith.
@@ -62,10 +62,9 @@ PUB DecUns(val, digits)
 PUB Hex(val, digits) | mask
 ' Print a hex number with the specified number
 '   of digits; 0 means just use as many as we need
-    if digits > 0 and digits < 8
-        mask := (|< (4*digits)) - 1
-        val &= mask
-    Num(val, 16, 0, digits)
+    val <<= (8 - digits) << 2
+    repeat digits
+        Char(lookupz((val <-= 4) & $F : "0".."9", "A".."F"))
 
 PUB NewLine
 ' Print a carriage return and line-feed
