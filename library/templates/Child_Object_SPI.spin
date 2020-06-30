@@ -56,9 +56,9 @@ PUB DeviceID
 PUB Reset
 ' Reset the device
 
-PRI readReg(reg, nr_bytes, buff_addr) | tmp
-' Read nr_bytes from register 'reg' to address 'buff_addr'
-    case reg
+PRI readReg(reg_nr, nr_bytes, buff_addr) | tmp
+' Read nr_bytes from register 'reg_nr' to address 'buff_addr'
+    case reg_nr
         $00:                                                    ' Validate register number
         core#REG_NAME:
             'Special handling for register REG_NAME
@@ -66,15 +66,15 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp
             return FALSE
 
     io.Low(_CS)
-    spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+    spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
 
     repeat tmp from 0 to nr_bytes-1
         byte[buff_addr][tmp] := spi.SHIFTIN(_MISO, _SCK, core#MISO_BITORDER, 8)
     io.High(_CS)
 
-PRI writeReg(reg, nr_bytes, buff_addr) | tmp
-' Write nr_bytes to register 'reg' stored at buff_addr
-    case reg
+PRI writeReg(reg_nr, nr_bytes, buff_addr) | tmp
+' Write nr_bytes to register 'reg_nr' stored at buff_addr
+    case reg_nr
         $00:                                                    ' Validate register number
         core#REG_NAME:
             'Special handling for register REG_NAME
@@ -82,7 +82,7 @@ PRI writeReg(reg, nr_bytes, buff_addr) | tmp
             return FALSE
 
     io.Low(_CS)
-    spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)
+    spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
 
     repeat tmp from 0 to nr_bytes-1
         spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][tmp])

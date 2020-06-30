@@ -61,12 +61,12 @@ PUB DeviceID
 PUB Reset
 ' Reset the device
 
-PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
+PRI readReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
 '' Read num_bytes from the slave device into the address stored in buff_addr
-    case reg                                                    'Basic register validation
+    case reg_nr                                                 'Basic register validation
         $00..$FF:                                               ' Consult your device's datasheet!
             cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg
+            cmd_packet.byte[1] := reg_nr
             i2c.start
             i2c.wr_block (@cmd_packet, 2)
             i2c.start
@@ -76,12 +76,12 @@ PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
         OTHER:
             return
 
-PRI writeReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
+PRI writeReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
 '' Write num_bytes to the slave device from the address stored in buff_addr
-    case reg                                                    'Basic register validation
+    case reg_nr                                                 'Basic register validation
         $00..$FF:                                               ' Consult your device's datasheet!
             cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg
+            cmd_packet.byte[1] := reg_nr
             i2c.start
             i2c.wr_block (@cmd_packet, 2)
             repeat tmp from 0 to nr_bytes-1

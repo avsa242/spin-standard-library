@@ -45,9 +45,9 @@ PUB DeviceID
 PUB Reset
 ' Reset the device
 
-PRI readReg(reg, nr_bytes, buff_addr) | tmp
-' Read nr_bytes from register 'reg' to address 'buff_addr'
-    case reg
+PRI readReg(reg_nr, nr_bytes, buff_addr) | tmp
+' Read nr_bytes from register 'reg_nr' to address 'buff_addr'
+    case reg_nr
         $00:                                                    ' Validate register number
         core#REG_NAME:
             'Special handling for register REG_NAME
@@ -57,13 +57,13 @@ PRI readReg(reg, nr_bytes, buff_addr) | tmp
 ' Example code to write to a device register - concept only
 '   NOTE: Not representative of any actual device. Replace with code required to implement
 '       your device's protocol.
-    uart.Char(reg | R)
+    uart.Char(reg_nr | R)
     repeat tmp from 0 to nr_bytes-1
         byte[buff_addr][tmp] := uart.CharIn
 
-PRI writeReg(reg, nr_bytes, buff_addr) | tmp
-' Write nr_bytes to register 'reg' stored at buff_addr
-    case reg
+PRI writeReg(reg_nr, nr_bytes, buff_addr) | tmp
+' Write nr_bytes to register 'reg_nr' stored at buff_addr
+    case reg_nr
         $00:                                                    ' Validate register number
         core#REG_NAME:
             'Special handling for register REG_NAME
@@ -73,7 +73,7 @@ PRI writeReg(reg, nr_bytes, buff_addr) | tmp
 ' Example code to write to a device register - concept only
 '   NOTE: Not representative of any actual device. Replace with code required to implement
 '       your device's protocol.
-    uart.Char(reg | W)
+    uart.Char(reg_nr | W)
     repeat tmp from 0 to nr_bytes-1
         byte[buff_addr][tmp] := uart.CharIn
 
