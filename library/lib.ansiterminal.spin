@@ -10,7 +10,7 @@
     Author: Jesse Burt
     Copyright (c) 2020
     Created: Jun 18, 2019
-    Updated: Jun 19, 2020
+    Updated: Jul 10, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -66,21 +66,23 @@ CON
 
 
 ' Text colors
-    BLACK               = 30
-    RED                 = 31
-    GREEN               = 32
-    YELLOW              = 33
-    BLUE                = 34
-    MAGENTA             = 35
-    CYAN                = 36
-    WHITE               = 37
+    FG                  = 30
+    BG                  = 40
     BRIGHT              = 60
+    BLACK               = 0
+    RED                 = 1
+    GREEN               = 2
+    YELLOW              = 3
+    BLUE                = 4
+    MAGENTA             = 5
+    CYAN                = 6
+    WHITE               = 7
 
 PUB BGColor(bcolor)
 ' Set background color
     CSI
     Char(";")
-    Dec(bcolor+10)
+    Dec(BG + bcolor)
     Char("m")
 
 PUB Blink(mode)
@@ -149,7 +151,7 @@ PUB Encircle
 PUB FGColor(fcolor)
 ' Set foreground color
     CSI
-    Dec(fcolor)
+    Dec(FG + fcolor)
     Char("m")
 
 PUB Framed
