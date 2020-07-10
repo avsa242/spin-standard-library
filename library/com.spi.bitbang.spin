@@ -5,7 +5,7 @@
     Modified by: Jesse Burt
     Description: PASM SPI driver (~4MHz)
     Started Jul 19, 2011
-    Updated May 6, 2020
+    Updated Jul 4, 2020
     See end of file for terms of use.
     --------------------------------------------
 
@@ -33,10 +33,11 @@
 
 CON
 
-    CMD_RESERVED  = 0             'This is the default state - means ASM is waiting for command
-    CMD_READ      = 1 << 16
-    CMD_WRITE     = 2 << 16
-    CMD_LAST      = 17 << 16      'Place holder for last command
+    CMD_RESERVED    = 0             'This is the default state - means ASM is waiting for command
+    CMD_READ        = 1 << 16
+    CMD_WRITE       = 2 << 16
+    CMD_DESELECT    = 3 << 16
+    CMD_LAST        = 17 << 16      'Place holder for last command
 
 VAR
 
@@ -59,8 +60,12 @@ PUB Stop
         longfill(@CSmask, 0, 5)
         _cog := 0
 
-PUB Read(buff_addr, nr_bytes)
+PUB Read(buff_addr, nr_bytes, deselect_after)
 ' Read from slave into buff_addr
+'   Valid values:
+'       deslect_after
+'           TRUE (-1 or 1): Deselect slave/raise CS after transaction
+    deselect_after := (||deselect_after) <# 1
     _command := CMD_READ + @buff_addr
     repeat while _command
 
@@ -78,6 +83,14 @@ PUB Write(block, buff_addr, nr_bytes, deselect_after)
 
     if block
         repeat while _command
+
+PUB XDeselect
+' Explicitly deselect/raise CS
+'   For exceptional/corner cases where CS was left low after a prior Read() or Write()
+'       that had no logical way to deselect because e.g., the decision to deselect was
+'       based on the result of a Read()
+    _command := CMD_DESELECT
+    repeat while _command
 
 DAT
 
@@ -110,6 +123,8 @@ cmd_loop                rdlong  cmdAdrLen,      par                 wz
                         jmp     #:cmd_exit
                         call    #writebytes
                         jmp     #:cmd_exit
+                        call     #explicit_deselect
+                        jmp     #:cmd_exit
                         call    #LastCMD
                         jmp     #:cmd_exit
 :cmd_tableEnd
@@ -127,7 +142,6 @@ readbytes               andn    outa,           CSmask
                         wrbyte  spibyte,        buff
                         add     buff,           #1
                         djnz    count,          #:readloop
-                        or      outa,           CSmask
 readbytes_ret           ret
 
 ' SPI command that writes multiple bytes, buff = hub address of buffer, count = length
@@ -157,6 +171,8 @@ spiwrite                mov     n,              #8
                         djnz    n,              #:spiwriteloop
 spiwrite_ret            ret
 
+explicit_deselect       or      outa,           CSmask                  ' Raise CS manually
+explicit_deselect_ret   ret
 
 _zero                   long      0                                     ' Zero
 
