@@ -439,7 +439,7 @@ PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet
 #ifdef LIS3DH_SPI
     reg |= core#R
     spi.Write(TRUE, @reg, 1, FALSE)                             ' Ask for reg, but don't deselect after
-    spi.Read(buff_addr, nr_bytes)                               ' Read in the data (Read() always deselects after)
+    spi.Read(buff_addr, nr_bytes, TRUE)                               ' Read in the data (Read() always deselects after)
 #elseifdef LIS3DH_I2C
     cmd_packet.byte[0] := SLAVE_WR | _sa0
     cmd_packet.byte[1] := reg
