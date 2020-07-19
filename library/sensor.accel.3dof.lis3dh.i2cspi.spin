@@ -252,6 +252,9 @@ PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpx, tmpy, tmpz
     long[ptr_y] := tmpy * _ares
     long[ptr_z] := tmpz * _ares
 
+PUB AccelOpMode(mode)
+' Dummy method
+
 PUB AccelScale(g) | tmp
 ' Set measurement range of the accelerometer, in g's
 '   Valid values: 2, 4, 8, 16
@@ -643,10 +646,10 @@ PUB MagDataReady
 PUB MagGauss(x, y, z)
 ' Dummy method
 
-PUB MagScale(scale)
+PUB MagOpMode(mode)
 ' Dummy method
 
-PUB OpMode(mode)
+PUB MagScale(scale)
 ' Dummy method
 
 PRI readReg(reg_nr, nr_bytes, buff_addr) | cmd_packet
