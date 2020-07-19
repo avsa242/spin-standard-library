@@ -5,7 +5,7 @@
     Description: Demo of the ADXL345 driver
     Copyright (c) 2020
     Started Mar 14, 2020
-    Updated Mar 14, 2020
+    Updated Mar 20, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -46,7 +46,7 @@ PUB Main | dispmode
 
     accel.AccelADCRes(accel#FULL)                           ' 10, accel#FULL (dynamic, based on AccelScale)
     accel.AccelScale(2)                                     ' 2, 4, 8, 16 (g's)
-    accel.AccelDataRate(800)                                ' 0_10, 0_20, 0_39, 0_78, 1_56, 3_13, 6_25, 12_5,
+    accel.AccelDataRate(100)                                ' 0_10, 0_20, 0_39, 0_78, 1_56, 3_13, 6_25, 12_5,
 '                                                               25, 50, 100, 200, 400, 800, 1600, 3200
     accel.FIFOMode(accel#BYPASS)                            ' accel#BYPASS, accel#FIFO, accel#STREAM, accel#TRIGGER
     accel.OpMode(accel#MEASURE)                             ' accel#STANDBY, accel#MEASURE
@@ -84,8 +84,8 @@ PUB Main | dispmode
                 time.MSleep(5)
                 ser.Stop
                 quit
-'            "c", "C":
-'                Calibrate
+            "c", "C":
+                Calibrate
             "r", "R":
                 ser.Position(0, 10)
                 repeat 2
@@ -129,6 +129,14 @@ PUB AccelRaw | ax, ay, az
     ser.Newline
     ser.Str (string("Overruns: "))
     ser.Dec (_overruns)
+
+PUB Calibrate
+
+    ser.Position (0, 12)
+    ser.Str(string("Calibrating..."))
+    accel.Calibrate
+    ser.Position (0, 12)
+    ser.Str(string("              "))
 
 PUB Setup
 

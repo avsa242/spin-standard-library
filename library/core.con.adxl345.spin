@@ -126,7 +126,10 @@ CON
         MASK_SAMPLES            = FIFO_CTL_MASK ^ (BITS_SAMPLES << FLD_SAMPLES)
 
     FIFO_STATUS                 = $39
-
+    FIFO_STATUS_MASK            = $BF
+        FLD_FIFO_TRIG           = 7
+        FLD_ENTRIES             = 0
+        BITS_ENTRIES            = %111111
 
 PUB Null
 ' This is not a top-level object

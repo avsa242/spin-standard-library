@@ -84,8 +84,8 @@ PUB Main | dispmode
                 time.MSleep(5)
                 ser.Stop
                 quit
-'            "c", "C":
-'                Calibrate
+            "c", "C":
+                Calibrate
             "r", "R":
                 ser.Position(0, 10)
                 repeat 2
@@ -128,6 +128,14 @@ PUB AccelRaw | ax, ay, az
     ser.Newline
     ser.Str (string("Overruns: "))
     ser.Dec (_overruns)
+
+PUB Calibrate
+
+    ser.Position (0, 12)
+    ser.Str(string("Calibrating..."))
+    accel.Calibrate
+    ser.Position (0, 12)
+    ser.Str(string("              "))
 
 PUB Setup
 
