@@ -5,7 +5,7 @@
     Description: Driver for the ST LIS3DH 3DoF accelerometer
     Copyright (c) 2020
     Started Mar 15, 2020
-    Updated May 31, 2020
+    Updated Jul 19, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,6 +21,17 @@ CON
     DEF_HZ          = 100_000
     I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
+' Indicate to user apps how many Degrees of Freedom each sub-sensor has
+'   (also imply whether or not it has a particular sensor)
+    ACCEL_DOF       = 3
+    GYRO_DOF        = 0
+    MAG_DOF         = 0
+    BARO_DOF        = 0
+    DOF             = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
+
+    R               = 0
+    W               = 1
+
 ' ADC resolution symbols
     LOWPOWER        = 8
     NORMAL          = 10
@@ -31,7 +42,9 @@ CON
     Y_AXIS          = 1
     Z_AXIS          = 2
 
-' Operating modes
+' Operating modes (dummy)
+    STANDBY         = 0
+    MEASURE         = 1
 
 ' FIFO modes
     BYPASS          = %00
@@ -41,8 +54,8 @@ CON
 
 VAR
 
-    long _aRes
-    long _aBias[3], _aBiasRaw[3]
+    long _ares
+    long _abias[3], _abiasraw[3]
     byte _sa0
 
 OBJ
@@ -150,6 +163,36 @@ PUB AccelAxisEnabled(xyz_mask) | tmp
     tmp := (tmp | xyz_mask) & core#CTRL_REG1_MASK
     writeReg(core#CTRL_REG1, 1, @tmp)
 
+PUB AccelBias(axBias, ayBias, azBias, rw)
+' Read or write/manually set accelerometer calibration offset values
+'   Valid values:
+'       rw:
+'           R (0), W (1)
+'       axBias, ayBias, azBias:
+'           -32768..32767
+'   NOTE: When rw is set to READ, axBias, ayBias and azBias must be addresses of respective variables to hold the returned calibration offset values.
+    case rw
+        R:
+            long[axBias] := _abiasraw[X_AXIS]
+            long[ayBias] := _abiasraw[Y_AXIS]
+            long[azBias] := _abiasraw[Z_AXIS]
+
+        W:
+            case axBias
+                -32768..32767:
+                    _abiasraw[X_AXIS] := axBias
+                OTHER:
+
+            case ayBias
+                -32768..32767:
+                    _abiasraw[Y_AXIS] := ayBias
+                OTHER:
+
+            case azBias
+                -32768..32767:
+                    _abiasraw[Z_AXIS] := azBias
+                OTHER:
+
 PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Accelerometer output registers
     bytefill(@tmp, $00, 8)
@@ -159,9 +202,9 @@ PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_y] := ~~tmp.word[1]
     long[ptr_z] := ~~tmp.word[2]
 
-    long[ptr_x] -= _aBiasRaw[X_AXIS]
-    long[ptr_y] -= _aBiasRaw[Y_AXIS]
-    long[ptr_z] -= _aBiasRaw[Z_AXIS]
+    long[ptr_x] -= _abiasraw[X_AXIS]
+    long[ptr_y] -= _abiasraw[Y_AXIS]
+    long[ptr_z] -= _abiasraw[Z_AXIS]
 
 PUB AccelDataOverrun
 ' Indicates previously acquired data has been overwritten
@@ -202,12 +245,12 @@ PUB AccelDataReady
     readReg(core#STATUS_REG, 1, @result)
     result := ((result >> core#FLD_ZYXDA) & %1) * TRUE
 
-PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpX, tmpY, tmpZ
+PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpx, tmpy, tmpz
 ' Reads the Accelerometer output registers and scales the outputs to micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
-    AccelData(@tmpX, @tmpY, @tmpZ)
-    long[ptr_x] := tmpX * _aRes
-    long[ptr_y] := tmpY * _aRes
-    long[ptr_z] := tmpZ * _aRes
+    AccelData(@tmpx, @tmpy, @tmpz)
+    long[ptr_x] := tmpx * _ares
+    long[ptr_y] := tmpy * _ares
+    long[ptr_z] := tmpz * _ares
 
 PUB AccelScale(g) | tmp
 ' Set measurement range of the accelerometer, in g's
@@ -218,7 +261,7 @@ PUB AccelScale(g) | tmp
     case g
         2, 4, 8, 16:
             g := lookdownz(g: 2, 4, 8, 16)
-            _aRes := lookupz(g: 61, 122, 244, 732)
+            _ares := lookupz(g: 61, 122, 244, 732)
             g <<= core#FLD_FS
         OTHER:
             tmp := (tmp >> core#FLD_FS) & core#BITS_FS
@@ -246,11 +289,11 @@ PUB AccelSelfTest(enabled) | tmp
     writeReg(core#ST_REG, 1, @tmp)
 }
 
-PUB Calibrate | tmpX, tmpY, tmpZ, tmpBiasRaw[3], axis, samples
+PUB Calibrate | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples
 ' Calibrate the accelerometer
 '   NOTE: The accelerometer must be oriented with the package top facing up for this method to be successful
-    tmpX := tmpY := tmpZ := axis := samples := 0
-    longfill(@tmpBiasRaw, $00000000, 3)
+    tmpx := tmpy := tmpz := axis := samples := 0
+    longfill(@tmpbiasraw, $00000000, 3)
 
     FIFOEnabled(TRUE)
     FIFOMode(FIFO)
@@ -261,21 +304,177 @@ PUB Calibrate | tmpX, tmpY, tmpZ, tmpBiasRaw[3], axis, samples
     repeat samples
 ' Read the accel data stored in the FIFO
         AccelData(@tmpx, @tmpy, @tmpz)
-        tmpBiasRaw[X_AXIS] += tmpx
-        tmpBiasRaw[Y_AXIS] += tmpy
-        tmpBiasRaw[Z_AXIS] += tmpz - (1_000_000 / _aRes) ' Assumes sensor facing up!
+        tmpbiasraw[X_AXIS] += tmpx
+        tmpbiasraw[Y_AXIS] += tmpy
+        tmpbiasraw[Z_AXIS] += tmpz - (1_000_000 / _ares) ' Assumes sensor facing up!
 
     repeat axis from X_AXIS to Z_AXIS
-        _aBiasRaw[axis] := tmpBiasRaw[axis] / samples
-        _aBias[axis] := _aBiasRaw[axis] / _aRes
+        _abias[axis] := tmpbiasraw[axis] / _ares
+
+    accelbias(tmpbiasraw[X_AXIS]/samples, tmpbiasraw[Y_AXIS]/samples, tmpbiasraw[Z_AXIS]/samples, W)
 
     FIFOEnabled(FALSE)
     FIFOMode (BYPASS)
+
+PUB CalibrateXLG
+
+    calibrate
+
+PUB CalibrateMag(samples)
+' Dummy method
+
+PUB ClickAxisEnabled(mask): enabled_axes
+' Enable click detection per axis, and per click type
+'   Valid values:
+'       Bits: 5..0
+'       [5..4]: Z-axis double-click..single-click
+'       [3..2]: Y-axis double-click..single-click
+'       [1..0]: X-axis double-click..single-click
+'   Any other value polls the chip and returns the current setting
+    readReg(core#CLICK_CFG, 1, @enabled_axes)
+    case mask
+        %000000..%111111:
+        OTHER:
+            return
+
+    writeReg(core#CLICK_CFG, 1, @mask)
+
+PUB Clicked: bool
+' Flag indicating the sensor was single or double-clicked
+'   Returns: TRUE (-1) if sensor was single-clicked or double-clicked
+'            FALSE (0) otherwise
+    bool := ((clickedint >> core#FLD_SCLICK) & %11) <> 0
+
+PUB ClickedInt: active_ints
+' Clicked interrupt status
+'   Bits: 6..0
+'       6: Interrupt active
+'       5: Double-clicked
+'       4: Single-clicked
+'       3: Click sign (0: positive, 1: negative)
+'       2: Z-axis clicked
+'       1: Y-axis clicked
+'       0: X-axis clicked
+    readReg(core#CLICK_SRC, 1, @active_ints)
+
+PUB ClickIntEnabled(enabled): curr_setting
+' Enable click interrupts on INT1
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value polls the chip and returns the current setting
+    readReg(core#CTRL_REG3, 1, @curr_setting)
+    case ||(enabled)
+        0, 1:
+            enabled := ||(enabled) << core#FLD_I1_CLICK
+        OTHER:
+            return (curr_setting >> core#FLD_I1_CLICK) == 1
+
+    curr_setting &= core#MASK_I1_CLICK
+    curr_setting := (curr_setting | enabled)
+    writeReg(core#CTRL_REG3, 1, @curr_setting)
+
+PUB ClickLatency(usec): curr_setting | time_res
+' Set maximum elapsed interval between start of click and end of click, in uSec
+'   (i.e., time from set ClickThresh exceeded to falls back below threshold)
+'   Valid values:
+'       AccelDataRate:  Min time (uS, also step size)  Max time (uS)   (equiv. range in mS)
+'       1               1_000_000                   .. 255_000_000     1,000 .. 255,000
+'       10              100_000                     .. 25_500_000        100 .. 25,500
+'       25              40_000                      .. 10_200_000       40.0 .. 10,200
+'       50              20_000                      .. 5_100_000        20.0 .. 5,100
+'       100             10_000                      .. 2_550_000        10.0 .. 2,550
+'       200             5_000                       .. 1_275_000         5.0 .. 1,275
+'       400             2_500                       .. 637_500           2.5 .. 637.5
+'       1344            744                         .. 189_732         0.744 .. 189.732
+'       1600            625                         .. 159_375         0.625 .. 159.375
+'   Any other value polls the chip and returns the current setting
+'   NOTE: Minimum unit is dependent on the current output data rate (AccelDataRate)
+'   NOTE: ST application note example uses AccelDataRate(400)
+    time_res := 1_000000 / acceldatarate(-2)                ' Resolution is (1 / AccelDataRate)
+    readReg(core#TIME_LATENCY, 1, @curr_setting)
+    case usec
+        0..(time_res * 255):
+            usec := (usec / time_res)
+        OTHER:
+            return (curr_setting * time_res)
+
+    writeReg(core#TIME_LATENCY, 1, @usec)
+
+PUB ClickThresh(level): curr_thresh | ares
+' Set threshold for recognizing a click, in micro-g's
+'   Valid values:
+'       AccelScale  Max thresh
+'       2           1_984375 (= 1.984375g)
+'       4           3_968750 (= 3.968750g)
+'       8           7_937500 (= 7.937500g)
+'       16         15_875000 (= 15.875000g)
+'   NOTE: Each LSB = (AccelScale/128)*1M (e.g., 4g scale lsb=31250ug = 0_031250ug = 0.03125g)
+    ares := (accelscale(-2) * 1_000000) / 128               ' Resolution is current scale / 128
+    readReg(core#CLICK_THS, 1, @curr_thresh)
+    case level
+        0..(127*ares):
+            level := (level / ares)
+        OTHER:
+            return curr_thresh * ares
+
+    writeReg(core#CLICK_THS, 1, @level)
+
+PUB ClickTime(usec): curr_setting | time_res
+' Set maximum elapsed interval between start of click and end of click, in uSec
+'   (i.e., time from set ClickThresh exceeded to falls back below threshold)
+'   Valid values:
+'       AccelDataRate:  Min time (uS, also step size)  Max time (uS)   (equiv. mS)
+'       1               1_000_000                   .. 127_000_000     127,000
+'       10              100_000                     .. 12_700_000       12,700
+'       25              40_000                      .. 5_080_000         5,080
+'       50              20_000                      .. 2_540_000         2,540
+'       100             10_000                      .. 1_270_000         1,127
+'       200             5_000                       .. 635_000             635
+'       400             2_500                       .. 317_500             317
+'       1344            744                         .. 94_494               94
+'       1600            625                         .. 79_375               79
+'   Any other value polls the chip and returns the current setting
+'   NOTE: Minimum unit is dependent on the current output data rate (AccelDataRate)
+'   NOTE: ST application note example uses AccelDataRate(400)
+    time_res := 1_000000 / acceldatarate(-2)                ' Resolution is (1 / AccelDataRate)
+    readReg(core#TIME_LIMIT, 1, @curr_setting)
+    case usec
+        0..(time_res * 127):
+            usec := (usec / time_res)
+        OTHER:
+            return (curr_setting * time_res)
+
+    writeReg(core#TIME_LIMIT, 1, @usec)
 
 PUB DeviceID
 ' Read device identification
     result := $00
     readReg(core#WHO_AM_I, 1, @result)
+
+PUB DoubleClickWindow(usec): curr_setting | time_res
+' Set maximum elapsed interval between two consecutive clicks, in uSec
+'   Valid values:
+'       AccelDataRate:  Min time (uS, also step size)  Max time (uS)   (equiv. range in mS)
+'       1               1_000_000                   .. 255_000_000     1,000 .. 255,000
+'       10              100_000                     .. 25_500_000        100 .. 25,500
+'       25              40_000                      .. 10_200_000       40.0 .. 10,200
+'       50              20_000                      .. 5_100_000        20.0 .. 5,100
+'       100             10_000                      .. 2_550_000        10.0 .. 2,550
+'       200             5_000                       .. 1_275_000         5.0 .. 1,275
+'       400             2_500                       .. 637_500           2.5 .. 637.5
+'       1344            744                         .. 189_732         0.744 .. 189.732
+'       1600            625                         .. 159_375         0.625 .. 159.375
+'   Any other value polls the chip and returns the current setting
+'   NOTE: Minimum unit is dependent on the current output data rate (AccelDataRate)
+'   NOTE: ST application note example uses AccelDataRate(400)
+    time_res := 1_000000 / acceldatarate(-2)                ' Resolution is (1 / AccelDataRate)
+    readReg(core#TIME_WINDOW, 1, @curr_setting)
+    case usec
+        0..(time_res * 255):
+            usec := (usec / time_res)
+        OTHER:
+            return (curr_setting * time_res)
+
+    writeReg(core#TIME_WINDOW, 1, @usec)
 
 PUB FIFOEnabled(enabled) | tmp
 ' Enable FIFO memory
@@ -346,6 +545,24 @@ PUB FIFOUnreadSamples
     readReg(core#FIFO_SRC_REG, 1, @result)
     result &= core#BITS_FSS
 
+PUB GyroAxisEnabled(xyzmask)
+' Dummy method
+
+PUB GyroBias(x, y, z, rw)
+' Dummy method
+
+PUB GyroData(x, y, z)
+' Dummy method
+
+PUB GyroDataReady
+' Dummy method
+
+PUB GyroDPS(x, y, z)
+' Dummy method
+
+PUB GyroScale(scale)
+' Dummy method
+
 PUB Interrupt
 ' Read interrupt state
 '   Bit 6543210 (For each bit, 0: No interrupt, 1: Interrupt has been generated)
@@ -357,7 +574,6 @@ PUB Interrupt
 '       1: X-axis high event
 '       0: X-axis low event
     readReg(core#INT1_SRC, 1, @result)
-
 
 PUB IntMask(mask) | tmp
 ' Set interrupt mask
@@ -403,46 +619,47 @@ PUB IntThresh(level) | tmp
     level /= tmp                                            '   7-bit range
     writeReg(core#INT1_THS, 1, @level)
 
-{
-PUB OpMode(mode) | tmp
-' Set operating mode
-'   Valid values:
-'
-'   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#OPMODE_REG, 1, @tmp)
-    case mode
-        mode1, mode2, modeN:
-            mode <<= core#FLD_
-        OTHER:
-            result := (tmp >> core#FLD_) & %1
-            return
+PUB MagBias(x, y, z, rw)
+' Dummy method
 
-    tmp &= core#MASK_
-    tmp := (tmp | mode) & core#OPMODE_REG_MASK
-    writeReg(core#OPMODE_REG, 1, @tmp)
-}
+PUB MagData(x, y, z)
+' Dummy method
 
-PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet
-' Read nr_bytes from register 'reg' to address 'buff_addr'
-    case reg
+PUB MagDataRate(hz)
+' Dummy method
+
+PUB MagDataReady
+' Dummy method
+
+PUB MagGauss(x, y, z)
+' Dummy method
+
+PUB MagScale(scale)
+' Dummy method
+
+PUB OpMode(mode)
+' Dummy method
+
+PRI readReg(reg_nr, nr_bytes, buff_addr) | cmd_packet
+' Read nr_bytes from register 'reg_nr' to address 'buff_addr'
+    case reg_nr
         $07..$0D, $0F, $1E..$27, $2E..$3F:
         $28..$2D:                                               ' If reading from accel data regs,
 #ifdef LIS3DH_SPI
-            reg |= core#MS_SPI                                  '   set multi-byte read mode (SPI)
+            reg_nr |= core#MS_SPI                                  '   set multi-byte read mode (SPI)
 #elseifdef LIS3DH_I2C
-            reg |= core#MS_I2C                                  '   set multi-byte read mode (I2C)
+            reg_nr |= core#MS_I2C                                  '   set multi-byte read mode (I2C)
 #endif
         OTHER:
             return FALSE
 
 #ifdef LIS3DH_SPI
-    reg |= core#R
-    spi.Write(TRUE, @reg, 1, FALSE)                             ' Ask for reg, but don't deselect after
-    spi.Read(buff_addr, nr_bytes, TRUE)                               ' Read in the data (Read() always deselects after)
+    reg_nr |= core#R
+    spi.Write(TRUE, @reg_nr, 1, FALSE)                             ' Ask for reg, but don't deselect after
+    spi.Read(buff_addr, nr_bytes, TRUE)                         ' Read in the data
 #elseifdef LIS3DH_I2C
     cmd_packet.byte[0] := SLAVE_WR | _sa0
-    cmd_packet.byte[1] := reg
+    cmd_packet.byte[1] := reg_nr
 
     i2c.start                                                   ' S
     i2c.wr_block(@cmd_packet, 2)                                ' W [SL|W] [REG]
@@ -452,18 +669,18 @@ PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet
     i2c.stop                                                    ' P
 #endif
 
-PRI writeReg(reg, nr_bytes, buff_addr) | cmd_packet
-' Write nr_bytes to register 'reg' stored at buff_addr
-    case reg
+PRI writeReg(reg_nr, nr_bytes, buff_addr) | cmd_packet
+' Write nr_bytes to register 'reg_nr' stored at buff_addr
+    case reg_nr
         $1E..$26, $2E, $30, $32..$34, $36..$38, $3A..$3F:
         OTHER:
             return FALSE
 #ifdef LIS3DH_SPI
-    spi.Write(TRUE, @reg, 1, FALSE)                             ' Ask for reg, but don't deselect after
+    spi.Write(TRUE, @reg_nr, 1, FALSE)                             ' Ask for reg, but don't deselect after
     spi.Write(TRUE, buff_addr, nr_bytes, TRUE)                  ' Write data - now it can be deselected
 #elseifdef LIS3DH_I2C
     cmd_packet.byte[0] := SLAVE_WR | _sa0
-    cmd_packet.byte[1] := reg
+    cmd_packet.byte[1] := reg_nr
 
     i2c.start
     i2c.wr_block(@cmd_packet, 2)
