@@ -90,7 +90,7 @@ PUB Defaults
     AccelSelfTest(FALSE)
     FIFOMode(BYPASS)
     IntMask(%00000000)
-    OpMode(STANDBY)
+    AccelOpMode(STANDBY)
 
 PUB AccelADCRes(bits) | tmp
 ' Set accelerometer ADC resolution, in bits
@@ -204,6 +204,25 @@ PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpX, tmpY, tmpZ
     long[ptr_x] := tmpX * _aRes
     long[ptr_y] := tmpY * _aRes
     long[ptr_z] := tmpZ * _aRes
+
+PUB AccelOpMode(mode) | tmp
+' Set operating mode
+'   Valid values:
+'       STANDBY (0): Standby
+'       MEASURE (1): Measurement mode
+'   Any other value polls the chip and returns the current setting
+    tmp := $00
+    readReg(core#POWER_CTL, 1, @tmp)
+    case mode
+        STANDBY, MEASURE:
+            mode <<= core#FLD_MEASURE
+        OTHER:
+            result := (tmp >> core#FLD_MEASURE) & %1
+            return
+
+    tmp &= core#MASK_MEASURE
+    tmp := (tmp | mode) & core#POWER_CTL_MASK
+    writeReg(core#POWER_CTL, 1, @tmp)
 
 PUB AccelScale(g) | tmp
 ' Set measurement range of the accelerometer, in g's
@@ -369,25 +388,6 @@ PUB MagGauss(x, y, z)
 
 PUB MagScale(scale)
 ' Dummy method
-
-PUB OpMode(mode) | tmp
-' Set operating mode
-'   Valid values:
-'       STANDBY (0): Standby
-'       MEASURE (1): Measurement mode
-'   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#POWER_CTL, 1, @tmp)
-    case mode
-        STANDBY, MEASURE:
-            mode <<= core#FLD_MEASURE
-        OTHER:
-            result := (tmp >> core#FLD_MEASURE) & %1
-            return
-
-    tmp &= core#MASK_MEASURE
-    tmp := (tmp | mode) & core#POWER_CTL_MASK
-    writeReg(core#POWER_CTL, 1, @tmp)
 
 PRI readReg(reg_nr, nr_bytes, buff_addr): result | tmp
 ' Read nr_bytes from register 'reg_nr' to address 'buff_addr'

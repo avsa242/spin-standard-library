@@ -5,7 +5,7 @@
     Description: Demo of the ADXL345 driver
     Copyright (c) 2020
     Started Mar 14, 2020
-    Updated Mar 20, 2020
+    Updated Jul 19, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -49,7 +49,7 @@ PUB Main | dispmode
     accel.AccelDataRate(100)                                ' 0_10, 0_20, 0_39, 0_78, 1_56, 3_13, 6_25, 12_5,
 '                                                               25, 50, 100, 200, 400, 800, 1600, 3200
     accel.FIFOMode(accel#BYPASS)                            ' accel#BYPASS, accel#FIFO, accel#STREAM, accel#TRIGGER
-    accel.OpMode(accel#MEASURE)                             ' accel#STANDBY, accel#MEASURE
+    accel.AccelOpMode(accel#MEASURE)                        ' accel#STANDBY, accel#MEASURE
     accel.IntMask(%0000_0000)                               ' 0, 1 each bit
     accel.AccelSelfTest(FALSE)                              ' FALSE, TRUE
     ser.HideCursor
