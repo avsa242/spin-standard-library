@@ -5,7 +5,7 @@
     Description: Driver for the ST L3GD20H 3DoF gyroscope
     Copyright (c) 2020
     Started Jul 11, 2020
-    Updated Jul 18, 2020
+    Updated Jul 19, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -27,6 +27,12 @@ CON
     BARO_DOF            = 0
     DOF                 = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
 
+' Axis-specific constants
+    X_AXIS              = 0
+    Y_AXIS              = 1
+    Z_AXIS              = 2
+    ALL_AXIS            = 3
+
 ' High-pass filter modes
     #0, HPF_NORMAL_RES, HPF_REF, HPF_NORMAL, HPF_AUTO_RES
 
@@ -42,9 +48,20 @@ CON
 ' Gyro data byte order
     #0, LSBFIRST, MSBFIRST
 
+' Operation modes
+    STANDBY             = 0
+    MEASURE             = 1
+
+    R                   = 0
+    W                   = 1
+
+' FIFO operation modes
+    #0, BYPASS, FIFO, STREAM, STREAM2FIFO, BYPASS2STREAM, #6, DYN_STREAM, BYPASS2FIFO
+
 VAR
 
     long _gyro_cnts_per_lsb
+    long _gbiasraw[3]
 
 OBJ
 
@@ -55,8 +72,8 @@ OBJ
 #else
 #error "One of L3GD20H_I2C or L3GD20H_SPI must be defined"
 #endif
-    core: "core.con.l3gd20h.spin"                       'File containing your device's register set
-    time: "time"                                                'Basic timing functions
+    core: "core.con.l3gd20h.spin"
+    time: "time"
 
 PUB Null
 ' This is not a top-level object
@@ -81,7 +98,7 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
 PUB Start(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN): okay
 
     if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if okay := spi.start(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN)    'I2C Object Started?
+        if okay := spi.start(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN)'SPI Object Started?
             time.MSleep (1)
             if DeviceID == core#DEVID_RESP
                 return okay
@@ -114,6 +131,30 @@ PUB Defaults
     IntActiveState(INTLVL_LOW)
     IntOutputType(INT_PP)
 
+PUB AccelAxisEnabled(axis_mask)
+' Dummy method
+
+PUB AccelBias(x, y, z, rw)
+' Dummy method
+
+PUB AccelData(x, y, z)
+' Dummy method
+
+PUB AccelDataRate(Hz)
+' Dummy method
+
+PUB AccelDataReady
+' Dummy method
+
+PUB AccelDataOverrun
+' Dummy method
+
+PUB AccelG(x, y, z)
+' Dummy method
+
+PUB AccelScale(scale)
+' Dummy method
+
 PUB BlockUpdateEnabled(enabled): tmp
 ' Enable block updates
 '   Valid values:
@@ -131,6 +172,37 @@ PUB BlockUpdateEnabled(enabled): tmp
     tmp &= core#MASK_BDU
     tmp := (tmp | enabled)
     writeReg(core#CTRL4, 1, @tmp)
+
+PUB Calibrate
+' Dummy method
+
+PUB CalibrateGyro | gbiasrawtmp[3], axis, gx, gy, gz, nr_samples
+' Calibrate the Gyroscope
+' Turn on FIFO and set threshold to 31 samples
+    fifoenabled(true)
+    fifomode(FIFO)
+    fifothreshold(31)
+    nr_samples := fifothreshold(-2)                         ' Use what's read back rather than a constant, just to be sure
+    repeat until fifofull{}
+    longfill(@gbiasrawtmp, 0, 3)
+    gyrobias(0, 0, 0, W)                                    ' Clear out the existing bias; otherwise it accumulates
+
+    repeat nr_samples                                       ' Read the gyro data stored in the FIFO
+        gyrodata(@gx, @gy, @gz)
+        gbiasrawtmp[X_AXIS] += gx                           ' Accumulate samples
+        gbiasrawtmp[Y_AXIS] += gy
+        gbiasrawtmp[Z_AXIS] += gz
+
+    gyrobias(gbiasrawtmp[X_AXIS]/nr_samples, gbiasrawtmp[Y_AXIS]/nr_samples, gbiasrawtmp[Z_AXIS]/nr_samples, W)
+    fifoenabled(false)                                      ' Turn the FIFO back off
+    fifomode(BYPASS)
+
+PUB CalibrateMag(samples)
+' Dummy method
+
+PUB CalibrateXLG
+
+    calibrategyro{}
 
 PUB DataByteOrder(lsb_msb_first): tmp
 ' Set byte order of gyro data
@@ -173,6 +245,60 @@ PUB FIFOEnabled(enabled): tmp
     tmp := (tmp | enabled)
     writeReg(core#CTRL5, 1, @tmp)
 
+PUB FIFOEmpty: flag
+' FIFO empty status
+'   Returns: FALSE (0): FIFO not empty, TRUE(-1): FIFO empty
+    readReg(core#FIFO_SRC, 1, @flag)
+    return ((flag >> core#FLD_EMPTY) & %1) == 1
+
+PUB FIFOFull: flag
+' FIFO Threshold status
+'   Returns: FALSE (0): lower than threshold level, TRUE(-1): at or higher than threshold level
+    readReg(core#FIFO_SRC, 1, @flag)
+    return ((flag >> core#FLD_FTH) & %1) == 1
+
+PUB FIFOMode(mode): curr_mode
+' Set FIFO operation mode
+'   Valid values:
+'      *BYPASS (0)
+'       FIFO (1)
+'       STREAM (2)
+'       STREAM2FIFO (3)
+'       BYPASS2STREAM (4)
+'       DYN_STREAM (6)
+'       BYPASS2FIFO (7)
+'   Any other value polls the chip and returns the current setting
+    readReg(core#FIFO_CTRL, 1, @curr_mode)
+    case mode
+        BYPASS, FIFO, STREAM, STREAM2FIFO, BYPASS2STREAM, DYN_STREAM, BYPASS2FIFO:
+            mode <<= core#FLD_FM
+        OTHER:
+            return (curr_mode >> core#FLD_FM) & core#BITS_FM
+
+    curr_mode &= core#MASK_FM
+    curr_mode := (curr_mode | mode) & core#FIFO_CTRL_MASK
+    writeReg(core#FIFO_CTRL, 1, @curr_mode)
+
+PUB FIFOThreshold(level): curr_lvl
+' Set FIFO threshold level
+'   Valid values: 0..31
+'   Any other value polls the chip and returns the current setting
+    readReg(core#FIFO_CTRL, 1, @curr_lvl)
+    case level
+        0..31:
+        OTHER:
+            return curr_lvl & core#BITS_FTH
+
+    curr_lvl &= core#MASK_FTH
+    curr_lvl := (curr_lvl | level) & core#FIFO_CTRL_MASK
+    writeReg(core#FIFO_CTRL, 1, @curr_lvl)
+
+PUB FIFOUnreadSamples: nr_samples
+' Number of unread samples stored in FIFO
+'   Returns: 0 (empty) .. 32
+    readReg(core#FIFO_SRC, 1, @nr_samples)
+    return nr_samples & core#BITS_FSS
+
 PUB GyroAxisEnabled(mask): tmp
 ' Enable gyroscope individual axes, by mask
 '   Valid values:
@@ -191,14 +317,44 @@ PUB GyroAxisEnabled(mask): tmp
     tmp := (tmp | mask) & core#CTRL1_MASK
     writeReg(core#CTRL1, 1, @tmp)
 
+PUB GyroBias(gxBias, gyBias, gzBias, rw)
+' Read or write/manually set Gyroscope calibration offset values
+'   Valid values:
+'       rw:
+'           R (0), W (1)
+'       gxBias, gyBias, gzBias:
+'           -32768..32767
+'   NOTE: When rw is set to READ, gxBias, gyBias and gzBias must be addresses of respective variables to hold the returned calibration offset values.
+    case rw
+        R:
+            long[gxBias] := _gBiasRaw[X_AXIS]
+            long[gyBias] := _gBiasRaw[Y_AXIS]
+            long[gzBias] := _gBiasRaw[Z_AXIS]
+
+        W:
+            case gxBias
+                -32768..32767:
+                    _gBiasRaw[X_AXIS] := gxBias
+                OTHER:
+
+            case gyBias
+                -32768..32767:
+                    _gBiasRaw[Y_AXIS] := gyBias
+                OTHER:
+
+            case gzBias
+                -32768..32767:
+                    _gBiasRaw[Z_AXIS] := gzBias
+                OTHER:
+
 PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Read gyroscope data
     bytefill(@tmp, $00, 8)
     readReg(core#OUT_X_L, 6, @tmp)
 
-    long[ptr_x] := ~~tmp.word[0]
-    long[ptr_y] := ~~tmp.word[1]
-    long[ptr_z] := ~~tmp.word[2]
+    long[ptr_x] := (~~tmp.word[X_AXIS]) - _gbiasraw[X_AXIS]
+    long[ptr_y] := (~~tmp.word[Y_AXIS]) - _gbiasraw[Y_AXIS]
+    long[ptr_z] := (~~tmp.word[Z_AXIS]) - _gbiasraw[Z_AXIS]
 
 PUB GyroDataOverrun: flag
 ' Indicates previously acquired data has been overwritten
@@ -236,9 +392,9 @@ PUB GyroDPS(ptr_x, ptr_y, ptr_z) | tmp[2]
 '   Returns: Angular rate in millionths of a degree per second
     bytefill(@tmp, $00, 8)
     readReg(core#OUT_X_L, 6, @tmp)
-    long[ptr_x] := (~~tmp.word[0] * _gyro_cnts_per_lsb)
-    long[ptr_y] := (~~tmp.word[1] * _gyro_cnts_per_lsb)
-    long[ptr_z] := (~~tmp.word[2] * _gyro_cnts_per_lsb)
+    long[ptr_x] := (~~tmp.word[X_AXIS] - _gbiasraw[X_AXIS]) * _gyro_cnts_per_lsb
+    long[ptr_y] := (~~tmp.word[Y_AXIS] - _gbiasraw[Y_AXIS]) * _gyro_cnts_per_lsb
+    long[ptr_z] := (~~tmp.word[Z_AXIS] - _gbiasraw[Z_AXIS]) * _gyro_cnts_per_lsb
 
 PUB GyroOpMode(mode): curr_mode
 ' Set operation mode
@@ -428,6 +584,12 @@ PUB IntActiveState(state): tmp
     tmp := (tmp | state)
     writeReg(core#CTRL3, 1, @tmp)
 
+PUB Interrupt
+' Dummy method
+
+PUB IntMask(func_mask)
+' Dummy method
+
 PUB IntOutputType(pp_od): tmp
 ' Set interrupt pin output type
 '   Valid values:
@@ -445,6 +607,27 @@ PUB IntOutputType(pp_od): tmp
     tmp &= core#MASK_PP_OD
     tmp := (tmp | pp_od)
     writeReg(core#CTRL3, 1, @tmp)
+
+PUB MagBias(x, y, z, rw)
+' Dummy method
+
+PUB MagData(x, y, z)
+' Dummy method
+
+PUB MagDataRate(hz)
+' Dummy method
+
+PUB MagDataReady
+' Dummy method
+
+PUB MagGauss(x, y, z)
+' Dummy method
+
+PUB MagScale(scale)
+' Dummy method
+
+PUB OpMode(mode)
+' Dummy method
 
 PUB Temperature: result
 ' Read device temperature
