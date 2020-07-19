@@ -316,6 +316,9 @@ PUB Calibrate | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples
     FIFOEnabled(FALSE)
     FIFOMode (BYPASS)
 
+PUB CalibrateGyro
+' Dummy method
+
 PUB CalibrateXLG
 
     calibrate
@@ -554,10 +557,16 @@ PUB GyroBias(x, y, z, rw)
 PUB GyroData(x, y, z)
 ' Dummy method
 
+PUB GyroDataRate(hz)
+' Dummy method
+
 PUB GyroDataReady
 ' Dummy method
 
 PUB GyroDPS(x, y, z)
+' Dummy method
+
+PUB GyroOpMode(mode)
 ' Dummy method
 
 PUB GyroScale(scale)
