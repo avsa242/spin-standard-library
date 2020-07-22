@@ -5,7 +5,7 @@
     Description: Low-level constants
     Copyright (c) 2020
     Started Nov 13, 2019
-    Updated Jan 18, 2020
+    Updated Jul 22, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -80,8 +80,10 @@ CON
 
     DIE_ID              = $FF
 
+#ifndef __propeller2__
 PUB Null
 '' This is not a top-level object
+#endif
 
 DAT
 {
