@@ -25,8 +25,8 @@ CON
     DYNAMIC_HI          = 1
 
 ' Measurement modes
-    MMODE_CONT          = 0
-    MMODE_ONE           = 1
+    CONT                = 0
+    SINGLE              = 1
 
 VAR
 
@@ -50,15 +50,23 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay | tmp
         if I2C_HZ =< core#I2C_MAX_FREQ
             if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
                 time.MSleep (100)
-                if Present
-                    if ID == core#DEV_ID_RESP
+                if present
+                    if DeviceID == core#DEV_ID_RESP
                         return okay
 
     return FALSE                                                'If we got here, something went wrong
 
 PUB Stop
-' Put any other housekeeping code here required/recommended by your device before shutting down
+
+    Powered(FALSE)
+    time.MSleep(1)
     i2c.terminate
+
+PUB DeviceID
+' Device ID of the chip
+'   Known values: $0026
+    result := $0000
+    readReg(core#DEV_ID, 2, @result)
 
 PUB Dynamic(level) | tmp
 ' Set sensor dynamic
@@ -76,12 +84,6 @@ PUB Dynamic(level) | tmp
     tmp := (tmp | level) & core#UV_CONF_MASK
     tmp.byte[1] := $00
     writeReg(core#UV_CONF, 2, @tmp)
-
-PUB ID | tmp
-
-    tmp := $0000
-    readReg($0C, 2, @tmp)
-    return tmp
 
 PUB IntegrationTime(ms) | tmp
 ' Set sensor ADC integration time, in ms
@@ -103,7 +105,7 @@ PUB IntegrationTime(ms) | tmp
 
 PUB Measure | tmp
 ' Trigger a single measurement
-'   NOTE: For use when MeasureMode is set to MMODE_ONE
+'   NOTE: For use when MeasureMode is set to SINGLE
     tmp := $0000
     readReg(core#UV_CONF, 2, @tmp)
     tmp &= core#MASK_UV_TRIG    ' Supposed to be cleared by the device automatically - just being thorough
@@ -111,17 +113,17 @@ PUB Measure | tmp
     tmp.byte[1] := $00
     writeReg(core#UV_CONF, 2, @tmp)
 
-PUB MeasureMode(mode) | tmp
+PUB OpMode(mode) | tmp
 ' Set measurement mode
 '   Valid values:
-'       MMODE_CONT (0): Continuous measurement mode
-'       MMODE_ONE (1): Single-measurement mode only
+'       CONT (0): Continuous measurement mode
+'       SINGLE (1): Single-measurement mode only
 '   Any other value polls the chip and returns the current setting
 '   NOTE: In MMODE_ONE mode, measurements must be triggered manually using the Measure method
     tmp := $0000
     readReg(core#UV_CONF, 2, @tmp)
     case mode
-        MMODE_CONT, MMODE_ONE:
+        CONT, SINGLE:
             mode <<= core#FLD_UV_AF
         OTHER:
             result := (tmp >> core#FLD_UV_AF) & %1
@@ -131,7 +133,7 @@ PUB MeasureMode(mode) | tmp
     tmp.byte[1] := $00
     writeReg(core#UV_CONF, 2, @tmp)
 
-PUB Power(enabled) | tmp
+PUB Powered(enabled) | tmp
 ' Power on sensor
 '   Valid values:
 '       TRUE (-1 or 1): Power on
@@ -150,32 +152,33 @@ PUB Power(enabled) | tmp
     tmp.byte[1] := $00
     writeReg(core#UV_CONF, 2, @tmp)
 
-PUB Present | tmp
-
-    i2c.Start
-    tmp := i2c.Write (SLAVE_WR)
-    i2c.Stop
-    result := (tmp == i2c#ACK)
-
-PUB UVA
+PUB UVAData
 ' Read UV-A sensor data
 '   Returns: 16-bit word
     readReg(core#UVA_DATA, 2, @result)
 
-PUB UVB
+PUB UVBData
 ' Read UV-B sensor data
 '   Returns: 16-bit word
     readReg(core#UVB_DATA, 2, @result)
 
-PUB Visible
+PUB VisibleData
 ' Read Visible sensor data
 '   Returns: 16-bit word
     readReg(core#UVCOMP1, 2, @result)
 
-PUB IR
+PUB IRData
 ' Read Infrared sensor data
 '   Returns: 16-bit word
     readReg(core#UVCOMP2, 2, @result)
+
+PRI present | tmp
+' Flag indicating the device responds on the I2C bus
+'   NOTE: Differs from Present() contained in com.i2c in that it is followed by a stop condition
+    i2c.Start
+    tmp := i2c.Write (SLAVE_WR)
+    i2c.Stop
+    result := (tmp == i2c#ACK)
 
 PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
 '' Read num_bytes from the slave device into the address stored in buff_addr
