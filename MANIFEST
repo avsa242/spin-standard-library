@@ -1,3 +1,18 @@
+.gitignore
+CONTRIBUTING.md
+LICENSE
+MANIFEST
+README.md
+TODO.md
+api/display.md
+api/lib.gfx.bitmap.md
+api/memory.md
+api/sensor.imu.md
+api/sensor.power.md
+api/sensor.temp_rh.md
+api/signal.adc.md
+api/wireless.transceiver.md
+encode.sh
 library/char.type.spin
 library/com.can.txrx.spin
 library/com.i2c.spin
@@ -11,6 +26,7 @@ library/com.spi.bitbang.spin
 library/com.spi.fast.spin
 library/commandparser.spin
 library/core.con.23lcxxxx.spin
+library/core.con.24xxxx.spin
 library/core.con.4dgl-oled.spin
 library/core.con.adxl345.spin
 library/core.con.boardcfg.activityboard.spin
@@ -33,9 +49,12 @@ library/core.con.cc2500.spin
 library/core.con.counters.spin
 library/core.con.ds18b2x.spin
 library/core.con.ds28cm00.spin
+library/core.con.fingerprint-8552.spin
+library/core.con.il3820.spin
 library/core.con.ina219.spin
 library/core.con.ina260.spin
 library/core.con.l3g4200d.spin
+library/core.con.l3gd20h.spin
 library/core.con.lis3dh.spin
 library/core.con.lm75.spin
 library/core.con.lsm9ds1.spin
@@ -45,6 +64,7 @@ library/core.con.mb85rc.spin
 library/core.con.mlx90614.spin
 library/core.con.mma7455.spin
 library/core.con.nrf24l01.spin
+library/core.con.paj7620u2.spin
 library/core.con.sht3x.spin
 library/core.con.ssd1306.spin
 library/core.con.ssd1331.spin
@@ -58,6 +78,7 @@ library/debug.emulator.rtc.spin
 library/debug.shell.spin
 library/debug.stacklength.spin
 library/demos/23LCXXXX-Demo.spin
+library/demos/DS28CM00-Demo.spin
 library/demos/SD-FAT-Demo1.spin
 library/demos/char/Types.spin
 library/demos/com/CANBus-Loopback-Demo.spin
@@ -75,7 +96,9 @@ library/demos/debug/RealTimeClockEmulator.spin
 library/demos/debug/StackLength.spin
 library/demos/display/Graphics_Demo.spin
 library/demos/display/Graphics_Palette.spin
+library/demos/display/IL3820-Demo.spin
 library/demos/display/LCD-Serial-Demo.spin
+library/demos/display/NeoPixel-Demo.spin
 library/demos/display/OLED-4DGL-Demo.spin
 library/demos/display/SSD1306-Demo.spin
 library/demos/display/SSD1331-Demo.spin
@@ -84,21 +107,28 @@ library/demos/display/ST7735-Demo.spin
 library/demos/display/TV_Terminal_Demo.spin
 library/demos/display/TV_Text_Demo.spin
 library/demos/display/US2066-Demo.spin
+library/demos/display/VGABitmap-160x120-Demo.spin
 library/demos/display/vga/VGA_512x384_Bitmap_Demo.spin
 library/demos/display/vga/VGA_Demo.spin
 library/demos/display/vga/VGA_HiRes_Text_Demo.spin
 library/demos/display/vga/VGA_Text_Demo.spin
 library/demos/display/vga/VGA_Tile_Driver_Demo2.spin
 library/demos/display/vga/VGA_Tile_Driver_Demo3.spin
+library/demos/display/vga/lincoln.txt
+library/demos/display/vga/lincoln2.txt
+library/demos/input/Fingerprint-8552-Demo.spin
 library/demos/input/Gray_Encoder.spin
 library/demos/input/Keyboard.spin
 library/demos/input/Keypad4x4.spin
+library/demos/input/PAJ7620U2-Demo.spin
 library/demos/math/float/FrequencyTable.spin
 library/demos/math/float/LogTable.spin
+library/demos/math/float/Propeller_Floating_Point.pdf
 library/demos/math/random/RandomNumbers.spin
 library/demos/math/random/WhiteNoise.spin
 library/demos/math/rctime/RCTIME_background_DEMO.spin
 library/demos/math/rctime/RCTIME_foreground_DEMO.spin
+library/demos/memory/24xxxx-Demo.spin
 library/demos/misc/COIL_demo.spin
 library/demos/misc/Loader-P8X32A-Demo.spin
 library/demos/motor/Servo.spin
@@ -106,12 +136,15 @@ library/demos/sensor/ADXL345-Demo-ANSI.spin
 library/demos/sensor/ADXL345-Demo.spin
 library/demos/sensor/DS18B2x-Demo.spin
 library/demos/sensor/H48C Tri-Axis Accelerometer DEMO.spin
+library/demos/sensor/H48C_XYZ.JPG
 library/demos/sensor/INA219-Demo.spin
 library/demos/sensor/INA260-Demo.spin
 library/demos/sensor/Inductive Proximity Sensor Part1.spin
 library/demos/sensor/Inductive Proximity Sensor Part2.spin
 library/demos/sensor/Inductor Demo.spin
 library/demos/sensor/L3G4200D-Demo.spin
+library/demos/sensor/L3GD20H-Demo.spin
+library/demos/sensor/LIS3DH-ClickDemo.spin
 library/demos/sensor/LIS3DH-Demo.spin
 library/demos/sensor/LSM9DS1-Demo.spin
 library/demos/sensor/MAX31856-Demo.spin
@@ -162,8 +195,10 @@ library/demos/wireless/NRF24L01-RXDemoWithAA.spin
 library/demos/wireless/NRF24L01-TXDemo-PST.spin
 library/demos/wireless/NRF24L01-TXDemo.spin
 library/demos/wireless/NRF24L01-TXDemoWithAA.spin
+library/display.epaper.il3820.spi.spin
 library/display.lcd.serial.spin
 library/display.lcd.st7735.spi.spin
+library/display.led.addressable.neopixel.spin
 library/display.oled.4dgl.uart.spin
 library/display.oled.ssd1306.i2c.spin
 library/display.oled.ssd1331.spi.spin
@@ -173,6 +208,7 @@ library/display.tv.graphics.spin
 library/display.tv.spin
 library/display.tv.terminal.spin
 library/display.tv.text.spin
+library/display.vga.bitmap.160x120.spin
 library/display.vga.bitmap.512x384.spin
 library/display.vga.spin
 library/display.vga.text.100x50.spin
@@ -185,18 +221,26 @@ library/display.vga.tile.1600x1200.spin
 library/filesystem.block.fat.spin
 library/font.5x8.spin
 library/identification.ssn.ds28cm00.i2c.spin
+library/input.biometric.fingerprint-8552.uart.spin
 library/input.encoder.graycode.spin
 library/input.encoder.quadrature.spin
+library/input.gesture.paj7620u2.i2c.spin
 library/input.keyboard.ps2.spin
 library/input.keypad.4x4.spin
 library/input.mouse.ps2.spin
 library/io.spin
+library/lib.ansiterminal.spin
+library/lib.gfx.bitmap.spin
+library/lib.terminal.spin
+library/lib.termwidgets.spin
+library/lib.utility.spin
 library/math.crc.spin
 library/math.float.extended.spin
 library/math.float.spin
 library/math.random.spin
 library/math.rctime.spin
 library/math.unsigned64.spin
+library/memory.eeprom.24xxxx.i2c.spin
 library/memory.flash.sd.spi.spin
 library/memory.fram.mb85rc.i2c.spin
 library/memory.sram.23lcxxxx.spi.spin
@@ -205,6 +249,8 @@ library/misc.loader.p8x32a.spin
 library/misc.numbers.spin
 library/motor.servo.ramp.spin
 library/motor.servo.spin
+library/propeller-beanie-16bpp.spin
+library/propeller-beanie-1bpp.spin
 library/sensor.accel.2dof.memsic2125.analog-pwm.spin
 library/sensor.accel.2dof.mxd2125.analog-pwm.spin
 library/sensor.accel.3dof.adxl345.spi.spin
@@ -214,6 +260,7 @@ library/sensor.accel.3dof.mma7455.i2c.spin
 library/sensor.color.tcs3x7x.i2c.spin
 library/sensor.compass.2dof.hm55b.spi.spin
 library/sensor.gyroscope.3dof.l3g4200d.spi.spin
+library/sensor.gyroscope.3dof.l3gd20h.i2cspi.spin
 library/sensor.imu.9dof.lsm9ds1.3wspi.spin
 library/sensor.inductive.spin
 library/sensor.light.tsl230.analog-freq.spin
@@ -253,3 +300,5 @@ library/tiny.signal.dac.ad8803.spi.spin
 library/wireless.transceiver.cc1101.spi.spin
 library/wireless.transceiver.cc2500.spi.spin
 library/wireless.transceiver.nrf24l01.spi.spin
+site.yml
+test.sh
