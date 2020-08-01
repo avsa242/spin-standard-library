@@ -167,18 +167,18 @@ PUB AccelBias(axbias, aybias, azbias, rw)
                     _abiasraw[ZAXIS] := azbias
                 OTHER:
 
-PUB AccelData(ax, ay, az) | tmp[2]
+PUB AccelData(ax, ay, az) | raw[2], tmp[3]
 ' Reads the Accelerometer output registers
-    longfill(@tmp, 0, 2)
-    readreg(core#OUT_X_L, 6, @tmp)
+    longfill(@raw, 0, 5)
+    readreg(core#OUT_X_L, 6, @raw)
 
-    tmp.word[XAXIS] := (tmp.word[XAXIS] << 16) ~> 20        ' LSM303DLHC accel data is 12bit,
-    tmp.word[YAXIS] := (tmp.word[YAXIS] << 16) ~> 20        '   left-justified in a 16bit word.
-    tmp.word[ZAXIS] := (tmp.word[ZAXIS] << 16) ~> 20        '   Shift to the top bit, then SAR enough to chop
+    tmp[XAXIS] := (raw.word[XAXIS] << 16) ~> 20        ' LSM303DLHC accel data is 12bit,
+    tmp[YAXIS] := (raw.word[YAXIS] << 16) ~> 20        '   left-justified in a 16bit word.
+    tmp[ZAXIS] := (raw.word[ZAXIS] << 16) ~> 20        '   Shift to the top bit, then SAR enough to chop
                                                             '   the 4 LSBs off
-    long[ax] := ~~tmp.word[XAXIS] - _abiasraw[XAXIS]
-    long[ay] := ~~tmp.word[YAXIS] - _abiasraw[YAXIS]
-    long[az] := ~~tmp.word[ZAXIS] - _abiasraw[ZAXIS]
+    long[ax] := ~~tmp[XAXIS] - _abiasraw[XAXIS]
+    long[ay] := ~~tmp[YAXIS] - _abiasraw[YAXIS]
+    long[az] := ~~tmp[ZAXIS] - _abiasraw[ZAXIS]
 
 PUB AccelDataOverrun{}: flag
 ' Flag indicating previously acquired data has been overwritten

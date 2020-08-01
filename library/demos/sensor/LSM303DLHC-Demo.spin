@@ -30,7 +30,6 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    io      : "io"
     int     : "string.integer"
     imu     : "sensor.imu.6dof.lsm303dlhc.i2c"
 
@@ -117,7 +116,6 @@ PUB Main{} | dispmode
         ser.str(lookupz(imu.interrupt{} >> 6: string("No "), string("Yes")))
 
     ser.showcursor{}
-    flashled(LED, 100)
 
 PUB AccelCalc{} | ax, ay, az
 
@@ -194,9 +192,7 @@ PUB Setup{}
         imu.stop{}
         time.msleep(5)
         ser.stop{}
-        flashled(LED, 500)
 
-#include "lib.utility.spin"
 
 DAT
 {
