@@ -28,21 +28,21 @@ PUB Null
 PUB Start(UART_RX, UART_TX, UART_BPS, UART_MODE): okay
 
         if okay := uart.StartRXTX(UART_RX, UART_TX, UART_MODE, UART_BPS)
-            time.MSleep (1)                                     ' Device startup time
-            ' Device power-on-reset code
-            ' DeviceID validation
-            return okay
+            time.msleep(core#TPOR)                              ' Device startup time
+            ' Device power-on-reset code here
+            if deviceid{} == core#DEVID_RESP
+                return okay
     return FALSE                                                ' If we got here, something went wrong
 
-PUB Stop
+PUB Stop{}
 
-PUB Defaults
+PUB Defaults{}
 ' Set factory defaults
 
-PUB DeviceID
+PUB DeviceID{}: id
 ' Read device identification
 
-PUB Reset
+PUB Reset{}
 ' Reset the device
 
 PRI readReg(reg_nr, nr_bytes, buff_addr) | tmp
@@ -57,9 +57,9 @@ PRI readReg(reg_nr, nr_bytes, buff_addr) | tmp
 ' Example code to write to a device register - concept only
 '   NOTE: Not representative of any actual device. Replace with code required to implement
 '       your device's protocol.
-    uart.Char(reg_nr | R)
+    uart.char(reg_nr | R)
     repeat tmp from 0 to nr_bytes-1
-        byte[buff_addr][tmp] := uart.CharIn
+        byte[buff_addr][tmp] := uart.charin{}
 
 PRI writeReg(reg_nr, nr_bytes, buff_addr) | tmp
 ' Write nr_bytes to register 'reg_nr' stored at buff_addr
@@ -73,9 +73,9 @@ PRI writeReg(reg_nr, nr_bytes, buff_addr) | tmp
 ' Example code to write to a device register - concept only
 '   NOTE: Not representative of any actual device. Replace with code required to implement
 '       your device's protocol.
-    uart.Char(reg_nr | W)
+    uart.char(reg_nr | W)
     repeat tmp from 0 to nr_bytes-1
-        byte[buff_addr][tmp] := uart.CharIn
+        byte[buff_addr][tmp] := uart.charin{}
 
 DAT
 {

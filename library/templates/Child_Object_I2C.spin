@@ -29,10 +29,10 @@ OBJ
     core: "core.con.your_i2c_device_here"                       'File containing your device's register set
     time: "time"                                                'Basic timing functions
 
-PUB Null
+PUB Null{}
 ''This is not a top-level object
 
-PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
+PUB Start{}: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
 
     okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
 
@@ -41,24 +41,24 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
         if I2C_HZ =< core#I2C_MAX_FREQ
             if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
-                time.MSleep (1)
-                if i2c.present (SLAVE_WR)                       'Response from device?
-                    if DeviceID == core#DEVID_RESP
-                        return okay
+                time.msleep(core#TPOR)
+                if i2c.present(SLAVE_WR)                        'Response from device?
+                    if deviceid{} == core#DEVID_RESP
+                        return
 
     return FALSE                                                'If we got here, something went wrong
 
-PUB Stop
+PUB Stop{}
 ' Put any other housekeeping code here required/recommended by your device before shutting down
     i2c.terminate
 
-PUB Defaults
+PUB Defaults{}
 ' Set factory defaults
 
-PUB DeviceID
+PUB DeviceID{}: id
 ' Read device identification
 
-PUB Reset
+PUB Reset{}
 ' Reset the device
 
 PRI readReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
@@ -67,12 +67,12 @@ PRI readReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
         $00..$FF:                                               ' Consult your device's datasheet!
             cmd_packet.byte[0] := SLAVE_WR
             cmd_packet.byte[1] := reg_nr
-            i2c.start
+            i2c.start{}
             i2c.wr_block (@cmd_packet, 2)
-            i2c.start
+            i2c.start{}
             i2c.write (SLAVE_RD)
             i2c.rd_block (buff_addr, nr_bytes, TRUE)
-            i2c.stop
+            i2c.stop{}
         OTHER:
             return
 
@@ -82,11 +82,11 @@ PRI writeReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
         $00..$FF:                                               ' Consult your device's datasheet!
             cmd_packet.byte[0] := SLAVE_WR
             cmd_packet.byte[1] := reg_nr
-            i2c.start
+            i2c.start{}
             i2c.wr_block (@cmd_packet, 2)
             repeat tmp from 0 to nr_bytes-1
                 i2c.write (byte[buff_addr][tmp])
-            i2c.stop
+            i2c.stop{}
         OTHER:
             return
 

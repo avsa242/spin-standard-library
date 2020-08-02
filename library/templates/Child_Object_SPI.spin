@@ -24,36 +24,35 @@ OBJ
     io  : "io"
     time: "time"                                                'Basic timing functions
 
-PUB Null
+PUB Null{}
 ''This is not a top-level object
 
 PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, SCK_DELAY): okay
 
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
         if SCK_DELAY => 1
-            if okay := spi.start (SCK_DELAY, core#CPOL)         ' SPI engine started?
-                time.MSleep (1)                                 ' Device startup time
+            if okay := spi.start(SCK_DELAY, core#CPOL)          ' SPI engine started?
+                time.msleep(core#TPOR)                          ' Device startup time
                 _CS := CS_PIN
                 _MOSI := MOSI_PIN
                 _MISO := MISO_PIN
                 _SCK := SCK_PIN
+                io.high(_CS)
+                io.output(_CS)
 
-                io.High(_CS)
-                io.Output(_CS)
-
-                if DeviceID == core#DEVID_RESP
-                    return okay
+                if deviceid{} == core#DEVID_RESP
+                    return
     return FALSE                                                ' If we got here, something went wrong
 
-PUB Stop
+PUB Stop{}
 
-PUB Defaults
+PUB Defaults{}
 ' Set factory defaults
 
-PUB DeviceID
+PUB DeviceID{}: id
 ' Read device identification
 
-PUB Reset
+PUB Reset{}
 ' Reset the device
 
 PRI readReg(reg_nr, nr_bytes, buff_addr) | tmp
@@ -63,14 +62,14 @@ PRI readReg(reg_nr, nr_bytes, buff_addr) | tmp
         core#REG_NAME:
             'Special handling for register REG_NAME
         OTHER:
-            return FALSE
+            retur
 
-    io.Low(_CS)
-    spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+    io.low(_CS)
+    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
 
     repeat tmp from 0 to nr_bytes-1
-        byte[buff_addr][tmp] := spi.SHIFTIN(_MISO, _SCK, core#MISO_BITORDER, 8)
-    io.High(_CS)
+        byte[buff_addr][tmp] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+    io.high(_CS)
 
 PRI writeReg(reg_nr, nr_bytes, buff_addr) | tmp
 ' Write nr_bytes to register 'reg_nr' stored at buff_addr
@@ -79,14 +78,14 @@ PRI writeReg(reg_nr, nr_bytes, buff_addr) | tmp
         core#REG_NAME:
             'Special handling for register REG_NAME
         OTHER:
-            return FALSE
+            return
 
-    io.Low(_CS)
-    spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+    io.low(_CS)
+    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
 
     repeat tmp from 0 to nr_bytes-1
-        spi.SHIFTOUT(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][tmp])
-    io.High(_CS)
+        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][tmp])
+    io.high(_CS)
 
 DAT
 {
