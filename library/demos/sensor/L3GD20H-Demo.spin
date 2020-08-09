@@ -6,7 +6,7 @@
         outputs live data from the chip.
     Copyright (c) 2020
     Started Jul 11, 2020
-    Updated Jul 11, 2020
+    Updated Aug 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -75,7 +75,7 @@ PUB Main | dispmode
             "r", "R":
                 ser.position(0, 3)
                 repeat 2
-                    ser.clearline(ser#CLR_CUR_TO_END)
+                    ser.clearline{}
                     ser.newline
                 dispmode ^= 1
 
