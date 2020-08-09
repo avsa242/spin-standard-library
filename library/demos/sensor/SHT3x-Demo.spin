@@ -3,9 +3,9 @@
     Filename: SHT3x-Demo.spin
     Author: Jesse Burt
     Description: Demo of the SHT3x driver
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Mar 10, 2018
-    Updated Jun 9, 2019
+    Updated Aug 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,133 +15,100 @@ CON
     _clkmode        = cfg#_clkmode
     _xinfreq        = cfg#_xinfreq
 
+' -- User-modifiable constants
     LED             = cfg#LED1
-    SCL_PIN         = 28            ' Change these to match your I2C pin configuration
+    SER_RX          = 31
+    SER_TX          = 30
+    SER_BAUD        = 115_200
+
+' I2C
+    SCL_PIN         = 28
     SDA_PIN         = 29
-    I2C_HZ          = 1_000_000     ' SHT3x supports I2C bus speeds up to FM+ (1MHz)
-    ADDR_BIT        = 0             ' Optional alternate slave address (set to 1 to use)
+    ADDR_BIT        = 0                                     ' Can be 0, or 1 for a second device on the bus
+    I2C_HZ          = 1_000_000                             ' Max: 1_000_000
+' --
 
-    TERM_RX         = 31            ' Change these to suit your terminal settings
-    TERM_TX         = 30
-    TERM_BAUD       = 115_200
+' Temperature scale
+    C               = 0
+    F               = 1
 
-    F               = 0
-    C               = 1
-    TEMP_SCALE      = C             ' Change this to one of F, or C
-
-    LOW             = sht3x#RPT_LOW
-    MED             = sht3x#RPT_MED
-    HIGH            = sht3x#RPT_HIGH
-    REPEATABILITY   = HIGH          ' Change this to one of LOW, MED, or HIGH
+' Measurement repeatbility (on-sensor averaging)
+    LOW             = sht3x#LOW                             ' Least averaging / no filtering
+    MED             = sht3x#MED
+    HIGH            = sht3x#HIGH                            ' Most averaging, more stable readings
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
-    time    : "time"
+    ser     : "com.serial.terminal.ansi"
     sht3x   : "sensor.temp_rh.sht3x.i2c"
-    math    : "tiny.math.float"
-    fs      : "string.float"
+    int     : "string.integer"
+    time    : "time"
+    io      : "io"
 
-VAR
+PUB Main{} | temp, rh
 
-    byte _ser_cog, _sht3x_cog
+    setup{}
 
-PUB Main | rh, t
-
-    Setup
-    sht3x.Repeatability (REPEATABILITY)
-    sht3x.MeasureRate (4)
-
-    sht3x.AlertTrigHiRH (80)
-    sht3x.AlertClearHiRH (79)
-    sht3x.AlertTrigLoRH (22)
-    sht3x.AlertClearLoRH (20)
-
-    sht3x.AlertTrigHiTemp (60)
-    sht3x.AlertClearHiTemp (58)
-    sht3x.AlertTrigLoTemp (-9)
-    sht3x.AlertClearLoTemp (-10)
-
-    ser.Position (0, 3)
-    ser.Str (string("Humidity alert threshold levels: "))
-    ser.Dec (sht3x.AlertTrigHiRH (-2))
-    ser.Char (" ")
-    ser.Dec (sht3x.AlertClearHiRH (-2))
-    ser.Char (" ")
-    ser.Dec (sht3x.AlertTrigLoRH (-2))
-    ser.Char (" ")
-    ser.Dec (sht3x.AlertClearLoRH (-2))
-    ser.NewLine
-
-    ser.Str (string("Temperature alert threshold levels: "))
-    ser.Dec (sht3x.AlertTrigHiTemp (-255))
-    ser.Char (" ")
-    ser.Dec (sht3x.AlertClearHiTemp (-255))
-    ser.Char (" ")
-    ser.Dec (sht3x.AlertTrigLoTemp (-255))
-    ser.Char (" ")
-    ser.Dec (sht3x.AlertClearLoTemp (-255))
-    ser.NewLine
+    sht3x.heaterenabled(FALSE)                              ' Enable/Disable built-in heater
+    sht3x.repeatability (LOW)                               ' Measurement repeatability (on-chip averaging)
+    sht3x.tempscale(C)                                      ' Temperature scale
 
     repeat
-        sht3x.Measure
+        ser.position(0, 3)
 
-        ser.Position (0, 7)
-        ser.Str (string("Temperature: "))
-        case TEMP_SCALE
-            F:
-                t := math.FDiv (math.FFloat (sht3x.TemperatureF), 100.0)
-                ser.Str (fs.FloatToString (t))
-                ser.Str(string("F    "))
-            C:
-                t := math.FDiv (math.FFloat (sht3x.TemperatureC), 100.0)
-                ser.Str (fs.FloatToString (t))
-                ser.Str(string("C    "))
-            OTHER:
-                t := math.FDiv (math.FFloat (sht3x.TemperatureC), 100.0)
-                ser.Str (fs.FloatToString (t))
-                ser.Str(string("C    "))
+        ser.str(string("Previous temperature: "))
+        decimaldot(sht3x.lasttemperature{}, 100)
+        ser.newline{}
 
-        ser.NewLine
+        ser.str(string("Current temperature: "))
+        decimaldot(sht3x.temperature{}, 100)
+        ser.newline{}
 
-        ser.Str (string("Relative humidity: "))
-        rh := math.FDiv (math.FFloat (sht3x.Humidity), 100.0)
-        ser.Str (fs.FloatToString (rh))
-        ser.Str(string("%    "))
+        ser.str(string("Previous humidity: "))
+        decimaldot(sht3x.lasthumidity{}, 100)
+        ser.newline{}
 
-        time.MSleep (100)
+        ser.str(string("Relative humidity: "))
+        decimaldot(sht3x.humidity{}, 100)
+        ser.newline{}
 
-PUB Setup
+        time.msleep (1000)
 
-    repeat until _ser_cog := ser.Start (115_200)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#NL))
-    if _sht3x_cog := sht3x.Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BIT)
-        ser.Str (string("SHT3x driver (S/N "))
-        ser.Hex (sht3x.SerialNum, 8)
-        ser.Str (string(") started", ser#NL))
+PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp
+' Display a fixed-point scaled up number in decimal-dot notation - scale it back down by divisor
+'   e.g., Decimal (314159, 100000) would display 3.14159 on the terminal
+'   scaled: Fixed-point scaled up number
+'   divisor: Divide scaled-up number by this amount
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    part := int.deczeroed(||(scaled // divisor), places)
+
+    ser.dec (whole)
+    ser.char (".")
+    ser.str (part)
+    ser.clearline(ser#CLR_CUR_TO_END)
+
+PUB Setup{}
+
+    repeat until ser.startrxtx (SER_RX, SER_TX, 0, SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+
+    if sht3x.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BIT)
+        ser.printf(string("SHT3x driver (S/N %x) started\n"), sht3x.serialnum{}, 0, 0, 0, 0, 0)
     else
-        ser.Str (string("SHT3x driver failed to start - halting"))
-        Stop
-        Flash(LED, 500)
+        ser.str(string("SHT3x driver failed to start - halting"))
+        flashled(LED, 500)
 
-    sht3x.ClearStatus
-    sht3x.Heater (FALSE)
-    fs.SetPrecision (5)
-
-PUB Stop
-
-    sht3x.Stop
-    time.MSleep (5)
-    ser.Stop
-
-PUB Flash(led_pin, delay_ms)
-
-    dira[led_pin] := 1
-    repeat
-        !outa[led_pin]
-        time.MSleep (delay_ms)
+#include "lib.utility.spin"
 
 DAT
 {
