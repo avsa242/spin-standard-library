@@ -1,30 +1,17 @@
 {
     --------------------------------------------
     Filename: Gray_Encoder.spin
-    Author: Jon McPhalen
     Modified by: Jesse Burt
     Description: Simple demo/test of the input.encoder.graycode.spin Gray-code encoder driver
     Started May 18, 2019
-    Updated Mar 26, 2020
+    Updated Aug 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 
     NOTE: This is a derivative of jm_grayenc_demo.spin, by
-        Jon McPhalen (original header preserved below)
+        Jon McPhalen.
 }
 
-'' =================================================================================================
-''
-''   File....... jm_grayenc_demo.spin
-''   Purpose.... Greycode encoder test program
-''   Author..... Jon "JonnyMac" McPhalen (aka Jon Williams)
-''               Copyright (c) 2010 Jon McPhalen
-''               -- see below for terms of use
-''   E-mail..... jon@jonmcphalen.com
-''   Started....
-''   Updated.... 06 MAR 2010
-''
-'' =================================================================================================
 
 CON
 
@@ -70,7 +57,7 @@ PUB Main | newlevel, oldlevel
         ser.Position (0, 3)                                         ' Display it
         ser.Str(string("Encoder: "))
         ser.Dec(newlevel)
-        ser.ClearLine(0)
+        ser.clearline{}
         oldlevel := newlevel                                        ' Setup to detect change
         repeat
             newlevel := encoder.read                                ' Poll encoder
