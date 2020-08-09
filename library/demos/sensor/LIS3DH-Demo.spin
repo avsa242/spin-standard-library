@@ -5,7 +5,7 @@
     Description: Demo of the LIS3DH driver
     Copyright (c) 2020
     Started Mar 15, 2020
-    Updated May 31, 2020
+    Updated Jul 19, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -23,10 +23,10 @@ CON
     SER_TX      = 30
     SER_BAUD    = 115_200
 
-    CS_PIN      = 12                                        ' SPI
-    SCL_PIN     = 15                                        ' SPI, I2C
-    SDA_PIN     = 14                                        ' SPI, I2C
-    SDO_PIN     = 13                                        ' SPI
+    CS_PIN      = 0                                         ' SPI
+    SCL_PIN     = 1                                         ' SPI, I2C
+    SDA_PIN     = 2                                         ' SPI, I2C
+    SDO_PIN     = 3                                         ' SPI
     I2C_HZ      = 400_000                                   ' I2C
     SLAVE_OPT   = 0
 ' --
@@ -34,7 +34,7 @@ CON
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
+    ser     : "com.serial.terminal"
     time    : "time"
     io      : "io"
     int     : "string.integer"
@@ -56,7 +56,6 @@ PUB Main | dispmode
     accel.IntThresh(1_000000)                               ' 0..16_000000 (ug's, i.e., 0..16g)
     accel.IntMask(%100000)                                  ' Bits 5..0: Zhigh event | Zlow event | Yh|Yl|Xh|Xl
 
-    ser.HideCursor
     dispmode := 0
 
     ser.position(0, 3)                                      ' Read back the settings from above
@@ -76,7 +75,7 @@ PUB Main | dispmode
     ser.dec(accel.IntThresh(-2))                            '
     ser.newline                                             '
     ser.str(string("IntMask: "))                            '
-    ser.bin(accel.IntMask(-2), 6)                           '
+    ser.bin(accel.IntMask(-2), 8)                           '
     ser.newline                                             '
 
     repeat
@@ -93,7 +92,7 @@ PUB Main | dispmode
             "r", "R":                                       ' Change display mode: raw/calculated
                 ser.Position(0, 10)
                 repeat 2
-                    ser.ClearLine(ser#CLR_CUR_TO_END)
+                    ser.ClearLine
                     ser.Newline
                 dispmode ^= 1
 
@@ -106,7 +105,6 @@ PUB Main | dispmode
         ser.str(string("Interrupt: "))
         ser.str(lookupz(accel.Interrupt >> 6: string("No "), string("Yes")))
 
-    ser.ShowCursor
     FlashLED(LED, 100)
 
 PUB AccelCalc | ax, ay, az
@@ -151,22 +149,22 @@ PUB Setup
     repeat until ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
     time.MSleep(30)
     ser.Clear
-    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
+    ser.Str(string("Serial terminal started", ser#NL))
 #ifdef LIS3DH_SPI
     if accel.Start(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
         accel.Defaults
-        ser.str(string("LIS3DH driver started (SPI)", ser#CR, ser#LF))
+        ser.str(string("LIS3DH driver started (SPI)", ser#NL))
 #elseifdef LIS3DH_I2C
     if accel.Startx(SCL_PIN, SDA_PIN, I2C_HZ, SLAVE_OPT)
         accel.Defaults
-        ser.str(string("LIS3DH driver started (I2C)", ser#CR, ser#LF))
+        ser.str(string("LIS3DH driver started (I2C)", ser#NL))
 #endif
     else
-        ser.str(string("LIS3DH driver failed to start - halting", ser#CR, ser#LF))
+        ser.str(string("LIS3DH driver failed to start - halting", ser#NL))
         accel.Stop
         time.MSleep(5)
         ser.Stop
-        FlashLED(LED, 500)
+        flashled(LED, 500)
 
 #include "lib.utility.spin"
 
