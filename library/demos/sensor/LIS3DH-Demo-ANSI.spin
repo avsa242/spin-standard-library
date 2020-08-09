@@ -5,7 +5,7 @@
     Description: Demo of the LIS3DH driver
     Copyright (c) 2020
     Started Mar 15, 2020
-    Updated Jul 19, 2020
+    Updated Aug 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -93,7 +93,7 @@ PUB Main | dispmode
             "r", "R":                                       ' Change display mode: raw/calculated
                 ser.Position(0, 10)
                 repeat 2
-                    ser.ClearLine(ser#CLR_CUR_TO_END)
+                    ser.clearline{}
                     ser.Newline
                 dispmode ^= 1
 
