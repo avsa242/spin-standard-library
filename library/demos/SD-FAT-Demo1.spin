@@ -5,7 +5,7 @@
     Modified by: Jesse Burt
     Description: FAT16/32 filesystem driver
     Started 2008
-    Updated Mar 25, 2020
+    Updated Aug 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -76,7 +76,7 @@ PUB DIR | row
     sdfat.opendir
     repeat while 0 == sdfat.nextfile(@_tbuf)
         ser.str(@_tbuf)
-        ser.clearline(0)
+        ser.clearline{}
         ser.str(string(10, 13))
         row++
         if row == DIR_ROW+ROWS-1
