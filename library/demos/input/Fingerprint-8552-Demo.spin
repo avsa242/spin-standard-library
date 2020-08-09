@@ -5,7 +5,7 @@
     Description: Demo of the Fingerprint reader SKU#8552 driver
     Copyright (c) 2020
     Started May 18, 2020
-    Updated Jul 10, 2020
+    Updated Aug 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -150,7 +150,7 @@ PUB Main | uid, tmp, priv, usercnt, cmplevel, addpolicy, finished, stmp, priv_lv
                     ser.newline
                     tmp := fng.printmatchesuser(uid)
                     ser.str(lookupz(||(tmp): string("Not a match"), string("Match")))
-                    ser.clearline(ser#CLR_CUR_TO_END)
+                    ser.clearline{}
                     ser.newline
                     pressanykey
 
