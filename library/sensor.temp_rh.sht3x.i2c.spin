@@ -445,8 +445,8 @@ PRI temp9bit_C(temp_9b): result | scale
 PRI readReg(reg_nr, nr_bytes, buff_addr): result | cmd_packet, tmp, ackbit, delay
 ' Read nr_bytes from the slave device into the address stored in buff_addr
     delay := 0
-    case reg_nr                                                 'Basic register validation
-        core#READ_SERIALNUM:                                    'S/N Read Needs delay before repeated start
+    case reg_nr                                             ' Basic register validation
+        core#READ_SERIALNUM:                                ' S/N Read Needs delay before repeated start
             delay := 500
         core#MEAS_HIGHREP..core#MEAS_LOWREP, core#STATUS, core#FETCHDATA, core#ALERTLIM_WR_LO_SET..core#ALERTLIM_WR_HI_SET, core#ALERTLIM_RD_LO_SET..core#ALERTLIM_RD_HI_SET:
         other:
@@ -460,13 +460,13 @@ PRI readReg(reg_nr, nr_bytes, buff_addr): result | cmd_packet, tmp, ackbit, dela
     repeat tmp from 0 to 2
         i2c.write (cmd_packet.byte[tmp])
 
-    time.usleep(delay)
+    time.usleep(delay)                                      ' Delay before repeated start
 
     i2c.start{}
     ackbit := i2c.write (SLAVE_RD | _addr_bit)
-    if ackbit == i2c#NAK                                        ' If NAK received from sensor,
-        i2c.stop{}                                              '   Stop early. It means there's
-        return NODATA_AVAIL                                     '   no data available.
+    if ackbit == i2c#NAK                                    ' If NAK received from sensor,
+        i2c.stop{}                                          '   Stop early. It means there's
+        return NODATA_AVAIL                                 '   no data available.
     repeat tmp from nr_bytes-1 to 0
         byte[buff_addr][tmp] := i2c.read (tmp == 0)
     i2c.stop{}

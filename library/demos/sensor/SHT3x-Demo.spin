@@ -93,7 +93,7 @@ PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp
     ser.dec (whole)
     ser.char (".")
     ser.str (part)
-    ser.clearline(ser#CLR_CUR_TO_END)
+    ser.clearline{}
 
 PUB Setup{}
 
