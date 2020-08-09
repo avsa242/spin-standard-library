@@ -10,7 +10,7 @@
     Author: Jesse Burt
     Copyright (c) 2020
     Created: Jun 18, 2019
-    Updated: Jul 10, 2020
+    Updated: Aug 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -97,7 +97,11 @@ PUB Clear
 
     ClearMode(CLR_ALL_HOME)
 
-PUB ClearLine(mode)
+PUB ClearLine
+
+    clearlinex(CLR_CUR_TO_END)
+
+PUB ClearLineX(mode)
 ' Clear line
     CSI
     Dec(mode)
