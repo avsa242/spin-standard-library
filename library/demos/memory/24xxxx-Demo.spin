@@ -5,7 +5,7 @@
     Description: Demo of the 24xxxx driver
     Copyright (c) 2020
     Started May 9, 2020
-    Updated Jun 29, 2020
+    Updated Aug 9, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -120,7 +120,7 @@ PUB CycleTime(cycles)
     ser.str(string(" cycles ("))
     ser.dec(cycles / CYCLES_USEC)
     ser.str(string("usec)"))
-    ser.clearline(ser#CLR_CUR_TO_END)
+    ser.clearline{}
     return cycles / CYCLES_USEC
 
 PUB Setup
