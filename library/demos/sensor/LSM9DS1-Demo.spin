@@ -5,7 +5,7 @@
     Description: Demo of the LSM9DS1 driver
     Copyright (c) 2020
     Started Aug 12, 2017
-    Updated Aug 9, 2020
+    Updated Aug 21, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -180,7 +180,7 @@ PUB Calibrate
     ser.Position (0, 14)
     ser.str(string("Calibrating..."))
     imu.CalibrateXLG
-    imu.CalibrateMag (10)
+    imu.CalibrateMag
     ser.Position (0, 14)
     ser.str(string("              "))
 

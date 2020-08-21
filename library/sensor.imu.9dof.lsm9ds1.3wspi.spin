@@ -5,7 +5,7 @@
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
     Copyright (c) 2020
     Started Aug 12, 2017
-    Updated Jul 25, 2020
+    Updated Aug 21, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -296,7 +296,7 @@ PUB AccelScale(g): curr_scale
     curr_scale := (curr_scale | g) & core#CTRL_REG6_XL_MASK
     writeReg(XLG, core#CTRL_REG6_XL, 1, @curr_scale)
 
-PUB CalibrateMag(samples) | magmin[3], magmax[3], magtmp[3], axis, mx, my, mz, msb, lsb
+PUB CalibrateMag{} | magmin[3], magmax[3], magtmp[3], axis, mx, my, mz, msb, lsb, samples
 ' Calibrates the Magnetometer on the LSM9DS1 IMU module
     magtmp[0] := magtmp[1] := magtmp[2] := 0    'Initialize all variables to 0
     magmin[0] := magmin[1] := magmin[2] := 0
@@ -304,6 +304,7 @@ PUB CalibrateMag(samples) | magmin[3], magmax[3], magtmp[3], axis, mx, my, mz, m
     axis := mx := my := mz := msb := lsb := 0
     magbias(0, 0, 0, W)
 
+    samples := 32
     repeat samples
         repeat until MagDataReady
         MagData(@mx, @my, @mz)
