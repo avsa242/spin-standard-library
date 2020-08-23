@@ -755,8 +755,6 @@ PUB MagScale(scale): curr_scl
         other:
             return 48
 
-    magadcres(scale)
-
 PUB MagSelfTestEnabled(state): curr_state
 ' Enable magnetometer self-test mode (generates magnetic field)
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
