@@ -752,8 +752,8 @@ PUB MagScale(scale): curr_scl
             _mag_cnts_per_lsb := 5_997
         16:
             _mag_cnts_per_lsb := 1_499
-        other:
-            return 48
+
+    return 48
 
 PUB MagSelfTestEnabled(state): curr_state
 ' Enable magnetometer self-test mode (generates magnetic field)
