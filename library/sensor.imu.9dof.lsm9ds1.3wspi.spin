@@ -5,7 +5,7 @@
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
     Copyright (c) 2020
     Started Aug 12, 2017
-    Updated Aug 21, 2020
+    Updated Aug 23, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -296,32 +296,33 @@ PUB AccelScale(g): curr_scale
     curr_scale := (curr_scale | g) & core#CTRL_REG6_XL_MASK
     writeReg(XLG, core#CTRL_REG6_XL, 1, @curr_scale)
 
-PUB CalibrateMag{} | magmin[3], magmax[3], magtmp[3], axis, mx, my, mz, msb, lsb, samples
-' Calibrates the Magnetometer on the LSM9DS1 IMU module
-    magtmp[0] := magtmp[1] := magtmp[2] := 0    'Initialize all variables to 0
-    magmin[0] := magmin[1] := magmin[2] := 0
-    magmax[0] := magmax[1] := magmax[2] := 0
-    axis := mx := my := mz := msb := lsb := 0
-    magbias(0, 0, 0, W)
+PUB CalibrateMag{} | magmin[3], magmax[3], magtmp[3], axis, samples, opmode_orig, odr_orig
+' Calibrate the magnetometer
+    longfill(@magmin, 0, 11)                                ' Initialize variables to 0
+    opmode_orig := magopmode(-2)                            ' Store the user-set operating mode
+    odr_orig := magdatarate(-2)                             '   and data rate
 
-    samples := 32
+    magopmode(MAG_OPMODE_CONT)                              ' Change to continuous measurement mode
+    magdatarate(80_000)                                     '   and fastest data rate
+    magbias(0, 0, 0, W)                                     ' Start with offsets cleared
+
+    magdata(@magtmp[X_AXIS], @magtmp[Y_AXIS], @magtmp[Z_AXIS])
+    magmax[X_AXIS] := magmin[X_AXIS] := magtmp[X_AXIS]      ' Establish initial minimum and maximum values:
+    magmax[Y_AXIS] := magmin[Y_AXIS] := magtmp[Y_AXIS]      ' Start both with the same value to avoid skewing the
+    magmax[Z_AXIS] := magmin[Z_AXIS] := magtmp[Z_AXIS]      '   calcs (because vars were initialized with 0)
+
+    samples := 100                                          ' XXX arbitrary
     repeat samples
-        repeat until MagDataReady
-        MagData(@mx, @my, @mz)
-        magtmp[X_AXIS] := mx
-        magtmp[Y_AXIS] := my
-        magtmp[Z_AXIS] := mz
+        repeat until magdataready{}
+        magdata(@magtmp[X_AXIS], @magtmp[Y_AXIS], @magtmp[Z_AXIS])
         repeat axis from X_AXIS to Z_AXIS
-            if (magtmp[axis] > magmax[axis])
-                magmax[axis] := magtmp[axis]
-            if (magtmp[axis] < magmin[axis])
-                magmin[axis] := magtmp[axis]
-    repeat axis from X_AXIS to Z_AXIS
-        _mbiasraw[axis] := (magmax[axis] + magmin[axis]) / 2
-        msb := (_mbiasraw[axis] & $FF00) >> 8
-        lsb := _mbiasraw[axis] & $00FF
-        writeReg(MAG, core#OFFSET_X_REG_L_M + (2 * axis), 1, @lsb)
-        writeReg(MAG, core#OFFSET_X_REG_H_M + (2 * axis), 1, @msb)
+            magmin[axis] := magtmp[axis] <# magmin[axis]
+            magmax[axis] := magtmp[axis] #> magmax[axis]
+
+    magbias((magmax[X_AXIS] + magmin[X_AXIS]) / 2, (magmax[Y_AXIS] + magmin[Y_AXIS]) / 2, (magmax[Z_AXIS] + magmin[Z_AXIS]) / 2, W)
+
+    magopmode(opmode_orig)                                  ' Restore the user settings
+    magdatarate(odr_orig)                                   '
 
 PUB CalibrateXLG | abiasrawtmp[3], gbiasrawtmp[3], axis, ax, ay, az, gx, gy, gz, samples
 ' Calibrates the Accelerometer and Gyroscope
