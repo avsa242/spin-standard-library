@@ -5,7 +5,7 @@
     Description: Driver for the InvenSense MPU9250
     Copyright (c) 2020
     Started Sep 2, 2019
-    Updated Aug 21, 2020
+    Updated Aug 23, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -318,7 +318,7 @@ PUB CalibrateMag{} | magmin[3], magmax[3], magtmp[3], axis, samples, opmode_orig
             magmax[axis] := magtmp[axis] #> magmax[axis]    ' Find the maximum value seen during sampling
             magmin[axis] := magtmp[axis] <# magmin[axis]    '   as well as the minimum, for each axis
 
-    magbias((magmax[X_AXIS] + magmin[X_AXIS]) / 2, (magmax[Y_AXIS] + magmin[Y_AXIS]) / 2, (magmax[Z_AXIS] + magmin[Z_AXIS]) / 2, W) ' Write the mean of the samples just gathered as new bias offsets
+    magbias((magmax[X_AXIS] + magmin[X_AXIS]) / 2, (magmax[Y_AXIS] + magmin[Y_AXIS]) / 2, (magmax[Z_AXIS] + magmin[Z_AXIS]) / 2, W) ' Write the average of the samples just gathered as new bias offsets
     magopmode(opmode_orig)                                  ' Restore the user's original operating mode
 
 PUB ClockSource(src): curr_src
@@ -653,6 +653,8 @@ PUB MagADCRes(bits): curr_res
     readreg(core#CNTL1, 1, @curr_res)
     case bits
         14, 16:
+            _mag_cnts_per_lsb := lookdownz(bits: 14, 16)                    ' Set scaling factor
+            _mag_cnts_per_lsb := lookupz(_mag_cnts_per_lsb: 5_997, 1_499)   ' based on ADC res
             bits := lookdownz(bits: 14, 16) << core#FLD_BIT
         other:
             curr_res := (curr_res >> core#FLD_BIT) & %1
@@ -741,16 +743,17 @@ PUB MagOverflow{}: flag
     readreg(core#ST2, 1, @flag)
     return ((flag >> core#FLD_HOFL) & %1) == 1
 
-PUB MagScale(scale): curr_scl ' XXX PRELIMINARY
-' Set full-scale range of magnetometer, in bits
-'   Valid values: 14, 16
-    case scale
+PUB MagScale(scale): curr_scl
+' Set full-scale range of magnetometer, in Gauss
+'   Valid values: 48
+'   NOTE: The magnetometer has only one full-scale range. This method is provided primarily for API compatibility with other IMUs
+    case magadcres(-2)
         14:
             _mag_cnts_per_lsb := 5_997
         16:
             _mag_cnts_per_lsb := 1_499
         other:
-            return magadcres(-2)
+            return 48
 
     magadcres(scale)
 
@@ -782,7 +785,7 @@ PUB MagTesla(mx, my, mz) | tmpx, tmpy, tmpz ' XXX unverified
     long[my] := (tmpy * _mag_cnts_per_lsb) * 100
     long[mz] := (tmpz * _mag_cnts_per_lsb) * 100
 
-PUB MagOpMode(mode): curr_mode
+PUB MagOpMode(mode): curr_mode | tmp
 ' Set magnetometer operating mode
 '   Valid values:
 '      *POWERDOWN (0): Power down
@@ -801,7 +804,10 @@ PUB MagOpMode(mode): curr_mode
             return curr_mode & core#BITS_MODE
 
     mode := ((curr_mode & core#MASK_MODE) | mode) & core#CNTL1_MASK
-    writereg(core#CNTL1, 1, @mode)
+    tmp := POWERDOWN
+    writereg(core#CNTL1, 1, @tmp)                           ' Transition to power down state
+    time.msleep(100)                                        '   and wait 100ms first, per AK8963 datasheet
+    writereg(core#CNTL1, 1, @mode)                          ' Then, transition to the selected mode
 
 PUB MeasureMag{}
 ' Perform magnetometer measurement
@@ -812,9 +818,9 @@ PUB ReadMagAdj{}
     magopmode(FUSEACCESS)
     readreg(core#ASAX, 3, @_mag_sens_adj)
     magopmode(CONT100)
-    _mag_sens_adj[X_AXIS] := (((((((_mag_sens_adj[X_AXIS] * 1000) - 128_000) / 2)) / 128) + 1_000)) / 1000
-    _mag_sens_adj[Y_AXIS] := (((((((_mag_sens_adj[Y_AXIS] * 1000) - 128_000) / 2)) / 128) + 1_000)) / 1000
-    _mag_sens_adj[Z_AXIS] := (((((((_mag_sens_adj[Z_AXIS] * 1000) - 128_000) / 2)) / 128) + 1_000)) / 1000
+    _mag_sens_adj[X_AXIS] := ((((((_mag_sens_adj[X_AXIS] * 1000) - 128_000) / 2) / 128) + 1_000)) / 1000
+    _mag_sens_adj[Y_AXIS] := ((((((_mag_sens_adj[Y_AXIS] * 1000) - 128_000) / 2) / 128) + 1_000)) / 1000
+    _mag_sens_adj[Z_AXIS] := ((((((_mag_sens_adj[Z_AXIS] * 1000) - 128_000) / 2) / 128) + 1_000)) / 1000
 
 PUB Reset{}
 ' Perform soft-reset
