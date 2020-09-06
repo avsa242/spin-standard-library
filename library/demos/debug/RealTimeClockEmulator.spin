@@ -5,7 +5,7 @@ CON
 
 OBJ
 
-    clock   : "debug.emulator.rtc"
+    clock   : "time.rtc.emulated"
     term    : "com.serial.terminal"
 
 VAR
