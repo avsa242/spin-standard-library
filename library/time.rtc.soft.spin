@@ -64,7 +64,7 @@ PUB Hours(hh)
         other:
             return _hh
 
-PUB Date(dd)
+PUB Days(dd)
 
     case dd
         01..31:

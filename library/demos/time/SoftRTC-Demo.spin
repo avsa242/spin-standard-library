@@ -43,7 +43,7 @@ PUB Main{}
 
     rtc.year(20)                               ' 00 - 31 ... Valid from 2000 to 2031
     rtc.months(12)                              ' 01 - 12 ... Month
-    rtc.date(31)                               ' 01 - 31 ... Date
+    rtc.days(31)                               ' 01 - 31 ... Date
 
     rtc.hours(23)                               ' 01 - 12 ... Hour
     rtc.minutes(59)                                ' 00 - 59 ... Minute
