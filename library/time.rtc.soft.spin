@@ -42,27 +42,51 @@ PUB Stop{}
 
 PUB Seconds(ss)
 
-    _ss := ss
+    case ss
+        00..59:
+            _ss := ss
+        other:
+            return _ss
 
 PUB Minutes(mm)
 
-    _mm := mm
+    case mm
+        00..59:
+            _mm := mm
+        other:
+            return _mm
 
 PUB Hours(hh)
 
-    _hh := hh
+    case hh
+        00..23:
+            _hh := hh
+        other:
+            return _hh
 
 PUB Date(dd)
 
-    _dd := dd
+    case dd
+        01..31:
+            _dd := dd
+        other:
+            return _dd
 
 PUB Months(mo)
 
-    _mo := mo
+    case mo
+        01..12:
+            _mo := mo
+        other:
+            return _mo
 
 PUB Year(yy)
 
-    _yy := yy
+    case yy
+        00..99:
+            _yy := yy
+        other:
+            return _yy
 
 PUB Suspend
 
