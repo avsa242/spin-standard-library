@@ -129,27 +129,27 @@ PUB ParseDateStamp(dataaddress)
     _datetimestamp[0] := "2"                        ' Year
     _datetimestamp[1] := "0"                        ' Year
     _datetimestamp[2] := $30 + _yy/10               ' Year
-    _datetimestamp[3] := $30 + _yy-(_yy/10)*10      ' Year
+    _datetimestamp[3] := $30 + _yy//10              ' Year
     _datetimestamp[4] := "/"
     _datetimestamp[5] := $30 + _mo/10               ' Month
-    _datetimestamp[6] := $30 + _mo-(_mo/10)*10      ' Month
+    _datetimestamp[6] := $30 + _mo//10              ' Month
     _datetimestamp[7] := "/"
     _datetimestamp[8] := $30 + _dd/10               ' Day
-    _datetimestamp[9] := $30 + _dd-(_dd/10)*10      ' Day
+    _datetimestamp[9] := $30 + _dd//10              ' Day
     _datetimestamp[10] := 0                         ' String terminator
     bytemove(dataaddress, @_datetimestamp, 11)
 
 PUB ParseTimeStamp(dataaddress)
 
     _datetimestamp[0] := $30 + _hh/10               ' Hour
-    _datetimestamp[1] := $30 + _hh-(_hh/10)*10      ' Hour
+    _datetimestamp[1] := $30 + _hh//10              ' Hour
     _datetimestamp[2] := ":"
     _datetimestamp[3] := $30 + _mm/10               ' Minute
-    _datetimestamp[4] := $30 + _mm-(_mm/10)*10      ' Minute
+    _datetimestamp[4] := $30 + _mm//10              ' Minute
     _datetimestamp[5] := ":"
     _datetimestamp[6] := $30 + _ss/10               ' Second
-    _datetimestamp[7] := $30 + _ss-(_ss/10)*10      ' Second
-    _datetimestamp[8] := 0                         ' String terminator
+    _datetimestamp[7] := $30 + _ss//10              ' Second
+    _datetimestamp[8] := 0                          ' String terminator
     bytemove(dataaddress, @_datetimestamp, 11)
 
 PRI cog_RTCLoop(timeaddress)
