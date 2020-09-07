@@ -40,27 +40,27 @@ PUB Stop{}
     if _cog
         cogstop(_cog-1)
 
-PUB SetSec(ss)
+PUB Seconds(ss)
 
     _ss := ss
 
-PUB SetMin(mm)
+PUB Minutes(mm)
 
     _mm := mm
 
-PUB SetHour(hh)
+PUB Hours(hh)
 
     _hh := hh
 
-PUB SetDate(dd)
+PUB Date(dd)
 
     _dd := dd
 
-PUB SetMonth(mo)
+PUB Months(mo)
 
     _mo := mo
 
-PUB SetYear(yy)
+PUB Year(yy)
 
     _yy := yy
 
