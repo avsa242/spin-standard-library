@@ -24,7 +24,7 @@ VAR
 
     long _time_stack[100]
     long _timer, _temp, _clockflag, _timeaddress
-    byte _monthdays, _ss, _mm, _hh, _dd, _mo, _yy, _ly
+    byte _monthdays, _ss, _mm, _hh, _dd, _mo, _yy, _ly, _wkday
     byte _datetimestamp[11]
     byte _cog
 
@@ -79,6 +79,14 @@ PUB Seconds(ss)
             _ss := ss
         other:
             return _ss
+
+PUB Weekday(wkday)
+
+    case wkday
+        1..7:
+            _wkday := wkday
+        other:
+            return _wkday
 
 PUB Year(yy)
 
@@ -180,6 +188,10 @@ PRI cog_RTCLoop(timeaddress)
         if _hh == 24                                ' Hours
             _hh := 0
             _dd += 1
+            _wkday += 1
+
+            if _wkday > 7
+                _wkday := 1
 
         if _dd == _monthdays + 1                    ' Days
             _dd := 1

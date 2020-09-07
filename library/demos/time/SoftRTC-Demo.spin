@@ -43,6 +43,7 @@ PUB Main{}
     rtc.year(20)                            ' 00..31 (Valid from 2000 to 2031)
     rtc.months(12)                          ' 01..12
     rtc.days(31)                            ' 01..31
+    rtc.weekday(5)                          ' 01..07
 
     rtc.hours(23)                           ' 01..12
     rtc.minutes(59)                         ' 00..59
@@ -55,6 +56,8 @@ PUB Main{}
 
         ser.position(0, 3)
         ser.str(@_datestamp)
+        ser.char(" ")
+        ser.str(@weekday[(rtc.weekday(-2) - 1) * 4])
         ser.str(string("  "))
         ser.str(@_timestamp)
 
@@ -71,6 +74,17 @@ PUB Setup{}
         rtc.stop{}
         time.msleep(50)
         ser.stop{}
+
+DAT
+
+    weekday
+            byte    "Sun", 0
+            byte    "Mon", 0
+            byte    "Tue", 0
+            byte    "Wed", 0
+            byte    "Thu", 0
+            byte    "Fri", 0
+            byte    "Sat", 0
 
 {
     --------------------------------------------------------------------------------------------------------
