@@ -177,15 +177,15 @@ PRI cog_RTCLoop(timeaddress)
 
         _ss += 1                                    ' Increment Time Calendar
 
-        if _ss == 60                                ' Seconds
+        if _ss > 59                                 ' Seconds
             _ss := 0
             _mm += 1
 
-        if _mm == 60                                ' Minutes
+        if _mm > 59                                 ' Minutes
             _mm := 0
             _hh += 1
 
-        if _hh == 24                                ' Hours
+        if _hh > 23                                 ' Hours
             _hh := 0
             _dd += 1
             _wkday += 1
@@ -197,11 +197,11 @@ PRI cog_RTCLoop(timeaddress)
             _dd := 1
             _mo += 1
 
-        if _mo == 13                                ' Months
+        if _mo > 12                                 ' Months
             _mo := 1
             _yy += 1
 
-        if _yy == 33                                ' Years
+        if _yy > 32                                 ' Years
             _yy := 32
 
         unparsetime(timeaddress)                    ' Pack current time variable values into 'long'
