@@ -1,45 +1,63 @@
 ' Author: Beau Schwabe
 CON
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
+
+' -- User-definable constants
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
+' --
 
 OBJ
 
-    clock   : "time.rtc.emulated"
-    term    : "com.serial.terminal"
+    cfg     : "core.con.boardcfg.flip"
+    rtc     : "time.rtc.emulated"
+    ser     : "com.serial.terminal.ansi"
+    time    : "time"
 
 VAR
 
-    long  TimeString
-    byte  SS,MM,HH,AP,DD,MO,YY,LY
-    byte  DateStamp[11], TimeStamp[11]
+    long  _timestring
+    byte  _datestamp[11], _timestamp[11]
 
-PUB Main
+PUB Main{}
 
-    term.Start(115200)                              ' Initialize termial communication to the PC
+    setup{}
 
-    Clock.Start(@TimeString)                        ' Initiate Prop Clock
+    rtc.suspend{}                                 ' Suspend rtc while being set
 
-    Clock.Suspend                                   ' Suspend Clock while being set
+    rtc.setyear(20)                               ' 00 - 31 ... Valid from 2000 to 2031
+    rtc.setmonth(12)                              ' 01 - 12 ... Month
+    rtc.setdate(31)                               ' 01 - 31 ... Date
 
-    Clock.SetYear(09)                               ' 00 - 31 ... Valid from 2000 to 2031
-    Clock.SetMonth(03)                              ' 01 - 12 ... Month
-    Clock.SetDate(11)                               ' 01 - 31 ... Date
+    rtc.sethour(23)                               ' 01 - 12 ... Hour
+    rtc.setmin(59)                                ' 00 - 59 ... Minute
+    rtc.setsec(55)                                ' 00 - 59 ... Second
 
-    Clock.SetHour(12)                               ' 01 - 12 ... Hour
-    Clock.SetMin(00)                                ' 00 - 59 ... Minute
-    Clock.SetSec(00)                                ' 00 - 59 ... Second
-
-    Clock.SetAMPM(1)                                ' 0 = AM ; 1 = PM
-
-    Clock.Restart                                   ' Start Clock after being set
+    rtc.restart{}                                 ' Start rtc after being set
 
     repeat
-        Clock.ParseDateStamp(@DateStamp)
-        Clock.ParseTimeStamp(@TimeStamp)
+        rtc.parsedatestamp(@_datestamp)
+        rtc.parsetimestamp(@_timestamp)
 
-        term.Char(1)
-        term.Str(@DateStamp)
-        term.Str(string("  "))
-        term.Str(@TimeStamp)
+        ser.position(0, 3)
+        ser.str(@_datestamp)
+        ser.str(string("  "))
+        ser.str(@_timestamp)
+
+PUB Setup{}
+
+    repeat until ser.startrxtx(SER_RX, SER_TX, 0, SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+    if rtc.start(@_timestring)
+        ser.str(string("SoftRTC started", ser#CR, ser#LF))
+    else
+        ser.str(string("SoftRTC failed to start - halting", ser#CR, ser#LF))
+        rtc.stop{}
+        time.msleep(50)
+        ser.stop{}
 
