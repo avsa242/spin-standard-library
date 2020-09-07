@@ -39,7 +39,7 @@ PUB Main{}
 
     setup{}
 
-
+    rtc.suspend{}
     rtc.year(20)                            ' 00..31 (Valid from 2000 to 2031)
     rtc.months(12)                          ' 01..12
     rtc.days(31)                            ' 01..31
@@ -47,7 +47,7 @@ PUB Main{}
     rtc.hours(23)                           ' 01..12
     rtc.minutes(59)                         ' 00..59
     rtc.seconds(55)                         ' 00..59
-
+    rtc.resume{}
 
     repeat
         rtc.parsedatestamp(@_datestamp)

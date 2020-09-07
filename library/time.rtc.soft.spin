@@ -44,9 +44,7 @@ PUB Days(dd)
 
     case dd
         01..31:
-            suspend{}
             _dd := dd
-            resume{}
         other:
             return _dd
 
@@ -54,9 +52,7 @@ PUB Hours(hh)
 
     case hh
         00..23:
-            suspend{}
             _hh := hh
-            resume{}
         other:
             return _hh
 
@@ -64,9 +60,7 @@ PUB Minutes(mm)
 
     case mm
         00..59:
-            suspend{}
             _mm := mm
-            resume{}
         other:
             return _mm
 
@@ -74,9 +68,7 @@ PUB Months(mo)
 
     case mo
         01..12:
-            suspend{}
             _mo := mo
-            resume{}
         other:
             return _mo
 
@@ -84,9 +76,7 @@ PUB Seconds(ss)
 
     case ss
         00..59:
-            suspend{}
             _ss := ss
-            resume{}
         other:
             return _ss
 
@@ -94,9 +84,7 @@ PUB Year(yy)
 
     case yy
         00..99:
-            suspend{}
             _yy := yy
-            resume{}
         other:
             return _yy
 
@@ -206,12 +194,12 @@ PRI cog_RTCLoop(timeaddress)
 
         unparsetime(timeaddress)                    ' Pack current time variable values into 'long'
 
-PRI Resume{}
+PUB Resume{}
 
     unparsetime(_timeaddress)                       ' Pack current time variable values into 'long'
     _clockflag := 0                                 ' Resume Clock
 
-PRI Suspend{}
+PUB Suspend{}
 
     _clockflag := 1                                 ' Suspend Clock
     repeat while _clockflag == 1                    ' Clock responds with a 2 when suspend received
