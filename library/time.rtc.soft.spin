@@ -20,6 +20,12 @@
 * See end of file for terms of use.            *
 ************************************************
 }}
+CON
+
+' Constants representing months, and day of week
+    #1, JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC
+    #1, SUN, MON, TUE, WED, THU, FRI, SAT
+
 VAR
 
     long _time_stack[100]
@@ -167,13 +173,13 @@ PRI cog_RTCLoop(timeaddress)
         else
             _ly := 0
 
-        _monthdays := 28                            ' Decode number of days in each month
-        if _mo <> 2
-            _monthdays += 2
-            if _mo & %0001 <> (_mo & %1000) / %1000
-                _monthdays += 1
-        else
-            _monthdays += _ly
+        case _mo
+            FEB:
+                _monthdays := 28 + _ly              ' Decode number of days in each month
+            APR, JUN, SEP, NOV:
+                _monthdays := 30
+            JAN, MAR, MAY, JUL, AUG, OCT, DEC:
+                _monthdays := 31
 
         _ss += 1                                    ' Increment Time Calendar
 
@@ -190,15 +196,15 @@ PRI cog_RTCLoop(timeaddress)
             _dd += 1
             _wkday += 1
 
-            if _wkday > 7
-                _wkday := 1
+            if _wkday > SAT
+                _wkday := SUN
 
         if _dd == _monthdays + 1                    ' Days
             _dd := 1
             _mo += 1
 
-        if _mo > 12                                 ' Months
-            _mo := 1
+        if _mo > DEC                                 ' Months
+            _mo := JAN
             _yy += 1
 
         if _yy > 32                                 ' Years
