@@ -128,27 +128,27 @@ PUB ParseDateStamp(dataaddress)
 
     _datetimestamp[0] := "2"                        ' Year
     _datetimestamp[1] := "0"                        ' Year
-    _datetimestamp[2] := $30 + _yy/10               ' Year
-    _datetimestamp[3] := $30 + _yy//10              ' Year
+    _datetimestamp[2] := "0" + _yy/10               ' Year
+    _datetimestamp[3] := "0" + _yy//10              ' Year
     _datetimestamp[4] := "/"
-    _datetimestamp[5] := $30 + _mo/10               ' Month
-    _datetimestamp[6] := $30 + _mo//10              ' Month
+    _datetimestamp[5] := "0" + _mo/10               ' Month
+    _datetimestamp[6] := "0" + _mo//10              ' Month
     _datetimestamp[7] := "/"
-    _datetimestamp[8] := $30 + _dd/10               ' Day
-    _datetimestamp[9] := $30 + _dd//10              ' Day
+    _datetimestamp[8] := "0" + _dd/10               ' Day
+    _datetimestamp[9] := "0" + _dd//10              ' Day
     _datetimestamp[10] := 0                         ' String terminator
     bytemove(dataaddress, @_datetimestamp, 11)
 
 PUB ParseTimeStamp(dataaddress)
 
-    _datetimestamp[0] := $30 + _hh/10               ' Hour
-    _datetimestamp[1] := $30 + _hh//10              ' Hour
+    _datetimestamp[0] := "0" + _hh/10               ' Hour
+    _datetimestamp[1] := "0" + _hh//10              ' Hour
     _datetimestamp[2] := ":"
-    _datetimestamp[3] := $30 + _mm/10               ' Minute
-    _datetimestamp[4] := $30 + _mm//10              ' Minute
+    _datetimestamp[3] := "0" + _mm/10               ' Minute
+    _datetimestamp[4] := "0" + _mm//10              ' Minute
     _datetimestamp[5] := ":"
-    _datetimestamp[6] := $30 + _ss/10               ' Second
-    _datetimestamp[7] := $30 + _ss//10              ' Second
+    _datetimestamp[6] := "0" + _ss/10               ' Second
+    _datetimestamp[7] := "0" + _ss//10              ' Second
     _datetimestamp[8] := 0                          ' String terminator
     bytemove(dataaddress, @_datetimestamp, 11)
 
@@ -156,7 +156,7 @@ PRI cog_RTCLoop(timeaddress)
 ' timeaddress variable allocation:
 ' Leap   Year    Month   Date     Hours   Minutes   Seconds
 ' (0-1) (00-31)  (1-12) (1-31)   (1-12)  (00-59)   (00-59)
-'   0____00000____0000___00000____0000____000000____000000
+'   0____00000____0000___00000____00000___000000____000000
     _timer := cnt
     repeat
         waitcnt(_timer += clkfreq)                  ' 1 Second Synchronized Delay
