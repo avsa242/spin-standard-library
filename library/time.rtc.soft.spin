@@ -40,64 +40,65 @@ PUB Stop{}
     if _cog
         cogstop(_cog-1)
 
-PUB Seconds(ss)
+PUB Days(dd)
 
-    case ss
-        00..59:
-            _ss := ss
+    case dd
+        01..31:
+            suspend{}
+            _dd := dd
+            restart{}
         other:
-            return _ss
-
-PUB Minutes(mm)
-
-    case mm
-        00..59:
-            _mm := mm
-        other:
-            return _mm
+            return _dd
 
 PUB Hours(hh)
 
     case hh
         00..23:
+            suspend{}
             _hh := hh
+            restart{}
         other:
             return _hh
 
-PUB Days(dd)
+PUB Minutes(mm)
 
-    case dd
-        01..31:
-            _dd := dd
+    case mm
+        00..59:
+            suspend{}
+            _mm := mm
+            restart{}
         other:
-            return _dd
+            return _mm
 
 PUB Months(mo)
 
     case mo
         01..12:
+            suspend{}
             _mo := mo
+            restart{}
         other:
             return _mo
+
+PUB Seconds(ss)
+
+    case ss
+        00..59:
+            suspend{}
+            _ss := ss
+            restart{}
+        other:
+            return _ss
 
 PUB Year(yy)
 
     case yy
         00..99:
+            suspend{}
             _yy := yy
+            restart{}
         other:
             return _yy
-
-PUB Suspend
-
-    _clockflag := 1                                 ' Suspend Clock
-    repeat while _clockflag == 1                    ' Clock responds with a 2 when suspend received
-    parsetime(_timeaddress)                         ' Unpack current time variable values from 'long'
-
-PUB Restart
-
-    unparsetime(_timeaddress)                       ' Pack current time variable values into 'long'
-    _clockflag := 0                                 ' Restart Clock
 
 PUB Run(timeaddress)
 ' timeaddress variable allocation:
@@ -204,6 +205,17 @@ PUB ParseTimeStamp(dataaddress)
     _datetimestamp[7] := $30 + _ss-(_ss/10)*10      ' Second
     _datetimestamp[8] := 0                         ' String terminator
     bytemove(dataaddress, @_datetimestamp, 11)
+
+PRI Restart
+
+    unparsetime(_timeaddress)                       ' Pack current time variable values into 'long'
+    _clockflag := 0                                 ' Restart Clock
+
+PRI Suspend
+
+    _clockflag := 1                                 ' Suspend Clock
+    repeat while _clockflag == 1                    ' Clock responds with a 2 when suspend received
+    parsetime(_timeaddress)                         ' Unpack current time variable values from 'long'
 
 {
     --------------------------------------------------------------------------------------------------------

@@ -39,17 +39,15 @@ PUB Main{}
 
     setup{}
 
-    rtc.suspend{}                                 ' Suspend rtc while being 
 
-    rtc.year(20)                               ' 00 - 31 ... Valid from 2000 to 2031
-    rtc.months(12)                              ' 01 - 12 ... Month
-    rtc.days(31)                               ' 01 - 31 ... Date
+    rtc.year(20)                            ' 00..31 (Valid from 2000 to 2031)
+    rtc.months(12)                          ' 01..12
+    rtc.days(31)                            ' 01..31
 
-    rtc.hours(23)                               ' 01 - 12 ... Hour
-    rtc.minutes(59)                                ' 00 - 59 ... Minute
-    rtc.seconds(55)                                ' 00 - 59 ... Second
+    rtc.hours(23)                           ' 01..12
+    rtc.minutes(59)                         ' 00..59
+    rtc.seconds(55)                         ' 00..59
 
-    rtc.restart{}                                 ' Start rtc after being 
 
     repeat
         rtc.parsedatestamp(@_datestamp)
