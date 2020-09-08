@@ -37,6 +37,9 @@ Yout ──│2 │ /\ │ 5│── Xout
          └──────────┘
 
 }
+' Indicate to the counters object that we want constants shifted appropriate
+'   for PASM operands
+#define _PASM_
 VAR
 
     long  _cog
@@ -44,11 +47,15 @@ VAR
     long  offset
     long  scale
 
-    long  calflag                 '5 contiguous longs
+    long  calflag                                   ' 5 contiguous longs
     long  _ro
     long  _theta
     long  _xraw
     long  _yraw
+
+OBJ
+
+    ctrs    : "core.con.counters"                   ' Counter setup constants
 
 PUB Start(MXD_XPIN, MXD_YPIN): okay
 ' Start driver - starts a cog
@@ -60,8 +67,8 @@ PUB Start(MXD_XPIN, MXD_YPIN): okay
     stop{}
     offset := 90 * (clkfreq / 200)                  ' offset value for Tilt conversion
     scale  := clkfreq / 800                         ' scale value for Tilt conversion
-    ctra_value := $6800_0000 + MXD_XPIN
-    ctrb_value := $6800_0000 + MXD_YPIN
+    ctra_value := ctrs#LOGIC_A + MXD_XPIN
+    ctrb_value := ctrs#LOGIC_A + MXD_YPIN
     mask_value := (|< MXD_XPIN) + (|< MXD_YPIN)
     okay := _cog := cognew(@entry, @calflag) + 1
 
