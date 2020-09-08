@@ -5,7 +5,7 @@
     Description: Demo of the LSM303DLHC driver
     Copyright (c) 2020
     Started Jul 30, 2020
-    Updated Aug 1, 2020
+    Updated Sep 8, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -98,7 +98,7 @@ PUB Main{} | dispmode
             "r", "R":                                       ' Change display mode: raw/calculated
                 ser.position(0, 15)
                 repeat 2
-                    ser.clearline(ser#CLR_CUR_TO_END)
+                    ser.clearline{}
                     ser.newline{}
                 dispmode ^= 1
 
@@ -154,7 +154,7 @@ PUB MagCalc{} | mx, my, mz
     ser.str(int.decpadded(mx, 10))
     ser.str(int.decpadded(my, 10))
     ser.str(int.decpadded(mz, 10))
-    ser.clearline(ser#CLR_CUR_TO_END)
+    ser.clearline{}
     ser.newline{}
 
 PUB MagRaw{} | mx, my, mz
@@ -166,7 +166,7 @@ PUB MagRaw{} | mx, my, mz
     ser.str(int.decpadded(mx, 7))
     ser.str(int.decpadded(my, 7))
     ser.str(int.decpadded(mz, 7))
-    ser.clearline(ser#CLR_CUR_TO_END)
+    ser.clearline{}
     ser.newline{}
 
 PUB Calibrate{}
