@@ -172,22 +172,23 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
             if (i / 8) // 128 == 0
                 dx1 := 8 + (sin(-i + 2048) * ((size * 65) / 90)) / 65535
                 dy1 := 8 + (cos(-i + 2048) * ((size * 65) / 90)) / 65535
-                if i == 0
-                    gr.text(dx1, dy1, string("0"))
-                if i == 1024
-                    gr.text(dx1, dy1, string("45"))
-                if i == 2048
-                    gr.text(dx1, dy1, string("90"))
-                if i == 3072
-                    gr.text(dx1, dy1, string("135"))
-                if i == 4096
-                    gr.text(dx1, dy1, string("180"))
-                if i == 5120
-                    gr.text(dx1, dy1, string("225"))
-                if i == 6144
-                    gr.text(dx1, dy1, string("270"))
-                if i == 7168
-                    gr.text(dx1, dy1, string("315"))
+                case i
+                    0:
+                        gr.text(dx1, dy1, string("0"))
+                    1024:
+                        gr.text(dx1, dy1, string("45"))
+                    2048:
+                        gr.text(dx1, dy1, string("90"))
+                    3072:
+                        gr.text(dx1, dy1, string("135"))
+                    4096:
+                        gr.text(dx1, dy1, string("180"))
+                    5120:
+                        gr.text(dx1, dy1, string("225"))
+                    6144:
+                        gr.text(dx1, dy1, string("270"))
+                    7168:
+                        gr.text(dx1, dy1, string("315"))
 
                 ' fixed Rotational Ticks
                 gr.arc(0, 0, ((size * 75) / 90), ((size * 75) / 90), i, 0, 1, 0)
