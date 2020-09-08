@@ -102,14 +102,14 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
         repeat i from (-180 + offset) to (180 + offset)
             if (i - offset) // 5 == 0
                 if i => -size and i =< size
-                    dx := (sin(-e + 4096) * i) / 65535
-                    dy := (cos(-e + 4096) * i) / 65535
+                    dx := (sin(-e + 4096) * i) ~> 16
+                    dy := (cos(-e + 4096) * i) ~> 16
                     if i == offset                      ' Draw moving Horizon
                         cordlength := ^^((size * size)-(fdeg * fdeg))
-                        dx1 := dx + (sin(-e + 2048) * cordlength) / 65535
-                        dy1 := dy + (cos(-e + 2048) * cordlength) / 65535
-                        dx2 := dx + (sin(-e - 2048) * cordlength) / 65535
-                        dy2 := dy + (cos(-e - 2048) * cordlength) / 65535
+                        dx1 := dx + (sin(-e + 2048) * cordlength) ~> 16
+                        dy1 := dy + (cos(-e + 2048) * cordlength) ~> 16
+                        dx2 := dx + (sin(-e - 2048) * cordlength) ~> 16
+                        dy2 := dy + (cos(-e - 2048) * cordlength) ~> 16
                         gr.plot(dx1, dy1)
                         gr.line(dx2, dy2)
                         gr.text(dx, dy, string("0 "))
@@ -137,19 +137,19 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
                                 180:
                                     gr.text(dx, dy, string("180 "))
 
-                        dx1 := dx + (sin(-e + 2048) * bar) / 65535
-                        dy1 := dy + (cos(-e + 2048) * bar) / 65535
-                        dx2 := dx + (sin(-e - 2048) * bar) / 65535
-                        dy2 := dy + (cos(-e - 2048) * bar) / 65535
+                        dx1 := dx + (sin(-e + 2048) * bar) ~> 16
+                        dy1 := dy + (cos(-e + 2048) * bar) ~> 16
+                        dx2 := dx + (sin(-e - 2048) * bar) ~> 16
+                        dy2 := dy + (cos(-e - 2048) * bar) ~> 16
                         gr.plot(dx1, dy1)
                         gr.line(dx2, dy2)
 
-                    dx := (sin(-e + 4096){*i}) / 65535  ' Draw fixed Horizon
-                    dy := (cos(-e + 4096){*i}) / 65535
-                    dx1 := dx + (sin(-e + 2048) * size) / 65535
-                    dy1 := dy + (cos(-e + 2048) * size) / 65535
-                    dx2 := dx + (sin(-e - 2048) * size) / 65535
-                    dy2 := dy + (cos(-e - 2048) * size) / 65535
+                    dx := (sin(-e + 4096){*i}) ~> 16  ' Draw fixed Horizon
+                    dy := (cos(-e + 4096){*i}) ~> 16
+                    dx1 := dx + (sin(-e + 2048) * size) ~> 16
+                    dy1 := dy + (cos(-e + 2048) * size) ~> 16
+                    dx2 := dx + (sin(-e - 2048) * size) ~> 16
+                    dy2 := dy + (cos(-e - 2048) * size) ~> 16
                     gr.color(1)
                     gr.plot(dx1, dy1)
                     gr.line(dx2, dy2)
@@ -163,15 +163,15 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
         gr.width(0)
 
         'Draw reference '0' Deg in motion
-        dx1 := 8 + (sin(d + 2048) * ((size * 50) / 90)) / 65535
-        dy1 := 8 + (cos(d + 2048) * ((size * 50) / 90)) / 65535
+        dx1 := 8 + (sin(d + 2048) * ((size * 50) / 90)) ~> 16
+        dy1 := 8 + (cos(d + 2048) * ((size * 50) / 90)) ~> 16
         gr.text(dx1, dy1, string("0"))
 
         gr.color(1)
         repeat i from 0 to 8192 step 128                ' Rotational Ticks Text
             if (i / 8) // 128 == 0
-                dx1 := 8 + (sin(-i + 2048) * ((size * 65) / 90)) / 65535
-                dy1 := 8 + (cos(-i + 2048) * ((size * 65) / 90)) / 65535
+                dx1 := 8 + (sin(-i + 2048) * ((size * 65) / 90)) ~> 16
+                dy1 := 8 + (cos(-i + 2048) * ((size * 65) / 90)) ~> 16
                 case i
                     0:
                         gr.text(dx1, dy1, string("0"))
