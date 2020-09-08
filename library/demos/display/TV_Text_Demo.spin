@@ -47,7 +47,7 @@ PUB start | i
     term.str(string($C, 6, "     Uses internal ROM font     ", $C, 2))
 
     repeat
-        term.str(string($A, 16, $B, 12))
+        term.position(16, 12)
         term.hex(i++, 8)
 
 {

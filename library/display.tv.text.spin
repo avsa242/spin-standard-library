@@ -113,8 +113,14 @@ PUB Char(c) | i, k
         $0C: _color := c & 7
     _flag := 0
 
-PUB setcolors(colorptr) | i, fore, back
+PUB Position(x, y)
+' Set cursor position
+    char($a)
+    char(x)
+    char($b)
+    char(y)
 
+PUB SetColors(colorptr) | i, fore, back
 ' Override default color palette
 ' colorptr must point to a list of up to 8 colors
 ' arranged as follows:
