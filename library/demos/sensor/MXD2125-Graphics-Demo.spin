@@ -21,8 +21,8 @@
 
 CON
 
-    _clkmode    = xtal1 + pll16x
-    _xinfreq    = 5_000_000
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
 
 ' accomodate display memory and stack
     _stack      = ($3000 + $3000 + 100) >> 2
@@ -73,36 +73,14 @@ VAR
 
 OBJ
 
+    cfg     : "core.con.boardcfg.demoboard"
     tv      : "display.tv"
     gr      : "display.tv.graphics"
     mxd2125 : "sensor.accel.2dof.mxd2125.pwm"
 
-PUB Start{} | i, dx, dy, clk_scale, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlength, size
+PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlength, size
 
-    'start tv
-    longmove(@tv_status, @tvparams, PARAMCOUNT)
-    tv_screen := @screen
-    tv_colors := @colors
-    tv.start(@tv_status)
-
-    'init colors
-    repeat i from 0 to 63
-        colors[i] := $9D_07_1C_02
-
-    'init tile screen
-    repeat dx from 0 to tv_hc - 1
-        repeat dy from 0 to tv_vc - 1
-            screen[dy * tv_hc + dx] := DISPLAY_BASE >> 6 + dy + dx * tv_vc + ((dy & $3F) << 10)
-
-    'start and setup graphics
-    gr.start
-    gr.setup(16, 12, 128, 96, BITMAP_BASE)
-
-    mxd2125.start(MXD_XPIN, MXD_YPIN)                   ' Initialize Mx2125
-
-    clk_scale := clkfreq / 500_000                      ' based on system clock
-
-    gr.textmode(1, 1, 6, %%22)
+    setup{}
 
     size := 95
     repeat
@@ -231,24 +209,51 @@ PUB Sin(angle): y
     if angle & $1000
         -y
 
+PUB Setup{} | i, dx, dy, clk_scale
+
+    'start tv
+    longmove(@tv_status, @tvparams, PARAMCOUNT)
+    tv_screen := @screen
+    tv_colors := @colors
+    tv.start(@tv_status)
+
+    'init colors
+    repeat i from 0 to 63
+        colors[i] := $9D_07_1C_02
+
+    'init tile screen
+    repeat dx from 0 to tv_hc - 1
+        repeat dy from 0 to tv_vc - 1
+            screen[dy * tv_hc + dx] := DISPLAY_BASE >> 6 + dy + dx * tv_vc + ((dy & $3F) << 10)
+
+    'start and setup graphics
+    gr.start
+    gr.setup(16, 12, 128, 96, BITMAP_BASE)
+
+    mxd2125.start(MXD_XPIN, MXD_YPIN)                   ' Initialize Mx2125
+
+    clk_scale := clkfreq / 500_000                      ' based on system clock
+
+    gr.textmode(1, 1, 6, %%22)
+
 DAT
 
-tvparams                long    0               'status
-                        long    1               'enable
+tvparams                long    0                       ' status
+                        long    1                       ' enable
 
-                        long    %001_0101       'pins   New Demo Board
+                        long    %001_0101               ' pins
 
-                        long    %0000           'mode
-                        long    0               'screen
-                        long    0               'colors
-                        long    X_TILES         'hc
-                        long    Y_TILES         'vc
-                        long    10              'hx
-                        long    1               'vx
-                        long    0               'ho
-                        long    0               'vo
-                        long    0               'broadcast
-                        long    0               'auralcog
+                        long    %0000                   ' mode
+                        long    0                       ' screen
+                        long    0                       ' colors
+                        long    X_TILES                 ' hc
+                        long    Y_TILES                 ' vc
+                        long    10                      ' hx
+                        long    1                       ' vx
+                        long    0                       ' ho
+                        long    0                       ' vo
+                        long    0                       ' broadcast
+                        long    0                       ' auralcog
 
 {
     --------------------------------------------------------------------------------------------------------
