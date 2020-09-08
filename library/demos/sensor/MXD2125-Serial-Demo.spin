@@ -13,58 +13,83 @@
 
 CON
 
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
 
-    MMX = 0
-    MMY = 1
+    CLK_FREQ    = (_clkmode >> 6) * _xinfreq
+    CLK_SCALE   = CLK_FREQ / 500_000
+
+' -- User-modifiable constants
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
+
+    MXD_XPIN    = 0
+    MXD_YPIN    = 1
+
+' --
 
 OBJ
 
-    term    : "com.serial.terminal"
-    num     : "string.integer"
+    cfg     : "core.con.boardcfg.flip"
+    ser     : "com.serial.terminal.ansi"
+    int     : "string.integer"
     mxd2125 : "sensor.accel.2dof.mxd2125.pwm"
+    time    : "time"
 
-PUB Main | a, b, c, d, e, f, clk_scale
+PUB Main{} | a, b, c, d, e, f
 
-    term.start(115200)                                  ' Initialize serial communication to the PC
-    mxd2125.start(MMX, MMY)                              ' Initialize Mx2125
-    waitcnt(clkfreq/10 + cnt)                           ' wait for things to settle
-    mxd2125.setlevel                                     ' assume at startup that the memsic2125 is level
-                                                        ' Note: This line is important for determining a deg
+    setup{}
+    mxd2125.setlevel{}                              ' assume at startup that the memsic2125 is level
+                                                    ' Note: This line is important for determining a deg
 
-    clk_scale := clkfreq / 500_000                      ' set clk_scale based on system clock
 
 
     repeat
-        a := mxd2125.Mx                                    ' get RAW x value
-        b := mxd2125.My                                    ' get RAW y value
+        a := mxd2125.mx{}                           ' get RAW x value
+        b := mxd2125.my{}                           ' get RAW y value
 
-        c := mxd2125.ro                                    ' Get raw value for acceleration
-        c := c / clk_scale                                ' convert raw acceleration value to mg's
+        c := mxd2125.ro{}                           ' Get raw value for acceleration
+        c := c / CLK_SCALE                          ' convert raw acceleration value to mg's
 
-        d := mxd2125.theta                                 ' Get raw 32-bit deg
-        d := d >> 24                                      ' scale 32-bit value to an 8-bit Binary Radian
-        d := (d * 45)/32                                  ' Convert Binary radians into Degrees
+        d := mxd2125.theta{}                        ' Get raw 32-bit deg
+        d := d >> 24                                ' scale 32-bit value to an 8-bit Binary Radian
+        d := (d * 45)/32                            ' Convert Binary radians into Degrees
 
-        e := mxd2125.MxTilt
+        e := mxd2125.mxtilt{}
 
-        f := mxd2125.MyTilt
+        f := mxd2125.mytilt{}
 
-        term.Str(num.Dec(a))                              ' Display RAW x value
-        term.Char(9)
-        term.Str(num.Dec(b))                              ' Display RAW y value
-        term.Char(9)
-        term.Char(9)
-        term.Str(num.Dec(c))                              ' Display Acceleration value in mg's
-        term.Char(9)
-        term.Str(num.Dec(d))                              ' Display Deg
-        term.Char(9)
-        term.Str(num.Dec(e))                              ' Display X Tilt
-        term.Char(9)
-        term.Str(num.Dec(f))                              ' Display X Tilt
+        ser.str(int.dec(a))                         ' Display RAW x value
+        ser.char(9)
+        ser.str(int.dec(b))                         ' Display RAW y value
+        ser.char(9)
+        ser.char(9)
+        ser.str(int.dec(c))                         ' Display Acceleration value in mg's
+        ser.char(9)
+        ser.str(int.dec(d))                         ' Display Deg
+        ser.char(9)
+        ser.str(int.dec(e))                         ' Display X tilt
+        ser.char(9)
+        ser.str(int.dec(f))                         ' Display X tilt
 
-        term.Char(13)
+        ser.char(13)
+
+PUB Setup{}
+
+    repeat until ser.startrxtx(SER_RX, SER_TX, 0, SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+
+    if mxd2125.start(MXD_XPIN, MXD_YPIN)
+        ser.str(string("MXD2125 driver started", ser#CR, ser#LF))
+    else
+        ser.str(string("MXD2125 driver failed to start - halting", ser#CR, ser#LF))
+        mxd2125.stop{}
+        time.msleep(50)
+        ser.stop{}
+        repeat
 
 {{
 Note: At rest, normal RAW x and y values should be at about 400_000 if the Propeller is running at 80MHz.
