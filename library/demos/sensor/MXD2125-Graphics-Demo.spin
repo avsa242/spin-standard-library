@@ -118,22 +118,24 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
                             bar := 3
                         if (i-offset) // 45 == 0        ' large every 45 deg
                             bar := 10
-                            if i-offset == -180         ' with text
-                                gr.text(dx, dy, string("-180 "))
-                            if i-offset == -135
-                                gr.text(dx, dy, string("-135 "))
-                            if i-offset == -90
-                                gr.text(dx, dy, string("-90 "))
-                            if i-offset == -45
-                                gr.text(dx, dy, string("-45 "))
-                            if i-offset == 45
-                                gr.text(dx, dy, string("45 "))
-                            if i-offset == 90
-                                gr.text(dx, dy, string("90 "))
-                            if i-offset == 135
-                                gr.text(dx, dy, string("135 "))
-                            if i-offset == 180
-                                gr.text(dx, dy, string("180 "))
+
+                            case i-offset
+                                -180:
+                                    gr.text(dx, dy, string("-180 "))
+                                -135:
+                                    gr.text(dx, dy, string("-135 "))
+                                -90:
+                                    gr.text(dx, dy, string("-90 "))
+                                -45:
+                                    gr.text(dx, dy, string("-45 "))
+                                45:
+                                    gr.text(dx, dy, string("45 "))
+                                90:
+                                    gr.text(dx, dy, string("90 "))
+                                135:
+                                    gr.text(dx, dy, string("135 "))
+                                180:
+                                    gr.text(dx, dy, string("180 "))
 
                         dx1 := dx + (sin(-e + 2048) * bar) / 65535
                         dy1 := dy + (cos(-e + 2048) * bar) / 65535
