@@ -122,7 +122,6 @@ PUB AccelG(ptr_x, ptr_y, ptr_z)
 ' Read accelerometer calibrated data (g's)
     long[ptr_x] := _ro / (clkfreq / 500_000) 'XXX separate measurements?
     long[ptr_y] := _ro / (clkfreq / 500_000) 'XXX
-    long[ptr_z] := 0
 
 PUB AccelInt{}: flag
 ' dummy method
@@ -137,7 +136,6 @@ PUB AccelTilt(ptr_x, ptr_y, ptr_z)
 ' Read accelerometer tilt
     long[ptr_x] := (_xraw * 90 - _offset) / _scale
     long[ptr_y] := (_yraw * 90 - _offset) / _scale
-    long[ptr_z] := 0
 
 PUB CalibrateAccel{}
 ' Calibrate the accelerometer

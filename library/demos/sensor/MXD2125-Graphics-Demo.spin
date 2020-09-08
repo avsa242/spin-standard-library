@@ -60,7 +60,7 @@ OBJ
 
   tv            : "display.tv"
   gr            : "display.tv.graphics"
-  MM2125        : "sensor.accel.2dof.mxd2125.pwm"
+  mxd2125        : "sensor.accel.2dof.mxd2125.pwm"
 
 PUB start | i, dx, dy, clk_scale,d,e,f,fdeg,Offset,Bar,dx1,dy1,dx2,dy2,cordlength,size
 
@@ -87,9 +87,8 @@ PUB start | i, dx, dy, clk_scale,d,e,f,fdeg,Offset,Bar,dx1,dy1,dx2,dy2,cordlengt
 
 '-------------------------------------------------------------------------------------------+
 
-  MM2125.start(MMx, MMy)      '' Initialize Mx2125
+  mxd2125.start(MMx, MMy)      '' Initialize Mx2125
   waitcnt(clkfreq/10 + cnt)   'wait for things to settle
-  MM2125.setlevel             'assume at startup that the memsic2125 is level
                                 'Note: This line is important for determining a deg
 
   clk_scale := clkfreq / 500_000                      'set clk_scale based on system clock
@@ -102,14 +101,15 @@ PUB start | i, dx, dy, clk_scale,d,e,f,fdeg,Offset,Bar,dx1,dy1,dx2,dy2,cordlengt
     'clear bitmap
     gr.clear
 
-    d := MM2125.theta         'Get raw 32-bit deg
+    d := mxd2125.theta         'Get raw 32-bit deg
     d := d >> 19              'Convert 32-bit angle into a 13-Bit angle
 
-    f := 180- MM2125.MxTilt   'Get xTilt Deg
-    fdeg := MM2125.MxTilt     'preserve Deg value
+    mxd2125.acceltilt(@fdeg, @e, 0)
+    f := 180 - fdeg   'Get xTilt Deg
+'    fdeg := mxd2125.MxTilt     'preserve Deg value
     f := (f *1024)/45         'Convert Deg to 13-Bit Angle
 
-    e := 180- MM2125.MyTilt   'Get yTilt Deg
+    e := 180 - e   'Get yTilt Deg
     e := (e *1024)/45         'Convert Deg to 13-Bit Angle
 
 
