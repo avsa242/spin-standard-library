@@ -39,59 +39,65 @@ Yout ──│2 │ /\ │ 5│── Xout
 }
 VAR
 
-  long  cog
+    long  _cog
 
-  long  offset
-  long  scale
+    long  offset
+    long  scale
 
-  long  calflag                 '5 contiguous longs
-  long  _ro
-  long  _theta
-  long  _xraw
-  long  _yraw
+    long  calflag                 '5 contiguous longs
+    long  _ro
+    long  _theta
+    long  _xraw
+    long  _yraw
 
-PUB start(xpin, ypin) : okay
+PUB Start(MXD_XPIN, MXD_YPIN): okay
+' Start driver - starts a cog
+' returns false if no cog available
+'
+'   xpin  = x input signal
+'   ypin  = y input signal
+'
+    stop{}
+    offset := 90 * (clkfreq / 200)                  ' offset value for Tilt conversion
+    scale  := clkfreq / 800                         ' scale value for Tilt conversion
+    ctra_value := $6800_0000 + MXD_XPIN
+    ctrb_value := $6800_0000 + MXD_YPIN
+    mask_value := (|< MXD_XPIN) + (|< MXD_YPIN)
+    okay := _cog := cognew(@entry, @calflag) + 1
 
-'' Start driver - starts a cog
-'' returns false if no cog available
-''
-''   xpin  = x input signal
-''   ypin  = y input signal
-''
-    stop
-    offset := 90 * (clkfreq / 200)                        'offset value for Tilt conversion
-    scale  := clkfreq / 800                               'scale value for Tilt conversion
-    ctra_value := $6800_0000 + xpin
-    ctrb_value := $6800_0000 + ypin
-    mask_value := |<xpin + |<ypin
-    okay := cog := cognew(@entry, @calflag) + 1
-
-PUB stop
- '' Stop driver - frees a cog
-    if cog
-       cogstop(cog~ -  1)
+PUB Stop{}
+' Stop driver - frees a cog
+    if _cog
+       cogstop(_cog~ - 1)
     longfill(@calflag, 0, 3)
 
-PUB setlevel
-    calflag := 1
-
-PUB ro : acceleration
-    return _ro
-
-PUB theta : angle
-    return _theta
-
 PUB Mx
+
     return _xraw
 
 PUB My
+
     return _yraw
 
 PUB MxTilt
+
     return (_xraw*90-offset)/scale
 
 PUB MyTilt
+
     return (_yraw*90-offset)/scale
+
+PUB Ro: acceleration
+
+    return _ro
+
+PUB SetLevel
+
+    calflag := 1
+
+PUB Theta: angle
+
+    return _theta
 
 DAT
 
@@ -104,67 +110,67 @@ DAT
 '
 ' Entry
 '
-entry                   mov     ctra,ctra_value         'Setup both counters to simultaniously
-                        mov     ctrb,ctrb_value         'read the X-axis and Y-axis from the accelerometer
+entry                   mov     ctra, ctra_value         'Setup both counters to simultaniously
+                        mov     ctrb, ctrb_value         'read the X-axis and Y-axis from the accelerometer
 
-                        mov     frqa,#1
-                        mov     frqb,#1
+                        mov     frqa, #1
+                        mov     frqb, #1
 
-:loop                   mov     phsa,#0                 'Reset phase A and phase B on each counter
-                        mov     phsb,#0
+:loop                   mov     phsa, #0                 'Reset phase A and phase B on each counter
+                        mov     phsb, #0
 
-                        waitpeq mask_value,mask_value   'Wait until both the X-axis and Y-axis pins go HIGH
-                        waitpeq zero,mask_value         'Wait until both the X-axis and Y-axis pins go LOW
+                        waitpeq mask_value, mask_value   'Wait until both the X-axis and Y-axis pins go HIGH
+                        waitpeq zero, mask_value         'Wait until both the X-axis and Y-axis pins go LOW
 
-                        mov     rawx,phsa               'move raw phase A and raw phase B values into their
-                        mov     rawy,phsb               'coresponding variables
+                        mov     rawx, phsa               'move raw phase A and raw phase B values into their
+                        mov     rawy, phsb               'coresponding variables
 
-                        rdlong  t1,par          wz      'check calibration flag
-        if_nz           mov     levelx,rawx             'If the calibration flag is set, initialize
-        if_nz           mov     levely,rawy             'offset variables to compensate level tilt error.
-        if_nz           wrlong  zero,par                'reset calibration flag to zero
+                        rdlong  t1, par          wz      'check calibration flag
+        if_nz           mov     levelx, rawx             'If the calibration flag is set, initialize
+        if_nz           mov     levely, rawy             'offset variables to compensate level tilt error.
+        if_nz           wrlong  zero, par                'reset calibration flag to zero
 
-                        mov     cx,rawx                 'get final x,y and apply level offset
-                        sub     cx,levelx
-                        mov     cy,rawy
-                        sub     cy,levely
+                        mov     cx, rawx                 'get final x,y and apply level offset
+                        sub     cx, levelx
+                        mov     cy, rawy
+                        sub     cy, levely
 
                         call    #cordic                 'convert to polar
 
-                        mov     t1,par                  'write result
-                        add     t1,#4
-                        wrlong  cx,t1
-                        add     t1,#4
-                        wrlong  ca,t1
-                        add     t1,#4
-                        wrlong  rawx,t1
-                        add     t1,#4
-                        wrlong  rawy,t1
+                        mov     t1, par                  'write result
+                        add     t1, #4
+                        wrlong  cx, t1
+                        add     t1, #4
+                        wrlong  ca, t1
+                        add     t1, #4
+                        wrlong  rawx, t1
+                        add     t1, #4
+                        wrlong  rawy, t1
 
                         jmp     #:loop
 
 ' Perform CORDIC cartesian-to-polar conversion
 
-cordic                  abs     cx,cx           wc
-        if_c            neg     cy,cy
-                        mov     ca,#0
-                        rcr     ca,#1
+cordic                  abs     cx, cx           wc
+        if_c            neg     cy, cy
+                        mov     ca, #0
+                        rcr     ca, #1
 
-                        movs    :lookup,#table
-                        mov     t1,#0
-                        mov     t2,#20
+                        movs    :lookup, #table
+                        mov     t1, #0
+                        mov     t2, #20
 
-:loop                   mov     dx,cy           wc
-                        sar     dx,t1
-                        mov     dy,cx
-                        sar     dy,t1
-                        sumc    cx,dx
-                        sumnc   cy,dy
-:lookup                 sumc    ca,table
+:loop                   mov     dx, cy           wc
+                        sar     dx, t1
+                        mov     dy, cx
+                        sar     dy, t1
+                        sumc    cx, dx
+                        sumnc   cy, dy
+:lookup                 sumc    ca, table
 
-                        add     :lookup,#1
-                        add     t1,#1
-                        djnz    t2,#:loop
+                        add     :lookup, #1
+                        add     t1, #1
+                        djnz    t2, #:loop
 
 cordic_ret              ret
 
