@@ -71,7 +71,7 @@ VAR
 
 OBJ
 
-  clk           : "time.clock"
+  clk           : "system.clock"
   time          : "time"
 
 PUB Main
