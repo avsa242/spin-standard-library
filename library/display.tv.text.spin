@@ -60,7 +60,7 @@ PUB Start(basepin): okay
     char(0)
 
     longmove(@tv_status, @tv_params, TV_COUNT)
-    tv_pins := (basepin & $38) << 1 | (basepin & 4 == 4) & %0101
+    tv_pins := (basepin & %111000) << 1 | (basepin & 4 == 4) & %0101
     tv_screen := @_screen
     tv_colors := @_colors
 
@@ -132,11 +132,11 @@ PUB SetColors(colorptr) | i, fore, back
 '          byte color, color     'color 2
 '          ...
 
-  repeat i from 0 to 7
-    fore := byte[colorptr][i << 1]
-    back := byte[colorptr][i << 1 + 1]
-    _colors[i << 1]     := fore << 24 + back << 16 + fore << 8 + back
-    _colors[i << 1 + 1] := fore << 24 + fore << 16 + back << 8 + back
+    repeat i from 0 to 7
+        fore := byte[colorptr][i << 1]
+        back := byte[colorptr][i << 1 + 1]
+        _colors[i << 1]     := fore << 24 + back << 16 + fore << 8 + back
+        _colors[i << 1 + 1] := fore << 24 + fore << 16 + back << 8 + back
 
 #include "lib.terminal.spin"
 
