@@ -64,6 +64,7 @@ VAR
 OBJ
 
     ctrs    : "core.con.counters"                   ' Counter setup constants
+    time    : "time"
 
 PUB Null{}
 ' This is not a top-level object
@@ -79,6 +80,7 @@ PUB Start(MXD_XPIN, MXD_YPIN): okay
     mask_value := (|< MXD_XPIN) + (|< MXD_YPIN)
     okay := _cog := cognew(@entry, @_cal_flag) + 1
     calibrateaccel{}
+    time.msleep(100)
 
 PUB Stop{}
 ' Stop driver - frees a cog
