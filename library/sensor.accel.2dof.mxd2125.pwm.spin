@@ -40,14 +40,22 @@ Yout ──│2 │ /\ │ 5│── Xout
 ' Indicate to the counters object that we want constants shifted appropriate
 '   for PASM operands
 #define _PASM_
+CON
+
+    ACCEL_DOF           = 2
+    GYRO_DOF            = 0
+    MAG_DOF             = 0
+    BARO_DOF            = 0
+    DOF                 = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
+
 VAR
 
     long  _cog
 
-    long  offset
-    long  scale
+    long  _offset
+    long  _scale
 
-    long  calflag                                   ' 5 contiguous longs
+    long  _cal_flag                                 ' 5 contiguous longs
     long  _ro
     long  _theta
     long  _xraw
@@ -57,94 +65,120 @@ OBJ
 
     ctrs    : "core.con.counters"                   ' Counter setup constants
 
+PUB Null{}
+' This is not a top-level object
+
 PUB Start(MXD_XPIN, MXD_YPIN): okay
 ' Start driver - starts a cog
 ' returns false if no cog available
-'
-'   xpin  = x input signal
-'   ypin  = y input signal
-'
     stop{}
-    offset := 90 * (clkfreq / 200)                  ' offset value for Tilt conversion
-    scale  := clkfreq / 800                         ' scale value for Tilt conversion
+    _offset := 90 * (clkfreq / 200)                 ' offset value for Tilt conversion
+    _scale  := clkfreq / 800                        ' scale value for Tilt conversion
     ctra_value := ctrs#LOGIC_A + MXD_XPIN
     ctrb_value := ctrs#LOGIC_A + MXD_YPIN
     mask_value := (|< MXD_XPIN) + (|< MXD_YPIN)
-    okay := _cog := cognew(@entry, @calflag) + 1
+    okay := _cog := cognew(@entry, @_cal_flag) + 1
+    calibrateaccel{}
 
 PUB Stop{}
 ' Stop driver - frees a cog
     if _cog
        cogstop(_cog~ - 1)
-    longfill(@calflag, 0, 3)
+    longfill(@_cal_flag, 0, 3)
 
-PUB Mx
+PUB AccelADCRes(bits)
+' dummy method
 
-    return _xraw
+PUB AccelAxisEnabled(xyz_mask)
+' Enable accelerometer axis per bit mask
+'   NOTE: Read-only
+'   Returns: %110 (x = 1, y = 1, z = 0)
+    return %110
 
-PUB My
+PUB AccelBias(x, y, z, rw)
+' dummy method
 
-    return _yraw
+PUB AccelData(ptr_x, ptr_y, ptr_z)
+' Read accelerometer raw data
+    long[ptr_x] := _xraw
+    long[ptr_y] := _yraw
+    long[ptr_z] := 0
 
-PUB MxTilt
+PUB AccelDataOverrun{}: flag
+' dummy method
 
-    return (_xraw*90-offset)/scale
+PUB AccelDataRate(Hz): curr_rate
+' Set Accelerometer output data rate, in Hz
+'   NOTE: Read-only
+'   Returns: 100
+    return 100
 
-PUB MyTilt
+PUB AccelDataReady{}: flag
+' Flag indicating new accelerometer data available
+'   Returns: TRUE (-1)
+    return true
 
-    return (_yraw*90-offset)/scale
+PUB AccelG(ptr_x, ptr_y, ptr_z)
+' Read accelerometer calibrated data (g's)
+    long[ptr_x] := _ro / (clkfreq / 500_000) 'XXX separate measurements?
+    long[ptr_y] := _ro / (clkfreq / 500_000) 'XXX
+    long[ptr_z] := 0
 
-PUB Ro: acceleration
+PUB AccelInt{}: flag
+' dummy method
 
-    return _ro
+PUB AccelScale(g): curr_setting
+' Set full-scale range of accelerometer
+'   NOTE: Read-only
+'   Returns: 3
+    return 3
 
-PUB SetLevel
+PUB AccelTilt(ptr_x, ptr_y, ptr_z)
+' Read accelerometer tilt
+    long[ptr_x] := (_xraw * 90 - _offset) / _scale
+    long[ptr_y] := (_yraw * 90 - _offset) / _scale
+    long[ptr_z] := 0
 
-    calflag := 1
+PUB CalibrateAccel{}
+' Calibrate the accelerometer
+    _cal_flag := 1
 
-PUB Theta: angle
+PUB Theta{}: angle
 
     return _theta
 
 DAT
 
-'****************************************
-'* Assembly language Memsic 2125 driver *
-'****************************************
-
                         org
-'
-'
-' Entry
-'
-entry                   mov     ctra, ctra_value         'Setup both counters to simultaniously
-                        mov     ctrb, ctrb_value         'read the X-axis and Y-axis from the accelerometer
+entry                   mov     ctra, ctra_value        ' Setup counters
+                        mov     ctrb, ctrb_value        ' (ctra = X, ctrb = Y)
 
                         mov     frqa, #1
                         mov     frqb, #1
 
-:loop                   mov     phsa, #0                 'Reset phase A and phase B on each counter
+:loop                   mov     phsa, #0                ' Reset phase A & B
                         mov     phsb, #0
 
-                        waitpeq mask_value, mask_value   'Wait until both the X-axis and Y-axis pins go HIGH
-                        waitpeq zero, mask_value         'Wait until both the X-axis and Y-axis pins go LOW
+                        waitpeq mask_value, mask_value  ' Wait until X and Y
+                        waitpeq zero, mask_value        '  go high, then low
 
-                        mov     rawx, phsa               'move raw phase A and raw phase B values into their
-                        mov     rawy, phsb               'coresponding variables
+                        mov     rawx, phsa              ' Copy to working
+                        mov     rawy, phsb              '  variables
 
-                        rdlong  t1, par          wz      'check calibration flag
-        if_nz           mov     levelx, rawx             'If the calibration flag is set, initialize
-        if_nz           mov     levely, rawy             'offset variables to compensate level tilt error.
-        if_nz           wrlong  zero, par                'reset calibration flag to zero
+                        rdlong  t1, par          wz     ' Check cal flag and if
+        if_nz           mov     levelx, rawx            '  set, initialize bias
+        if_nz           mov     levely, rawy            '  offsets to compensate
+                                                        '  level tilt error
+        if_nz           wrlong  zero, par               ' Reset cal flag
 
-                        mov     cx, rawx                 'get final x,y and apply level offset
-                        sub     cx, levelx
+                        mov     cx, rawx                ' Get final x,y and
+                        sub     cx, levelx              '  apply level offset
                         mov     cy, rawy
                         sub     cy, levely
 
-                        call    #cordic                 'convert to polar
+                        call    #cordic                 ' Convert to polar
 
-                        mov     t1, par                  'write result
+                        mov     t1, par                 ' Write result
                         add     t1, #4
                         wrlong  cx, t1
                         add     t1, #4
@@ -157,7 +191,6 @@ entry                   mov     ctra, ctra_value         'Setup both counters to
                         jmp     #:loop
 
 ' Perform CORDIC cartesian-to-polar conversion
-
 cordic                  abs     cx, cx           wc
         if_c            neg     cy, cy
                         mov     ca, #0
@@ -204,7 +237,6 @@ table                   long    $20000000
                         long    $00000518
 
 ' Initialized data
-
 ctra_value              long    0
 ctrb_value              long    0
 mask_value              long    0
@@ -213,7 +245,6 @@ h80000000               long    $80000000
 
 
 ' Uninitialized data
-
 t1                      res     1
 t2                      res     1
 

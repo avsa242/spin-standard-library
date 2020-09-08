@@ -4,8 +4,7 @@
     Author: Jesse Burt
     Description: Serial terminal demo of the
         MXD2125 driver
-        (based on demo originally by Beau Schwabe)
-    Started 2006
+    Started Sep 8, 2020
     Updated Sep 8, 2020
     See end of file for terms of use.
     --------------------------------------------
@@ -34,46 +33,85 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     int     : "string.integer"
-    mxd2125 : "sensor.accel.2dof.mxd2125.pwm"
+    accel   : "sensor.accel.2dof.mxd2125.pwm"
     time    : "time"
 
-PUB Main{} | a, b, c, d, e, f
+VAR
+
+    long _overruns
+
+PUB Main{} | dispmode
 
     setup{}
-    mxd2125.setlevel{}                              ' assume at startup that the memsic2125 is level
-                                                    ' Note: This line is important for determining a deg
 
-
-
+    ser.hidecursor{}
     repeat
-        a := mxd2125.mx{}                           ' get RAW x value
-        b := mxd2125.my{}                           ' get RAW y value
+        case ser.rxcheck{}
+            "q", "Q":
+                ser.position(0, 12)
+                ser.str(string("Halting"))
+                accel.stop{}
+                time.msleep(5)
+                ser.stop{}
+                quit
+'            "c", "C":
+'                calibrate{}
+            "r", "R":
+                ser.position(0, 10)
+                repeat 2
+                    ser.clearline{}
+                    ser.newline{}
+                dispmode ^= 1
 
-        c := mxd2125.ro{}                           ' Get raw value for acceleration
-        c := c / CLK_SCALE                          ' convert raw acceleration value to mg's
+        ser.position (0, 10)
+        case dispmode
+            0: accelraw{}
+            1: accelcalc{}
 
-        d := mxd2125.theta{}                        ' Get raw 32-bit deg
-        d := d >> 24                                ' scale 32-bit value to an 8-bit Binary Radian
-        d := (d * 45)/32                            ' Convert Binary radians into Degrees
+    ser.showcursor{}
 
-        e := mxd2125.mxtilt{}
+PUB AccelCalc{} | ax, ay, az
 
-        f := mxd2125.mytilt{}
+    repeat until accel.acceldataready{}
+    accel.accelg (@ax, @ay, @az)
+    if accel.acceldataoverrun
+        _overruns++
+    ser.str (string("Accel micro-g: "))
+    ser.str (int.decpadded (ax, 10))
+    ser.str (int.decpadded (ay, 10))
+    ser.str (int.decpadded (az, 10))
+    ser.newline
+    ser.str (string("Overruns: "))
+    ser.dec (_overruns)
 
-        ser.str(int.dec(a))                         ' Display RAW x value
-        ser.char(9)
-        ser.str(int.dec(b))                         ' Display RAW y value
-        ser.char(9)
-        ser.char(9)
-        ser.str(int.dec(c))                         ' Display Acceleration value in mg's
-        ser.char(9)
-        ser.str(int.dec(d))                         ' Display Deg
-        ser.char(9)
-        ser.str(int.dec(e))                         ' Display X tilt
-        ser.char(9)
-        ser.str(int.dec(f))                         ' Display X tilt
+PUB AccelTilt{} | x, y, z
 
-        ser.char(13)
+    repeat until accel.acceldataready{}
+    accel.acceltilt (@x, @y, @z)
+    if accel.acceldataoverrun
+        _overruns++
+    ser.str (string("Accel tilt: "))
+    ser.str (int.decpadded (x, 10))
+    ser.str (int.decpadded (y, 10))
+    ser.str (int.decpadded (z, 10))
+    ser.newline
+    ser.str (string("Overruns: "))
+    ser.dec (_overruns)
+
+PUB AccelRaw{} | ax, ay, az
+
+    repeat until accel.acceldataready{}
+    accel.acceldata (@ax, @ay, @az)
+    if accel.acceldataoverrun{}
+        _overruns++
+    ser.str (string("Raw Accel: "))
+    ser.str (int.decpadded (ax, 7))
+    ser.str (int.decpadded (ay, 7))
+    ser.str (int.decpadded (az, 7))
+
+    ser.newline
+    ser.str (string("Overruns: "))
+    ser.dec (_overruns)
 
 PUB Setup{}
 
@@ -82,11 +120,11 @@ PUB Setup{}
     ser.clear{}
     ser.str(string("Serial terminal started", ser#CR, ser#LF))
 
-    if mxd2125.start(MXD_XPIN, MXD_YPIN)
+    if accel.start(MXD_XPIN, MXD_YPIN)
         ser.str(string("MXD2125 driver started", ser#CR, ser#LF))
     else
         ser.str(string("MXD2125 driver failed to start - halting", ser#CR, ser#LF))
-        mxd2125.stop{}
+        accel.stop{}
         time.msleep(50)
         ser.stop{}
         repeat
