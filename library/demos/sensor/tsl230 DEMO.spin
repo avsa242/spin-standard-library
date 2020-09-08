@@ -18,7 +18,7 @@ PUB Go
   repeat
     waitcnt(80_000_000 / 10 + cnt)
     term.dec(lfs.GetSample)
-    term.out($0D)
+    term.char($0D)
 
 {{
 

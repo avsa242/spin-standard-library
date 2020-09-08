@@ -22,9 +22,9 @@ PUB start | i
   text.start(12)
   text.str(string(13,"   TV Text Demo...",13,13,$C,5," OBJ and VAR require only 2.8KB ",$C,1))
   repeat 14
-    text.out(" ")
+    text.char(" ")
   repeat i from $0E to $FF
-    text.out(i)
+    text.char(i)
   text.str(string($C,6,"     Uses internal ROM font     ",$C,2))
   repeat
     text.str(string($A,16,$B,12))

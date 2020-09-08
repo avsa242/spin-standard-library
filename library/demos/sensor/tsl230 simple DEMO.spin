@@ -37,7 +37,7 @@ PUB go | old
   repeat
     waitcnt(80_000_000 / 10 + cnt)         'wait for 100ms
     term.dec(phsa)                         'output counter value
-    term.out($0D)                          'line feed
+    term.char($0D)                          'line feed
     phsa := 0                              'reset counter value
 
 {{

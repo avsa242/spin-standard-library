@@ -50,7 +50,7 @@ PUB start(basepin) : okay
 '' returns false if no cog available
 
   setcolors(@palette)
-  out(0)
+  char(0)
 
   longmove(@tv_status, @tv_params, tv_count)
   tv_pins := (basepin & $38) << 1 | (basepin & 4 == 4) & %0101
@@ -67,54 +67,7 @@ PUB stop
   tv.stop
 
 
-PUB str(stringptr)
-
-'' Print a zero-terminated string
-
-  repeat strsize(stringptr)
-    out(byte[stringptr++])
-
-
-PUB dec(value) | i
-
-'' Print a decimal number
-
-  if value < 0
-    -value
-    out("-")
-
-  i := 1_000_000_000
-
-  repeat 10
-    if value => i
-      out(value / i + "0")
-      value //= i
-      result~~
-    elseif result or i == 1
-      out("0")
-    i /= 10
-
-
-PUB hex(value, digits)
-
-'' Print a hexadecimal number
-
-  value <<= (8 - digits) << 2
-  repeat digits
-    out(lookupz((value <-= 4) & $F : "0".."9", "A".."F"))
-
-
-PUB bin(value, digits)
-
-'' Print a binary number
-
-  value <<= 32 - digits
-  repeat digits
-    out((value <-= 1) & 1 + "0")
-
-
-PUB out(c) | i, k
-
+PUB Char(c) | i, k
 '' Output a character
 ''
 ''     $00 = clear screen
@@ -139,7 +92,12 @@ PUB out(c) | i, k
                 while col & 7
            $0A..$0C: flag := c
                      return
-           $0D: newline
+           $0D:
+                col := 0
+                if ++row == rows
+                  row--
+                  wordmove(@screen, @screen[cols], lastrow)   'scroll lines
+                  wordfill(@screen[lastrow], $220, cols)      'clear new line
            other: print(c)
     $0A: col := c // cols
     $0B: row := c // rows
@@ -166,22 +124,13 @@ PUB setcolors(colorptr) | i, fore, back
     colors[i << 1]     := fore << 24 + back << 16 + fore << 8 + back
     colors[i << 1 + 1] := fore << 24 + fore << 16 + back << 8 + back
 
+#include "lib.terminal.spin"
 
 PRI print(c)
 
   screen[row * cols + col] := (color << 1 + c & 1) << 10 + $200 + c & $FE
   if ++col == cols
     newline
-
-
-PRI newline | i
-
-  col := 0
-  if ++row == rows
-    row--
-    wordmove(@screen, @screen[cols], lastrow)   'scroll lines
-    wordfill(@screen[lastrow], $220, cols)      'clear new line
-
 
 DAT
 

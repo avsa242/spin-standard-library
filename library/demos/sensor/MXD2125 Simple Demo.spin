@@ -26,9 +26,9 @@ PUB Setup
   text.str(string("Seperate cog example",$0D))
   repeat 20
     text.dec(accel.x)                                   'retrieve X axis value
-    text.out(" ")
+    text.char(" ")
     text.dec(accel.y)                                   'retrieve Y axis value
-    text.out($0D)
+    text.char($0D)
     waitcnt(clkfreq>>1 + cnt)
   accel.stop                                            'stop the accelerometer driver cog
 
@@ -38,9 +38,9 @@ PUB Setup
   repeat 20
     accel.Get_XY(@XVal, @YVal)                           'get X and Y values by passing pointers to variables
     text.dec(XVal)
-    text.out(" ")
+    text.char(" ")
     text.dec(YVal)
-    text.out($0D)
+    text.char($0D)
     waitcnt(clkfreq>>1 + cnt)
   text.str(string("Demo complete"))
 
