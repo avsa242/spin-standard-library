@@ -5,7 +5,7 @@
     Description: Demo of the SI70xx driver (P2 version)
     Copyright (c) 2020
     Started Aug 9, 2020
-    Updated Aug 9, 2020
+    Updated Sep 8, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -81,7 +81,7 @@ PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp
     ser.dec (whole)
     ser.char (".")
     ser.str (part)
-    ser.clearline(ser#CLR_CUR_TO_END)
+    ser.clearline{}
 
 PUB Setup{}
 
