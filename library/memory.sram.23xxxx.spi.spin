@@ -1,8 +1,8 @@
 {
     --------------------------------------------
-    Filename: memory.sram.23lcxxxx.spi.spin
+    Filename: memory.sram.23xxxx.spi.spin
     Author: Jesse Burt
-    Description: Driver for Microchip 23LCxxxx series
+    Description: Driver for 23xxxx series
         SPI SRAM
     Copyright (c) 2020
     Started May 20, 2019
@@ -29,7 +29,7 @@ VAR
 OBJ
 
     spi : "com.spi.fast"
-    core: "core.con.23lcxxxx"
+    core: "core.con.23xxxx"
     time: "time"
     io  : "io"
 

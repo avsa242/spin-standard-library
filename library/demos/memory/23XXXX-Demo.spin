@@ -1,8 +1,8 @@
 {
     --------------------------------------------
-    Filename: 23LCXXXX-Demo.spin
+    Filename: 23XXXX-Demo.spin
     Author: Jesse Burt
-    Description: Simple demo of the 23LCXXXX driver
+    Description: Simple demo of the 23XXXX driver
     Copyright (c) 2020
     Started May 20, 2019
     Updated Jan 19, 2020
@@ -26,12 +26,12 @@ CON
     SCK_PIN     = 2
     MOSI_PIN    = 1
     MISO_PIN    = 0
-    PART        = 1024                              ' 64 = 23K640, 256 = 23K256, 512 = 23LC512, 1024 = 23LC1024
+    PART        = 1024                              ' 64 = 23640, 256 = 23256, 512 = 23512, 1024 = 231024
 
 ' Calculations based on PART
     RAMSIZE     = (PART / 8) * 1024
     RAM_END     = RAMSIZE - 1
-    PAGESIZE    = 32                                ' Page size is the same for all Microchip SRAMs
+    PAGESIZE    = 32                                ' Page size is the same for all SRAMs
     LASTPAGE    = (RAMSIZE/PAGESIZE) - 1
 
 OBJ
@@ -41,7 +41,7 @@ OBJ
     time    : "time"
     int     : "string.integer"
     io      : "io"
-    sram    : "memory.sram.23lcxxxx.spi"
+    sram    : "memory.sram.23xxxx.spi"
 
 VAR
 
@@ -55,7 +55,7 @@ PUB Main | base_page, start, elapsed
     ser.position(0, 3)
     ser.str(string("SRAM size set to "))
     ser.dec(RAMSIZE)
-    ser.str(string("kbytes (23LC"))
+    ser.str(string("kbytes (23"))
     ser.dec(PART)
     ser.str(string(")", ser#CR, ser#LF))
 
@@ -117,9 +117,9 @@ PUB Setup
     ser.Clear
     ser.Str(string("Serial terminal started", ser#CR, ser#LF))
     if _sram_cog := sram.Start (CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.Str(string("23LCXXXX driver started", ser#CR, ser#LF))
+        ser.Str(string("23XXXX driver started", ser#CR, ser#LF))
     else
-        ser.Str(string("23LCXXXX driver failed to start - halting", ser#CR, ser#LF))
+        ser.Str(string("23XXXX driver failed to start - halting", ser#CR, ser#LF))
         Stop
         FlashLED(LED, 500)
 
