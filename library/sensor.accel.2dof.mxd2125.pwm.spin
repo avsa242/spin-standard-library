@@ -37,9 +37,6 @@ Yout ──│2 │ /\ │ 5│── Xout
          └──────────┘
 
 }
-' Indicate to the counters object that we want constants shifted appropriate
-'   for PASM operands
-#define _PASM_
 CON
 
     ACCEL_DOF           = 2
