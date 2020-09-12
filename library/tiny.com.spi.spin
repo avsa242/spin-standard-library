@@ -1,3 +1,15 @@
+{
+    --------------------------------------------
+    Filename: tiny.com.spi.spin
+    Author: Jesse Burt
+    Description: SPI engine (SPIN-based)
+        (based on SPI_Spin.spin, originally by
+        Beau Schwabe)
+    Started 2009
+    Updated Sep 12, 2020
+    See end of file for terms of use.
+    --------------------------------------------
+}
 {{
 ************************************************
 * Propeller SPI Engine  ... Spin Version  v1.0 *
@@ -12,113 +24,114 @@ Revision History:
 }}
 CON
 
-    #0,MSBPRE,LSBPRE,MSBPOST,LSBPOST                    '' Used for SHIFTIN routines
-''                           
-''       =0      =1     =2      =3
-''
-'' MSBPRE   - Most Significant Bit first ; data is valid before the clock
-'' LSBPRE   - Least Significant Bit first ; data is valid before the clock
-'' MSBPOST  - Most Significant Bit first ; data is valid after the clock
-'' LSBPOST  - Least Significant Bit first ; data is valid after the clock
+    #0, MSBPRE, LSBPRE, MSBPOST, LSBPOST                ' Used for ShiftIn()
+'       =0      =1      =2       =3
+'
+' MSBPRE   - Most Significant Bit first ; data is valid before the clock
+' LSBPRE   - Least Significant Bit first ; data is valid before the clock
+' MSBPOST  - Most Significant Bit first ; data is valid after the clock
+' LSBPOST  - Least Significant Bit first ; data is valid after the clock
 
 
-    #4,LSBFIRST,MSBFIRST                                '' Used for SHIFTOUT routines
-''              
-''       =4      =5
-''
-'' LSBFIRST - Least Significant Bit first ; data is valid after the clock
-'' MSBFIRST - Most Significant Bit first ; data is valid after the clock
+    #4, LSBFIRST, MSBFIRST                              ' Used for ShiftOut()
+'       =4        =5
+'
+' LSBFIRST - Least Significant Bit first ; data is valid after the clock
+' MSBFIRST - Most Significant Bit first ; data is valid after the clock
 
 
-VAR     long          ClockDelay,ClockState
+VAR
 
-PUB start(_ClockDelay, _ClockState)
-    ClockState := _ClockState
-    ClockDelay := ((clkfreq / 100000 * _ClockDelay) - 4296) #> 381
+    long _sck_delay, _cpol
 
-PUB SHIFTOUT(Dpin, Cpin, Mode, Bits, Value)
-    dira[Dpin]~~                                         ' make Data pin output
-    outa[Cpin] := ClockState                             ' set initial clock state
-    dira[Cpin]~~                                         ' make Clock pin output
+PUB Start(SCK_DELAY, CPOL)
 
+    _cpol := CPOL
+    _sck_delay := ((clkfreq / 100000 * SCK_DELAY) - 4296) #> 381
 
+PUB ShiftOut(mosi, sck, bitorder, nr_bits, val)
 
-    if Mode == 4                'LSBFIRST
-       Value <-= 1                                       ' pre-align lsb
-       repeat Bits
-         outa[Dpin] := (Value ->= 1) & 1                 ' output data bit
-         PostClock(Cpin)
+    dira[mosi] := 1                                     ' make data pin output
+    outa[sck] := _cpol                                  ' initial clock state
+    dira[sck] := 1                                      ' make clock pin output
 
-    if Mode == 5                'MSBFIRST
-       Value <<= (32 - Bits)                             ' pre-align msb
-       repeat Bits
-         outa[Dpin] := (Value <-= 1) & 1                 ' output data bit
-         PostClock(Cpin)
+    if bitorder == LSBFIRST
+        val <-= 1                                       ' pre-align lsb
+        repeat nr_bits
+            outa[mosi] := (val ->= 1) & 1               ' output data bit
+            postclock(sck)
 
-PUB SHIFTIN(Dpin, Cpin, Mode, Bits)|Value
+    if bitorder == MSBFIRST
+        val <<= (32 - nr_bits)                          ' pre-align msb
+        repeat nr_bits
+            outa[mosi] := (val <-= 1) & 1               ' output data bit
+            postclock(sck)
 
-    dira[Dpin]~                                           ' make dpin input
-    outa[Cpin] := ClockState                              ' set initial clock state
-    dira[Cpin]~~                                          ' make cpin output
+PUB ShiftIn(miso, sck, bitorder, nr_bits): val
 
+    dira[miso] := 0                                     ' make dpin input
+    outa[sck] := _cpol                                  ' initial clock state
+    dira[sck] := 1                                      ' make cpin output
 
-    Value~                                               ' clear output
+    val := 0                                            ' clear output
 
+    if bitorder == MSBPRE
+        repeat nr_bits
+            val := (val << 1) | ina[miso]
+            postclock(sck)
 
-    if Mode == 0                'MSBPRE
-       repeat Bits
-         value := (Value << 1) | ina[Dpin]
-         PostClock(Cpin)
+    if bitorder == LSBPRE
+        repeat (nr_bits + 1)
+            val := (val >> 1) | (ina[miso] << 31)
+            postclock(sck)
+        val >>= (32 - nr_bits)
 
-    if Mode == 1                'LSBPRE
-       repeat Bits +1
-         Value := (Value >> 1) | (ina[Dpin] << 31)
-         PostClock(Cpin)
-       value >>= (32 - Bits)
+    if bitorder == MSBPOST
+        repeat nr_bits
+            preclock(sck)
+            val := (val << 1) | ina[miso]
 
-    if Mode == 2                'MSBPOST
-       repeat Bits
-         PreClock(Cpin)
-         Value := (Value << 1) | ina[Dpin]
+    if bitorder == LSBPOST
+        repeat (nr_bits + 1)
+            preclock(sck)
+            val := (val >> 1) | (ina[miso] << 31)
+        val >>= (32 - nr_bits)
 
-    if Mode == 3                'LSBPOST
-      repeat Bits + 1
-        PreClock(Cpin)
-        Value := (Value >> 1) | (ina[Dpin] << 31)
-      Value >>= (32 - Bits)
+    return val
 
+PRI PostClock(sck)
 
-    return Value
+    waitcnt(cnt+_sck_delay)
+    !outa[sck]
+    waitcnt(cnt+_sck_delay)
+    !outa[sck]
 
+PRI PreClock(sck)
 
-PUB PostClock(_Cpin)
-    waitcnt(cnt+ClockDelay)
-    !outa[_Cpin]
-    waitcnt(cnt+ClockDelay)
-    !outa[_Cpin]
-
-PUB PreClock(_Cpin)
-    !outa[_Cpin]
-    waitcnt(cnt+ClockDelay)
-    !outa[_Cpin]
-    waitcnt(cnt+ClockDelay)
+    !outa[sck]
+    waitcnt(cnt+_sck_delay)
+    !outa[sck]
+    waitcnt(cnt+_sck_delay)
 
 
 DAT
-{{
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                   TERMS OF USE: MIT License                                                  │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    │
-│files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    │
-│modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software│
-│is furnished to do so, subject to the following conditions:                                                                   │
-│                                                                                                                              │
-│The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.│
-│                                                                                                                              │
-│THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          │
-│WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         │
-│COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   │
-│ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-}}
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
