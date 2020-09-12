@@ -1,8 +1,8 @@
 {
     --------------------------------------------
-    Filename: memory.fram.mb85rc.i2c.spin
+    Filename: memory.fram.85xxxx.i2c.spin
     Author: Jesse Burt
-    Description: Driver for MB85RC series Fujitsu FRAM
+    Description: Driver for 85xxxx series FRAM memories
     Copyright (c) 2019
     Started Oct 27, 2019
     Updated Oct 27, 2019
@@ -27,7 +27,7 @@ VAR
 OBJ
 
     i2c : "com.i2c"
-    core: "core.con.mb85rc.spin"
+    core: "core.con.85xxxx.spin"
     time: "time"
 
 PUB Null

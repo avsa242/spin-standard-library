@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: core.con.mb85rc.spin
+    Filename: core.con.85xxxx.spin
     Author: Jesse Burt
     Description: Low-level constants
     Copyright (c) 2019
