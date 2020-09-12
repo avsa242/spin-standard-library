@@ -4,8 +4,8 @@
     Author: Jesse Burt
     Description: Demo of the DS28CM00 64-bit ROM ID chip
     Copyright (c) 2020
-    Started Feb 16, 2019
-    Updated Jun 24, 2020
+    Started Oct 27, 2019
+    Updated Sep 12, 2020
     See end of file for terms of use.
     --------------------------------------------
     NOTE: If a common EEPROM (e.g. AT24Cxxxx) is on the same I2C bus as the SSN,
@@ -18,14 +18,16 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
+' -- User-modifiable constants
     LED         = cfg#LED1
     SER_RX      = 31
     SER_TX      = 30
     SER_BAUD    = 115_200
 
-    SCL_PIN     = 26
-    SDA_PIN     = 27
+    I2C_SCL     = 24
+    I2C_SDA     = 25
     I2C_HZ      = 400_000
+' --
 
 OBJ
 
@@ -33,48 +35,46 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     io      : "io"
-    ssn     : "identification.ssn.ds28cm00.i2c"
+    ssn     : "id.ssn.ds28cm00.i2c"
 
 VAR
 
     byte _ser_cog
     byte _sn[8]
 
-PUB Main | i
+PUB Main{} | i
 
-    Setup
-    ser.NewLine
-    ser.Str (string("Device Family: $"))
-    ser.Hex (ssn.DeviceID, 2)
-    ser.Str (string(ser#CR, ser#LF, "Serial Number: $"))
-    ssn.SN (@_sn)
+    setup{}
+    ser.newline{}
+    ser.str(string("Device Family: $"))
+    ser.hex(ssn.deviceid{}, 2)
+    ser.str(string(ser#CR, ser#LF, "Serial Number: $"))
+    ssn.sn(@_sn)
     repeat i from 0 to 7
-        ser.Hex (_sn.byte[i], 2)
-    ser.Str (string(ser#CR, ser#LF, "CRC: $"))
-    ser.Hex (ssn.CRC, 2)
-    ser.Str (string(", Valid: "))
-    case ssn.CRCValid
-        TRUE: ser.Str (string("Yes"))
-        FALSE: ser.Str (string("No"))
-    ser.Str (string(ser#CR, ser#LF, "Halting"))
-    FlashLED (LED, 100)
+        ser.hex(_sn.byte[i], 2)
+    ser.str(string(ser#CR, ser#LF, "CRC: $"))
+    ser.hex(ssn.crc{}, 2)
+    ser.str(string(", Valid: "))
+    case ssn.crcvalid{}
+        true: ser.str(string("Yes"))
+        false: ser.str(string("No"))
 
-PUB Setup
+    ser.str(string(ser#CR, ser#LF, "Halting"))
+    repeat
 
-    repeat until ser.StartRXTX(SER_RX, SER_TX, 0, SER_BAUD)
-    time.MSleep(30)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
-    if ssn.Startx (SCL_PIN, SDA_PIN, I2C_HZ)
-        ser.Str (string("DS28CM00 driver started", ser#CR, ser#LF))
+PUB Setup{}
+
+    repeat until ser.startrxtx(SER_RX, SER_TX, 0, SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+    if ssn.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+        ser.str(string("DS28CM00 driver started", ser#CR, ser#LF))
     else
-        ser.Str (string("DS28CM00 driver failed to start - halting", ser#CR, ser#LF))
-        ssn.Stop
-        time.MSleep (5)
-        ser.Stop
-        FlashLED(LED, 500)
-
-#include "lib.utility.spin"
+        ser.str(string("DS28CM00 driver failed to start - halting", ser#CR, ser#LF))
+        ssn.stop{}
+        time.msleep (5)
+        ser.stop{}
 
 DAT
 {
