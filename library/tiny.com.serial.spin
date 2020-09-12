@@ -1,140 +1,156 @@
-''*******************************************************************
-''*  Simple Asynchronous Serial Driver v1.3                         *
-''*  Authors: Chip Gracey, Phil Pilgrim, Jon Williams, Jeff Martin  *
-''*  Copyright (c) 2006 Parallax, Inc.                              *
-''*  See end of file for terms of use.                              *
-''*******************************************************************
-''
-'' Performs asynchronous serial input/output at low baud rates (~19.2K or lower) using high-level code
-'' in a blocking fashion (ie: single-cog (serial-process) rather than multi-cog (parallel-process)).
-''
-'' To perform asynchronous serial communication as a parallel process, use the FullDuplexSerial object instead.
-''
-''
-'' v1.3 - May 7, 2009    - Updated by Jeff Martin to fix rx method bug, noted by Mike Green and others, where uninitialized
-''                         variable would mangle received byte.
-'' v1.2 - March 26, 2008 - Updated by Jeff Martin to conform to Propeller object initialization standards and compress by 11 longs.
-'' v1.1 - April 29, 2006 - Updated by Jon Williams for consistency.
-''
-''
-'' The init method MUST be called before the first use of this object.
-'' Optionally call finalize after final use to release transmit pin.
-''
-'' Tested to 19.2 kbaud with clkfreq of 80 MHz (5 MHz crystal, 16x PLL)
+{
+    --------------------------------------------
+    Filename: tiny.com.serial.spin
+    Author: Jesse Burt
+    Description: UART/serial engine (SPIN-based)
+        (based on Simple_Serial.spin, originally by
+        Chip Gracey, Phil Pilgrim, Jon Williams, Jeff Martin)
+    Started 2006
+    Updated Sep 12, 2020
+    See end of file for terms of use.
+    --------------------------------------------
+}
 
+' NOTE: Maximum bitrate is approx 19.2kbps at 80MHz system clock
+' NOTE: TX/RX methods operate block the calling method.
+'   For concurrent operation with application code,
+'   use com.serial.spin, instead (multi-core/cog)
+
+CON
+
+    SER_RX_DEF      = 31
+    SER_TX_DEF      = 30
 
 VAR
 
-  long  sin, sout, inverted, bitTime, rxOkay, txOkay
+    long  _rx_pin, _tx_pin, _inverted, _bit_time, _rx_okay, _tx_okay
+
+PUB Null{}
+' This is not a top-level object
+
+PUB Start(bps): okay
+' Start using standard serial I/O pins
+    startrxtx(SER_RX_DEF, SER_TX_DEF, bps)
+
+PUB StartRXTX(rx_pin, tx_pin, bps): okay
+' Start using custom I/O pins and baud rate
+'   NOTE: For true mode (start bit = 0), use positive baud value.
+'       Ex: serial.startrxtx(0, 1, 9600)
+
+'   NOTE: For inverted mode (start bit = 1), use negative baud value.
+'       Ex: serial.startrxtx(0, 1, -9600)
+
+'   NOTE: Specify -1 for "unused" rx_pin or tx_pin if only one-way
+'       communication desired.
+
+'   NOTE: Specify same value for rx_pin and tx_pin for bi-directional
+'       communication on that pin and connect a pull-up/pull-down resistor
+'       to that pin (depending on true/inverted mode) since pin will set
+'       it to hi-z (input) at the end of transmission to avoid
+'       electrical conflicts.  See "Same-Pin (Bi-Directional)" examples, below.
+{
+EXAMPLES:
+
+Standard Two-Pin Bi-Directional True/Inverted Modes
+
+Ex: serial.startrxtx(0, 1, 9600)
+
+    Propeller P0|<-------------|I/O Device
+              P1|------------->|
 
 
-PUB init(rxPin, txPin, baud): Okay
-{{Call this method before first use of object to initialize pins and baud rate.
+Standard One-Pin Uni-Directional True/Inverted Mode
+Ex: serial.startrxtx(0, -1, 9600)  -or-  serial.startrxtx(-1, 0, 9600)
+    serial.startrxtx(0, -1, -9600) -or-  serial.startrxtx(-1, 0, -9600)
 
-  • For true mode (start bit = 0), use positive baud value.     Ex: serial.init(0, 1, 9600)
-    For inverted mode (start bit = 1), use negative baud value. Ex: serial.init(0, 1, -9600)
-  • Specify -1 for "unused" rxPin or txPin if only one-way communication desired.
-  • Specify same value for rxPin and txPin for bi-directional communication on that pin and connect a pull-up/pull-down resistor
-    to that pin (depending on true/inverted mode) since pin will set it to hi-z (input) at the end of transmission to avoid
-    electrical conflicts.  See "Same-Pin (Bi-Directional)" examples, below.
-
-  EXAMPLES:
-
-    Standard Two-Pin Bi-Directional True/Inverted Modes                Standard One-Pin Uni-Directional True/Inverted Mode
-                Ex: serial.init(0, 1, ±9600)                      Ex: serial.init(0, -1, ±9600)  -or-  serial.init(-1, 0, ±9600)
-         ┌────────────┐               ┌──────────┐                          ┌────────────┐               ┌──────────┐
-         │Propeller P0├─────────────┤I/O Device│                          │Propeller P0├───────────────┤I/O Device│
-         │          P1├─────────────┤          │                          └────────────┘               └──────────┘
-         └────────────┘               └──────────┘
+    Propeller P0|--------------|I/O Device
 
 
+Same-Pin (Bi-Directional) True Mode
+Ex: serial.startrxtx(0, 0, 9600)
 
-            Same-Pin (Bi-Directional) True Mode                              Same-Pin (Bi-Directional) Inverted Mode
-                Ex: serial.init(0, 0, 9600)                                       Ex: serial.init(0, 0, -9600)
-                                                                           ┌────────────┐               ┌──────────┐
-                              │                                             │Propeller P0├─────┳─────┤I/O Device│
-                               4.7 kΩ                                      └────────────┘       │       └──────────┘
-         ┌────────────┐       │       ┌──────────┐                                                4.7 kΩ
-         │Propeller P0├─────┻─────┤I/O Device│                                               │
-         └────────────┘               └──────────┘                                               
-}}
-
-  finalize                                              ' clean-up if restart
-
-  rxOkay := rxPin > -1                                  ' receiving?
-  txOkay := txPin > -1                                  ' transmitting?
-
-  sin := rxPin & $1F                                    ' set rx pin
-  sout := txPin & $1F                                   ' set tx pin
-
-  inverted := baud < 0                                  ' set inverted flag
-  bitTime := clkfreq / ||baud                           ' calculate serial bit time
-
-  return rxOkay | TxOkay
+                       3.3v
+                        |
+                        /
+                        \ 4.7k
+                        /
+                        |
+    Propeller P0|<>----------<>|I/O Device
 
 
-PUB finalize
-{{Call this method after final use of object to release transmit pin.}}
+Same-Pin (Bi-Directional) Inverted Mode
+Ex: serial.startrxtx(0, 0, -9600)
 
-  if txOkay                                             ' if tx enabled
-    dira[sout]~                                         '   float tx pin
-  rxOkay := txOkay := false
+    Propeller P0|<>----------<>|I/O Device
+}
 
+    stop{}                                              ' clean-up if restart
 
-PUB rx: rxByte | t
-{{ Receive a byte; blocks caller until byte received. }}
+    _rx_okay := rx_pin > -1                             ' receiving?
+    _tx_okay := tx_pin > -1                             ' transmitting?
 
-  if rxOkay
-    dira[sin]~                                          ' make rx pin an input
-    waitpeq(inverted & |< sin, |< sin, 0)               ' wait for start bit
-    t := cnt + bitTime >> 1                             ' sync + 1/2 bit
-    repeat 8
-      waitcnt(t += bitTime)                             ' wait for middle of bit
-      rxByte := ina[sin] << 7 | rxByte >> 1             ' sample bit
-    waitcnt(t + bitTime)                                ' allow for stop bit
+    _rx_pin := rx_pin & $1F                             ' set rx pin
+    _tx_pin := tx_pin & $1F                             ' set tx pin
 
-    rxByte := (rxByte ^ inverted) & $FF                 ' adjust for mode and strip off high bits
+    _inverted := bps < 0                                ' set _inverted flag
+    _bit_time := clkfreq / ||(bps)                      ' calculate bit time
 
+    return _rx_okay | _tx_okay
 
-PUB tx(txByte) | t
-{{ Transmit a byte; blocks caller until byte transmitted. }}
+PUB Stop{}
+' Stop UART engine (release transmit pin, deinitialize hub variables)
+    if _tx_okay                                         ' if tx enabled
+        dira[_tx_pin] := 0                              '   float tx pin
+    _rx_okay := _tx_okay := false
 
-  if txOkay
-    outa[sout] := !inverted                             ' set idle state
-    dira[sout]~~                                        ' make tx pin an output
-    txByte := ((txByte | $100) << 2) ^ inverted         ' add stop bit, set mode
-    t := cnt                                            ' sync
-    repeat 10                                           ' start + eight data bits + stop
-      waitcnt(t += bitTime)                             ' wait bit time
-      outa[sout] := (txByte >>= 1) & 1                  ' output bit (true mode)
+PUB Char(txbyte) | t
+' Transmit a byte
+'   NOTE: blocks caller until byte transmitted
+    if _tx_okay
+        outa[_tx_pin] := !_inverted                     ' set idle state
+        dira[_tx_pin] := 1                              ' make tx pin an output
+        txbyte := ((txbyte | $100) << 2) ^ _inverted    ' add stop bit, set mode
+        t := cnt                                        ' sync
+        repeat 10                                       ' start + 8 data + stop
+                waitcnt(t += _bit_time)                 ' wait bit time
+                outa[_tx_pin] := (txbyte >>= 1) & 1     ' output bit (true mode)
 
-    if sout == sin
-      dira[sout]~                                       ' release to pull-up/pull-down
+        if _tx_pin == _rx_pin
+            dira[_tx_pin] := 0                          ' float tx pin
 
+PUB CharIn{}: rxbyte | t
+' Receive a byte
+'   NOTE: blocks caller until byte received
+    if _rx_okay
+        dira[_rx_pin] := 0                              ' make rx pin an input
+        waitpeq(_inverted & |< _rx_pin, |< _rx_pin, 0)  ' wait for start bit
+        t := cnt + _bit_time >> 1                       ' sync + 1/2 bit
+        repeat 8
+            waitcnt(t += _bit_time)                     ' wait for middle of bit
+            rxbyte := ina[_rx_pin] << 7 | rxbyte >> 1   ' sample bit
+        waitcnt(t + _bit_time)                          ' allow for stop bit
 
-PUB str(strAddr)
-{{ Transmit z-string at strAddr; blocks caller until string transmitted. }}
+        rxbyte := (rxbyte ^ _inverted) & $FF            ' adjust for mode and
+                                                        '  strip off high bits
 
-  if txOkay
-    repeat strsize(strAddr)                             ' for each character in string
-      tx(byte[strAddr++])                               '   write the character
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
 
-{{
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
 
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
 
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                   TERMS OF USE: MIT License                                                  │
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    │
-│files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    │
-│modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software│
-│is furnished to do so, subject to the following conditions:                                                                   │
-│                                                                                                                              │
-│The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.│
-│                                                                                                                              │
-│THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          │
-│WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         │
-│COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   │
-│ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-}}
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
+
