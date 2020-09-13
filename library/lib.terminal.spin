@@ -7,7 +7,7 @@
         standard terminal routines (Bin, Dec, Hex, PrintF, Str)
     Copyright (c) 2020
     Started Dec 14, 2019
-    Updated Jun 29, 2020
+    Updated Sep 13, 2020
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is a derivative of std_text_routines.spinh, by Eric Smith.
@@ -171,6 +171,11 @@ PUB Str(s) | c
 ' Output a string
     repeat while ((c := byte[s++]) <> 0)
         Char(c)
+
+PUB StrLn(s) | c
+' Output a string, with a newline appended
+    str(s)
+    newline
 
 DAT
 {
