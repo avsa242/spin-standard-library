@@ -6,7 +6,7 @@
         Jeff Martin, Andy Lindsay, Chip Gracey)
     Description: Parallax Serial Terminal-compatible
         serial terminal driver
-    Started Dec 14, 2019
+    Started 2006
     Updated Oct 10, 2020
     See end of file for terms of use.
     --------------------------------------------
@@ -26,7 +26,7 @@ CON
     LF = 10                                     ' Line Feed
     CE = 11                                     ' Clear to End of line
     CB = 12                                     ' Clear lines Below
-    CR = 13                                     ' Carriage-return/New Line
+    NL = 13                                     ' Carriage-return/New Line
     PX = 14                                     ' Position cursor in X
     PY = 15                                     ' Position cursor in Y
     CS = 16                                     ' Clear Screen
@@ -212,7 +212,7 @@ PUB NewLine
 {{
     Clear screen and place cursor at top-left.
 }}
-    ser.char(CR)
+    ser.char(NL)
 
 PUB Position(x, y)
 {{
@@ -243,7 +243,7 @@ PUB ReadLine(line, maxline): size | c
             BS:     if size
                         size--
                         char(c)
-            CR, LF: byte[line][size] := 0
+            NL, LF: byte[line][size] := 0
                     char(c)
                     quit
             other:  if size < maxline
@@ -287,9 +287,9 @@ PUB StrInMax(stringptr, maxcount)
         maxcount  - maximum length of string to receive, or -1 for unlimited.
 }}
     repeat while (maxcount--)                                                     'While maxcount not reached
-        if (byte[stringptr++] := ser.charin) == CR                                      'Get chars until CR
+        if (byte[stringptr++] := ser.charin) == NL                                      'Get chars until NL
             quit
-    byte[stringptr+(byte[stringptr-1] == CR)]~                                    'Zero terminate string; overwrite CR or append 0 char
+    byte[stringptr+(byte[stringptr-1] == NL)]~                                    'Zero terminate string; overwrite NL or append 0 char
 
 {
     --------------------------------------------------------------------------------------------------------
