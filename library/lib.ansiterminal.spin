@@ -10,7 +10,7 @@
     Author: Jesse Burt
     Copyright (c) 2020
     Created: Jun 18, 2019
-    Updated: Aug 9, 2020
+    Updated: Oct 25, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -77,6 +77,21 @@ CON
     MAGENTA             = 5
     CYAN                = 6
     WHITE               = 7
+
+' Semi-graphics characters
+' Corners:
+    LOWRT               = $6a                   ' Lower-right
+    UPPRT               = $6b                   ' Upper-right
+    UPPLT               = $6c                   ' Upper-left
+    LOWLT               = $6d                   ' Lower-left
+    CROSS               = $6e                   ' Cross/4-way
+' Horizontal and Vertical lines
+    HORIZ               = $71                   ' H-line
+    LVCENT              = $74                   ' Left V-line w/H-stem
+    RVCENT              = $75                   ' Right V-line w/H-stem
+    BHCENT              = $76                   ' Bottom H-line w/V-stem
+    UHCENT              = $77                   ' Top H-line w/V-stem
+    VERT                = $78                   ' V-line
 
 PUB BGColor(bcolor)
 ' Set background color
@@ -277,6 +292,14 @@ PUB ScrollUp(lines)
     CSI
     Dec(lines)
     Char("S")
+
+PUB SemiGfx(enabled)
+' Enable semi-graphics (e.g., line-drawing) mode
+    case ||(enabled)
+        1:
+            str(string(ESC, "(", "0"))
+        0:
+            str(string(ESC, "(", "B"))
 
 PUB ShowCursor
 ' Show cursor
