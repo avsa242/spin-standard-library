@@ -6,7 +6,7 @@
         Loads another connected Propeller with a binary
     Copyright (c) 2020
     Started May 25, 2020
-    Updated May 25, 2020
+    Updated Nov 7, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -32,15 +32,15 @@ OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
+'    ser     : "com.serial.terminal"             ' PST-compatible terminal
     time    : "time"
-    io      : "io"
     loader  : "misc.loader.p8x32a"
 
-PUB Main | errmsg
+PUB Main{} | errmsg
 
-    Setup
+    setup{}
     ser.str(string("Loading file..."))
-    result := loader.Connect(PROP_RES, PROP_P31, PROP_P30, 1, loader#LoadRun, @_binary_def)
+    result := loader.connect(PROP_RES, PROP_P31, PROP_P30, 1, loader#LOADRUN, @_binary_def)
 
     case result
         0:
@@ -50,22 +50,17 @@ PUB Main | errmsg
             ser.str(string("Load failed: "))
             errmsg := lookup(result: string("Error connecting"), string("Version mismatch"), string("Checksum mismatch"), string("Error during programming"), string("Verification failed"))
             ser.str(errmsg)
-            FlashLED(LED, 500)
 
-        OTHER:
+        other:
             ser.str(string("Load failed: Exception error"))
-            FlashLED(LED, 500)
+            repeat
 
-    FlashLED(LED, 100)
+PUB Setup{}
 
-PUB Setup
-
-    repeat until ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
-    time.MSleep(30)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
-
-#include "lib.utility.spin"
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
 
 DAT
 ' Binary file to load to destination Propeller
