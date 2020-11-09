@@ -64,9 +64,11 @@ PUB Main{} | sz, format, str1, str2
 '           one format specifier was defined in the string (%d)
 '           The output will be: Number 1234
 
-'    format := string("A decimal: %d\n")        ' a simpler example
+'   a simple example:
+    format := string("A decimal: %d\n")
 
-    format := string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\nnext line\n\n\n")
+'   a more complex example
+'    format := string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\nnext line\n\n\n")
 
     str1 := string("a string")
     str2 := string("another")
