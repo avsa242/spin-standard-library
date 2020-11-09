@@ -7,7 +7,7 @@
         standard terminal routines (Bin, Dec, Hex, PrintF, Str)
     Copyright (c) 2020
     Started Dec 14, 2019
-    Updated Sep 13, 2020
+    Updated Nov 9, 2020
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is a derivative of std_text_routines.spinh, by Eric Smith.
@@ -162,7 +162,7 @@ PUB PrintF(fmt, an, bn, cn, dn, en, fn) | c, valptr, val
             case c
                 "n": NewLine
                 "r": Char(CR)
-                "t": Char(BS)
+                "t": Char(TB)
                 other: Char(c)
         else
             Char(c)
