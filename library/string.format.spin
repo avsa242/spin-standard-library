@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: lib.terminal.spin
+    Filename: string.format.spin
     Author: Jesse Burt
     Based on code by: Eric Smith
     Description: Routines for building formatted
@@ -62,12 +62,12 @@ PUB SNPrintF(ptr_str, sz_str, ptr_fmt, an, bn, cn, dn, en, fn): out_ptr | in, va
             valptr += 4                         '   specifier, then go to next
             case in
                 "d":                            ' decimal
-                    dtmp := int.dec(val)
-                    str.append(ptr_str, dtmp)
-                    ptr_str += strsize(dtmp)
-                "u":                            ' unsigned dec
-                    dtmp := int.dec(val)
-                    str.append(ptr_str, dtmp)
+                    dtmp := int.dec(val)        ' append and advance the
+                    str.append(ptr_str, dtmp)   '   pointer by the length of
+                    ptr_str += strsize(dtmp)    '   the number
+                "u":                            ' decimal
+                    dtmp := int.dec(val)        '   (unsigned not currently
+                    str.append(ptr_str, dtmp)   '   supported)
                     ptr_str += strsize(dtmp)
                 "x":                            ' hex
                     str.append(ptr_str, int.hex(val, 8))
@@ -118,12 +118,12 @@ PUB SPrintF(ptr_str, ptr_fmt, an, bn, cn, dn, en, fn): out_ptr | in, valptr, val
             valptr += 4                         '   specifier, then advance it
             case in
                 "d":                            ' decimal
-                    dtmp := int.dec(val)
-                    str.append(ptr_str, dtmp)
-                    ptr_str += strsize(dtmp)
-                "u":                            ' unsigned dec
-                    dtmp := int.dec(val)
-                    str.append(ptr_str, dtmp)
+                    dtmp := int.dec(val)        ' append and advance the
+                    str.append(ptr_str, dtmp)   '   pointer by the length of
+                    ptr_str += strsize(dtmp)    '   the number
+                "u":                            ' decimal
+                    dtmp := int.dec(val)        '   (unsigned not currently
+                    str.append(ptr_str, dtmp)   '   supported)
                     ptr_str += strsize(dtmp)
                 "x":                            ' hex
                     str.append(ptr_str, int.hex(val, 8))
