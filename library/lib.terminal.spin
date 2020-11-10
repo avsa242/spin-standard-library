@@ -138,34 +138,35 @@ PUB PrintF(fmt, an, bn, cn, dn, en, fn) | c, valptr, val
     valptr := @an
     repeat
         c := byte[fmt++]
-        if (c == 0)
-            quit
-        if c == "%"
-            c := byte[fmt++]
-            if (c == 0)
+        case c
+            0:
                 quit
-            if (c == "%")
+            "%":
+                case c := byte[fmt++]
+                    0:
+                        quit
+                    "%":
+                        Char(c)
+                        next
+                val := long[valptr]
+                valptr += 4
+                case c
+                    "d": Dec(val)
+                    "u": DecUns(val, 10)
+                    "x": Hex(val, 8)
+                    "s": Str(val)
+                    "c": Char(val)
+            "\":
+                c := byte[fmt++]
+                if c == 0
+                    quit
+                case c
+                    "n": NewLine
+                    "r": Char(CR)
+                    "t": Char(TB)
+                    other: Char(c)
+            other:
                 Char(c)
-                next
-            val := long[valptr]
-            valptr += 4
-            case c
-                "d": Dec(val)
-                "u": DecUns(val, 10)
-                "x": Hex(val, 8)
-                "s": Str(val)
-                "c": Char(val)
-        elseif c == "\"
-            c := byte[fmt++]
-            if c == 0
-                quit
-            case c
-                "n": NewLine
-                "r": Char(CR)
-                "t": Char(TB)
-                other: Char(c)
-        else
-            Char(c)
 
 PUB Str(s) | c
 ' Output a string
