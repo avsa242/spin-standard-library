@@ -78,7 +78,7 @@ PUB SNPrintF(ptr_str, sz_str, ptr_fmt, an, bn, cn, dn, en, fn): out_ptr | in, va
                         ptr_str += strsize(val)
                     "c":                        ' char
                         byte[ptr_str++] := val
-            "\":'elseif in == "\"               ' escape sequence
+            "\":                                ' escape sequence
                 in := byte[ptr_fmt++]
                 if in == 0
                     quit
@@ -92,7 +92,7 @@ PUB SNPrintF(ptr_str, sz_str, ptr_fmt, an, bn, cn, dn, en, fn): out_ptr | in, va
                     other:                      ' literal (unsupported escape)
                         byte[ptr_str++] := in
                 ptr_str++
-            other:'else                         ' literal (no processing)
+            other:                              ' literal (no processing)
                 byte[ptr_str++] := in
 
     return ptr_str                              ' return updated pointer
