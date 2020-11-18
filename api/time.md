@@ -21,11 +21,11 @@ subset of their API, read-only equivalents of the below methods_
 | Method                                  | R/W | Description                                           | Returns                                   |
 |-----------------------------------------|-----|-------------------------------------------------------|--------------------------------------------
 |`Date(ptr_date)`                         | RW  | Set current date                                      | Pointer to string containing current date |
-|`Days(day)`                              | RW  | Set current day                                       | byte                                      |
+|`Day(day)`                               | RW  | Set current day of month                              | byte                                      |
 |`DeviceID()`                             | R   | Read device identification                            | byte(s)                                   |
 |`Hours(hr)`                              | RW  | Set current hour (24hr)                               | byte                                      |
 |`Minutes(min)`                           | RW  | Set current minute                                    | byte                                      |
-|`Months(month)`                          | RW  | Set current month                                     | byte                                      |
+|`Month(month)`							  | RW  | Set current month                                     | byte                                      |
 |`Seconds(second)`                        | RW  | Set current second                                    | byte                                      |
 |`Weekday(wkday)`                         | RW  | Set current minute                                    | byte                                      |
 |`Year(yr)`                               | RW  | Set current year                                      | word                                      |

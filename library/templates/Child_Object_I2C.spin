@@ -25,32 +25,32 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"                                             'PASM I2C Driver
-    core: "core.con.your_i2c_device_here"                       'File containing your device's register set
-    time: "time"                                                'Basic timing functions
+    i2c : "com.i2c"                             'PASM I2C Driver
+    core: "core.con.your_i2c_device_here"       'File containing your device's register set
+    time: "time"                                'Basic timing functions
 
 PUB Null{}
 ''This is not a top-level object
 
-PUB Start{}: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
-
-    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
+PUB Start{}: okay
+' Start using "standard" Propeller I2C pins and 100kHz
+    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
 PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
-
+' Start using custom IO pins and I2C bus frequency
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
         if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
+            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
                 time.msleep(core#TPOR)
-                if i2c.present(SLAVE_WR)                        'Response from device?
+                if i2c.present(SLAVE_WR)        ' test device bus presence
                     if deviceid{} == core#DEVID_RESP
                         return
 
-    return FALSE                                                'If we got here, something went wrong
+    return FALSE                                ' something above failed
 
 PUB Stop{}
 ' Put any other housekeeping code here required/recommended by your device before shutting down
-    i2c.terminate
+    i2c.terminate{}
 
 PUB Defaults{}
 ' Set factory defaults
@@ -61,33 +61,33 @@ PUB DeviceID{}: id
 PUB Reset{}
 ' Reset the device
 
-PRI readReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Read num_bytes from the slave device into the address stored in buff_addr
-    case reg_nr                                                 'Basic register validation
-        $00..$FF:                                               ' Consult your device's datasheet!
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg_nr
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Read nr_bytes from the device into ptr_buff
+    case reg_nr                                 ' Basic register validation
+        $00..$FF:                               ' Consult your device's datasheet!
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block (@cmd_packet, 2)
+            i2c.wr_block(@cmd_pkt, 2)
             i2c.start{}
-            i2c.write (SLAVE_RD)
-            i2c.rd_block (buff_addr, nr_bytes, TRUE)
+            i2c.write(SLAVE_RD)
+            i2c.rd_block(ptr_buff, nr_bytes, TRUE)
             i2c.stop{}
-        OTHER:
+        other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Write num_bytes to the slave device from the address stored in buff_addr
-    case reg_nr                                                 'Basic register validation
-        $00..$FF:                                               ' Consult your device's datasheet!
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg_nr
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Write nr_bytes to the device from ptr_buff
+    case reg_nr                                 ' Basic register validation
+        $00..$FF:                               ' Consult your device's datasheet!
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block (@cmd_packet, 2)
+            i2c.wr_block(@cmd_pkt, 2)
             repeat tmp from 0 to nr_bytes-1
-                i2c.write (byte[buff_addr][tmp])
+                i2c.write(byte[ptr_buff][tmp])
             i2c.stop{}
-        OTHER:
+        other:
             return
 
 
