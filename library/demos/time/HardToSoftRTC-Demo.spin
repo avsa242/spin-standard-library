@@ -6,10 +6,14 @@
         sets the software RTC by it, and continuously
         displays the date and time from the software RTC
     Started Sep 7, 2020
-    Updated Sep 7, 2020
+    Updated Nov 18, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
+' Uncomment one of the following:
+#define PCF8563
+'#define DS3231
+
 CON
 
     _clkmode    = cfg#_clkmode
@@ -29,9 +33,15 @@ OBJ
 
     cfg     : "core.con.boardcfg.flip"
     softrtc : "time.rtc.soft"
-    hardrtc : "time.rtc.pcf8563.i2c"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
+#ifdef PCF8563
+    hardrtc : "time.rtc.pcf8563.i2c"
+#elseifdef DS3231
+    hardrtc : "time.rtc.ds3231.i2c"
+#else
+#error "No RTC defined!"
+#endif
 
 VAR
 
@@ -43,16 +53,21 @@ PUB Main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
     setup{}
 
 ' Read in the time from the hardware RTC
+    hardrtc.pollrtc{}
     hyr := hardrtc.year(-2)
-    hmo := hardrtc.months(-2)
-    hdy := hardrtc.days(-2)
+    hmo := hardrtc.month(-2)
+    hdy := hardrtc.day(-2)
     hwkd := hardrtc.weekday(-2)
     hhr := hardrtc.hours(-2)
     hmin := hardrtc.minutes(-2)
     hsec := hardrtc.seconds(-2)
 
 ' Now write it to the Propeller's SoftRTC
+#ifdef PCF8563
     ser.str(string("Setting SoftRTC from PCF8563..."))
+#elseifdef DS3231
+    ser.str(string("Setting SoftRTC from DS3231..."))
+#endif
     softrtc.suspend{}
     softrtc.year(hyr)                            ' 00..31 (Valid from 2000 to 2031)
     softrtc.months(hmo)                          ' 01..12
@@ -93,9 +108,15 @@ PUB Setup{}
         ser.stop{}
 
     if hardrtc.startx(I2C_SCL, I2C_SDA, I2C_HZ)
-        ser.str(string("PCF8563 driver started", ser#CR, ser#LF))
+#ifdef PCF8563
+        ser.strln(string("PCF8563 driver started"))
     else
-        ser.str(string("PCF8563 driver failed to start - halting", ser#CR, ser#LF))
+        ser.strln(string("PCF8563 driver failed to start - halting"))
+#elseifdef DS3231
+        ser.strln(string("DS3231 driver started"))
+    else
+        ser.strln(string("DS3231 driver failed to start - halting"))
+#endif
         hardrtc.stop{}
         softrtc.stop{}
         time.msleep(50)
