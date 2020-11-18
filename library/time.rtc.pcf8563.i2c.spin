@@ -5,7 +5,7 @@
     Description: Driver for the PCF8563 Real Time Clock
     Copyright (c) 2020
     Started Sep 6, 2020
-    Updated Sep 7, 2020
+    Updated Nov 18, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -26,16 +26,16 @@ CON
 
 VAR
 
-    byte _secs, _mins, _hours                           ' Vars to hold time
-    byte _days, _wkdays, _months, _years                ' Order is important!
+    byte _secs, _mins, _hours                   ' Vars to hold time
+    byte _days, _wkdays, _months, _years        ' Order is important!
 
-    byte _clkdata_ok                                    ' Clock data integrity
+    byte _clkdata_ok                            ' Clock data integrity
 
 OBJ
 
-    i2c : "com.i2c"                                     ' PASM I2C Driver
-    core: "core.con.pcf8563.spin"                       ' Low-level constants
-    time: "time"                                        ' Basic timing functions
+    i2c : "com.i2c"                             ' PASM I2C Driver
+    core: "core.con.pcf8563.spin"               ' Low-level constants
+    time: "time"                                ' Basic timing functions
 
 PUB Null{}
 ' This is not a top-level object
@@ -51,11 +51,11 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
         if I2C_HZ =< core#I2C_MAX_FREQ
             if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
                 time.msleep(1)
-                if i2c.present (SLAVE_WR)               ' Response from device?
-                    pollrtctime{}                       ' Initial RTC read
+                if i2c.present (SLAVE_WR)       ' Response from device?
+                                   ' Initial RTC read
                     return okay
 
-    return FALSE                                        ' Something above failed
+    return FALSE                                ' Something above failed
 
 PUB Stop{}
 
@@ -70,7 +70,7 @@ PUB ClockDataOk{}: flag
 '   Returns:
 '       TRUE (-1): Battery voltage ok, clock data integrity guaranteed
 '       FALSE (0): Battery voltage low, clock data integrity not guaranteed
-    pollrtctime{}
+    pollrtc{}
     return _clkdata_ok == 0
 
 PUB ClockOutFreq(freq): curr_freq
@@ -81,7 +81,7 @@ PUB ClockOutFreq(freq): curr_freq
     readreg(core#CTRL_CLKOUT, 1, @curr_freq)
     case freq
         0:
-            freq := 1 << core#FE                        ' Turn off clock output
+            freq := 1 << core#FE                ' Turn off clock output
         1, 32, 1024, 32768:
             freq := lookdownz(freq: 32768, 1024, 32, 1)
         other:
@@ -95,16 +95,15 @@ PUB Date(ptr_date)
 
 PUB DeviceID{}: id
 
-PUB Days(day): curr_day
+PUB Day(d): curr_day
 ' Set day of month
 '   Valid values: 1..31
 '   Any other value polls the RTC and returns the current day
-    case day
+    case d
         1..31:
-            day := int2bcd(day)
-            writereg(core#DAYS, 1, @day)
+            d := int2bcd(d)
+            writereg(core#DAYS, 1, @d)
         other:
-            pollrtctime{}
             return bcd2int(_days & core#DAYS_MASK)
 
 PUB Hours(hr): curr_hr
@@ -116,7 +115,6 @@ PUB Hours(hr): curr_hr
             hr := int2bcd(hr)
             writereg(core#HOURS, 1, @hr)
         other:
-            pollrtctime{}
             return bcd2int(_hours & core#HOURS_MASK)
 
 PUB IntClear(mask) | tmp
@@ -130,7 +128,7 @@ PUB IntClear(mask) | tmp
     case mask
         %01, %10, %11:
             readreg(core#CTRLSTAT2, 1, @tmp)
-            mask := (mask ^ %11) << core#TF             ' Reg bits are inverted
+            mask := (mask ^ %11) << core#TF     ' Reg bits are inverted
             tmp |= mask
             tmp &= core#CTRLSTAT2_MASK
             writereg(core#CTRLSTAT2, 1, @tmp)
@@ -172,16 +170,15 @@ PUB IntPinState(state): curr_state
     state := ((curr_state & core#TI_TP_MASK) | state) & core#CTRLSTAT2_MASK
     writereg(core#CTRLSTAT2, 1, @state)
 
-PUB Months(month): curr_month
+PUB Month(m): curr_month
 ' Set month
 '   Valid values: 1..12
 '   Any other value polls the RTC and returns the current month
-    case month
+    case m
         1..12:
-            month := int2bcd(month)
-            writereg(core#CENTMONTHS, 1, @month)
+            m := int2bcd(m)
+            writereg(core#CENTMONTHS, 1, @m)
         other:
-            pollrtctime{}
             return bcd2int(_months & core#CENTMONTHS_MASK)
 
 PUB Minutes(minute): curr_min
@@ -193,8 +190,13 @@ PUB Minutes(minute): curr_min
             minute := int2bcd(minute)
             writereg(core#MINUTES, 1, @minute)
         other:
-            pollrtctime{}
             return bcd2int(_mins & core#MINUTES_MASK)
+
+PUB PollRTC{}
+' Read the time data from the RTC and store it in hub RAM
+' Update the clock integrity status bit from the RTC
+    readreg(core#VL_SECS, 7, @_secs)
+    _clkdata_ok := (_secs >> core#VL) & 1       ' Clock integrity bit
 
 PUB Seconds(second): curr_sec
 ' Set seconds
@@ -205,7 +207,6 @@ PUB Seconds(second): curr_sec
             second := int2bcd(second)
             writereg(core#VL_SECS, 1, @second)
         other:
-            pollrtctime{}
             return bcd2int(_secs & core#SECS_BITS)
 
 PUB Timer(val): curr_val
@@ -259,9 +260,9 @@ PUB TimerEnabled(state): curr_state
         other:
             return ((curr_state >> core#TE) & 1) == 1
 
-    if state == 0                                   ' If disabling the timer,
-        timerclockfreq(1_60)                        ' set freq to 1/60Hz for
-                                                    ' lowest power usage
+    if state == 0                               ' If disabling the timer,
+        timerclockfreq(1_60)                    ' set freq to 1/60Hz for
+                                                ' lowest power usage
     state := ((curr_state & core#TE_MASK) | state) & core#CTRL_TIMER_MASK
     writereg(core#CTRL_TIMER, 1, @state)
 
@@ -274,7 +275,6 @@ PUB Weekday(wkday): curr_wkday
             wkday := int2bcd(wkday-1)
             writereg(core#WEEKDAYS, 1, @wkday)
         other:
-            pollrtctime{}
             return bcd2int(_wkdays & core#WEEKDAYS_MASK) + 1
 
 PUB Year(yr): curr_yr
@@ -286,7 +286,6 @@ PUB Year(yr): curr_yr
             yr := int2bcd(yr)
             writereg(core#YEARS, 1, @yr)
         other:
-            pollrtctime{}
             return bcd2int(_years & core#YEARS_MASK)
 
 PRI bcd2int(bcd): int
@@ -297,43 +296,37 @@ PRI int2bcd(int): bcd
 ' Convert integer to BCD (Binary Coded Decimal)
     return ((int / 10) << 4) + (int // 10)
 
-PRI pollRTCTime{}
-' Read the time data from the RTC and store it in hub RAM
-' Update the clock integrity status bit from the RTC
-    readreg(core#VL_SECS, 7, @_secs)
-    _clkdata_ok := (_secs >> core#VL) & 1               ' Clock integrity bit
-
-PRI readReg(reg, nr_bytes, ptr_buff) | cmd_pkt, tmp
-' Read nr_bytes from device
-    case reg                                            ' Validate reg
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Read nr_bytes from device into ptr_buff
+    case reg_nr                                 ' Validate reg
         $00..$0f:
             cmd_pkt.byte[0] := SLAVE_WR
-            cmd_pkt.byte[1] := reg
+            cmd_pkt.byte[1] := reg_nr
 
-            i2c.start{}                                 ' Send reg to read
-            i2c.wr_block (@cmd_pkt, 2)
+            i2c.start{}                         ' Send reg to read
+            i2c.wr_block(@cmd_pkt, 2)
 
             i2c.start{}
-            i2c.write (SLAVE_RD)
-            i2c.rd_block (ptr_buff, nr_bytes, TRUE)     ' Read it
+            i2c.write(SLAVE_RD)
+            i2c.rd_block(ptr_buff, nr_bytes, i2c#NAK)  ' Read it
             i2c.stop{}
-        OTHER:
+        other:
             return
 
-PRI writeReg(reg, nr_bytes, ptr_buff) | cmd_pkt, tmp
-' Write nr_bytes to device
-    case reg
-        $00..$0f:                                       ' Validate reg
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Write nr_bytes from ptr_buff to device
+    case reg_nr
+        $00..$0f:                               ' Validate reg
             cmd_pkt.byte[0] := SLAVE_WR
-            cmd_pkt.byte[1] := reg
+            cmd_pkt.byte[1] := reg_nr
 
-            i2c.start{}                                 ' Send reg to write
-            i2c.wr_block (@cmd_pkt, 2)
+            i2c.start{}                         ' Send reg to write
+            i2c.wr_block(@cmd_pkt, 2)
 
             repeat tmp from 0 to nr_bytes-1
-                i2c.write (byte[ptr_buff][tmp])         ' Write it
+                i2c.write(byte[ptr_buff][tmp])  ' Write it
             i2c.stop{}
-        OTHER:
+        other:
             return
 
 
