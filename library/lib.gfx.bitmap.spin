@@ -5,7 +5,7 @@
     Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2020
     Started May 19, 2019
-    Updated Jun 28, 2020
+    Updated Nov 21, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,10 +16,10 @@ CON
 VAR
 
     long _row, _col, _row_max, _col_max
-    long _font_width, _font_height, _font_addr
+    long _font_width, _font_height, _font_addr, _fnt_scl
     long _fgcolor, _bgcolor
 
-PUB BGColor (col)
+PUB BGColor(col)
 ' Set background color for subsequent drawing
     return _bgcolor := col
 
@@ -78,37 +78,60 @@ PUB Box(x0, y0, x1, y1, color, filled) | x, y
                 return FALSE
 #endif
 
-PUB Char (ch) | glyph_col, glyph_row, x, last_glyph_col, last_glyph_row, ch_offset
+PUB Char(ch) | glyph_col, glyph_row, xs, ys, xe, ye, last_glyph_col, last_glyph_row, glyph, char_ht, char_wid
 ' Write a character to the display
-    last_glyph_col := _font_width-1
-    last_glyph_row := _font_height-1
+    last_glyph_col := _font_width-1             ' last column of pixels in font
+    last_glyph_row := _font_height-1            '   definition
+    char_wid := _font_width * _fnt_scl          ' scaled character dimensions
+    char_ht := _font_height * _fnt_scl          '
 
     case ch
-        LF:
-            _row += _font_height
-            if _row > _disp_ymax
-                _row := 0
-
-        CR:
+        LF:                                     ' line feed
+            _row += char_ht                     ' increment row by one char
+            if _row > _disp_ymax-char_ht        ' if last row reached,
+                _row -= char_ht                 '   don't go further; instead,
+                repeat char_ht                  '   scroll up one text row
+                    scrollup(0, 0, _disp_xmax, _disp_ymax)
+        CR:                                     ' carriage return
             _col := 0
 
-        32..127:
-            ch <<= 3
-            repeat glyph_col from 0 to last_glyph_col
-                x := _col + glyph_col
-                ch_offset := ch + glyph_col
-                repeat glyph_row from 0 to last_glyph_row
-                    if byte[_font_addr][ch_offset] & |< glyph_row
-                        Plot(x, _row + glyph_row, _fgcolor)
-                    else
-                        Plot(x, _row + glyph_row, _bgcolor)
+        32..127:                                ' printable characters
+            ch <<= 3                            ' char position in font table
+            case _fnt_scl
+                0, 1:                           ' no scaling applied
+                    repeat glyph_col from 0 to last_glyph_col
+                        xs := _col + glyph_col  ' x-coord to draw dot from font
+                        glyph := ch + glyph_col ' point to current glyph data
+                        repeat glyph_row from 0 to last_glyph_row
+                            if byte[_font_addr][glyph] & |< glyph_row
+                                plot(xs, _row + glyph_row, _fgcolor)
+                            else
+                                plot(xs, _row + glyph_row, _bgcolor)
+                2..8:                           ' scale 2..8x
+                    repeat glyph_col from 0 to last_glyph_col
+                        xs := _col + (glyph_col * _fnt_scl)
+                        xe := xs + _fnt_scl
+                        glyph := ch + glyph_col ' offs. in glyph definition
+                        repeat glyph_row from 0 to last_glyph_row
+                            ys := _row + (glyph_row * _fnt_scl)
+                            ye := ys + _fnt_scl
+                            if byte[_font_addr][glyph] & |< glyph_row
+                                box(xs, ys, xe, ye, _fgcolor, true)
+                            else
+                                box(xs, ys, xe, ye, _bgcolor, true)
 
-            _col += _font_width
-            if _col > _disp_xmax
-                _col := 0
-                _row += _font_height
-                if _row > _disp_ymax
-                    _row := 0
+            _col += char_wid                    ' inc column after rendering
+            if _col > _disp_xmax-char_wid       ' if last column reached,
+                _col := 0                       '   return to col 0 and go to
+                _row += char_ht                 '   the next row
+                if _row > _disp_ymax- char_ht   ' if last row is reached,
+                    _row -= char_ht             '   stay there and scroll up
+                    repeat char_ht              '   the display
+                        scrollup(0, 0, _disp_xmax, _disp_ymax)
+            if _row > _disp_ymax-char_ht
+                _row -= char_ht
+                repeat char_ht
+                    scrollup(0, 0, _disp_xmax, _disp_ymax)
 
 PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
 ' Draw a circle
@@ -150,7 +173,7 @@ PUB Clear
 #elseifdef SSD1331
     wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #elseifdef NEOPIXEL
-    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz/4)
+    longfill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef HT16K33-ADAFRUIT
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef ST7735
@@ -169,14 +192,14 @@ PUB ClearAll
     Clear
     Update
 
-PUB Copy (sx, sy, ex, ey, dx, dy) | x, y, tmp
+PUB Copy(sx, sy, ex, ey, dx, dy) | x, y, tmp
 ' Copy rectangular region at (sx, sy, ex, ey) to (dx, dy)
     repeat y from sy to ey
         repeat x from sx to ex
             tmp := Point(x, y)
             Plot((dx + x)-sx, (dy + y)-sy, tmp)
 
-PUB Cut (sx, sy, ex, ey, dx, dy) | x, y, tmp
+PUB Cut(sx, sy, ex, ey, dx, dy) | x, y, tmp
 ' Copy rectangular region at (sx, sy, ex, ey) to (dx, dy)
 '   Subsequently clears original region (sx, sy, ex, ey) to background color
     repeat y from sy to ey
@@ -185,7 +208,7 @@ PUB Cut (sx, sy, ex, ey, dx, dy) | x, y, tmp
             Plot((dx + x)-sx, (dy + y)-sy, tmp)             ' Copy to destination region
             Plot(x, y, _bgcolor)                            ' Cut the original region
 
-PUB FGColor (col)
+PUB FGColor(col)
 ' Set foreground color of subsequent drawing operations
     return _fgcolor := col
 
@@ -201,15 +224,32 @@ PUB FontHeight
 ' Return the set font height
     return _font_height
 
+PUB FontScale(fntscale): curr_scl
+' Set font rendering scale factor
+'   Valid values: 1..8
+'   Any other value returns the current scale
+    case fntscale
+        1..8:
+            _fnt_scl := fntscale
+        other:
+            return _fnt_scl
+
 PUB FontSize(width, height)
-' Set expected dimensions of font, in pixels
+' Set expected dimensions of font glyphs, in pixels
 '   NOTE: This doesn't have to be the same as the size of the font glyphs.
 '       e.g., if you have a 5x8 font, you may want to set the width to 6 or 8.
 '       This will affect the number of text columns
     _font_width := width
     _font_height := height
-    _col_max := _disp_xmax
-    _row_max := _disp_ymax
+    if _disp_width // _font_width                           ' Ended up with a remainder of a column,
+        _col_max := (_disp_width/_font_width) - 1           '   so subtract it out
+    else
+        _col_max := _disp_height/_font_width
+
+    if _disp_height // _font_height
+        _row_max := (_disp_height/_font_height) - 1
+    else
+        _row_max := _disp_height/_font_height
 
 PUB FontWidth
 ' Return the set font width
@@ -250,10 +290,10 @@ PUB Line(x1, y1, x2, y2, c) | sx, sy, ddx, ddy, err, e2
                     err += ddx
                     y1 += sy
 
-PUB Plot (x, y, color)
+PUB Plot(x, y, color)
 ' Plot pixel at x, y, color c
 #ifdef __FASTSPIN__
-    ifnot x => 0 and x =< _disp_xmax and y => 0 and y =< _disp_ymax
+    ifnot (x => 0 and x =< _disp_xmax) and (y => 0 and y =< _disp_ymax)
         return
 #else
     ifnot lookdown(x: 0.._disp_xmax) and lookdown(y: 0.._disp_ymax)
@@ -318,7 +358,7 @@ PUB Plot (x, y, color)
 #warning "No supported display types defined!"
 #endif
 
-PUB Point (x, y)
+PUB Point(x, y)
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -351,17 +391,17 @@ PUB Position(col, row)
 ' Set text draw position, in character-cell col and row
     col := 0 #> col <# _col_max
     row := 0 #> row <# _row_max
-    _col := col * _font_width
-    _row := row * _font_height
+    _col := col * (_font_width * _fnt_scl)
+    _row := row * (_font_height * _fnt_scl)
 
-PUB RGB222_RGB6 (r, g, b)
+PUB RGB222_RGB6(r, g, b)
 ' Return 6-bit color from discrete Red, Green, Blue color components
 '   Valid values:
 '       r, g, b: 0..3
 '   NOTE: The least-significant two bits are a requirement of the 6bpp VGA display driver
     return ((((r <# 3) #> 0) << 6) | (((g <# 3) #> 0) << 4) | (((b <# 3) #> 0) << 2) | $3)
 
-PUB RGBW8888_RGB32 (r, g, b, w)
+PUB RGBW8888_RGB32(r, g, b, w)
 ' Return 32-bit long from discrete Red, Green, Blue, White color components (values 0..255)
     result.byte[3] := r
     result.byte[2] := g
@@ -387,19 +427,19 @@ PUB RGBW8888_RGB32_Brightness(r, g, b, w, level)
         w := w * level / 255
         return RGBW8888_RGB32(r, g, b, w)
 
-PUB RGB565_R8 (rgb565)
+PUB RGB565_R8(rgb565)
 ' Isolate red component of 16-bit RGB565 color and return value scaled to 8-bit range
     return (((rgb565 & $F800) >> 11) * 527 + 23 ) >> 6
 
-PUB RGB565_G8 (rgb565)
+PUB RGB565_G8(rgb565)
 ' Isolate green component of 16-bit RGB565 color and return value scaled to 8-bit range
     return (((rgb565 & $7E0) >> 5)  * 259 + 33 ) >> 6
 
-PUB RGB565_B8 (rgb565)
+PUB RGB565_B8(rgb565)
 ' Isolate blue component of 16-bit RGB565 color and return value scaled to 8-bit range
     return ((rgb565 & $1F) * 527 + 23 ) >> 6
 
-PUB Scale (sx, sy, ex, ey, offsx, offsy, size) | x, y, dx, dy, in
+PUB Scale(sx, sy, ex, ey, offsx, offsy, size) | x, y, dx, dy, in
 ' Scale a region of the display up by size
     repeat y from sy to ey
         repeat x from sx to ex
@@ -557,12 +597,12 @@ PUB ScrollUp(sx, sy, ex, ey) | scr_width, src, dest, x, y
 #endif
 
 PUB TextCols
-' Returns number of displayable text columns, based on set display width and set font width
-    return _disp_width / _font_width
+' Returns number of displayable text columns, based on set display width, font width, and scale
+    return (_disp_width / _font_width) / _fnt_scl
 
 PUB TextRows
-' Returns number of displayable text rows, based on set display height and set font height
-    return _disp_height / _font_height
+' Returns number of displayable text rows, based on set display height, font height, and scale
+    return (_disp_height / _font_height) / _fnt_scl
 
 PRI memFill(xs, ys, val, count)
 ' Fill region of display buffer memory
@@ -578,7 +618,7 @@ PRI memFill(xs, ys, val, count)
 #elseifdef NEOPIXEL
     longfill(_ptr_drawbuffer + ((xs << 1) + (ys * BYTESPERLN)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
 #elseifdef HT16K33-ADAFRUIT
-    bytefill(ptr_start, val, count)
+    bytefill(_ptr_drawbuffer + (xs + (ys * BYTESPERLN)), val, count)
 #elseifdef ST7735
     wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * BYTESPERLN)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
 #elseifdef SSD1351
