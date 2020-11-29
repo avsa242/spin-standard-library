@@ -7,7 +7,7 @@
         strings
     Copyright (c) 2020
     Started Nov 9, 2020
-    Updated Nov 10, 2020
+    Updated Nov 29, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -97,6 +97,26 @@ PUB SNPrintF(ptr_str, sz_str, ptr_fmt, an, bn, cn, dn, en, fn): out_ptr | in, va
 
     return ptr_str                              ' return updated pointer
 
+PUB SNPrintF1(ptr_str, sz_str, ptr_fmt, an)
+' 1-arg variant of SNPrintF()
+    snprintf(ptr_str, sz_str, ptr_fmt, an, 0, 0, 0, 0, 0)
+
+PUB SNPrintF2(ptr_str, sz_str, ptr_fmt, an, bn)
+' 2-arg variant of SNPrintF()
+    snprintf(ptr_str, sz_str, ptr_fmt, an, bn, 0, 0, 0, 0)
+
+PUB SNPrintF3(ptr_str, sz_str, ptr_fmt, an, bn, cn)
+' 3-arg variant of SNPrintF()
+    snprintf(ptr_str, sz_str, ptr_fmt, an, bn, cn, 0, 0, 0)
+
+PUB SNPrintF4(ptr_str, sz_str, ptr_fmt, an, bn, cn, dn)
+' 4-arg variant of SNPrintF()
+    snprintf(ptr_str, sz_str, ptr_fmt, an, bn, cn, dn, 0, 0)
+
+PUB SNPrintF5(ptr_str, sz_str, ptr_fmt, an, bn, cn, dn, en)
+' 5-arg variant of SNPrintF()
+    snprintf(ptr_str, sz_str, ptr_fmt, an, bn, cn, dn, en, 0)
+
 PUB SPrintF(ptr_str, ptr_fmt, an, bn, cn, dn, en, fn): out_ptr | in, valptr, val, dtmp[3]
 ' Print formatted string to buffer
 '   ptr_str: pointer to destination buffer for formatted string
@@ -152,6 +172,26 @@ PUB SPrintF(ptr_str, ptr_fmt, an, bn, cn, dn, en, fn): out_ptr | in, valptr, val
                 byte[ptr_str++] := in
 
     return ptr_str                              ' return updated pointer
+
+PUB SPrintF1(ptr_str, ptr_fmt, an)
+' 1-arg variant of SPrintF()
+    sprintf(ptr_str, ptr_fmt, an, 0, 0, 0, 0, 0)
+
+PUB SPrintF2(ptr_str, ptr_fmt, an, bn)
+' 2-arg variant of SPrintF()
+    sprintf(ptr_str, ptr_fmt, an, bn, 0, 0, 0, 0)
+
+PUB SPrintF3(ptr_str, ptr_fmt, an, bn, cn)
+' 3-arg variant of SPrintF()
+    sprintf(ptr_str, ptr_fmt, an, bn, cn, 0, 0, 0)
+
+PUB SPrintF4(ptr_str, ptr_fmt, an, bn, cn, dn)
+' 4-arg variant of SPrintF()
+    sprintf(ptr_str, ptr_fmt, an, bn, cn, dn, 0, 0)
+
+PUB SPrintF5(ptr_str, ptr_fmt, an, bn, cn, dn, en)
+' 5-arg variant of SPrintF()
+    sprintf(ptr_str, ptr_fmt, an, bn, cn, dn, en, 0)
 
 {
     --------------------------------------------------------------------------------------------------------
