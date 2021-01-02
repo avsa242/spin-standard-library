@@ -7,7 +7,7 @@
     Description: Parallax Serial Terminal-compatible
         serial terminal driver
     Started 2006
-    Updated Oct 10, 2020
+    Updated Jan 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -291,6 +291,10 @@ PUB StrInMax(stringptr, maxcount)
             quit
     byte[stringptr+(byte[stringptr-1] == NL)]~                                    'Zero terminate string; overwrite NL or append 0 char
 
+PUB StrLn(ptr_str)
+' Send zero-terminated string, followed by a newline
+    str(ptr_str)
+    newline{}
 {
     --------------------------------------------------------------------------------------------------------
     TERMS OF USE: MIT License
