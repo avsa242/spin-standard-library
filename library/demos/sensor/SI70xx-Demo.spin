@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: SI70xx-Demo.spin2
+    Filename: SI70xx-Demo.spin
     Author: Jesse Burt
-    Description: Demo of the SI70xx driver (P2 version)
-    Copyright (c) 2020
+    Description: Demo of the SI70xx driver
+    Copyright (c) 2021
     Started Aug 9, 2020
-    Updated Sep 8, 2020
+    Updated Jan 3, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,14 +17,11 @@ CON
 
 ' -- User-modifiable constants
     LED             = cfg#LED1
-    SER_RX          = 31
-    SER_TX          = 30
     SER_BAUD        = 115_200
 
-' I2C
     SCL_PIN         = 28
     SDA_PIN         = 29
-    I2C_HZ          = 400_000                             ' Max: 400_000
+    I2C_HZ          = 400_000                   ' 400_000 max
 ' --
 
 ' Temperature scale
@@ -37,74 +34,70 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     int     : "string.integer"
     time    : "time"
-    io      : "io"
     si70xx  : "sensor.temp_rh.si70xx.i2c"
 
 VAR
 
-    long _sn[2], _fw_rev[2]
+    long _sn[2]
 
 PUB Main{}
 
     setup{}
 
-    si70xx.heaterenabled(FALSE)                             ' Enable/Disable built-in heater
-    si70xx.tempscale(F)                                     ' Temperature scale
+    si70xx.serialnum(@_sn)                      ' read 64-bit S/N
+    ser.printf3(string("SI70%d S/N %x%x\n"), si70xx.deviceid{}, _sn[1], _sn[0])
+
+    si70xx.heaterenabled(FALSE)                 ' built-in heater
+    si70xx.tempscale(C)                         ' Temperature scale
 
     repeat
         ser.position(0, 3)
 
         ser.str(string("Temperature:       "))
         decimaldot(si70xx.temperature{}, 100)
-        ser.newline
+        ser.newline{}
 
         ser.str(string("Relative humidity: "))
         decimaldot(si70xx.humidity{}, 100)
 
-        time.msleep (100)
+        time.msleep(100)
 
-PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp
-' Display a fixed-point scaled up number in decimal-dot notation - scale it back down by divisor
-'   e.g., DecimalDot (314159, 100000) would display 3.14159 on the terminal
-'   scaled: Fixed-point scaled up number
-'   divisor: Divide scaled-up number by this amount
+PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
     whole := scaled / divisor
     tmp := divisor
     places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
+    else
+        sign := " "
 
     repeat
         tmp /= 10
         places++
     until tmp == 1
-    part := int.deczeroed(||(scaled // divisor), places)
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
 
-    ser.dec (whole)
-    ser.char (".")
-    ser.str (part)
-    ser.clearline{}
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
 
 PUB Setup{}
 
-    repeat until ser.startrxtx (SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
-
+    ser.strln(string("Serial terminal started"))
     if si70xx.startx(SCL_PIN, SDA_PIN, I2C_HZ)
-        si70xx.serialnum(@_sn)
-        case si70xx.firmwarerev{}
-            $ff:
-                _fw_rev := string("1.0")
-            $20:
-                _fw_rev := string("2.0")
-            other:
-                _fw_rev := string("???")
-        ser.printf(string("SI70xx driver (SI70%d S/N %x%x, FW rev: %s) started\n"), si70xx.deviceid{}, _sn[1], _sn[0], _fw_rev, 0, 0)
+        ser.strln(string("SI70xx driver started"))
     else
-        ser.str(string("SI70xx driver failed to start - halting"))
-        flashled(LED, 500)
-
-#include "lib.utility.spin"
+        ser.strln(string("SI70xx driver failed to start - halting"))
+        repeat
 
 DAT
 {
