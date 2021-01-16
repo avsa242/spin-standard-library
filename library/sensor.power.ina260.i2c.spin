@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: sensor.power.ina260.i2c.spin2
+    Filename: sensor.power.ina260.i2c.spin
     Author: Jesse Burt
     Description: Driver for the TI INA260 Precision Current and Power Monitor IC
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 13, 2019
-    Updated Jan 18, 2020
+    Updated Jan 9, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -51,129 +51,115 @@ OBJ
     core: "core.con.ina260"
     time: "time"
 
-PUB Null
-''This is not a top-level object
+PUB Null{}
+' This is not a top-level object
 
-PUB Start: okay
-
-    okay := Startx(DEF_SCL, DEF_SDA, DEF_HZ)
+PUB Start{}: okay
+' Start using "standard" Propeller I2C pins and 100kHz
+    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
 PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
-
+' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
         if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.Setupx (SCL_PIN, SDA_PIN, I2C_HZ)     'I2C Object Started?
-                time.MSleep (1)
-                if i2c.Present (SLAVE_WR)                       'Response from device?
-                    Reset
-                    if DeviceID == core#DEVID_RESP
+            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
+                time.msleep(1)
+                if i2c.present(SLAVE_WR)        ' test device bus presence
+                    reset{}
+                    if deviceid{} == core#DEVID_RESP
                     return okay
 
-    return FALSE                                                'If we got here, something went wrong
+    return FALSE                                ' something above failed
 
-PUB Stop
-' Put any other housekeeping code here required/recommended by your device before shutting down
-    i2c.Stop
+PUB Stop{}
 
-PUB BusVoltage
+    i2c.terminate{}
+
+PUB BusVoltage{}: v
 ' Read the measured bus voltage, in microvolts
 '   NOTE: If averaging is enabled, this will return the averaged value
 '   NOTE: Full-scale range is 40_960_000uV
-    result := $0000
-    readReg(core#BUS_VOLTAGE, 2, @result)
-    result &= $7FFF
-    result *= 1_250
-    return result
+    v := 0
+    readreg(core#BUS_VOLTAGE, 2, @v)
+    return (v & $7fff) * 1_250
 
-PUB ConversionReady
-' Indicates data from the last conversion is available for reading
-'   Returns: TRUE if data available, FALSE otherwise
-    readReg(core#MASK_ENABLE, 2, @result)
-    result >>= core#FLD_CVRF
-    result &= %1
-    result *= TRUE
+PUB ConversionReady{}: flag
+' Flag indicating data from the last conversion is available for reading
+'   Returns: TRUE (-1) if data available, FALSE (0) otherwise
+    readreg(core#ENABLE, 2, @flag)
+    return (((flag >> core#CVRF) & 1) == 1)
 
-PUB Current
+PUB Current{}: a
 ' Read the measured current, in microamperes
 '   NOTE: If averaging is enabled, this will return the averaged value
-    result := $0000
-    readReg(core#CURRENT, 2, @result)
-    if result > 32767
-        result := 65536-result
-    result *= 1_250
-    return
+    a := 0
+    readreg(core#CURRENT, 2, @a)
+    return (~~a) * 1_250
 
-PUB CurrentConvTime(microseconds) | tmp
+PUB CurrentConvTime(ctime): curr_set
 ' Set conversion time for shunt current measurement, in microseconds
 '   Valid values: 140, 204, 332, 588, *1100, 2116, 4156, 8244
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#CONFIG, 2, @tmp)
-    case microseconds
+    curr_set := 0
+    readreg(core#CONFIG, 2, @curr_set)
+    case ctime
         140, 204, 332, 588, 1100, 2116, 4156, 8244:
-            microseconds := lookdownz(microseconds: 140, 204, 332, 588, 1100, 2116, 4156, 8244) << core#FLD_ISHCT
-        OTHER:
-            tmp >>= core#FLD_ISHCT
-            tmp &= core#BITS_ISHCT
-            result := lookupz(tmp: 140, 204, 332, 588, 1100, 2116, 4156, 8244)
-            return result
+            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156, 8244) << core#ISHCT
+        other:
+            curr_set := (curr_set >> core#ISHCT) & core#ISHCT_BITS
+            return lookupz(curr_set: 140, 204, 332, 588, 1100, 2116, 4156, 8244)
 
-    tmp &= core#MASK_ISHCT
-    tmp := (tmp | microseconds) & core#CONFIG_MASK
-    writeReg(core#CONFIG, 2, @tmp)
+    ctime := ((curr_set & core#ISHCT_MASK) | ctime) & core#CONFIG_MASK
+    writereg(core#CONFIG, 2, @ctime)
 
-PUB DeviceID
+PUB DeviceID{}: id
 ' Read device ID
 '   Returns:
 '       Most-significant word: Die ID
 '       Least-significant word: Mfr ID
-    return (DieID << 16) | MfrID
+    return (dieid{} << 16) | mfrid{}
 
-PUB DieID
+PUB DieID{}: id
 ' Read the Die ID from the chip
 '   Returns: $2270
-    result := $0000
-    readReg(core#DIE_ID, 2, @result)
-    return
+    id := 0
+    readreg(core#DIE_ID, 2, @id)
 
-PUB IntLevel (level) | tmp
+PUB IntLevel(level): curr_lvl
 ' Set interrupt active level/polarity
 '   Valid values:
 '      *INTLVL_LO   (0) Active low
 '       INTLVL_HI   (1) Active high
 '   Any other value polls the chip and returns the current setting
 '   NOTE: The ALERT pin is open collector
-    tmp := $0000
-    readReg(core#MASK_ENABLE, 2, @tmp)
+    curr_lvl := 0
+    readreg(core#ENABLE, 2, @curr_lvl)
     case level
         INTLVL_LO, INTLVL_HI:
-            level <<= core#FLD_APOL
-        OTHER:
-            tmp >>= core#FLD_APOL
-            return tmp
+            level <<= core#APOL
+        other:
+            return ((curr_lvl >> core#APOL) & 1)
 
-    tmp &= core#MASK_APOL
-    tmp := (tmp | level) & core#MASK_ENABLE_MASK
-    writeReg(core#MASK_ENABLE, 2, @tmp)
+    level := ((curr_lvl & core#APOL_MASK) | level) & core#ENABLE_MASK
+    writereg(core#ENABLE, 2, @level)
 
-PUB IntsLatched(enabled) | tmp
+PUB IntsLatched(state): curr_state
 ' Enable latching of interrupts
 '   Valid values:
 '       TRUE (-1 or 1): Active interrupts remain asserted until cleared manually
 '       FALSE (0): Active interrupts clear when the fault has been cleared
-    tmp := $0000
-    readReg(core#MASK_ENABLE, 2, @tmp)
-    case ||enabled
+    curr_state := 0
+    readreg(core#ENABLE, 2, @curr_state)
+    case ||(state)
         0, 1:
-            enabled := ||enabled & %1
-        OTHER:
-            return (tmp & %1) * TRUE
+            state := ||(state) & 1
+        other:
+            return ((curr_state & 1) == 1)
 
-    tmp &= core#MASK_LEN
-    tmp := (tmp | enabled) & core#MASK_ENABLE_MASK
-    writeReg(core#MASK_ENABLE, 2, @tmp)
+    state := ((curr_state & core#LEN_MASK) | state) & core#ENABLE_MASK
+    writereg(core#ENABLE, 2, @state)
 
-PUB IntSource (src) | tmp
+PUB IntSource(src): curr_src
 ' Set interrupt/alert pin assertion source
 '   Valid values:
 '       INT_CURRENT_HI  (32)    Over current limit
@@ -186,40 +172,37 @@ PUB IntSource (src) | tmp
 '           IntSource(INT_BUSVOLT_HI) or IntSource(8)
 '               would trigger an alert when the bus voltage exceeded the set threshold
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#MASK_ENABLE, 2, @tmp)
+    curr_src := 0
+    readreg(core#ENABLE, 2, @curr_src)
     case src
-        INT_CONV_READY, INT_POWER_HI, INT_BUSVOLT_LO, INT_BUSVOLT_HI, INT_CURRENT_LO, INT_CURRENT_HI:
-            src <<= core#FLD_ALERTS
-        OTHER:
-            tmp >>= core#FLD_ALERTS
-            return tmp
+        INT_CONV_READY, INT_POWER_HI, INT_BUSVOLT_LO, INT_BUSVOLT_HI,{
+}       INT_CURRENT_LO, INT_CURRENT_HI:
+            src <<= core#ALERTS
+        other:
+            return (curr_src >> core#ALERTS) & core#ALERTS_BITS
 
-    tmp &= core#MASK_ALERTS
-    tmp := (tmp | src) & core#MASK_ENABLE_MASK
-    writeReg(core#MASK_ENABLE, 2, @tmp)
+    src := ((curr_src & core#ALERTS_MASK) | src) & core#ENABLE_MASK
+    writereg(core#ENABLE, 2, @src)
 
-PUB IntThresh(threshold) | tmp
+PUB IntThresh(thresh): curr_thr
 ' Set interrupt/alert threshold
 '   Valid values: 0..65535
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#ALERT_LIMIT, 2, @tmp)
-    case threshold
+    case thresh
         0..65535:
-        OTHER:
-            return tmp
+            writereg(core#ALERT_LIMIT, 2, @thresh)
+        other:
+            curr_thr := 0
+            readreg(core#ALERT_LIMIT, 2, @curr_thr)
+            return curr_thr
 
-    writeReg(core#ALERT_LIMIT, 2, @threshold)
-
-PUB MfrID
+PUB MfrID{}: id
 ' Read the Manufacturer ID from the chip
 '   Returns: $5449
-    result := $0000
-    readReg(core#MFR_ID, 2, @result)
-    return
+    id := 0
+    readreg(core#MFR_ID, 2, @id)
 
-PUB OpMode(mode) | tmp
+PUB OpMode(mode): curr_mode
 ' Set operation mode
 '   Valid values:
 '       POWERDN (0): Power-down/shutdown
@@ -231,115 +214,112 @@ PUB OpMode(mode) | tmp
 '       VOLT_CONT (6): Bus voltage, continuous
 '      *CURR_VOLT_CONT (7): Shunt current and bus voltage, continuous
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#CONFIG, 2, @tmp)
+    curr_mode := 0
+    readreg(core#CONFIG, 2, @curr_mode)
     case mode
-        POWERDN, CURR_TRIGD, VOLT_TRIGD, CURR_VOLT_TRIGD, POWERDN2, CURR_CONT, VOLT_CONT, CURR_VOLT_CONT:
-            mode := lookdownz(mode: POWERDN, CURR_TRIGD, VOLT_TRIGD, CURR_VOLT_TRIGD, POWERDN2, CURR_CONT, VOLT_CONT, CURR_VOLT_CONT)
-        OTHER:
-            tmp &= core#BITS_MODE
-            return tmp
+        POWERDN, CURR_TRIGD, VOLT_TRIGD, CURR_VOLT_TRIGD, POWERDN2,{
+}       CURR_CONT, VOLT_CONT, CURR_VOLT_CONT:
+            mode := lookdownz(mode: POWERDN, CURR_TRIGD, VOLT_TRIGD,{
+}                                CURR_VOLT_TRIGD, POWERDN2, CURR_CONT,{
+}                                VOLT_CONT, CURR_VOLT_CONT)
+        other:
+            curr_mode &= core#MODE_BITS
+            return curr_mode
 
-    tmp &= core#MASK_MODE
-    tmp := (tmp | mode) & core#CONFIG_MASK
-    writeReg(core#CONFIG, 2, @tmp)
+    mode := ((curr_mode & core#MODE_MASK) | mode) & core#CONFIG_MASK
+    writereg(core#CONFIG, 2, @mode)
 
-PUB Power
+PUB Power{}: p
 ' Read the power measured by the chip, in microwatts
 '   NOTE: If averaging is enabled, this will return the averaged value
 '   NOTE: The maximum value returned is 419_430_000
-    result := $0000
-    readReg(core#POWER, 2, @result)
-    result *= 10_000
-    return
+    p := 0
+    readreg(core#POWER, 2, @p)
+    return (p * 10_000)
 
-PUB PowerOverflowed
-' Indicates the power data exceeded the maximum measurable value (419_430_000uW/419.43W)
-    readReg(core#MASK_ENABLE, 2, @result)
-    result >>= core#FLD_OVF
-    result &= %1
-    result *= TRUE
+PUB PowerOverflowed{}: flag
+' Flag indicating power data exceeded the maximum measurable value
+'   (419_430_000uW/419.43W)
+    readreg(core#ENABLE, 2, @flag)
+    return (((flag >> core#OVF) & 1) == 1)
 
-PUB Reset | tmp
+PUB Reset{} | tmp
 ' Reset the chip
 '   NOTE: Equivalent to Power-On Reset
-    tmp := 1 << core#FLD_RESET
-    writeReg(core#CONFIG, 2, @tmp)
+    tmp := 1 << core#RESET
+    writereg(core#CONFIG, 2, @tmp)
 
-PUB SamplesAveraged(samples) | tmp
+PUB SamplesAveraged(samples): curr_smp
 ' Set number of samples used for averaging measurements
 '   Valid values: *1, 4, 16, 64, 128, 256, 512, 1024
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#CONFIG, 2, @tmp)
+    curr_smp := 0
+    readreg(core#CONFIG, 2, @curr_smp)
     case samples
         1, 4, 16, 64, 128, 256, 512, 1024:
-            samples := lookdownz(samples: 1, 4, 16, 64, 128, 256, 512, 1024) << core#FLD_AVG
-        OTHER:
-            tmp >>= core#FLD_AVG
-            tmp &= core#BITS_AVG
-            result := lookupz(tmp: 1, 4, 16, 64, 128, 256, 512, 1024)
-            return result
+            samples := lookdownz(samples: 1, 4, 16, 64, 128, 256, 512,{
+}                                           1024) << core#AVG
+        other:
+            curr_smp := (curr_smp >> core#AVG) & core#AVG_BITS
+            return lookupz(curr_smp: 1, 4, 16, 64, 128, 256, 512, 1024)
 
-    tmp &= core#MASK_AVG
-    tmp := (tmp | samples) & core#CONFIG_MASK
-    writeReg(core#CONFIG, 2, @tmp)
+    samples := ((curr_smp & core#AVG_MASK) | samples) & core#CONFIG_MASK
+    writereg(core#CONFIG, 2, @samples)
 
-PUB VoltageConvTime(microseconds) | tmp
+PUB VoltageConvTime(ctime): curr_time
 ' Set conversion time for bus voltage measurement, in microseconds
 '   Valid values: 140, 204, 332, 588, *1100, 2116, 4156, 8244
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#CONFIG, 2, @tmp)
-    case microseconds
+    curr_time := 0
+    readreg(core#CONFIG, 2, @curr_time)
+    case ctime
         140, 204, 332, 588, 1100, 2116, 4156, 8244:
-            microseconds := lookdownz(microseconds: 140, 204, 332, 588, 1100, 2116, 4156, 8244) << core#FLD_VBUSCT
-        OTHER:
-            tmp >>= core#FLD_VBUSCT
-            tmp &= core#BITS_VBUSCT
-            result := lookupz(tmp: 140, 204, 332, 588, 1100, 2116, 4156, 8244)
-            return result
+            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156,{
+}                                       8244) << core#VBUSCT
+        other:
+            curr_time := (curr_time >> core#VBUSCT) & core#VBUSCT_BITS
+            return lookupz(curr_time: 140, 204, 332, 588, 1100, 2116, 4156,{
+}                                       8244)
 
-    tmp &= core#MASK_VBUSCT
-    tmp := (tmp | microseconds) & core#CONFIG_MASK
-    writeReg(core#CONFIG, 2, @tmp)
+    ctime := ((curr_time & core#VBUSCT_MASK) | ctime) & core#CONFIG_MASK
+    writereg(core#CONFIG, 2, @ctime)
 
-PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Read num_bytes from the slave device into the address stored in buff_addr
-    case reg                                                    'Basic register validation
-        $00..$FF:                                               ' Consult your device's datasheet!
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg
-            i2c.start                                               ' S
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Read nr_bytes from the slave device into ptr_buff
+    case reg_nr
+        $00..$03, $06, $07, $fe, $ff:
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
             repeat tmp from 0 to 1
-                i2c.Write (cmd_packet.byte[tmp])                    ' SL|W, reg
+                i2c.write(cmd_pkt.byte[tmp])
 
-            i2c.Start                                               ' Rs
-            i2c.Write (SLAVE_RD)                                    ' SL|R
-            repeat tmp from 0 to nr_bytes-1
-                byte[buff_addr][nr_bytes-1-tmp] := i2c.Read(tmp == nr_bytes-1) ' R 0..n, NAK last byte to signal complete
-            i2c.Stop                                                ' P
-        OTHER:
+            i2c.start{}
+            i2c.write(SLAVE_RD)
+            repeat tmp from nr_bytes-1 to 0
+                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.stop{}
+        other:
             return
 
-PRI writeReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Write num_bytes to the slave device from the address stored in buff_addr
-    case reg                                                ' Basic register validation
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Write nr_bytes from ptr_buff to the slave device
+    case reg_nr
         $00:
-            word[buff_addr][0] |= core#BITS_RSVD            ' Make sure the reserved bits are set correctly
+            word[ptr_buff][0] |= core#RSVD_BITS
         $06, $07:
-        OTHER:
+        other:
             return
 
-    cmd_packet.byte[0] := SLAVE_WR
-    cmd_packet.byte[1] := reg
-    i2c.Start                                               ' S
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := reg_nr
+    i2c.start{}
     repeat tmp from 0 to 1
-        i2c.Write(cmd_packet.byte[tmp])                     ' SL|W, reg
+        i2c.write(cmd_pkt.byte[tmp])
 
     repeat tmp from nr_bytes-1 to 0
-        i2c.Write (byte[buff_addr][tmp])                    ' W 0..n
-    i2c.Stop                                                ' P
+        i2c.write(byte[ptr_buff][tmp])
+    i2c.stop{}
 
 DAT
 {
