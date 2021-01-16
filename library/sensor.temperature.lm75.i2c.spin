@@ -2,10 +2,11 @@
     --------------------------------------------
     Filename: sensor.temperature.lm75.i2c.spin
     Author: Jesse Burt
-    Description: Driver for Maxim's LM75 Digital Temperature Sensor
-    Copyright (c) 2019
+    Description: Driver for the Maxim LM75
+        Digital Temperature Sensor
+    Copyright (c) 2020
     Started May 19, 2019
-    Updated May 20, 2019
+    Updated Nov 19, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,19 +18,26 @@ CON
 
     DEF_SCL             = 28
     DEF_SDA             = 29
-    DEF_HZ              = 400_000
+    DEF_HZ              = 100_000
+    DEF_ADDR            = %000
     I2C_MAX_FREQ        = core#I2C_MAX_FREQ
 
 ' Overtemperature alarm (OS) output modes
-    ALARM_COMP          = 0
-    ALARM_INT           = 1
+    COMP                = 0
+    INT                 = 1
 
 ' Overtemperature alarm (OS) output pin active state
-    ALARM_ACTIVE_LOW    = 0
-    ALARM_ACTIVE_HIGH   = 1
+    ACTIVE_LO           = 0
+    ACTIVE_HI           = 1
+
+' Temperature scale
+    C                   = 0
+    F                   = 1
 
 VAR
 
+    byte _temp_scale
+    byte _addr
 
 OBJ
 
@@ -37,136 +45,200 @@ OBJ
     core: "core.con.lm75"
     time: "time"
 
-PUB Null
-''This is not a top-level object
+PUB Null{}
+' This is not a top-level object
 
-PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
+PUB Start{}: okay
+' Start using "standard" Propeller I2C pins, 100kHz
+    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
-
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
-
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): okay
+' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
         if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
-                time.MSleep (1)
-                if i2c.present (SLAVE_WR)                       'Response from device?
-                    return okay
+            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
+                if lookdown(ADDR_BITS: %000..%111)
+                    _addr := (ADDR_BITS << 1)
+                    time.msleep(1)
+                    if i2c.present(SLAVE_WR | _addr)    ' check device bus presence
+                        return okay
 
-    return FALSE                                                'If we got here, something went wrong
+    return FALSE                                ' something above failed
 
-PUB Stop
+PUB Stop{}
 
-    i2c.stop
+    i2c.stop{}
 
-PUB AlarmMode(mode) | tmp
-' Overtemperature alarm output mode
+PUB Defaults{}
+' Factory default settings
+    intmode(COMP)
+    intthresh(80_00)
+    intclearthresh(75_00)
+    intactivestate(ACTIVE_LO)
+
+PUB IntActiveState(state): curr_state
+' Interrupt pin active state (OS)
 '   Valid values:
-'       ALARM_INT (1):  Interrupt mode
-'       ALARM_COMP (0): Comparator mode
-'   Any other value polls the chip and returns the current setting
-    readRegX(core#CONFIGURATION, 1, @tmp)
-    case mode
-        ALARM_COMP, ALARM_INT:
-            mode := mode << core#FLD_COMP_INT
-        OTHER:
-            return ((tmp >> core#FLD_COMP_INT) & %1)
-
-    tmp &= core#MASK_COMP_INT
-    tmp := (tmp | mode) & core#CONFIGURATION_MASK
-    writeRegX(core#CONFIGURATION, 1, @tmp)
-
-PUB AlarmPinActive(state) | tmp
-' Overtemperature alarm output pin active state
-'   Valid values:
-'       ALARM_ACTIVE_LOW (0): Pin is active low
-'       ALARM_ACITVE_HIGH (1): Pin is active high
+'       ACTIVE_LO (0): Pin is active low
+'       ACITVE_HI (1): Pin is active high
 '   Any other value polls the chip and returns the current setting
 '   NOTE: The OS pin is open-drain, under all conditions, and requires
 '       a pull-up resistor to output a high voltage.
-    readRegX(core#CONFIGURATION, 1, @tmp)
+    readreg(core#CONFIG, 1, @curr_state)
     case state
-        ALARM_ACTIVE_LOW, ALARM_ACTIVE_HIGH:
-            state := state << core#FLD_OS_POLARITY
-        OTHER:
-            return ((tmp >> core#FLD_OS_POLARITY) & %1)
+        ACTIVE_LO, ACTIVE_HI:
+            state := state << core#OS_POL
+        other:
+            return ((curr_state >> core#OS_POL) & 1)
 
-    tmp &= core#MASK_OS_POLARITY
-    tmp := (tmp | state) & core#CONFIGURATION_MASK
-    writeRegX(core#CONFIGURATION, 1, @tmp)
+    state := ((curr_state & core#OS_POL_MASK) | state) & core#CONFIG_MASK
+    writereg(core#CONFIG, 1, @state)
 
-PUB AlarmTriggerThresh(nr_faults) | tmp
-' Set number of faults necessary to assert alarm
+PUB IntClearThresh(thr): curr_thr
+' Interrupt clear threshold (hysteresis), in hundredths of a degree
+'   Valid values: -55_00..12_00 (default: 75_00)
+    curr_thr := 0
+    readreg(core#T_HYST, 2, @curr_thr)
+    case thr
+        -55_00..125_00:
+            thr := temp2adc(thr)
+            writereg(core#T_HYST, 2, @thr)
+        other:
+            return adc2temp(curr_thr)
+
+PUB IntMode(mode): curr_mode
+' Interrupt output mode
+'   Valid values:
+'       INT (1): Interrupt cleared only after reading temperature
+'       COMP (0): Interrupt cleared when temp drops below threshold
+'   Any other value polls the chip and returns the current setting
+    readreg(core#CONFIG, 1, @curr_mode)
+    case mode
+        COMP, INT:
+            mode := mode << core#COMP_INT
+        other:
+            return ((curr_mode >> core#COMP_INT) & 1)
+
+    mode := ((curr_mode & core#COMP_INT_MASK) | mode) & core#CONFIG_MASK
+    writereg(core#CONFIG, 1, @mode)
+
+PUB IntPersistence(thr): curr_thr
+' Number of faults necessary to assert alarm
 '   Valid values:
 '       1, 2, 4, 6
 '   Any other value polls the chip and returns the current setting
 '   NOTE: The faults must occur consecutively (prevents false positives in noisy environments)
-    readRegX(core#CONFIGURATION, 1, @tmp)
-    case nr_faults
+    readreg(core#CONFIG, 1, @curr_thr)
+    case thr
         1, 2, 4, 6:
-            nr_faults := lookdownz(nr_faults: 1, 2, 4, 6)
-        OTHER:
-            result := (tmp >> core#FLD_FAULTQ) & core#BITS_FAULTQ
-            return lookupz(tmp: 1, 2, 4, 6)
+            thr := lookdownz(thr: 1, 2, 4, 6)
+        other:
+            curr_thr := (curr_thr >> core#FAULTQ) & core#FAULTQ_BITS
+            return lookupz(curr_thr: 1, 2, 4, 6)
 
-    tmp &= core#MASK_FAULTQ
-    tmp := (tmp | nr_faults) & core#CONFIGURATION_MASK
-    writeRegX(core#CONFIGURATION, 1, @tmp)
+    thr := ((curr_thr & core#FAULTQ_MASK) | thr) & core#CONFIG_MASK
+    writereg(core#CONFIG, 1, @thr)
 
-PUB HystTemp
-' XXX
+PUB IntThresh(thr): curr_thr
+' Interrupt threshold (overtemperature), in hundredths of a degree
+'   Valid values: -55_00..12_00 (default: 75_00)
+    case thr
+        -55_00..125_00:
+            thr := temp2adc(thr)
+            writereg(core#T_OS, 2, @thr)
+        other:
+            curr_thr := 0
+            readreg(core#T_OS, 2, @curr_thr)
+            return adc2temp(curr_thr)
 
-PUB Shutdown(enabled) | tmp
-' Shutdown (sleep) sensor
-'   Valid values:
-'       TRUE (-1 or 1): Shutdown the LM75's internal blocks (low-power, I2C interface active)
-'       FALSE (0): Normal operation
+PUB Powered(state): curr_state
+' Enable sensor power
+'   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
-    readRegX(core#CONFIGURATION, 1, @tmp)
-    case ||enabled
+'   NOTE: Current consumption when shutdown is approx 1uA
+    readreg(core#CONFIG, 1, @curr_state)
+    case ||(state)
         0, 1:
-            enabled := ||enabled
-        OTHER:
-            return (tmp & %1) * TRUE
+            state := ||(state) ^ 1
+        other:
+            return (curr_state & 1) == 1
 
-    tmp &= core#MASK_SHUTDOWN
-    tmp := (tmp | enabled) & core#CONFIGURATION_MASK
-    writeRegX(core#CONFIGURATION, 1, @tmp)
+    state := ((curr_state & core#SHUTDOWN_MASK) | state) & core#CONFIG_MASK
+    writereg(core#CONFIG, 1, @state)
 
-PUB Temperature | tmp
-' Returns temperature, in centi-degrees Celsius
-    readRegX(core#TEMPERATURE, 2, @result)
-    result.byte[3] := result.byte[0]                            ' Swap byte order
-    result.byte[0] := result.byte[1]
-    result.byte[1] := result.byte[3]
-    result &= core#TEMPERATURE_MASK
-    result := (result << 16 ~> 23)                              ' Extend the sign bit, then bring it down into the LSBs, keeping the sign bit
-    result := result * 5                                        ' Each LSB is 0.5deg C, multiply by 5 to get centi-degrees
+PUB TempData{}: temp_raw
+' Temperature ADC data
+    temp_raw := 0
+    readreg(core#TEMP, 2, @temp_raw)
 
-PRI readRegX(reg, nr_bytes, buff_addr) | cmd_packet
-' Reads bytes from device register
+PUB Temperature{}: temp_cal
+' Temperature, in hundredths of a degree, in chosen scale
+    return adc2temp(tempdata{})
 
-    cmd_packet.byte[0] := SLAVE_WR
-    cmd_packet.byte[1] := reg
+PUB TempScale(scale): curr_scl
+' Set temperature scale used by Temperature method
+'   Valid values:
+'      *C (0): Celsius
+'       F (1): Fahrenheit
+'   Any other value returns the current setting
+    case scale
+        C, F:
+            _temp_scale := scale
+        other:
+            return _temp_scale
 
-    i2c.start
-    i2c.wr_block (@cmd_packet, 2)
-    i2c.start
-    i2c.write (SLAVE_RD)
-    i2c.rd_block (buff_addr, nr_bytes, TRUE)
-    i2c.stop
+PRI adc2temp(temp_word): temp_cal | tmp
+' Calculate temperature, using temperature word
+'   Returns: temperature, in hundredths of a degree, in chosen scale
+    temp_cal := (temp_word << 16 ~> 23)         ' Extend sign, then scale down
+    temp_cal := temp_cal * 50                   ' LSB = 0.5deg C
+    case _temp_scale
+        C:
+            return
+        F:
+            return ((temp_cal * 90) / 50) + 32_00
+        other:
+            return FALSE
 
-PRI writeRegX(reg, nr_bytes, buff_addr) | cmd_packet[2], tmp
-' Writes bytes to device register
-    cmd_packet.byte[0] := SLAVE_WR
-    cmd_packet.byte[1] := reg
+PRI temp2adc(temp_cal): temp_word
+' Calculate ADC word, using temperature in hundredths of a degree
+'   Returns: ADC word, 16bit, left-justified
+    case _temp_scale                            ' convert to Celsius, first
+        C:
+        F:
+            temp_cal := ((temp_cal - 32_00) * 50) / 90
+        other:
+            return FALSE
 
-    repeat tmp from 0 to nr_bytes-1
-        cmd_packet.byte[2 + tmp] := byte[buff_addr][tmp]
+    temp_word := (temp_cal / 50) << 7
+    return ~~temp_word
 
-    i2c.start
-    i2c.wr_block (@cmd_packet, 2 + nr_bytes)
-    i2c.stop
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Read nr_bytes from device into ptr_buff
+    cmd_pkt.byte[0] := SLAVE_WR | _addr
+    cmd_pkt.byte[1] := reg_nr
+
+    i2c.start{}
+    i2c.wr_block(@cmd_pkt, 2)
+    i2c.start{}
+    i2c.write(SLAVE_RD | _addr)
+    repeat tmp from nr_bytes-1 to 0
+        byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+    i2c.stop{}
+
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
+' Writes nr_bytes from ptr_buff to device
+    cmd_pkt.byte[0] := SLAVE_WR | _addr
+    cmd_pkt.byte[1] := reg_nr
+
+    i2c.start{}
+    repeat tmp from 0 to 1
+        i2c.write(cmd_pkt.byte[tmp])
+
+    repeat tmp from nr_bytes-1 to 0
+        i2c.write(byte[ptr_buff][tmp])
+
+    i2c.stop{}
 
 DAT
 {
