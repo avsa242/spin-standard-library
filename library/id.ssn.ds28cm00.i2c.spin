@@ -2,10 +2,11 @@
     --------------------------------------------
     Filename: id.ssn.ds28cm00.i2c.spin
     Author: Jesse Burt
-    Description: Driver for the DS28CM00 64-bit I2C Silicon Serial Number
-    Copyright (c) 2020
+    Description: Driver for the DS28CM00
+     64-bit I2C Silicon Serial Number
+    Copyright (c) 2021
     Started Oct 27, 2019
-    Updated Sep 12, 2020
+    Updated Jan 2, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This driver will start successfully if the Propeller's EEPROM is on
@@ -35,21 +36,23 @@ PUB Null{}
 ' This is not a top-level object
 
 PUB Start{}: okay
-' Standard Propeller I2C pins and 100kHz
-    okay := startx (DEF_SCL, DEF_SDA, DEF_HZ)
+' Start using "standard" Propeller I2C pins and 100kHz
+    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
 PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
-
+' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)            ' I2C Object Started?
-        time.msleep(1)
-        if i2c.present(SLAVE_WR)                        ' Response from device?
-            if deviceid{} == core#DEVID_RESP
-            return cogid+1
+        if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
+            time.msleep(1)
+            if i2c.present(SLAVE_WR)            ' check device bus presence
+                if deviceid{} == core#DEVID_RESP
+                    return okay
 
-    return FALSE                                        ' Something above went wrong
+    return FALSE                                ' something above went wrong
 
 PUB Stop{}
+
+    i2c.terminate{}
 
 PUB CM(mode): curr_mode | cmd_pkt, tmp
 ' Set bus mode to I2C or SMBus
@@ -79,7 +82,7 @@ PUB CRCValid{}: valid | tmp[2]
 '   Returns TRUE if CRC is valid, FALSE otherwise
     tmp := 0
     readreg(core#DEV_FAMILY, 7, @tmp)
-    return (CRC{} == crcs.dallasmaximcrc8(@tmp, 7))
+    return (crc{} == crcs.dallasmaximcrc8(@tmp, 7))
 
 PUB DeviceID{}: id
 ' Reads the Device ID (Family Code)
@@ -92,26 +95,22 @@ PUB SN(ptr_buff)
 ' NOTE: This buffer must be 8 bytes in length.
     readreg(core#DEV_FAMILY, 8, ptr_buff)
 
-PRI readReg(reg, nr_bytes, ptr_buff) | cmd_pkt, tmp
-' Read nr_bytes from the slave device
-    case reg
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Read nr_bytes from the slave device into ptr_buff
+    case reg_nr
         $00..$08:
         other:
             return
 
-    case nr_bytes
-        1..9:
-            cmd_pkt.byte[0] := SLAVE_WR
-            cmd_pkt.byte[1] := reg
-        other:
-            return
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := reg_nr
 
     i2c.start{}
-    i2c.write(cmd_pkt.byte[0])
-    i2c.write(cmd_pkt.byte[1])
+    repeat tmp from 0 to 1
+        i2c.write(cmd_pkt.byte[tmp])
 
     i2c.start{}
-    i2c.write (SLAVE_RD)
+    i2c.write(SLAVE_RD)
     repeat tmp from 0 to nr_bytes-1
         byte[ptr_buff][tmp] := i2c.read(tmp == (nr_bytes-1))
     i2c.stop{}
