@@ -1,11 +1,11 @@
 {
     --------------------------------------------
     Filename: TSL2591-Demo.spin
-    Description: Demo for the TSL2591 driver
+    Description: Demo of the TSL2591 driver
     Author: Jesse Burt
     Copyright (c) 2020
     Started Nov 23, 2019
-    Updated Jan 10, 2020
+    Updated Dec 20, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,20 +15,19 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
+' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
     I2C_SCL     = 28
     I2C_SDA     = 29
-    I2C_HZ      = 400_000
+    I2C_HZ      = 400_000                       ' max is 400_000
 
-    GA          = 1             ' Glass attenuation factor
-    DF          = 408 '53       ' Device factor
+    GA          = 1                             ' Glass attenuation factor
+    DF          = 408                           ' Device factor
+' --
 
-    COL         = 26            ' Column to display measurements
-    PADDING     = 6
+    DAT_COL     = 20
 
 OBJ
 
@@ -36,71 +35,27 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     int     : "string.integer"
     time    : "time"
-    io      : "io"
     tsl2591 : "sensor.lux.tsl2591.i2c"
 
-VAR
+PUB Main{}
 
-    byte _ser_cog, _tsl2591_cog
+    setup{}
 
-PUB Main | atime_ms, againx, Lux1, cpl, ch0, ch1, scale
-
-    Setup
-
-    tsl2591.Gain (1)                                                ' Gain factor (x): 1, 25, 428, 9876
-    tsl2591.IntegrationTime (100)                                   ' ADC Integration Time (ms): 100, 200, 300, 400, 500, 600
-
-    scale := 1_000
-    ATIME_ms := tsl2591.IntegrationTime(-2)
-    AGAINx:= tsl2591.Gain(-2)
-    CPL := ((ATIME_ms * AGAINx) * scale) / (GA * DF)
-
-    ser.Position (0, 4)
-    ser.str(string("Integration time: "))
-    ser.dec(ATIME_ms)
-    ser.newline
-
-    ser.str(string("Gain: "))
-    ser.dec(AGAINx)
-    ser.newline
-
-    ser.str(string("Glass attenuation: "))
-    ser.dec(GA)
-    ser.newline
-
-    ser.str(string("Device Factor: "))
-    ser.dec(DF)
-    ser.newline
-
-    ser.str(string("Counts per Lux: "))
-    ser.dec(CPL)
-    ser.newline
-
+    tsl2591.glassattenuation(GA)
+    tsl2591.devicefactor(DF)
     repeat
-        repeat until tsl2591.DataReady
-        tsl2591.Measure (tsl2591#BOTH)
-        ch0 := tsl2591.LastFull * scale
-        ch1 := tsl2591.LastIR * scale
-        Lux1 := ((ch0 - ch1) * ((1 * scale) - (ch1 / ch0))) / CPL   ' XXX Unverified
-        ser.Position (0, 10)
-        ser.str(string("CH0: "))
-        ser.str(int.DecPadded (ch0 / scale, PADDING))
-        ser.newline
-        ser.str(string("CH1: "))
-        ser.str(int.DecPadded (ch1 / scale, PADDING))
-        ser.newline
-        ser.str(string("(CH0 - CH1): "))
-        ser.str(int.DecPadded ((ch0 - ch1), PADDING))
-        ser.newline
+        repeat until tsl2591.dataready{}
+        tsl2591.measure(tsl2591#BOTH)
 
-        ser.str(string("1 - (CH0 - CH1): "))
-        ser.str(int.DecPadded ((1 * scale) - (ch1 / ch0), PADDING))
-        ser.newline
+        ser.position(0, 3)
         ser.str(string("Lux: "))
-        Frac (Lux1, scale)
+        decimaldot(tsl2591.lastlux{}, 1000)
 
-PUB Frac(scaled, divisor) | whole, part, places, tmp
-' Display a scaled up number in its natural form (#.###...) - scale it back down by divisor
+PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp
+' Display a fixed-point scaled up number in decimal-dot notation - scale it back down by divisor
+'   e.g., Decimal (314159, 100000) would display 3.14159 on the terminal
+'   scaled: Fixed-point scaled up number
+'   divisor: Divide scaled-up number by this amount
     whole := scaled / divisor
     tmp := divisor
     places := 0
@@ -109,30 +64,27 @@ PUB Frac(scaled, divisor) | whole, part, places, tmp
         tmp /= 10
         places++
     until tmp == 1
-    part := int.DecZeroed(||(scaled // divisor), places)
-    ser.dec(whole)
-    ser.char(".")
-    ser.str(part)
-    ser.char(" ")
+    part := int.deczeroed(||(scaled // divisor), places)
 
-PUB Setup
+    ser.dec (whole)
+    ser.char (".")
+    ser.str (part)
+    ser.clearline{}
 
-    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
-    time.MSleep(100)
-    ser.Clear
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
-    if _tsl2591_cog := tsl2591.Startx(I2C_SCL, I2C_SDA, I2C_HZ)
-        ser.str(string("TSL2591 driver started", ser#CR, ser#LF))
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if tsl2591.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+        ser.strln(string("TSL2591 driver started"))
+        tsl2591.defaults_als{}
     else
-        ser.str(string("TSL2591 driver failed to start - halting", ser#CR, ser#LF))
-        time.MSleep (1)
-        tsl2591.Stop
-        FlashLED (LED, 500)
-    tsl2591.Reset
-    tsl2591.Powered (TRUE)
-    tsl2591.SensorEnabled (TRUE)
-
-#include "lib.utility.spin"
+        ser.strln(string("TSL2591 driver failed to start - halting"))
+        time.msleep(30)
+        tsl2591.stop{}
+        repeat
 
 DAT
 {
