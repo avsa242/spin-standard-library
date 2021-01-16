@@ -2,10 +2,10 @@
     --------------------------------------------
     Filename: ADXL345-Demo.spin
     Author: Jesse Burt
-    Description: Demo of the ADXL345 driver (PST-compatible version)
-    Copyright (c) 2020
-    Started Mar 19, 2020
-    Updated Jul 19, 2020
+    Description: Demo of the ADXL345 driver
+    Copyright (c) 2021
+    Started Mar 14, 2020
+    Updated Jan 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,150 +15,104 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' User-modifiable constants
+' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
-    CS_PIN      = 11
-    SCL_PIN     = 15
-    SDA_PIN     = 14
-    SDO_PIN     = 13
-    SCL_DELAY   = 1
+    CS_PIN      = 0
+    SCL_PIN     = 1
+    SDA_PIN     = 2
+    SDO_PIN     = 3
+' --
+
+    DAT_X_COL   = 20
+    DAT_Y_COL   = DAT_X_COL + 15
+    DAT_Z_COL   = DAT_Y_COL + 15
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal"
     time    : "time"
-    io      : "io"
     int     : "string.integer"
     accel   : "sensor.accel.3dof.adxl345.spi"
 
-VAR
+PUB Main{}
 
-    long _overruns
-    byte _ser_cog, _accel_cog
+    setup{}
+    accel.preset_active{}
+    calibrate{}
 
-PUB Main | dispmode
+    repeat
+        ser.position(0, 3)
+        accelcalc{}
+        if ser.rxcheck{} == "c"
+            calibrate{}
+    until ser.rxcheck{} == "q"
 
-    Setup
+    repeat
 
-    accel.AccelADCRes(accel#FULL)                           ' 10, accel#FULL (dynamic, based on AccelScale)
-    accel.AccelScale(2)                                     ' 2, 4, 8, 16 (g's)
-    accel.AccelDataRate(800)                                ' 0_10, 0_20, 0_39, 0_78, 1_56, 3_13, 6_25, 12_5,
-'                                                               25, 50, 100, 200, 400, 800, 1600, 3200
-    accel.FIFOMode(accel#BYPASS)                            ' accel#BYPASS, accel#FIFO, accel#STREAM, accel#TRIGGER
-    accel.AccelOpMode(accel#MEASURE)                        ' accel#STANDBY, accel#MEASURE
-    accel.IntMask(%0000_0000)                               ' 0, 1 each bit
-    accel.AccelSelfTest(FALSE)                              ' FALSE, TRUE
-    dispmode := 0
+PUB AccelCalc{} | ax, ay, az
+
+    repeat until accel.acceldataready{}
+    accel.accelg(@ax, @ay, @az)
+    ser.str(string("Accel micro-g: "))
+    ser.position(DAT_X_COL, 3)
+    decimal(ax, 1_000_000)
+    ser.position(DAT_Y_COL, 3)
+    decimal(ay, 1_000_000)
+    ser.position(DAT_Z_COL, 3)
+    decimal(az, 1_000_000)
+    ser.clearline{}
+    ser.newline{}
+
+PUB Calibrate{}
 
     ser.position(0, 3)
-    ser.str(string("AccelScale: "))
-    ser.dec(accel.AccelScale(-2))
-    ser.newline
-    ser.str(string("AccelADCRes: "))
-    ser.dec(accel.AccelADCRes(-2))
-    ser.newline
-    ser.str(string("AccelDataRate: "))
-    ser.dec(accel.AccelDataRate(-2))
-    ser.newline
-    ser.str(string("FIFOMode: "))
-    ser.dec(accel.FIFOMode(-2))
-    ser.newline
-    ser.str(string("IntMask: "))
-    ser.bin(accel.IntMask(-2), 8)
-    ser.newline
-    ser.str(string("AccelSelfTest: "))
-    ser.dec(accel.AccelSelfTest(-2))
-    ser.newline
+    ser.str(string("Calibrating..."))
+    accel.calibrate{}
+    ser.position(0, 3)
+    ser.clearline{}
 
-    repeat
-        case ser.RxCheck
-            "q", "Q":
-                ser.Position(0, 12)
-                ser.str(string("Halting"))
-                accel.Stop
-                time.MSleep(5)
-                ser.Stop
-                quit
-            "c", "C":
-                Calibrate
-            "r", "R":
-                ser.Position(0, 10)
-                repeat 2
-                    ser.ClearLine
-                    ser.Newline
-                dispmode ^= 1
-
-        ser.Position (0, 10)
-        case dispmode
-            0: AccelRaw
-            1: AccelCalc
-
-    FlashLED(LED, 100)
-
-PUB AccelCalc | ax, ay, az
-
-    repeat until accel.AccelDataReady
-    accel.AccelG (@ax, @ay, @az)
-    if accel.AccelDataOverrun
-        _overruns++
-    ser.Str (string("Accel micro-g: "))
-    ser.Str (int.DecPadded (ax, 10))
-    ser.Str (int.DecPadded (ay, 10))
-    ser.Str (int.DecPadded (az, 10))
-    ser.Newline
-    ser.Str (string("Overruns: "))
-    ser.Dec (_overruns)
-
-PUB AccelRaw | ax, ay, az
-
-    repeat until accel.AccelDataReady
-    accel.AccelData (@ax, @ay, @az)
-    if accel.AccelDataOverrun
-        _overruns++
-    ser.Str (string("Raw Accel: "))
-    ser.Str (int.DecPadded (ax, 7))
-    ser.Str (int.DecPadded (ay, 7))
-    ser.Str (int.DecPadded (az, 7))
-
-    ser.Newline
-    ser.Str (string("Overruns: "))
-    ser.Dec (_overruns)
-
-PUB Calibrate
-
-    ser.Position (0, 12)
-    ser.Str(string("Calibrating..."))
-    accel.Calibrate
-    ser.Position (0, 12)
-    ser.Str(string("              "))
-
-PUB Setup
-
-    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
-    time.MSleep(30)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#NL))
-    if _accel_cog := accel.Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN, SCL_DELAY)
-        ser.Str (string("ADXL345 driver started", ser#NL))
-        accel.Defaults
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
     else
-        ser.Str (string("ADXL345 driver failed to start - halting", ser#NL))
-        accel.Stop
-        time.MSleep (5)
-        ser.Stop
-        FlashLED(LED, 500)
+        sign := " "
 
-PUB FlashLED(led_pin, delay_ms)
-
-    io.Output(led_pin)
     repeat
-        io.Toggle (led_pin)
-        time.MSleep (delay_ms)
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
+
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if accel.start(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+        ser.strln(string("ADXL345 driver started"))
+    else
+        ser.str(string("ADXL345 driver failed to start - halting"))
+        accel.stop{}
+        time.msleep(5)
+        ser.stop{}
+        repeat
 
 DAT
 {
