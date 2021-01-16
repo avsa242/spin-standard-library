@@ -1,0 +1,173 @@
+{
+    --------------------------------------------
+    Filename: FXOS8700-Demo.spin
+    Author: Jesse Burt
+    Description: Demo of the FXOS8700 driver
+    Copyright (c) 2021
+    Started Sep 19, 2020
+    Updated Jan 3, 2021
+    See end of file for terms of use.
+    --------------------------------------------
+}
+
+CON
+
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
+
+' -- User-modifiable constants
+    LED         = cfg#LED1
+    SER_BAUD    = 115_200
+
+    I2C_SCL     = 28
+    I2C_SDA     = 29
+    I2C_HZ      = 400_000
+    SL_ADDR_BITS= %11                   ' %00..11 ($1E, 1D, 1C, 1F)
+' --
+
+    DATA_X_COL  = 10
+    DATA_Y_COL  = DATA_X_COL+12
+    DATA_Z_COL  = DATA_Y_COL+12
+
+' Temperature scales
+    C           = 0
+    F           = 1
+    K           = 2
+
+OBJ
+
+    cfg : "core.con.boardcfg.flip"
+    ser : "com.serial.terminal.ansi"
+    time: "time"
+    imu : "sensor.imu.6dof.fxos8700.i2c"
+    int : "string.integer"
+
+PUB Main{}
+
+    setup{}
+    imu.preset_accelmag_on{}
+    imu.tempscale(C)
+
+    ser.hidecursor{}
+
+    repeat
+        ser.position(0, 3)
+        accelcalc{}
+        ser.newline{}
+        magcalc{}
+        ser.newline{}
+        temperature{}
+        if ser.rxcheck{} == "c"                 ' press 'c' to perform an
+            calibrate{}                         '   offset calibration
+
+    ser.showcursor{}
+
+PUB AccelCalc{} | ax, ay, az
+
+    repeat until imu.acceldataready{}           ' wait for sensor to be ready
+    imu.accelg(@ax, @ay, @az)                   ' read the new data
+    ser.str(string("Accel g: "))
+
+    ser.positionx(DATA_X_COL)                   ' data is in micro-g's, so
+    decimaldot(ax, 1_000_000)                   ' format it as a decimal
+
+    ser.positionx(DATA_Y_COL)
+    decimaldot(ay, 1_000_000)
+
+    ser.positionx(DATA_Z_COL)
+    decimaldot(az, 1_000_000)
+
+PUB MagCalc{} | mx, my, mz
+
+    repeat until imu.magdataready{}
+    imu.maggauss(@mx, @my, @mz)
+    ser.str(string("Mag Gs: "))
+
+    ser.positionx(DATA_X_COL)
+    decimaldot(mx, 1_000_000)
+
+    ser.positionx(DATA_Y_COL)
+    decimaldot(my, 1_000_000)
+
+    ser.positionx(DATA_Z_COL)
+    decimaldot(mz, 1_000_000)
+
+PUB Temperature{}
+
+    ser.str(string("Temp:"))
+
+    ser.positionx(DATA_X_COL)
+    decimaldot(imu.temperature{}, 100)
+    ser.char(lookupz(imu.tempscale(-2): "C", "F", "K"))
+    ser.newline{}
+
+PUB Calibrate{}
+
+    ser.position(0, 7)
+    ser.str(string("Calibrating..."))
+    imu.calibrateaccel{}
+    imu.calibratemag{}
+    ser.position(0, 7)
+    ser.clearline{}
+
+PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
+    else
+        sign := " "
+
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
+
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+
+    if imu.startx(I2C_SCL, I2C_SDA, I2C_HZ, SL_ADDR_BITS)
+        ser.strln(string("FXOS8700 driver started"))
+    else
+        ser.strln(string("FXOS8700 driver failed to start - halting"))
+        imu.stop{}
+        time.msleep(50)
+        ser.stop{}
+
+DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE Jesse BurtS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
