@@ -3,9 +3,9 @@
     Filename: time.rtc.pcf8563.i2c.spin
     Author: Jesse Burt
     Description: Driver for the PCF8563 Real Time Clock
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Sep 6, 2020
-    Updated Nov 18, 2020
+    Updated Jan 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -52,7 +52,6 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
             if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
                 time.msleep(1)
                 if i2c.present (SLAVE_WR)       ' Response from device?
-                                   ' Initial RTC read
                     return okay
 
     return FALSE                                ' Something above failed
@@ -98,7 +97,7 @@ PUB DeviceID{}: id
 PUB Day(d): curr_day
 ' Set day of month
 '   Valid values: 1..31
-'   Any other value polls the RTC and returns the current day
+'   Any other value returns the last read current day
     case d
         1..31:
             d := int2bcd(d)
@@ -109,7 +108,7 @@ PUB Day(d): curr_day
 PUB Hours(hr): curr_hr
 ' Set hours
 '   Valid values: 0..23
-'   Any other value polls the RTC and returns the current hour
+'   Any other value returns the last read current hour
     case hr
         0..23:
             hr := int2bcd(hr)
@@ -165,7 +164,7 @@ PUB IntPinState(state): curr_state
     case state
         WHEN_TF_ACTIVE, INT_PULSES:
         other:
-            return (curr_state >> core#TI_TP) & %1
+            return (curr_state >> core#TI_TP) & 1
 
     state := ((curr_state & core#TI_TP_MASK) | state) & core#CTRLSTAT2_MASK
     writereg(core#CTRLSTAT2, 1, @state)
@@ -173,7 +172,7 @@ PUB IntPinState(state): curr_state
 PUB Month(m): curr_month
 ' Set month
 '   Valid values: 1..12
-'   Any other value polls the RTC and returns the current month
+'   Any other value returns the last read current month
     case m
         1..12:
             m := int2bcd(m)
@@ -184,7 +183,7 @@ PUB Month(m): curr_month
 PUB Minutes(minute): curr_min
 ' Set minutes
 '   Valid values: 0..59
-'   Any other value polls the RTC and returns the current minute
+'   Any other value returns the last read current minute
     case minute
         0..59:
             minute := int2bcd(minute)
@@ -219,7 +218,6 @@ PUB Timer(val): curr_val
 '       the period is 255 seconds
     case val
         0..255:
-            val &= core#TIMER_MASK
             writereg(core#TIMER, 1, @val)
         other:
             repeat 2                                    ' Datasheet recommends
@@ -269,7 +267,7 @@ PUB TimerEnabled(state): curr_state
 PUB Weekday(wkday): curr_wkday
 ' Set day of week
 '   Valid values: 1..7
-'   Any other value polls the RTC and returns the current day of week
+'   Any other value returns the last read current day of week
     case wkday
         1..7:
             wkday := int2bcd(wkday-1)
@@ -280,7 +278,7 @@ PUB Weekday(wkday): curr_wkday
 PUB Year(yr): curr_yr
 ' Set 2-digit year
 '   Valid values: 0..99
-'   Any other value polls the RTC and returns the current year
+'   Any other value returns the last read current year
     case yr
         0..99:
             yr := int2bcd(yr)
