@@ -3,9 +3,9 @@
     Filename: MAX31856-Demo.spin
     Description: Demo for the MAX31856 driver
     Author: Jesse Burt
-    Copyright (c) 2019
+    Copyright (c) 2020
     Created Sep 30, 2018
-    Updated Jun 11, 2019
+    Updated Dec 6, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,93 +15,95 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-    CS          = 0
-    SDI         = 1
-    SDO         = 2
-    SCK         = 3
-
+' -- User-modifiable constants
     LED         = cfg#LED1
+    SER_BAUD    = 115_200
+
+    CS          = 0
+    SCK         = 1
+    SDI         = 2
+    SDO         = 3
+
+    SCALE       = F
+' --
 
 ' Temperature scale readings
     C           = 0
     F           = 1
-    SCALE       = F
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
+    ser     : "com.serial.terminal.ansi"
     time    : "time"
     max31856: "sensor.thermocouple.max31856.spi"
-    math    : "tiny.math.float"
-    fs      : "string.float"
+    int     : "string.integer"
 
-VAR
+PUB Main{} | cj_temp, tc_temp
 
-    byte _ser_cog
+    setup{}
 
-PUB Main | cj_temp, tc_temp
-
-    Setup
-
-    max31856.NotchFilter (60)
-    max31856.ConversionMode(max31856#CMODE_AUTO)
+    max31856.coldjuncbias(0)                    ' -128..127
+    max31856.notchfilter(60)                    ' 50, 60 (Hz)
+    max31856.opmode(max31856#CONT)
+    max31856.tempscale(C)
 
     repeat
-        cj_temp := math.FFloat (max31856.ColdJuncTemp)
-        tc_temp := math.FFloat (max31856.ThermoCoupleTemp)
-        cj_temp := math.FDiv (cj_temp, 100.0)
-        tc_temp := math.FDiv (tc_temp, 100.0)
+        cj_temp := max31856.coldjunctemp{}
+        tc_temp := max31856.thermocoupletemp{}
 
-        ser.Position (0, 3)
-        case SCALE
-            F:
-                ser.Str (string("Cold junction temp: "))
-                ser.Str (fs.FloatToString(CtoF(cj_temp)))
-                ser.Char (ser#CE)
-                ser.NewLine
+        ser.position(0, 3)
+        ser.str(string("Cold junction temp: "))
+        decimal(cj_temp, 100)
+        ser.char(lookupz(max31856.tempscale(-2): "C", "F"))
+        ser.clearline{}
+        ser.newline{}
 
-                ser.Str (string("Thermocouple temp: "))
-                ser.Str (fs.FloatToString(CtoF(tc_temp)))
-                ser.Char (ser#CE)
+        ser.str(string("Thermocouple temp: "))
+        decimal(tc_temp, 100)
+        ser.char(lookupz(max31856.tempscale(-2): "C", "F"))
+        ser.clearline{}
+        time.msleep(100)
 
-            OTHER:
-                ser.Str (string("Cold junction temp: "))
-                ser.Str (fs.FloatToString(cj_temp))
-                ser.Char (ser#CE)
-                ser.NewLine
-
-                ser.Str (string("Thermocouple temp: "))
-                ser.Str (fs.FloatToString(tc_temp))
-                ser.Char (ser#CE)
-        time.MSleep (100)
-
-PUB CtoF (deg_c): deg_f
-'T(°F) = T(°C) × 9/5 + 32
-' 9/5 = 1800 + 32
-    deg_f := math.FAdd (math.FMul (deg_c, 1.8), 32.0)
-
-PUB Setup
-
-    repeat until _ser_cog := ser.Start (115_200)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#NL))
-    if max31856.start (CS, SDI, SDO, SCK)
-        ser.Str(string("max31856 driver started", ser#NL))
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
     else
-        ser.Str(string("max31856 driver failed to start - halting", ser#NL))
-        max31856.Stop
-        time.MSleep (5)
-        ser.Stop
-        Flash (LED, 500)
-    fs.SetPrecision (6)
+        sign := " "
 
-PUB Flash(led_pin, delay_ms)
-
-    dira[led_pin] := 1
     repeat
-        !outa[led_pin]
-        time.MSleep (delay_ms)
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
+
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if max31856.start(CS, SCK, SDI, SDO)
+        ser.strln(string("max31856 driver started"))
+    else
+        ser.strln(string("max31856 driver failed to start - halting"))
+        max31856.stop{}
+        time.msleep(5)
+        ser.stop{}
+        repeat
 
 DAT
 {
