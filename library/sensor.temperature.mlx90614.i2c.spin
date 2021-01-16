@@ -3,9 +3,9 @@
     Filename: sensor.temperature.mlx90614.i2c.spin
     Author: Jesse Burt
     Description: Driver for the Melexis MLX90614 IR thermometer
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Mar 17, 2019
-    Updated Mar 19, 2019
+    Updated Dec 7, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,146 +18,146 @@ CON
     DEF_SCL         = 28
     DEF_SDA         = 29
     DEF_HZ          = 100_000
-    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
     MSB             = 0
     LSB             = 1
     PEC             = 2
 
-    K               = 0
-    C               = 1
-    F               = 2
+' Temperature scales
+    C               = 0
+    F               = 1
+    K               = 2
 
 VAR
 
+    byte _temp_scale
 
 OBJ
 
-    i2c : "com.i2c"                                             'PASM I2C Driver
+    i2c : "com.i2c"
     core: "core.con.mlx90614"
-    time: "time"                                                'Basic timing functions
+    time: "time"
 
-PUB Null
-''This is not a top-level object
+PUB Null{}
+' This is not a top-level object
 
-PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 100kHz
-
-    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
+PUB Start{}: okay
+' Start using "standard" Propeller I2C pins and 100kHz
+    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
 PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
-
+' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
         if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
-                time.MSleep (1)
-                if i2c.present (SLAVE_WR)                       'Response from device?
-                    time.MSleep (250)                           'First data available approx 250ms after POR
-                    return okay
+            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
+                time.msleep(1)
+                if i2c.present(SLAVE_WR)        ' test bus device presence
+                    if deviceid{}
+                        time.usleep(core#TPOR)
+                        return okay
 
-    return FALSE                                                'If we got here, something went wrong
+    return FALSE                                ' something above failed
 
-PUB Stop
+PUB Stop{}
 
-    i2c.terminate
+    i2c.terminate{}
 
-PUB EEPROM(addr) | tmp
-' Dump EEPROM to array at addr
-    readRegX(core#CMD_EEPROM, $00, 64, addr)
+PUB AmbientTemp{}: temp
+' Reads the Ambient temperature
+'   Returns: Temperature in hundredths of a degree (e.g., 2135 is 21.35 deg),
+'       using the chosen scale
+    readreg(core#CMD_RAM, core#T_A, 2, @temp)
+    return calctemp(temp)
 
-PUB ID
+PUB DeviceID{}: id
 ' Reads the sensor ID
-    readRegX(core#CMD_EEPROM, core#EE_ID_1, 4, @result)
+    readreg(core#CMD_EEPROM, core#EE_ID_1, 4, @id)
 
-PUB ObjTemp(channel, scale) | tmp
+PUB EEPROM(ptr_buff)
+' Dump EEPROM to array at ptr_buff
+'   NOTE: ptr_buff must be at least 64 bytes
+    readreg(core#CMD_EEPROM, $00, 64, ptr_buff)
+
+PUB ObjTemp(channel): temp
 ' Reads the Object temperature (IR temp)
 '   channel
 '       Valid values: 1, 2 (CH2 availability is device-dependent)
-'          Any other value is ignored
-'   scale
-'      Valid values: K (0), C (1), or F (2)
-'          Any other value is ignored
-'   Returns: Calculated temperature in centidegrees (e.g., 2135 is 21.35 deg), using the chosen scale
-
+'       Any other value is ignored
+'   Returns: Temperature in hundredths of a degree (e.g., 2135 is 21.35 deg),
+'       using the chosen scale
     case channel
         1:
-            readRegX(core#CMD_RAM, core#T_OBJ1, 3, @result)
+            readreg(core#CMD_RAM, core#T_OBJ1, 2, @temp)
         2:
-            readRegX(core#CMD_RAM, core#T_OBJ2, 3, @result)
-        OTHER:
+            readreg(core#CMD_RAM, core#T_OBJ2, 2, @temp)
+        other:
             return
 
-    tmp := result.byte[PEC]
-    result &= $FFFF
+    return calctemp(temp)
 
+PUB TempScale(scale): curr_scl
+' Set scale of temperature data returned by AmbientTemp and ObjTemp methods
+'   Valid values:
+'      *C (0): Celsius
+'       F (1): Fahrenheit
+'       K (2): Kelvin
+'   Any other value returns the current setting
     case scale
-        K:                                  ' Result will be in centidegrees Kelvin
-            result := result * 2
-        C:                                  ' Result will be in centidegrees Celsius
-            result := (result * 2) - 27315
-        F:                                  ' Result will be in centidegrees Fahrenheit
-            result := ((result * 2) - 27315) * 900/500 + 3200
-        OTHER:
+        C, F, K:
+            _temp_scale := scale
+        other:
+            return _temp_scale
+
+PRI calcTemp(temp_word): temp_cal
+' Calculate temperature, using temperature word
+'   Returns: temperature, in hundredths of a degree, in chosen scale
+    temp_word *= 2
+    case _temp_scale
+        C:
+            return temp_word - 273_15
+        F:
+            return (temp_word - 273_15) * 9_00/5_00 + 32_00
+        K:
             return
+        other:
+            return FALSE
 
-PUB AmbientTemp(scale) | tmp
-' Reads the Ambient temperature
-'   Valid values: K (0), C (1), or F (2)
-'       Any other value is ignored
-'   Returns: Calculated temperature in centidegrees (e.g., 2135 is 21.35 deg), using the chosen scale
-    readRegX(core#CMD_RAM, core#T_A, 3, @result)
-
-    tmp := result.byte[PEC]
-    result &= $FFFF
-
-    case scale
-        K:                                  ' Result will be in centidegrees Kelvin
-            result := result * 2
-        C:                                  ' Result will be in centidegrees Celsius
-            result := (result * 2) - 27315
-        F:                                  ' Result will be in centidegrees Fahrenheit
-            result := ((result * 2) - 27315) * 900/500 + 3200
-        OTHER:
-            return
-
-PRI readRegX(region, reg, nr_bytes, addr_buff) | cmd_packet
-' Reads bytes from device register in selected memory region
-
-    cmd_packet.byte[0] := SLAVE_WR
-
+PRI readReg(region, reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Read nr_bytes from device into ptr_buff
     case region
         core#CMD_RAM:
         core#CMD_EEPROM:
         core#CMD_READFLAGS:
-        OTHER:
+        other:
             return
 
-    cmd_packet.byte[1] := region | reg
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := region | reg_nr
 
-    i2c.start
-    i2c.wr_block (@cmd_packet, 2)
-    i2c.start
-    i2c.write (SLAVE_RD)
-    i2c.rd_block (addr_buff, nr_bytes, TRUE)
-    i2c.stop
+    i2c.start{}
+    i2c.wr_block(@cmd_pkt, 2)
+    i2c.start{}
+    i2c.write(SLAVE_RD)
+    i2c.rd_block(ptr_buff, nr_bytes, TRUE)
+    i2c.stop{}
 
-PRI writeRegX(region, reg, nr_bytes, val) | cmd_packet[2]
-' Writes bytes to device register in selected memory region
-    cmd_packet.byte[0] := SLAVE_WR
-
+PRI writeReg(region, reg_nr, nr_bytes, val) | cmd_pkt[2]
+' Write nr_bytes from val to device
     case region
         core#CMD_EEPROM:
         core#CMD_SLEEPMODE:
-        OTHER:
+        other:
             return
 
-    cmd_packet.byte[1] := region | reg
-    cmd_packet.byte[2] := val.byte[LSB]
-    cmd_packet.byte[3] := val.byte[MSB]
-    cmd_packet.byte[4] := val.byte[PEC]
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := region | reg_nr
+    cmd_pkt.byte[2] := val.byte[LSB]
+    cmd_pkt.byte[3] := val.byte[MSB]
+    cmd_pkt.byte[4] := val.byte[PEC]
 
-    i2c.start
-    i2c.wr_block (@cmd_packet, 2 + nr_bytes)
-    i2c.stop
+    i2c.start{}
+    i2c.wr_block(@cmd_pkt, 2 + nr_bytes)
+    i2c.stop{}
 
 DAT
 {

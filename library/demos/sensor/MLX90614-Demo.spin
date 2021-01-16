@@ -3,73 +3,99 @@
     Filename: MLX90614-Demo.spin
     Author: Jesse Burt
     Description: Demo for the MLX90614 driver
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Mar 17, 2019
-    Updated Mar 19, 2019
+    Updated Dec 8, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    _clkmode = cfg#_clkmode
-    _xinfreq = cfg#_xinfreq
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
+
+' -- User-modifiable constants
+    LED         = cfg#LED1
+    SER_BAUD    = 115_200
+
+    I2C_SCL     = 28
+    I2C_SDA     = 29
+    I2C_HZ      = 100_000                       ' max is 100_000
+
+    TEMP_SCALE  = C
+' --
+
+    C           = 0
+    F           = 1
+    K           = 2
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
+    ser     : "com.serial.terminal.ansi"
     time    : "time"
     mlx     : "sensor.temperature.mlx90614.i2c"
-    math    : "tiny.math.float"
-    fs      : "string.float"
+    int     : "string.integer"
 
-VAR
+PUB Main{} | Tobj, Tamb
 
-    byte _ser_cog
+    setup{}
 
-PUB Main
-
-    Setup
-    fs.SetPrecision (5)
-
-    ser.Position (0, 3)
-    ser.Str (string("Sensor ID: "))
-    ser.Hex (mlx.ID, 8)
+    mlx.tempscale(TEMP_SCALE)
 
     repeat
-        ser.Position (0, 5)
-        ReadIR(1)
-        ser.Position (0, 6)
-        ReadTa
-        time.MSleep (100)
+        Tobj := mlx.objtemp(1)
+        Tamb := mlx.ambienttemp{}
 
-PUB ReadIR(ch) | tmp
+        ser.position(0, 5)
+        ser.str(string("Object temp: "))
+        decimal(Tobj, 100)
+        ser.newline{}
 
-    tmp := math.FFloat (mlx.ObjTemp (ch, mlx#C))
-    tmp := math.FDiv (tmp, 100.0)
-    ser.Str (string("IR: "))
-    ser.Str (fs.FloatToString (tmp))
+        ser.str(string("Ambient temp: "))
+        decimal(Tamb, 100)
 
-PUB ReadTa | tmp
+        time.msleep(100)
 
-    tmp := math.FFloat (mlx.AmbientTemp (mlx#C))
-    tmp := math.FDiv (tmp, 100.0)
-    ser.Str (string("Ta: "))
-    ser.Str (fs.FloatToString (tmp))
-
-PUB Setup
-
-    repeat until _ser_cog := ser.Start (115_200)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#NL))
-    if mlx.Start
-        ser.Str (string("MLX90614 driver started", ser#NL))    
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
     else
-        ser.Str (string("MLX90614 driver failed to start - halting", ser#NL))
-        mlx.Stop
-        time.MSleep (500)
-        ser.Stop
+        sign := " "
+
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
+
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if mlx.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+        ser.str(string("MLX90614 driver started"))
+    else
+        ser.str(string("MLX90614 driver failed to start - halting"))
+        mlx.stop{}
+        time.msleep(30)
+        ser.stop{}
         repeat
 
 DAT
