@@ -4,71 +4,83 @@
     Author: Jesse Burt
     Description: Simple serial terminal-based demo of the MAX9744
         audio amp driver.
-    Copyright (c) 2019
+    Copyright (c) 2020
     Started Jul 7, 2018
-    Updated Mar 16, 2019
+    Updated Nov 22, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    _clkmode  = cfg#_clkmode
-    _xinfreq  = cfg#_xinfreq
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
 
-    I2C_SCL   = 28
-    I2C_SDA   = 29
-    I2C_HZ    = 400_000
-    SHDN_PIN  = 18
+' -- User-modifiable constants
+    LED         = cfg#LED1
+    SER_BAUD    = 115_200
+
+    I2C_SCL     = 28
+    I2C_SDA     = 29
+    I2C_HZ      = 400_000                       ' max 400_000 (PASM I2C only)
+    SHDN_PIN    = 18
+' --
 
 OBJ
 
-    cfg   : "core.con.boardcfg.flip"
-    ser   : "com.serial.terminal"
-    time  : "time"
-    amp   : "signal.audio.amp.max9744.i2c"
+    cfg     : "core.con.boardcfg.flip"
+    ser     : "com.serial.terminal.ansi"
+    io      : "io"
+    time    : "time"
+    amp     : "signal.audio.amp.max9744.i2c"    ' PASM driver (req's 1 cog)
+'    amp     : "tiny.signal.audio.amp.max9744.i2c" ' SPIN-only driver
 
-PUB Main | i, level
+PUB Main{} | i, level
 
-    Setup
+    setup{}
     level := 31
-    ser.Clear
+    amp.volume(level)                           ' set starting volume
+    ser.clear{}
 
     repeat
-        ser.Position (0, 0)
-        ser.Str (string("Volume: "))
-        ser.Dec (level)
-        ser.NewLine
-        ser.Str (string("Press [ or ] for Volume Down or Up, respectively", ser#NL))
-        i := ser.CharIn
+        ser.position(0, 0)
+        ser.str(string("Volume: "))
+        ser.dec(level)
+        ser.newline{}
+        ser.strln(string("Press [ or ] for Volume Down or Up, respectively"))
+        i := ser.charin{}
             case i
                 "[":
                     level := 0 #> (level - 1)
-                    amp.VolDown
+                    amp.voldown{}
                 "]":
                     level := (level + 1) <# 63
-                    amp.VolUp
+                    amp.volup{}
                 "f":
-                    ser.Str (string("Modulation mode: Filterless ", ser#NL))
-                    amp.ModulationMode (0)
+                    ser.strln(string("Modulation mode: Filterless "))
+                    amp.modulationmode(amp#NONE)
+                "m":
+                    ser.strln(string("MUTE"))
+                    amp.mute{}
                 "p":
-                    ser.Str (string("Modulation mode: Classic PWM", ser#NL))
-                    amp.ModulationMode (1)
-                OTHER:
+                    ser.strln(string("Modulation mode: Classic PWM"))
+                    amp.modulationmode(amp#PWM)
+                other:
 
-PUB Setup
+PUB Setup{}
 
-    repeat until ser.Start (115_200)
-    ser.Clear
-    ser.Str (string("Serial terminal started", ser#NL))
-    if amp.Startx (I2C_SCL, I2C_SDA, I2C_HZ, SHDN_PIN)
-        ser.Str (string("MAX9744 driver started", ser#NL))
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if amp.startx(I2C_SCL, I2C_SDA, I2C_HZ, SHDN_PIN)                  ' PASM driver
+'    if amp.startx(I2C_SCL, I2C_SDA, SHDN_PIN)                         ' SPIN-only driver
+        ser.strln(string("MAX9744 driver started"))
     else
-        ser.Str (string("MAX9744 driver failed to start - halting", ser#NL))
-        amp.Stop
-        time.MSleep (500)
-        ser.Stop
-        repeat
+        ser.strln(string("MAX9744 driver failed to start - halting"))
+        amp.stop{}
+        time.msleep(500)
+        ser.stop{}
 
 DAT
 {
