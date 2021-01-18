@@ -57,6 +57,16 @@ PUB Present(slave_addr)
     start{}
     return (write(slave_addr) == ACK)
 
+PUB RdBuff_LSBF(nr_bytes, ptr_buff, ack_last) | bytenum, i2cbyte
+' Read nr_bytes from I2C bus into ptr_buff, LSByte-first
+    repeat bytenum from 0 to nr_bytes-1
+        byte[ptr_buff][bytenum] := read(((bytenum == nr_bytes-1) & ack_last))
+
+PUB RdBuff_MSBF(nr_bytes, ptr_buff, ack_last) | bytenum, i2cbyte
+' Read nr_bytes from I2C bus into ptr_buff, MSByte-first
+    repeat bytenum from nr_bytes-1 to 0
+        byte[ptr_buff][bytenum] := read(((bytenum == 0) & ack_last))
+
 PUB Read(ackbit): i2cbyte
 ' Read byte from I2C bus
 '   Valid values (ackbit):
@@ -121,6 +131,16 @@ PUB Write(i2cbyte): ackbit
     dira[_scl] := 1                                     ' SCL low
 
     return ackbit
+
+PUB WrBuff_LSBF(nr_bytes, ptr_buff): ackbit | bytenum, i2cbyte
+' Write nr_bytes to I2C bus from ptr_buff, LSByte-first
+    repeat bytenum from 0 to nr_bytes-1
+        ackbit := write(byte[ptr_buff][bytenum])
+
+PUB WrBuff_MSBF(nr_bytes, ptr_buff): ackbit | bytenum, i2cbyte
+' Write nr_bytes to I2C bus from ptr_buff, MSByte-first
+    repeat bytenum from nr_bytes-1 to 0
+        ackbit := write(byte[ptr_buff][bytenum])
 
 {
     --------------------------------------------------------------------------------------------------------
