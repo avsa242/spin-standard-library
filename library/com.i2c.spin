@@ -2,9 +2,9 @@
     --------------------------------------------
     Filename: com.i2c.spin
     Author: Jesse Burt
-    Description: PASM I2C Driver
+    Description: PASM I2C Engine
     Started Mar 9, 2019
-    Updated Jan 18, 2021
+    Updated Jan 19, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -12,11 +12,11 @@
     --------------------------------------------
 }
 
-'  IMPORTANT Note: This code requires pull-ups on the SDA _and_ SCL lines -- it does not drive
-'  the SCL line high.
+'   NOTE: Pull-up resistors are required on SDA _and_ SCL lines
+'   This object doesn't drive either line (open-drain, not push-pull)
 '
-'  Cog value stored in DAT table which is shared across all object uses; all objects that use
-'  this object MUST use the same I2C bus pins
+'   NOTE: Cog value stored in DAT table which is shared across all object uses;
+'       all objects that use this object MUST use the same I2C bus pins
 
 CON
 
@@ -105,8 +105,8 @@ PUB Terminate ' XXX
 
     longfill(@_i2c_cmd, 0, 4)
 
-PUB Present(slaveid): ackbit
-' Check if device slaveid is present on bus
+PUB Present(slave_addr): status
+' Check for slave device presence on bus
 '   Returns:
 '       FALSE (0): Device not acknowledging or in error state
 '       TRUE (-1): Device acknowledges
@@ -115,29 +115,19 @@ PUB Present(slaveid): ackbit
 
     return (wrblock_lsbf(@slaveid, 1) == ACK)
 
-PUB Read(ackbit): i2cbyte
-' Read byte from I2C bus
-    rdblock_lsbf(@_i2c_result, 1, ackbit)
-
-    return _i2c_result & $FF
-
 PUB Rd_Byte(ackbit): i2cbyte
 ' Read byte from I2C bus
-    rdblock_lsbf(@_i2c_result, 1, ackbit)
-
-    return _i2c_result & $FF
-
-PUB Rd_Word(ackbit): i2cword
-' Read word from I2C bus
-    rdblock_lsbf(@_i2c_result, 2, ackbit)
-
-    return _i2c_result & $FFFF
+    rdblock_lsbf(@i2cbyte, 1, ackbit)
+    return i2cbyte & $FF
 
 PUB Rd_Long(ackbit): i2clong
 ' Read long from I2C bus
-    rdblock_lsbf(@_i2c_result, 4, ackbit)
+    rdblock_lsbf(@i2clong, 4, ackbit)
 
-    return _i2c_result
+PUB Rd_Word(ackbit): i2cword
+' Read word from I2C bus
+    rdblock_lsbf(@i2cword, 2, ackbit)
+    return i2cword & $FFFF
 
 PUB Rd_Block(p_dest, count, ackbit) ' XXX
 ' Read block of count bytes from I2C bus to p_dest
@@ -180,9 +170,16 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last)
     _i2c_cmd := I2C_READ_BE | ack_last
     repeat while (_i2c_cmd <> 0)
 
+PUB Read(ackbit): i2cbyte
+' Read byte from I2C bus
+    rdblock_lsbf(@_i2c_result, 1, ackbit)
+
+    return _i2c_result & $FF
+
 PUB Start
 ' Create I2C start/restart condition (S, Sr)
-'   NOTE: Waits while SDA pin is held low
+'   NOTE: This method supports clock stretching;
+'       waits while SDA pin is held low
     _i2c_cmd := I2C_START
     repeat while (_i2c_cmd <> 0)
 
@@ -191,8 +188,10 @@ PUB Stop
     _i2c_cmd := I2C_STOP
     repeat while (_i2c_cmd <> 0)
 
-PUB Wait(slaveid)
-' Wait for I2C device to be ready for new command
+PUB Wait(slave_addr)
+' Waits for I2C device to be ready for new command
+'   NOTE: This method will wait indefinitely,
+'   if the device doesn't respond
     repeat
         if (present(slaveid))
             quit
@@ -219,15 +218,15 @@ PUB Wr_Byte(b): ackbit
 ' Write byte to I2C bus
     return wrblock_lsbf(@b, 1)
 
-PUB Wr_Word(w): ackbit
-' Write word to I2C bus
-'   least-significant byte first
-    return wrblock_lsbf(@w, 2)
-
 PUB Wr_Long(l): ackbit
 ' Write long to I2C bus
 '   least-significant byte first
     return wrblock_lsbf(@l, 4)
+
+PUB Wr_Word(w): ackbit
+' Write word to I2C bus
+'   least-significant byte first
+    return wrblock_lsbf(@w, 2)
 
 PUB Wr_Block(p_src, count) | cmd    ' XXX
 ' Write block of count bytes from p_src to I2C bus
@@ -547,29 +546,24 @@ tbits                   res     1
 
                         fit     496
 
-
 DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
 
-{{
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
 
-  Terms of Use: MIT License
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this
-  software and associated documentation files (the "Software"), to deal in the Software
-  without restriction, including without limitation the rights to use, copy, modify,
-  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
-  permit persons to whom the Software is furnished to do so, subject to the following
-  conditions:
-
-  The above copyright notice and this permission notice shall be included in all copies
-  or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
-  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
-  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-}}
-
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
