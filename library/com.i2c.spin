@@ -113,7 +113,7 @@ PUB Present(slave_addr): status
     _i2c_cmd := I2C_START
     repeat while (_i2c_cmd <> 0)
 
-    return (wrblock_lsbf(@slaveid, 1) == ACK)
+    return (wrblock_lsbf(@slave_addr, 1) == ACK)
 
 PUB Rd_Byte(ackbit): i2cbyte
 ' Read byte from I2C bus
@@ -193,7 +193,7 @@ PUB Wait(slave_addr)
 '   NOTE: This method will wait indefinitely,
 '   if the device doesn't respond
     repeat
-        if (present(slaveid))
+        if (present(slave_addr))
             quit
 
     return ACK
