@@ -29,6 +29,15 @@ CON
     Y_AXIS              = 1
     Z_AXIS              = 2
 
+' Indicate to user apps how many Degrees of Freedom each sub-sensor has
+'   (also imply whether or not it has a particular sensor)
+    ACCEL_DOF           = 3
+    GYRO_DOF            = 3
+    MAG_DOF             = 3
+    BARO_DOF            = 0
+    DOF                 = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
+
+' Bias adjustment (AccelBias(), GyroBias(), MagBias()) read or write
     R                   = 0
     W                   = 1
 
