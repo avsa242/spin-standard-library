@@ -1,3 +1,153 @@
+{
+    --------------------------------------------
+    Filename: com.spi.4w.spin
+    Author: Jesse Burt
+    Description: 1MHz SPI engine (PASM core)
+        (based on SPI_Asm.spin, originally by
+        Beau Schwabe)
+    Started 2009
+    Updated Jan 25, 2021
+    See end of file for terms of use.
+    --------------------------------------------
+}
+
+VAR
+
+    long _SCK, _MOSI, _MISO, _spi_mode, _cpol
+    long _cog, _command
+
+PUB Null{}
+' This is not a top-level object
+
+PUB Init(SCK, MOSI, MISO, SPI_MODE): status
+' Initialize SPI engine using custom pins
+'   SCK, MOSI, MISO: 0..31 (each unique)
+'   SPI_MODE: 0..3
+'       0: CPOL 0, CPHA 0
+'           SCK idles low
+'           MISO shifted in on rising clock pulse
+'           MOSI shifted out on falling clock pulse
+'       1: CPOL 0, CPHA 1
+'           SCK idles low
+'           MISO shifted in on falling clock pulse
+'           MOSI shifted out on rising clock pulse
+'       2: CPOL 1, CPHA 0
+'           SCK idles high
+'           MISO shifted in on falling clock pulse
+'           MOSI shifted out on rising clock pulse
+'       3: CPOL 1, CPHA 1
+'           SCK idles high
+'           MISO shifted in on rising clock pulse
+'           MOSI shifted out on falling clock pulse
+'   NOTE: CS must be handled by the parent object
+    longmove(@_SCK, @SCK, 3)
+    mode(SPI_MODE)
+
+    clockdelay := 1                             ' = ~ 1MHz
+    status := _cog := cognew(@loop, @_command) + 1
+
+PUB DeInit{}
+' Deinitialize
+'   Float I/O pins, clear out hub vars, and stop the PASM engine
+    if _cog
+        cogstop(_cog - 1)
+        _cog := 0
+    _command := 0
+    dira[_SCK] := 0
+    dira[_MOSI] := 0
+    dira[_MISO] := 0
+
+PUB Mode(mode_nr): curr_mode
+' Set SPI mode
+'   Valid values: 0..3
+'   Any other value returns the current setting
+    case mode_nr
+        0, 1:
+            _cpol := 0
+        2, 3:
+            _cpol := 1
+        other:
+            return _spi_mode
+
+    _spi_mode := mode_nr
+    clockstate := _cpol
+
+PUB RdBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
+' Read block of data from SPI bus, least-significant byte first
+    longmove(@SCK, @_SCK, 3)
+    case _spi_mode
+        0, 2:
+            repeat b_num from 0 to nr_bytes-1
+                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
+        1, 3:
+            repeat b_num from 0 to nr_bytes-1
+                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPRE, 8)
+
+PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
+' Read block of data from SPI bus, most-significant byte first
+    longmove(@SCK, @_SCK, 3)
+    case _spi_mode
+        0, 2:
+            repeat b_num from nr_bytes-1 to 0
+                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
+        1, 3:
+            repeat b_num from nr_bytes-1 to 0
+                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPRE, 8)
+
+PUB Rd_Byte{}: spi2byte
+' Read byte from SPI bus
+    rdblock_lsbf(@spi2byte, 1)
+
+PUB RdLong_LSBF{}: spi2long
+' Read long from SPI bus, least-significant byte first
+    rdblock_lsbf(@spi2long, 4)
+
+PUB RdLong_MSBF{}: spi2long
+' Read long from SPI bus, least-significant byte first
+    rdblock_msbf(@spi2long, 4)
+
+PUB RdWord_LSBF{}: spi2word
+' Read word from SPI bus, least-significant byte first
+    rdblock_lsbf(@spi2word, 2)
+
+PUB RdWord_MSBF{}: spi2word
+' Read word from SPI bus, least-significant byte first
+    rdblock_msbf(@spi2word, 2)
+
+PUB WrBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
+' Write block of data to SPI bus from ptr_buff, least-significant byte first
+    longmove(@SCK, @_SCK, 3)
+    repeat b_num from 0 to nr_bytes-1
+        shiftout(MOSI, SCK, MSBFIRST, 8, byte[ptr_buff][b_num])
+
+PUB WrBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
+' Write block of data to SPI bus from ptr_buff, most-significant byte first
+    longmove(@SCK, @_SCK, 3)
+    repeat b_num from nr_bytes-1 to 0
+        shiftout(MOSI, SCK, MSBFIRST, 8, byte[ptr_buff][b_num])
+
+PUB Wr_Byte(byte2spi)
+' Write byte to SPI bus
+    wrblock_lsbf(@byte2spi, 1)
+
+PUB WrLong_LSBF(long2spi)
+' Write long to SPI bus, least-significant byte first
+    wrblock_lsbf(@long2spi, 4)
+
+PUB WrLong_MSBF(long2spi)
+' Write long to SPI bus, most-significant byte first
+    wrblock_msbf(@long2spi, 4)
+
+PUB WrWord_LSBF(word2spi)
+' Write word to SPI bus, least-significant byte first
+    wrblock_lsbf(@word2spi, 2)
+
+PUB WrWord_MSBF(word2spi)
+' Write word to SPI bus, most-significant byte first
+    wrblock_msbf(@word2spi, 2)
+
+' -- Legacy methods below
+
 {{
 ************************************************
 * Propeller SPI Engine                    v1.2 *
@@ -39,12 +189,11 @@ CON
 ''              
 ''       =1      =2
 
-VAR
-    long     cog, command
-PUB SHIFTOUT(Dpin, Cpin, Mode, Bits, Value)             ''If SHIFTOUT is called with 'Bits' set to Zero, then the COG will shut
+PUB SHIFTOUT(Dpin, Cpin, wrmode, Bits, Value)             ''If SHIFTOUT is called with 'Bits' set to Zero, then the COG will shut
                                                         ''down.  Another way to shut the COG down is to call 'stop' from Spin.
     setcommand(_SHIFTOUT, @Dpin)
-PUB SHIFTIN(Dpin, Cpin, Mode, Bits)|Value,Flag          ''If SHIFTIN is called with 'Bits' set to Zero, then the COG will shut
+
+PUB SHIFTIN(Dpin, Cpin, rdmode, Bits)|Value,Flag          ''If SHIFTIN is called with 'Bits' set to Zero, then the COG will shut
                                                         ''down.  Another way to shut the COG down is to call 'stop' from Spin.
 
     Flag := 1                                           ''Set Flag
@@ -78,15 +227,16 @@ PUB start(Delay,State) : okay
     stop
     ClockDelay := Delay
     ClockState := State
-    okay := cog := cognew(@loop, @command) + 1
+    okay := _cog := cognew(@loop, @_command) + 1
+
 PUB stop
 '' Stop SPI Engine - frees a cog
-    if cog
-       cogstop(cog~ - 1)
-    command~
+    if _cog
+       cogstop(_cog~ - 1)
+    _command~
 PRI setcommand(cmd, argptr)
-    command := cmd << 16 + argptr                       ''write command and pointer
-    repeat while command                                ''wait for command to be cleared, signifying receipt
+    _command := cmd << 16 + argptr                       ''write command and pointer
+    repeat while _command                                ''wait for command to be cleared, signifying receipt
 '################################################################################################################
 DAT           org
 '
