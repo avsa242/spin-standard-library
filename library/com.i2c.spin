@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: PASM I2C Engine
     Started Mar 9, 2019
-    Updated Jan 19, 2021
+    Updated Jan 25, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -73,38 +73,6 @@ PUB DeInit
 
     longfill(@_i2c_cmd, 0, 4)
 
-PUB Setup(hz) ' XXX
-' Start I2C cog on default Propeller I2C bus
-' -- aborts if cog already running
-' -- example: i2c.setup(400_000)
-    if (_cog)
-        return
-
-    setupx(DEF_SCL, DEF_SDA, hz)                ' Use default Propeller I2C pins
-
-PUB Setupx(sclpin, sdapin, hz) ' XXX
-' Start i2c cog on any set of pins
-' -- aborts if cog already running
-' -- example: i2c.setupx(SCL, SDA, 400_000)
-    if (_cog)
-        return
-
-    _i2c_cmd.byte[0] := sclpin                  ' Setup pins
-    _i2c_cmd.byte[1] := sdapin
-    _i2c_cmd.word[1] := clkfreq / hz            ' Ticks in full cycle
-
-    _cog := cognew(@fast_i2c, @_i2c_cmd) + 1    ' Start the cog
-
-    return _cog
-
-PUB Terminate ' XXX
-' Kill i2c cog
-    if (_cog)
-        cogstop(_cog-1)
-        _cog := 0
-
-    longfill(@_i2c_cmd, 0, 4)
-
 PUB Present(slave_addr): status
 ' Check for slave device presence on bus
 '   Returns:
@@ -114,31 +82,6 @@ PUB Present(slave_addr): status
     repeat while (_i2c_cmd <> 0)
 
     return (wrblock_lsbf(@slave_addr, 1) == ACK)
-
-PUB Rd_Byte(ackbit): i2cbyte
-' Read byte from I2C bus
-    rdblock_lsbf(@i2cbyte, 1, ackbit)
-    return i2cbyte & $FF
-
-PUB Rd_Long(ackbit): i2clong
-' Read long from I2C bus
-    rdblock_lsbf(@i2clong, 4, ackbit)
-
-PUB Rd_Word(ackbit): i2cword
-' Read word from I2C bus
-    rdblock_lsbf(@i2cword, 2, ackbit)
-    return i2cword & $FFFF
-
-PUB Rd_Block(p_dest, count, ackbit) ' XXX
-' Read block of count bytes from I2C bus to p_dest
-    _i2c_params.word[0] := p_dest
-    _i2c_params.word[1] := count
-
-    if (ackbit)
-        ackbit := $80
-
-    _i2c_cmd := I2C_READ_LE | ackbit
-    repeat while (_i2c_cmd <> 0)
 
 PUB RdBlock_LSBF(ptr_buff, nr_bytes, ack_last)
 ' Read nr_bytes from I2C bus to ptr_buff
@@ -169,6 +112,27 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last)
 
     _i2c_cmd := I2C_READ_BE | ack_last
     repeat while (_i2c_cmd <> 0)
+
+PUB Rd_Byte(ackbit): i2cbyte
+' Read byte from I2C bus
+    rdblock_lsbf(@i2cbyte, 1, ackbit)
+    return i2cbyte & $FF
+
+PUB RdLong_LSBF(ackbit): i2c2long
+' Read long from I2C bus, least-significant byte first
+    rdblock_lsbf(@i2c2long, 4, ackbit)
+
+PUB RdLong_MSBF(ackbit): i2c2long
+' Read long from I2C bus, least-significant byte first
+    rdblock_msbf(@i2c2long, 4, ackbit)
+
+PUB RdWord_LSBF(ackbit): i2c2word
+' Read word from I2C bus, least-significant byte first
+    rdblock_lsbf(@i2c2word, 2, ackbit)
+
+PUB RdWord_MSBF(ackbit): i2c2word
+' Read word from I2C bus, least-significant byte first
+    rdblock_msbf(@i2c2word, 2, ackbit)
 
 PUB Read(ackbit): i2cbyte
 ' Read byte from I2C bus
@@ -214,30 +178,6 @@ PUB Waitx(slaveid, ms): t0
 
     return ACK
 
-PUB Wr_Byte(b): ackbit
-' Write byte to I2C bus
-    return wrblock_lsbf(@b, 1)
-
-PUB Wr_Long(l): ackbit
-' Write long to I2C bus
-'   least-significant byte first
-    return wrblock_lsbf(@l, 4)
-
-PUB Wr_Word(w): ackbit
-' Write word to I2C bus
-'   least-significant byte first
-    return wrblock_lsbf(@w, 2)
-
-PUB Wr_Block(p_src, count) | cmd    ' XXX
-' Write block of count bytes from p_src to I2C bus
-    _i2c_params.word[0] := p_src
-    _i2c_params.word[1] := count
-
-    _i2c_cmd := I2C_WRITE_LE
-    repeat while (_i2c_cmd <> 0)
-
-    return _i2c_result                            ' Return ACK or NAK
-
 PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit
 ' Write block of nr_bytes bytes from ptr_buff to I2C bus,
 '   Least-Significant byte first
@@ -260,9 +200,84 @@ PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit
 
     return _i2c_result                            ' Return ACK or NAK
 
+PUB Wr_Byte(byte2i2c): ackbit
+' Write byte to I2C bus
+    return wrblock_lsbf(@byte2i2c, 1)
+
+PUB WrLong_LSBF(long2i2c): ackbit
+' Write long to I2C bus, least-significant byte first
+    return wrblock_lsbf(@long2i2c, 4)
+
+PUB WrLong_MSBF(long2i2c): ackbit
+' Write long to I2C bus, most-significant byte first
+    return wrblock_msbf(@long2i2c, 4)
+
+PUB WrWord_LSBF(word2i2c): ackbit
+' Write word to I2C bus, least-significant byte first
+    return wrblock_lsbf(@word2i2c, 2)
+
+PUB WrWord_MSBF(word2i2c): ackbit
+' Write word to I2C bus, most-significant byte first
+    return wrblock_msbf(@word2i2c, 2)
+
 PUB Write(b): ackbit
 ' Write byte to I2C bus
     return wrblock_lsbf(@b, 1)
+
+' -- Legacy methods below
+
+PUB Setup(hz) ' XXX
+' Start I2C cog on default Propeller I2C bus
+' -- aborts if cog already running
+' -- example: i2c.setup(400_000)
+    if (_cog)
+        return
+
+    setupx(DEF_SCL, DEF_SDA, hz)                ' Use default Propeller I2C pins
+
+PUB Setupx(sclpin, sdapin, hz) ' XXX
+' Start i2c cog on any set of pins
+' -- aborts if cog already running
+' -- example: i2c.setupx(SCL, SDA, 400_000)
+    if (_cog)
+        return
+
+    _i2c_cmd.byte[0] := sclpin                  ' Setup pins
+    _i2c_cmd.byte[1] := sdapin
+    _i2c_cmd.word[1] := clkfreq / hz            ' Ticks in full cycle
+
+    _cog := cognew(@fast_i2c, @_i2c_cmd) + 1    ' Start the cog
+
+    return _cog
+
+PUB Terminate ' XXX
+' Kill i2c cog
+    if (_cog)
+        cogstop(_cog-1)
+        _cog := 0
+
+    longfill(@_i2c_cmd, 0, 4)
+
+PUB Rd_Block(p_dest, count, ackbit) ' XXX
+' Read block of count bytes from I2C bus to p_dest
+    _i2c_params.word[0] := p_dest
+    _i2c_params.word[1] := count
+
+    if (ackbit)
+        ackbit := $80
+
+    _i2c_cmd := I2C_READ_LE | ackbit
+    repeat while (_i2c_cmd <> 0)
+
+PUB Wr_Block(p_src, count) | cmd    ' XXX
+' Write block of count bytes from p_src to I2C bus
+    _i2c_params.word[0] := p_src
+    _i2c_params.word[1] := count
+
+    _i2c_cmd := I2C_WRITE_LE
+    repeat while (_i2c_cmd <> 0)
+
+    return _i2c_result                            ' Return ACK or NAK
 
 DAT
 

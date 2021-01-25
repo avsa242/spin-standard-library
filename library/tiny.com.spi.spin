@@ -186,7 +186,7 @@ PUB WrBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 
 
 PUB WrBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
-' Write block of data to SPI bus from ptr_buff, least-significant byte first
+' Write block of data to SPI bus from ptr_buff, most-significant byte first
     longmove(@SCK, @_SCK, 4)                ' copy pins from hub
     dira[MOSI] := 1                         ' ensure MOSI is an output
     case _spi_mode
