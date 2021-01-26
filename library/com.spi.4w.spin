@@ -6,7 +6,7 @@
         (based on SPI_Asm.spin, originally by
         Beau Schwabe)
     Started 2009
-    Updated Jan 25, 2021
+    Updated Jan 26, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -78,10 +78,10 @@ PUB RdBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
     case _spi_mode
         0, 2:
             repeat b_num from 0 to nr_bytes-1
-                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
+                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPRE, 8)
         1, 3:
             repeat b_num from 0 to nr_bytes-1
-                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPRE, 8)
+                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
 
 PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Read block of data from SPI bus, most-significant byte first
@@ -89,10 +89,10 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
     case _spi_mode
         0, 2:
             repeat b_num from nr_bytes-1 to 0
-                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
+                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPRE, 8)
         1, 3:
             repeat b_num from nr_bytes-1 to 0
-                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPRE, 8)
+                byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
 
 PUB Rd_Byte{}: spi2byte
 ' Read byte from SPI bus
