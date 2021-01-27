@@ -3,15 +3,12 @@
     Filename: LSM9DS1-Demo.spin
     Author: Jesse Burt
     Description: Demo of the LSM9DS1 driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Aug 12, 2017
-    Updated Aug 21, 2020
+    Updated Jan 24, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the following to choose which interface the LSM9DS1 is connected to
-'#define LSM9DS1_I2C    NOT IMPLEMENTED YET
-'#define LSM9DS1_SPI    NOT IMPLEMENTED YET
 CON
 
     _clkmode    = cfg#_clkmode
@@ -19,189 +16,132 @@ CON
 
 ' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
-    SCL_PIN     = 1
-    SDIO_PIN    = 2
-    CS_AG_PIN   = 3
-    CS_M_PIN    = 0
+    SCL_PIN     = 0
+    SDIO_PIN    = 1
+    CS_AG_PIN   = 2
+    CS_M_PIN    = 3
 ' --
+
+    DAT_X_COL   = 20
+    DAT_Y_COL   = DAT_X_COL + 15
+    DAT_Z_COL   = DAT_Y_COL + 15
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
-    io      : "io"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.9dof.lsm9ds1.3wspi"
+    imu     : "sensor.imu.9dof.lsm9ds1.spi"
 
-VAR
+PUB Main{}
 
-    long _overruns
+    setup{}
+    imu.preset_xl_g_m_3wspi{}                   ' default settings, but enable
+                                                ' reading mag through same bus
+                                                ' as accel and gyro, and set
+                                                ' scale factor for all three
+    repeat
+        ser.position(0, 3)
+        accelcalc{}
+        gyrocalc{}
+        magcalc{}
 
-PUB Main | dispmode, axo, ayo, azo, gxo, gyo, gzo
+        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
+            calibrate{}                         ' to calibrate sensor offsets
 
-    Setup
-    imu.AccelScale(2)                                       ' 2, 4, 8, 16 (g's)
-    imu.AccelAxisEnabled(%111)                              ' 0 or 1 for each bit (%xyz)
+PUB AccelCalc{} | ax, ay, az
 
-    imu.GyroScale(250)                                      ' 245, 500, 2000
-    imu.GyroAxisEnabled(%111)                               ' 0 or 1 for each bit (%xyz)
-    imu.GyroBias(0, 0, 0, imu#W)                            ' x, y, z: 0..65535, rw = 1 (write)
+    repeat until imu.acceldataready{}           ' wait for new sensor data set
+    imu.accelg(@ax, @ay, @az)                   ' read calculated sensor data
+    ser.str(string("Accel (g):"))
+    ser.positionx(DAT_X_COL)
+    decimal(ax, 1000000)                        ' data is in micro-g's; display
+    ser.positionx(DAT_Y_COL)                    ' it as if it were a float
+    decimal(ay, 1000000)
+    ser.positionx(DAT_Z_COL)
+    decimal(az, 1000000)
+    ser.clearline{}
+    ser.newline{}
 
-    imu.MagScale(4)                                         ' 4, 8, 12, 16
-    imu.MagDataRate(80_000)
+PUB GyroCalc{} | gx, gy, gz
 
-    ser.HideCursor
-    dispmode := 0
+    repeat until imu.gyrodataready{}
+    imu.gyrodps(@gx, @gy, @gz)
+    ser.str(string("Gyro (dps):"))
+    ser.positionx(DAT_X_COL)
+    decimal(gx, 1000000)
+    ser.positionx(DAT_Y_COL)
+    decimal(gy, 1000000)
+    ser.positionx(DAT_Z_COL)
+    decimal(gz, 1000000)
+    ser.clearline{}
+    ser.newline{}
 
-    gxo := gyo := gzo := 0
-    axo := ayo := azo := 0
-    ser.position(0, 3)                                      ' Read back the settings from above
-    ser.printf(string("AccelScale: %d\n"), imu.AccelScale(-2), 0, 0, 0, 0, 0)
+PUB MagCalc{} | mx, my, mz
 
-    imu.AccelBias(@axo, @ayo, @azo, imu#R)                       ' lsm9ds1 Accel has some factory trim accel offsets
-    ser.printf(string("AccelBias: %d(x), %d(y), %d(z)\n"), axo, ayo, azo, 0, 0, 0)
+    repeat until imu.magdataready{}
+    imu.maggauss(@mx, @my, @mz)
+    ser.str(string("Mag (gauss):"))
+    ser.positionx(DAT_X_COL)
+    decimal(mx, 1000)
+    ser.positionx(DAT_Y_COL)
+    decimal(my, 1000)
+    ser.positionx(DAT_Z_COL)
+    decimal(mz, 1000)
+    ser.clearline{}
+    ser.newline{}
 
-    ser.printf(string("GyroScale: %d\n"), imu.GyroScale(-2), 0, 0, 0, 0, 0)
-    imu.GyroBias(@gxo, @gyo, @gzo, imu#R)
-    ser.printf(string("GyroBias: %d(x), %d(y), %d(z)\n"), gxo, gyo, gzo, 0, 0, 0)
+PUB Calibrate{}
 
-    ser.printf(string("MagScale: %d\n"), imu.MagScale(-2), 0, 0, 0, 0, 0)
+    ser.position(0, 7)
+    ser.str(string("Calibrating..."))
+    imu.calibratemag{}
+    imu.calibratexlg{}
+    ser.positionx(0)
+    ser.clearline{}
 
-    ser.newline
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
+    else
+        sign := " "
 
     repeat
-        case ser.RxCheck
-            "q", "Q":                                       ' Quit the demo
-                ser.Position(0, 15)
-                ser.str(string("Halting"))
-                imu.Stop
-                time.msleep(5)
-                quit
-            "c", "C":                                       ' Perform calibration
-                Calibrate
-            "r", "R":                                       ' Change display mode: raw/calculated
-                ser.Position(0, 10)
-                repeat 2
-                    ser.clearline{}
-                    ser.Newline
-                dispmode ^= 1
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
 
-        ser.Position (0, 10)
-        case dispmode
-            0:
-                AccelRaw
-                GyroRaw
-                MagRaw
-            1:
-                AccelCalc
-                GyroCalc
-                MagCalc
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+    ser.chars(" ", 5)
 
-        ser.position (0, 15)
-        ser.str(string("Interrupt: "))
-        ser.bin(imu.Interrupt, 8)
+PUB Setup{}
 
-    ser.ShowCursor
-    FlashLED(LED, 100)
-
-PUB AccelCalc | ax, ay, az
-
-    repeat until imu.AccelDataReady
-    imu.AccelG (@ax, @ay, @az)
-    ser.str(string("Accel micro-g: "))
-    ser.Str (int.DecPadded (ax, 10))
-    ser.Str (int.DecPadded (ay, 10))
-    ser.Str (int.DecPadded (az, 10))
-    ser.clearline{}
-    ser.Newline
-
-PUB AccelRaw | ax, ay, az
-
-    repeat until imu.AccelDataReady
-    imu.AccelData (@ax, @ay, @az)
-    ser.str(string("Accel raw: "))
-    ser.Str (int.DecPadded (ax, 7))
-    ser.Str (int.DecPadded (ay, 7))
-    ser.Str (int.DecPadded (az, 7))
-    ser.clearline{}
-    ser.Newline
-
-PUB GyroCalc | gx, gy, gz
-
-    repeat until imu.GyroDataReady
-    imu.GyroDPS (@gx, @gy, @gz)
-    ser.str(string("Gyro micro DPS:  "))
-    ser.Str (int.DecPadded (gx, 11))
-    ser.Str (int.DecPadded (gy, 11))
-    ser.Str (int.DecPadded (gz, 11))
-    ser.clearline{}
-    ser.newline
-
-PUB GyroRaw | gx, gy, gz
-
-    repeat until imu.GyroDataReady
-    imu.GyroData (@gx, @gy, @gz)
-    ser.str(string("Gyro raw:  "))
-    ser.Str (int.DecPadded (gx, 7))
-    ser.Str (int.DecPadded (gy, 7))
-    ser.Str (int.DecPadded (gz, 7))
-    ser.clearline{}
-    ser.newline
-
-PUB MagCalc | mx, my, mz
-
-    repeat until imu.MagDataReady
-    imu.MagGauss (@mx, @my, @mz)
-    ser.str(string("Mag nano T:   "))
-    ser.Str (int.DecPadded (mx, 10))
-    ser.Str (int.DecPadded (my, 10))
-    ser.Str (int.DecPadded (mz, 10))
-    ser.clearline{}
-    ser.newline
-
-PUB MagRaw | mx, my, mz
-
-    repeat until imu.MagDataReady
-    imu.MagData (@mx, @my, @mz)
-    ser.str(string("Mag raw:  "))
-    ser.Str (int.DecPadded (mx, 7))
-    ser.Str (int.DecPadded (my, 7))
-    ser.Str (int.DecPadded (mz, 7))
-    ser.clearline{}
-    ser.newline
-
-PUB Calibrate
-
-    ser.Position (0, 14)
-    ser.str(string("Calibrating..."))
-    imu.CalibrateXLG
-    imu.CalibrateMag
-    ser.Position (0, 14)
-    ser.str(string("              "))
-
-PUB Setup
-
-    repeat until ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
-    ser.Clear
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
-
-    if imu.Start (SCL_PIN, SDIO_PIN, CS_AG_PIN, CS_M_PIN)
-        ser.str(string("LSM9DS1 driver started", ser#CR, ser#LF))
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if imu.start(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDIO_PIN)
+        ser.strln(string("LSM9DS1 driver started"))
     else
-        ser.str(string("LSM9DS1 driver failed to start- halting", ser#CR, ser#LF))
-        FlashLED(LED, 500)
-
-        imu.Stop
+        ser.strln(string("LSM9DS1 driver failed to start - halting"))
+        imu.stop{}
         time.msleep(5)
-        FlashLED(LED, 500)
-
-#include "lib.utility.spin"
+        repeat
 
 DAT
 {
