@@ -3,9 +3,9 @@
     Filename: sensor.gyroscope.l3gd20h.i2c.spin
     Author: Jesse Burt
     Description: Driver for the ST L3GD20H 3DoF gyroscope
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Jul 11, 2020
-    Updated Jul 19, 2020
+    Updated Jan 26, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -66,70 +66,87 @@ VAR
 OBJ
 
 #ifdef L3GD20H_I2C
-    i2c : "com.i2c"                                             'PASM I2C Driver
+    i2c : "com.i2c"                             ' PASM I2C engine
 #elseifdef L3GD20H_SPI
-    spi : "com.spi.bitbang"
+    spi : "com.spi.bitbang"                     ' PASM SPI engine (~4MHz)
 #else
 #error "One of L3GD20H_I2C or L3GD20H_SPI must be defined"
 #endif
-    core: "core.con.l3gd20h.spin"
+    core: "core.con.l3gd20h"
     time: "time"
 
-PUB Null
+PUB Null{}
 ' This is not a top-level object
 
 #ifdef L3GD20H_I2C
-PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
+PUB Start{}: status
+' Start using "standard" Propeller I2C pins and 100kHz
+    status := startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
-
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
-
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
-                time.MSleep (1)
-                if i2c.present (SLAVE_WR)                       'Response from device?
-                    if DeviceID == core#DEVID_RESP
-                        return okay
-
-    return FALSE                                                'If we got here, something went wrong
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+' Start using custom I/O pins and I2C bus speed
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}       I2C_HZ =< core#I2C_MAX_FREQ
+        if status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ)
+            time.msleep(1)
+            if i2c.present(SLAVE_WR)            ' check device bus presence
+                if deviceid{} == core#DEVID_RESP' validate device
+                    return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 #elseifdef L3GD20H_SPI
-PUB Start(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN): okay
-
-    if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if okay := spi.start(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN)'SPI Object Started?
-            time.MSleep (1)
-            if DeviceID == core#DEVID_RESP
-                return okay
-
-    return FALSE                                                'If we got here, something went wrong
+PUB Startx(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN): status
+' Start using custom I/O pins
+    if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
+}   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
+        if status := spi.start(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN)
+            time.msleep(1)
+            if deviceid{} == core#DEVID_RESP
+                return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 #endif
 
-PUB Stop
-' Put any other housekeeping code here required/recommended by your device before shutting down
+PUB Stop{}
+
 #ifdef L3GD20H_I2C
-    i2c.terminate
+    i2c.deinit{}
 #elseifdef L3GD20H_SPI
     spi.stop
 #endif
 
-PUB Defaults
+PUB Defaults{}
 ' Set factory defaults
-    BlockUpdateEnabled(FALSE)
-    DataByteOrder(LSBFIRST)
-    FIFOEnabled(FALSE)
-    GyroAxisEnabled(%111)
-    GyroDataRate(100)
-    GyroOpMode(POWERDOWN)
-    GyroScale(245)
-    HighPassFilterEnabled(FALSE)
-    HighPassFilterFreq(8_00)
-    HighPassFilterMode(HPF_NORMAL_RES)
-    Int1Mask(%00)
-    Int2Mask(%0000)
-    IntActiveState(INTLVL_LOW)
-    IntOutputType(INT_PP)
+{'  This is what _would_ be set:
+    blockupdateenabled(FALSE)
+    databyteorder(LSBFIRST)
+    fifoenabled(FALSE)
+    gyroaxisenabled(%111)
+    gyrodatarate(100)
+    gyroopmode(POWERDOWN)
+    gyroscale(245)
+    highpassfilterenabled(FALSE)
+    highpassfilterfreq(8_00)
+    highpassfiltermode(HPF_NORMAL_RES)
+    int1mask(%00)
+    int2mask(%0000)
+    intactivestate(INTLVL_LOW)
+    intoutputtype(INT_PP)
+}'  but to save code space, just soft-reset, instead:
+    reset{}
+
+PUB Preset_Normal{}
+' Like Defaults(), but
+'   * Normal (active) operating mode
+    reset{}
+    gyroopmode(NORMAL)
+    gyroscale(245)                              ' already set at POR, but this
+                                                ' needs to be called to set
+                                                ' scaling value hub var
 
 PUB AccelAxisEnabled(axis_mask)
 ' Dummy method
@@ -143,7 +160,7 @@ PUB AccelData(x, y, z)
 PUB AccelDataRate(Hz)
 ' Dummy method
 
-PUB AccelDataReady
+PUB AccelDataReady{}
 ' Dummy method
 
 PUB AccelDataOverrun
@@ -155,107 +172,107 @@ PUB AccelG(x, y, z)
 PUB AccelScale(scale)
 ' Dummy method
 
-PUB BlockUpdateEnabled(enabled): tmp
+PUB BlockUpdateEnabled(state): curr_state
 ' Enable block updates
 '   Valid values:
 '      *FALSE (0): Update gyro data outputs continuously
 '       TRUE (-1 or 1): Pause further updates until both MSB and LSB of data have been read
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#CTRL4, 1, @tmp)
-    case ||enabled
+    curr_state := 0
+    readreg(core#CTRL4, 1, @curr_state)
+    case ||(state)
         0, 1:
-            enabled := (||enabled & %1) << core#FLD_BDU
-        OTHER:
-            return ((tmp >> core#FLD_BDU) & %1) * TRUE
+            state := (||(state) & 1) << core#BDU
+        other:
+            return (((curr_state >> core#BDU) & 1) == 1)
 
-    tmp &= core#MASK_BDU
-    tmp := (tmp | enabled)
-    writeReg(core#CTRL4, 1, @tmp)
+    state := ((curr_state & core#BDU_MASK) | state)
+    writereg(core#CTRL4, 1, @state)
 
-PUB Calibrate
+PUB Calibrate{}
 ' Dummy method
 
-PUB CalibrateGyro | gbiasrawtmp[3], axis, gx, gy, gz, nr_samples
+PUB CalibrateGyro{} | gbiasrawtmp[3], axis, gx, gy, gz, nr_samples
 ' Calibrate the Gyroscope
 ' Turn on FIFO and set threshold to 31 samples
     fifoenabled(true)
     fifomode(FIFO)
-    fifothreshold(31)
-    nr_samples := fifothreshold(-2)                         ' Use what's read back rather than a constant, just to be sure
-    repeat until fifofull{}
-    longfill(@gbiasrawtmp, 0, 3)
-    gyrobias(0, 0, 0, W)                                    ' Clear out the existing bias; otherwise it accumulates
+    fifothreshold(31)                           ' set, confirm setting and use
+    nr_samples := fifothreshold(-2)             ' as number of samples to avg
+    repeat until fifofull{}                     ' wait until FIFO filled
+    longfill(@gbiasrawtmp, 0, 3)                ' initialize temp vars to 0
+    gyrobias(0, 0, 0, W)                        ' Clear out the existing bias;
+                                                '   otherwise it accumulates
 
-    repeat nr_samples                                       ' Read the gyro data stored in the FIFO
+    repeat nr_samples                           ' Read FIFO samples
         gyrodata(@gx, @gy, @gz)
-        gbiasrawtmp[X_AXIS] += gx                           ' Accumulate samples
+        gbiasrawtmp[X_AXIS] += gx               ' Accumulate, for each axis
         gbiasrawtmp[Y_AXIS] += gy
         gbiasrawtmp[Z_AXIS] += gz
 
-    gyrobias(gbiasrawtmp[X_AXIS]/nr_samples, gbiasrawtmp[Y_AXIS]/nr_samples, gbiasrawtmp[Z_AXIS]/nr_samples, W)
-    fifoenabled(false)                                      ' Turn the FIFO back off
+    ' average the sample data for each axis and update the offsets
+    gyrobias(gbiasrawtmp[X_AXIS]/nr_samples, gbiasrawtmp[Y_AXIS]/nr_samples, {
+}   gbiasrawtmp[Z_AXIS]/nr_samples, W)
+    fifoenabled(false)                          ' Turn the FIFO back off
     fifomode(BYPASS)
 
 PUB CalibrateMag(samples)
 ' Dummy method
 
-PUB CalibrateXLG
+PUB CalibrateXLG{}
 
     calibrategyro{}
 
-PUB DataByteOrder(lsb_msb_first): tmp
+PUB DataByteOrder(order): curr_ord
 ' Set byte order of gyro data
 '   Valid values:
 '      *LSBFIRST (0), MSBFIRST (1)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: Intended only for use when utilizing raw gyro data from GyroData method.
 '       GyroDPS expects the data order to be LSBFIRST
-    tmp := $00
-    readReg(core#CTRL4, 1, @tmp)
-    case lsb_msb_first
+    curr_ord := 0
+    readreg(core#CTRL4, 1, @curr_ord)
+    case order
         LSBFIRST, MSBFIRST:
-            lsb_msb_first <<= core#FLD_BLE
-        OTHER:
-            return (tmp >> core#FLD_BLE) & %1
+            order <<= core#BLE
+        other:
+            return ((curr_ord >> core#BLE) & 1)
 
-    tmp &= core#MASK_BLE
-    tmp := (tmp | lsb_msb_first)
-    writeReg(core#CTRL4, 1, @tmp)
+    order := ((curr_ord & core#BLE_MASK) | order)
+    writereg(core#CTRL4, 1, @order)
 
-PUB DeviceID: id
+PUB DeviceID{}: id
 ' Read device identification
     readreg(core#WHO_AM_I, 1, @id)
 
-PUB FIFOEnabled(enabled): tmp
+PUB FIFOEnabled(state): curr_state
 ' Enable FIFO for gyro data
 '   Valid values:
 '      *FALSE (0): FIFO disabled
-'       TRUE (-1 or 1): FIFO enabled
+'       TRUE (-1 or 1): FIFO state
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#CTRL5, 1, @tmp)
-    case ||enabled
+    curr_state := 0
+    readreg(core#CTRL5, 1, @curr_state)
+    case ||(state)
         0, 1:
-            enabled := (||enabled & %1) << core#FLD_FIFO_EN
-        OTHER:
-            return ((tmp >> core#FLD_FIFO_EN) & %1) * TRUE
+            state := (||(state) & 1) << core#FIFO_EN
+        other:
+            return (((curr_state >> core#FIFO_EN) & 1) == 1)
 
-    tmp &= core#MASK_FIFO_EN
-    tmp := (tmp | enabled)
-    writeReg(core#CTRL5, 1, @tmp)
+    state := ((curr_state & core#FIFO_EN_MASK) | state)
+    writereg(core#CTRL5, 1, @state)
 
-PUB FIFOEmpty: flag
-' FIFO empty status
+PUB FIFOEmpty{}: flag
+' Flag indicating FIFO empty
 '   Returns: FALSE (0): FIFO not empty, TRUE(-1): FIFO empty
-    readReg(core#FIFO_SRC, 1, @flag)
-    return ((flag >> core#FLD_EMPTY) & %1) == 1
+    readreg(core#FIFO_SRC, 1, @flag)
+    return (((flag >> core#EMPTY) & 1) == 1)
 
-PUB FIFOFull: flag
-' FIFO Threshold status
+PUB FIFOFull{}: flag
+' Flag indicating FIFO threshold reached
 '   Returns: FALSE (0): lower than threshold level, TRUE(-1): at or higher than threshold level
-    readReg(core#FIFO_SRC, 1, @flag)
-    return ((flag >> core#FLD_FTH) & %1) == 1
+    readreg(core#FIFO_SRC, 1, @flag)
+    return (((flag >> core#FTH) & 1) == 1)
 
 PUB FIFOMode(mode): curr_mode
 ' Set FIFO operation mode
@@ -268,198 +285,195 @@ PUB FIFOMode(mode): curr_mode
 '       DYN_STREAM (6)
 '       BYPASS2FIFO (7)
 '   Any other value polls the chip and returns the current setting
-    readReg(core#FIFO_CTRL, 1, @curr_mode)
+    readreg(core#FIFO_CTRL, 1, @curr_mode)
     case mode
         BYPASS, FIFO, STREAM, STREAM2FIFO, BYPASS2STREAM, DYN_STREAM, BYPASS2FIFO:
-            mode <<= core#FLD_FM
-        OTHER:
-            return (curr_mode >> core#FLD_FM) & core#BITS_FM
+            mode <<= core#FM
+        other:
+            return ((curr_mode >> core#FM) & core#FM_BITS)
 
-    curr_mode &= core#MASK_FM
-    curr_mode := (curr_mode | mode) & core#FIFO_CTRL_MASK
-    writeReg(core#FIFO_CTRL, 1, @curr_mode)
+    mode := ((curr_mode & core#FM_MASK) | mode)
+    writereg(core#FIFO_CTRL, 1, @mode)
 
 PUB FIFOThreshold(level): curr_lvl
 ' Set FIFO threshold level
 '   Valid values: 0..31
 '   Any other value polls the chip and returns the current setting
-    readReg(core#FIFO_CTRL, 1, @curr_lvl)
+    readreg(core#FIFO_CTRL, 1, @curr_lvl)
     case level
         0..31:
-        OTHER:
-            return curr_lvl & core#BITS_FTH
+        other:
+            return (curr_lvl & core#FTH_BITS)
 
-    curr_lvl &= core#MASK_FTH
-    curr_lvl := (curr_lvl | level) & core#FIFO_CTRL_MASK
-    writeReg(core#FIFO_CTRL, 1, @curr_lvl)
+    level := ((curr_lvl & core#FTH_MASK) | level)
+    writereg(core#FIFO_CTRL, 1, @level)
 
-PUB FIFOUnreadSamples: nr_samples
+PUB FIFOUnreadSamples{}: nr_samples
 ' Number of unread samples stored in FIFO
 '   Returns: 0 (empty) .. 32
-    readReg(core#FIFO_SRC, 1, @nr_samples)
-    return nr_samples & core#BITS_FSS
+    readreg(core#FIFO_SRC, 1, @nr_samples)
+    return nr_samples & core#FSS_BITS
 
-PUB GyroAxisEnabled(mask): tmp
+PUB GyroAxisEnabled(mask): curr_mask
 ' Enable gyroscope individual axes, by mask
 '   Valid values:
 '       0: Disable axis, 1: Enable axis
 '       Bits %210
 '             ZYX (default: %111)
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#CTRL1, 1, @tmp)
+    curr_mask := 0
+    readreg(core#CTRL1, 1, @curr_mask)
     case mask
         %000..%111:
-        OTHER:
-            return tmp & core#BITS_XYZEN
+        other:
+            return (curr_mask & core#XYZEN_BITS)
 
-    tmp &= core#MASK_XYZEN
-    tmp := (tmp | mask) & core#CTRL1_MASK
-    writeReg(core#CTRL1, 1, @tmp)
+    mask := ((curr_mask & core#XYZEN_MASK) | mask)
+    writereg(core#CTRL1, 1, @mask)
 
-PUB GyroBias(gxBias, gyBias, gzBias, rw)
+PUB Gyrobias(gxbias, gybias, gzbias, rw)
 ' Read or write/manually set Gyroscope calibration offset values
 '   Valid values:
 '       rw:
 '           R (0), W (1)
-'       gxBias, gyBias, gzBias:
+'       gxbias, gybias, gzbias:
 '           -32768..32767
-'   NOTE: When rw is set to READ, gxBias, gyBias and gzBias must be addresses of respective variables to hold the returned calibration offset values.
+'   NOTE: When rw is set to READ, gxbias, gybias and gzbias must be addresses of respective variables to hold the returned calibration offset values.
     case rw
         R:
-            long[gxBias] := _gBiasRaw[X_AXIS]
-            long[gyBias] := _gBiasRaw[Y_AXIS]
-            long[gzBias] := _gBiasRaw[Z_AXIS]
+            long[gxbias] := _gbiasraw[X_AXIS]
+            long[gybias] := _gbiasraw[Y_AXIS]
+            long[gzbias] := _gbiasraw[Z_AXIS]
 
         W:
-            case gxBias
+            case gxbias
                 -32768..32767:
-                    _gBiasRaw[X_AXIS] := gxBias
-                OTHER:
+                    _gbiasraw[X_AXIS] := gxbias
+                other:
 
-            case gyBias
+            case gybias
                 -32768..32767:
-                    _gBiasRaw[Y_AXIS] := gyBias
-                OTHER:
+                    _gbiasraw[Y_AXIS] := gybias
+                other:
 
-            case gzBias
+            case gzbias
                 -32768..32767:
-                    _gBiasRaw[Z_AXIS] := gzBias
-                OTHER:
+                    _gbiasraw[Z_AXIS] := gzbias
+                other:
 
 PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Read gyroscope data
-    bytefill(@tmp, $00, 8)
-    readReg(core#OUT_X_L, 6, @tmp)
+    bytefill(@tmp, 0, 8)
+    readreg(core#OUT_X_L, 6, @tmp)
 
     long[ptr_x] := (~~tmp.word[X_AXIS]) - _gbiasraw[X_AXIS]
     long[ptr_y] := (~~tmp.word[Y_AXIS]) - _gbiasraw[Y_AXIS]
     long[ptr_z] := (~~tmp.word[Z_AXIS]) - _gbiasraw[Z_AXIS]
 
-PUB GyroDataOverrun: flag
+PUB GyroDataOverrun{}: flag
 ' Indicates previously acquired data has been overwritten
 '   Returns: TRUE (-1) if data has overrun/been overwritten, FALSE otherwise
-    flag := $00
-    readReg(core#STATUS, 1, @flag)
-    flag := ((flag >> core#FLD_ZYXOR) & %1) == 1
+    flag := 0
+    readreg(core#STATUS, 1, @flag)
+    flag := (((flag >> core#ZYXOR) & 1) == 1)
 
-PUB GyroDataRate(Hz): tmp
-' Set rate of data output, in Hz
+PUB GyroDataRate(rate): curr_rate
+' Set rate of data output, in rate
 '   Valid values: *100, 200, 400, 800
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#CTRL1, 1, @tmp)
-    case Hz
+    curr_rate := 0
+    readreg(core#CTRL1, 1, @curr_rate)
+    case rate
         100, 200, 400, 800:
-            Hz := lookdownz(Hz: 100, 200, 400, 800) << core#FLD_DR
-        OTHER:
-            tmp := (tmp >> core#FLD_DR) & core#BITS_DR
-            return lookupz(tmp: 100, 200, 400, 800)
+            rate := lookdownz(rate: 100, 200, 400, 800) << core#DR
+        other:
+            curr_rate := ((curr_rate >> core#DR) & core#DR_BITS)
+            return lookupz(curr_rate: 100, 200, 400, 800)
 
-    tmp &= core#MASK_DR
-    tmp := (tmp | Hz)
-    writeReg(core#CTRL1, 1, @tmp)
+    rate := ((curr_rate & core#DR_MASK) | rate)
+    writereg(core#CTRL1, 1, @rate)
 
-PUB GyroDataReady: ready
+PUB GyroDataReady{}: ready
 ' Indicates data is ready
 '   Returns: TRUE (-1) if data ready, FALSE otherwise
-    ready := $00
-    readReg(core#STATUS, 1, @ready)
-    return ((ready >> core#FLD_ZYXDA) & %1) == 1
+    ready := 0
+    readreg(core#STATUS, 1, @ready)
+    return (((ready >> core#ZYXDA) & 1) == 1)
 
 PUB GyroDPS(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Read gyroscope data, calculated
 '   Returns: Angular rate in millionths of a degree per second
-    bytefill(@tmp, $00, 8)
-    readReg(core#OUT_X_L, 6, @tmp)
+    bytefill(@tmp, 0, 8)
+    readreg(core#OUT_X_L, 6, @tmp)
     long[ptr_x] := (~~tmp.word[X_AXIS] - _gbiasraw[X_AXIS]) * _gyro_cnts_per_lsb
     long[ptr_y] := (~~tmp.word[Y_AXIS] - _gbiasraw[Y_AXIS]) * _gyro_cnts_per_lsb
     long[ptr_z] := (~~tmp.word[Z_AXIS] - _gbiasraw[Z_AXIS]) * _gyro_cnts_per_lsb
 
-PUB GyroOpMode(mode): curr_mode
+PUB GyroOpMode(mode): curr_mode | tmp_xyz
 ' Set operation mode
 '   Valid values:
 '      *POWERDOWN (0): Power down - lowest power state
 '       SLEEP (1): Sleep - sensor enabled, but X, Y, Z outputs disabled
 '       NORMAL (2): Normal - active operating state
 '   Any other value polls the chip and returns the current setting
-    curr_mode := $00
-    readReg(core#CTRL1, 1, @curr_mode)
+    curr_mode := 0
+    readreg(core#CTRL1, 1, @curr_mode)
     case mode
         POWERDOWN:
-            curr_mode &= core#MASK_PD
+            mode := (curr_mode & core#PD_MASK)
         SLEEP:
-            mode := (1 << core#FLD_PD)
-            curr_mode &= core#MASK_XYZEN
+            mode := ((curr_mode & core#XYZEN_MASK) | (1 << core#PD))
         NORMAL:
-            mode := (1 << core#FLD_PD)
-            curr_mode &= core#MASK_PD
-        OTHER:
-            result := (curr_mode >> core#FLD_PD) & %1
-            if curr_mode & core#BITS_XYZEN
-                result += 1
-            return
+            mode := ((curr_mode & core#PD_MASK) | (1 << core#PD))
+        other:
+            tmp_xyz := curr_mode & core#XYZEN_BITS
+            curr_mode := (curr_mode >> core#PD) & 1
+            case curr_mode                      ' check state of power mode bit
+                0:                              ' power down
+                    return POWERDOWN
+                1:                              ' normal mode
+                    if tmp_xyz                  ' if any axes are enabled,
+                        return NORMAL           '   chip mode is normal
+                    else
+                        return SLEEP            ' if not, it's sleeping
 
-    curr_mode := (curr_mode | mode)
-    writeReg(core#CTRL1, 1, @curr_mode)
+    writereg(core#CTRL1, 1, @mode)
 
-PUB GyroScale(dps): curr_scale
+PUB GyroScale(scale): curr_scale
 ' Set gyro full-scale range, in degrees per second
 '   Valid values: *245, 500, 2000
 '   Any other value polls the chip and returns the current setting
-    curr_scale := $00
-    readReg(core#CTRL4, 1, @curr_scale)
-    case dps
+    curr_scale := 0
+    readreg(core#CTRL4, 1, @curr_scale)
+    case scale
         245, 500, 2000:
-            dps := lookdownz(dps: 245, 500, 2000) << core#FLD_FS
-            _gyro_cnts_per_lsb := lookupz(dps >> core#FLD_FS: 8_750, 17_500, 70_000)
-        OTHER:
-            curr_scale := (curr_scale >> core#FLD_FS) & core#BITS_FS
+            scale := lookdownz(scale: 245, 500, 2000) << core#FS
+            _gyro_cnts_per_lsb := lookupz(scale >> core#FS: 8_750, 17_500, 70_000)
+        other:
+            curr_scale := (curr_scale >> core#FS) & core#FS_BITS
             return lookupz(curr_scale: 245, 500, 2000)
 
-    curr_scale &= core#MASK_FS
-    curr_scale := (curr_scale | dps)
-    writeReg(core#CTRL4, 1, @curr_scale)
+    scale := ((curr_scale & core#FS_MASK) | scale)
+    writereg(core#CTRL4, 1, @scale)
 
-PUB HighPassFilterEnabled(enabled): tmp
+PUB HighPassFilterEnabled(state): curr_state
 ' Enable high-pass filter for gyro data
 '   Valid values:
 '      *FALSE (0): High-pass filter disabled
-'       TRUE (-1 or 1): High-pass filter enabled
+'       TRUE (-1 or 1): High-pass filter state
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#CTRL5, 1, @tmp)
-    case ||enabled
+    curr_state := 0
+    readreg(core#CTRL5, 1, @curr_state)
+    case ||(state)
         0, 1:
-            enabled := (||enabled & %1) << core#FLD_HPEN
-        OTHER:
-            return ((tmp >> core#FLD_HPEN) & %1) * TRUE
+            state := (||(state) & 1) << core#HPEN
+        other:
+            return (((curr_state >> core#HPEN) & 1) == 1)
 
-    tmp &= core#MASK_HPEN
-    tmp := (tmp | enabled)
-    writeReg(core#CTRL5, 1, @tmp)
+    state := ((curr_state & core#HPEN_MASK) | state)
+    writereg(core#CTRL5, 1, @state)
 
-PUB HighPassFilterFreq(freq): tmp
+PUB HighPassFilterFreq(freq): curr_freq
 ' Set high-pass filter frequency, in Hz
 '    Valid values:
 '       If ODR=100Hz: *8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05, 0_02, 0_01
@@ -468,46 +482,50 @@ PUB HighPassFilterFreq(freq): tmp
 '       If ODR=800Hz: *56_00, 30_00, 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10
 '       NOTE: Values are fractional values expressed as whole numbers. The '_' should be interpreted as a decimal point.
 '           Examples: 8_00 = 8Hz, 0_50 = 0.5Hz, 0_02 = 0.02Hz
-    tmp := $00
-    readReg(core#CTRL2, 1, @tmp)
-    case GyroDataRate(-2)
+    curr_freq := 0
+    readreg(core#CTRL2, 1, @curr_freq)
+    case gyrodatarate(-2)
         100:
             case freq
                 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05, 0_02, 0_01:
-                    freq := lookdownz(freq: 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05, 0_02, 0_01) << core#FLD_HPCF
-                OTHER:
-                    tmp := (tmp >> core#FLD_HPCF) & core#BITS_HPCF
-                    return lookupz(tmp: 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05, 0_02, 0_01)
-
+                    freq := lookdownz(freq: 8_00, 4_00, 2_00, 1_00, 0_50, {
+}                   0_20, 0_10, 0_05, 0_02, 0_01) << core#HPCF
+                other:
+                    curr_freq := (curr_freq >> core#HPCF) & core#HPCF_BITS
+                    return lookupz(curr_freq: 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, {
+}                   0_10, 0_05, 0_02, 0_01)
         200:
             case freq
                 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05, 0_02:
-                    freq := lookdownz(freq: 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05, 0_02) << core#FLD_HPCF
-                OTHER:
-                    tmp := (tmp >> core#FLD_HPCF) & core#BITS_HPCF
-                    return lookupz(tmp: 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05, 0_02)
-
+                    freq := lookdownz(freq: 15_00, 8_00, 4_00, 2_00, 1_00, {
+}                   0_50, 0_20, 0_10, 0_05, 0_02) << core#HPCF
+                other:
+                    curr_freq := (curr_freq >> core#HPCF) & core#HPCF_BITS
+                    return lookupz(curr_freq: 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, {
+}                   0_20, 0_10, 0_05, 0_02)
         400:
             case freq
                 30_00, 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05:
-                    freq := lookdownz(freq: 30_00, 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05) << core#FLD_HPCF
-                OTHER:
-                    tmp := (tmp >> core#FLD_HPCF) & core#BITS_HPCF
-                    return lookupz(tmp: 30_00, 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10, 0_05)
-
+                    freq := lookdownz(freq: 30_00, 15_00, 8_00, 4_00, 2_00, {
+}                   1_00, 0_50, 0_20, 0_10, 0_05) << core#HPCF
+                other:
+                    curr_freq := (curr_freq >> core#HPCF) & core#HPCF_BITS
+                    return lookupz(curr_freq: 30_00, 15_00, 8_00, 4_00, 2_00, 1_00, {
+}                   0_50, 0_20, 0_10, 0_05)
         800:
             case freq
                 56_00, 30_00, 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10:
-                    freq := lookdownz(freq: 56_00, 30_00, 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10) << core#FLD_HPCF
-                OTHER:
-                    tmp := (tmp >> core#FLD_HPCF) & core#BITS_HPCF
-                    return lookupz(tmp: 56_00, 30_00, 15_00, 8_00, 4_00, 2_00, 1_00, 0_50, 0_20, 0_10)
+                    freq := lookdownz(freq: 56_00, 30_00, 15_00, 8_00, 4_00, {
+}                   2_00, 1_00, 0_50, 0_20, 0_10) << core#HPCF
+                other:
+                    curr_freq := (curr_freq >> core#HPCF) & core#HPCF_BITS
+                    return lookupz(curr_freq: 56_00, 30_00, 15_00, 8_00, 4_00, 2_00, {
+}                   1_00, 0_50, 0_20, 0_10)
 
-    tmp &= core#MASK_HPCF
-    tmp := (tmp | freq)
-    writeReg(core#CTRL2, 1, @tmp)
+    freq := ((curr_freq & core#HPCF_MASK) | freq)
+    writereg(core#CTRL2, 1, @freq)
 
-PUB HighPassFilterMode(mode): tmp
+PUB HighPassFilterMode(mode): curr_mode
 ' Set data output high pass filter mode
 '   Valid values:
 '      *HPF_NORMAL_RES (0): Normal mode (reset reading HP_RESET_FILTER) XXX - clarify/expand
@@ -515,39 +533,37 @@ PUB HighPassFilterMode(mode): tmp
 '       HPF_NORMAL (2): Normal
 '       HPF_AUTO_RES (3): Autoreset on interrupt
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#CTRL2, 1, @tmp)
+    curr_mode := 0
+    readreg(core#CTRL2, 1, @curr_mode)
     case mode
         HPF_NORMAL_RES, HPF_REF, HPF_NORMAL, HPF_AUTO_RES:
-            mode <<= core#FLD_HPM
-        OTHER:
-            return (tmp >> core#FLD_HPM) & core#BITS_HPM
+            mode <<= core#HPM
+        other:
+            return ((curr_mode >> core#HPM) & core#HPM_BITS)
 
-    tmp &= core#MASK_HPM
-    tmp := (tmp | mode)
-    writeReg(core#CTRL2, 1, @tmp)
+    mode := ((curr_mode & core#HPM_MASK) | mode)
+    writereg(core#CTRL2, 1, @mode)
 
-PUB Int1Mask(func_mask): tmp
-' Set interrupt/function mask for INT1 pin
+PUB Int1Mask(mask): curr_mask
+' Set interrupt mask for INT1 pin
 '   Valid values:
 '       Bit 10   10
 '           ||   ||
 '    Range %00..%11
 '       Bit 1: Interrupt enable (*0: Disable, 1: Enable)
 '       Bit 0: Boot status (*0: Disable, 1: Enable)
-    tmp := $00
-    readReg(core#CTRL3, 1, @tmp)
-    case func_mask
+    curr_mask := 0
+    readreg(core#CTRL3, 1, @curr_mask)
+    case mask
         %00..%11:
-            func_mask <<= core#FLD_INT1
-        OTHER:
-            return (tmp >> core#FLD_INT1) & core#BITS_INT1
+            mask <<= core#INT1
+        other:
+            return ((curr_mask >> core#INT1) & core#INT1_BITS)
 
-    tmp &= core#MASK_INT1
-    tmp := (tmp | func_mask)
-    writeReg(core#CTRL3, 1, @tmp)
+    mask := ((curr_mask & core#INT1_MASK) | mask)
+    writereg(core#CTRL3, 1, @mask)
 
-PUB Int2Mask(func_mask): tmp
+PUB Int2Mask(mask): curr_mask
 ' Set interrupt/function mask for INT2 pin
 '   Valid values:
 '       Bit 3210   3210
@@ -557,56 +573,53 @@ PUB Int2Mask(func_mask): tmp
 '       Bit 2: FIFO watermark
 '       Bit 1: FIFO overrun
 '       Bit 0: FIFO empty
-    tmp := $00
-    readReg(core#CTRL3, 1, @tmp)
-    case func_mask
+    curr_mask := 0
+    readreg(core#CTRL3, 1, @curr_mask)
+    case mask
         %0000..%1111:
-        OTHER:
-            return tmp & core#BITS_INT2
+        other:
+            return (curr_mask & core#INT2_BITS)
 
-    tmp &= core#MASK_INT2
-    tmp := (tmp | func_mask)
-    writeReg(core#CTRL3, 1, @tmp)
+    mask := ((curr_mask & core#INT2_MASK) | mask)
+    writereg(core#CTRL3, 1, @mask)
 
-PUB IntActiveState(state): tmp
+PUB IntActiveState(state): curr_state
 ' Set active state for interrupts
 '   Valid values: *INTLVL_LOW (0), INTLVL_HIGH (1)
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#CTRL3, 1, @tmp)
+    curr_state := 0
+    readreg(core#CTRL3, 1, @curr_state)
     case state
         INTLVL_LOW, INTLVL_HIGH:
-            state := ((state ^ 1) & %1) << core#FLD_H_LACTIVE
-        OTHER:
-            return (((tmp >> core#FLD_H_LACTIVE) ^ 1) & %1)
+            state := ((state ^ 1) & 1) << core#H_LACTIVE
+        other:
+            return (((curr_state >> core#H_LACTIVE) ^ 1) & 1)
 
-    tmp &= core#MASK_H_LACTIVE
-    tmp := (tmp | state)
-    writeReg(core#CTRL3, 1, @tmp)
+    state := ((curr_state & core#H_LACTIVE_MASK) | state)
+    writereg(core#CTRL3, 1, @state)
 
-PUB Interrupt
+PUB Interrupt{}
 ' Dummy method
 
 PUB IntMask(func_mask)
 ' Dummy method
 
-PUB IntOutputType(pp_od): tmp
+PUB IntOutputType(type): curr_type
 ' Set interrupt pin output type
 '   Valid values:
 '      *INT_PP (0): Push-pull
 '       INT_OD (1): Open-drain
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#CTRL3, 1, @tmp)
-    case pp_od
+    curr_type := 0
+    readreg(core#CTRL3, 1, @curr_type)
+    case type
         INT_PP, INT_OD:
-            pp_od := pp_od << core#FLD_PP_OD
-        OTHER:
-            return (tmp >> core#FLD_PP_OD) & %1
+            type := type << core#PP_OD
+        other:
+            return ((curr_type >> core#PP_OD) & 1)
 
-    tmp &= core#MASK_PP_OD
-    tmp := (tmp | pp_od)
-    writeReg(core#CTRL3, 1, @tmp)
+    type := ((curr_type & core#PP_OD_MASK) | type)
+    writereg(core#CTRL3, 1, @type)
 
 PUB MagBias(x, y, z, rw)
 ' Dummy method
@@ -617,7 +630,7 @@ PUB MagData(x, y, z)
 PUB MagDataRate(hz)
 ' Dummy method
 
-PUB MagDataReady
+PUB MagDataReady{}
 ' Dummy method
 
 PUB MagGauss(x, y, z)
@@ -629,55 +642,61 @@ PUB MagScale(scale)
 PUB OpMode(mode)
 ' Dummy method
 
-PUB Temperature: result
-' Read device temperature
-    readReg(core#OUT_TEMP, 1, @result)
+PUB Reset{} | tmp
+' Perform soft-reset
+    tmp := (1 << core#SW_RES)
+    writereg(core#LOW_ODR, 1, @tmp)
 
-PRI readReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Read num_bytes from the slave device into the address stored in buff_addr
-    case reg_nr                                             ' Basic register validation
+PUB Temperature{}: temp_adc
+' Read device temperature
+    readreg(core#OUT_TEMP, 1, @temp_adc)
+
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Read nr_bytes from the slave device into ptr_buff
+    case reg_nr                                 ' validate reg #
         $0F, $20..$27, $2E..$39:
-        $28..$2D:                                           ' If reading from gyro data regs,
+        $28..$2D:                               ' If reading from data regs,
 #ifdef L3GD20H_SPI
-            reg_nr |= core#MS_SPI                           '   set multi-byte read mode (SPI)
+            reg_nr |= core#MS_SPI               '   set multi-byte read mode
 #elseifdef L3GD20H_I2C
-            reg_nr |= core#MS_I2C                           '   set multi-byte read mode (I2C)
+            reg_nr |= core#MS_I2C               '   same, for I2C
 #endif
-        OTHER:
+        other:
             return
 
 #ifdef L3GD20H_SPI
     reg_nr |= core#R
-    spi.Write(TRUE, @reg_nr, 1, FALSE)                      ' Ask for reg, but don't deselect after
-    spi.Read(buff_addr, nr_bytes, TRUE)                     ' Read in the data
+    ' request read from reg_nr
+    spi.write(TRUE, @reg_nr, 1, FALSE)          ' don't raise CS after
+    spi.read(ptr_buff, nr_bytes, TRUE)          ' now raise it
 #elseifdef L3GD20H_I2C
-    cmd_packet.byte[0] := SLAVE_WR
-    cmd_packet.byte[1] := reg_nr
-    i2c.start
-    i2c.wr_block (@cmd_packet, 2)
-    i2c.start
-    i2c.write (SLAVE_RD)
-    i2c.rd_block (buff_addr, nr_bytes, TRUE)
-    i2c.stop
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := reg_nr
+    i2c.start{}
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
+    i2c.start{}
+    i2c.wr_byte(SLAVE_RD)
+    i2c.rdblock_lsbf(ptr_buff, nr_bytes, TRUE)
+    i2c.stop{}
 #endif
 
-PRI writeReg(reg_nr, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Write num_bytes to the slave device from the address stored in buff_addr
-    case reg_nr                                                 'Basic register validation
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+' Write num_bytes to the slave device from the address stored in ptr_buff
+    case reg_nr                                 ' validate reg #
         $20..$25, $2E, $30, $32..$39:
 #ifdef L3GD20H_SPI
-            spi.write(TRUE, @reg_nr, 1, FALSE)                  ' Ask for reg, but don't deselect after
-            spi.write(TRUE, buff_addr, nr_bytes, TRUE)
+            ' request read from reg_nr
+            spi.write(TRUE, @reg_nr, 1, FALSE)  ' don't raise CS after
+            spi.write(TRUE, ptr_buff, nr_bytes, TRUE) ' now raise it
 #elseifdef L3GD20H_I2C
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg_nr
-            i2c.start
-            i2c.wr_block (@cmd_packet, 2)
-            repeat tmp from 0 to nr_bytes-1
-                i2c.write (byte[buff_addr][tmp])
-            i2c.stop
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+            i2c.stop{}
 #endif
-        OTHER:
+        other:
             return
 
 

@@ -2,14 +2,14 @@
     --------------------------------------------
     Filename: L3GD20H-Demo.spin
     Author: Jesse Burt
-    Description: Simple demo of the L3GD20H driver that
-        outputs live data from the chip.
-    Copyright (c) 2020
-    Started Jul 11, 2020
-    Updated Aug 9, 2020
+    Description: Demo of the L3GD20H driver
+    Copyright (c) 2021
+    Started Aug 12, 2017
+    Updated Jan 26, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
+' Uncomment one of the lines below to select an interface
 '#define L3GD20H_I2C
 #define L3GD20H_SPI
 
@@ -25,130 +25,111 @@ CON
     SER_BAUD    = 115_200
 
 ' I2C
-    I2C_SCL     = 17
-    I2C_SDA     = 19
+    I2C_SCL     = 28
+    I2C_SDA     = 29
     I2C_HZ      = 400_000
 
 ' SPI
-    CS_PIN      = 16
-    SCL_PIN     = 17
-    SDO_PIN     = 18
-    SDA_PIN     = 19
+    CS_PIN      = 0
+    SCL_PIN     = 1
+    SDO_PIN     = 2
+    SDA_PIN     = 3
 ' --
+
+    DAT_X_COL   = 20
+    DAT_Y_COL   = DAT_X_COL + 15
+    DAT_Z_COL   = DAT_Y_COL + 15
 
 OBJ
 
-    cfg         : "core.con.boardcfg.flip"
-    ser         : "com.serial.terminal.ansi"
-    time        : "time"
-    io          : "io"
-    l3gd20h     : "sensor.gyroscope.3dof.l3gd20h.i2cspi"
-    int         : "string.integer"
+    cfg     : "core.con.boardcfg.flip"
+    ser     : "com.serial.terminal.ansi"
+    time    : "time"
+    int     : "string.integer"
+    gyro    : "sensor.gyroscope.3dof.l3gd20h.i2cspi"
 
-VAR
+PUB Main{}
 
-    long _overruns
-    byte _ser_cog, _l3gd20h_cog
-
-PUB Main | dispmode
-
-    Setup
-
-    l3gd20h.gyroopmode(l3gd20h#NORMAL)                      ' POWERDOWN (0), SLEEP (1), NORMAL (2)
-    l3gd20h.gyrodatarate(100)                               ' 100, 200, 400, 800
-    l3gd20h.gyroaxisenabled(%111)                           ' Bitmask %zyx (0 = disable, 1 = enable)
-    l3gd20h.gyroscale(245)                                  ' 245, 500, 2000
-
-    dispmode := 0
-    ser.hidecursor
+    setup{}
+    gyro.preset_normal{}                        ' default settings, but enable
+                                                ' measurements, and set scale
+                                                ' factor
 
     repeat
-        case ser.rxcheck
-            "q", "Q":
-                ser.showcursor
-                ser.position(0, 5)
-                ser.str(string("Halting"))
-                l3gd20h.stop
-                time.msleep(5)
-                ser.stop
-                quit
-            "r", "R":
-                ser.position(0, 3)
-                repeat 2
-                    ser.clearline{}
-                    ser.newline
-                dispmode ^= 1
+        ser.position(0, 3)
+        gyrocalc{}
 
-        ser.position (0, 3)
-        case dispmode
-            0:
-                gyroraw
-                ser.newline
-                tempraw
-            1:
-                gyrocalc
-                ser.newline
-                tempraw
+        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
+            calibrate{}                         ' to calibrate sensor offsets
 
-    flashled(LED, 100)
+PUB GyroCalc{} | gx, gy, gz
 
-PUB GyroCalc | gx, gy, gz
+    repeat until gyro.gyrodataready{}           ' wait for new sensor data set
+    gyro.gyrodps(@gx, @gy, @gz)                 ' read calculated sensor data
+    ser.str(string("Gyro (dps):"))
+    ser.positionx(DAT_X_COL)
+    decimal(gx, 1000000)                        ' data is in micro-dps; display
+    ser.positionx(DAT_Y_COL)                    ' it as if it were a float
+    decimal(gy, 1000000)
+    ser.positionx(DAT_Z_COL)
+    decimal(gz, 1000000)
+    ser.clearline{}
+    ser.newline{}
 
-    repeat until l3gd20h.gyrodataready
-    l3gd20h.gyrodps (@gx, @gy, @gz)
-    if l3gd20h.gyrodataoverrun
-        _overruns++
-    ser.str (string("Gyro micro-DPS:  "))
-    ser.str (int.decpadded (gx, 12))
-    ser.str (int.decpadded (gy, 12))
-    ser.str (int.decpadded (gz, 12))
-    ser.newline
-    ser.str (string("Overruns: "))
-    ser.dec (_overruns)
+PUB Calibrate{}
 
-PUB GyroRaw | gx, gy, gz
+    ser.position(0, 7)
+    ser.str(string("Calibrating..."))
+    gyro.calibrategyro{}
+    ser.positionx(0)
+    ser.clearline{}
 
-    repeat until l3gd20h.gyrodataReady
-    l3gd20h.gyrodata (@gx, @gy, @gz)
-    if l3gd20h.gyrodataoverrun
-        _overruns++
-    ser.str (string("Raw Gyro:  "))
-    ser.str (int.decpadded (gx, 7))
-    ser.str (int.decpadded (gy, 7))
-    ser.str (int.decpadded (gz, 7))
-    ser.newline
-    ser.str (string("Overruns: "))
-    ser.dec (_overruns)
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
+    else
+        sign := " "
 
-PUB TempRaw
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
 
-    ser.str (string("Temperature: "))
-    ser.str (int.decpadded (l3gd20h.temperature, 7))
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+    ser.chars(" ", 5)
 
-PUB Setup
+PUB Setup{}
 
-    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, %0000, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
-    ser.clear
-    ser.str (string("Serial terminal started", ser#CR, ser#LF))
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
 #ifdef L3GD20H_SPI
-    if _l3gd20h_cog := l3gd20h.Start (CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
-        l3gd20h.defaults
-        ser.str (string("L3GD20H driver started (SPI)", ser#CR, ser#LF))
+    if gyro.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+        ser.strln(string("L3GD20H driver started (SPI)"))
     else
 #elseifdef L3GD20H_I2C
-    if _l3gd20h_cog := l3gd20h.Startx (I2C_SCL, I2C_SDA, I2C_HZ)
-        l3gd20h.defaults
-        ser.str (string("L3GD20H driver started (I2C)", ser#CR, ser#LF))
+    if gyro.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+        ser.strln(string("L3GD20H driver started (I2C)"))
     else
 #endif
-        ser.str (string("L3GD20H driver failed to start - halting", ser#CR, ser#LF))
-        l3gd20h.stop
-        time.msleep (5)
-        ser.stop
-        flashled(LED, 500)
-
-#include "lib.utility.spin"
+        ser.strln(string("L3GD20H driver failed to start - halting"))
+        gyro.stop{}
+        time.msleep(5)
+        ser.stop{}
+        repeat
 
 DAT
 {
