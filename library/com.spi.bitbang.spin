@@ -5,7 +5,7 @@
     Modified by: Jesse Burt
     Description: PASM SPI driver (~4MHz)
     Started Jul 19, 2011
-    Updated Jul 4, 2020
+    Updated Jan 30, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -41,8 +41,115 @@ CON
 
 VAR
 
+    long _spi_mode, _cpol, _des_after
     long _command
     byte _cog
+
+PUB Null{}
+' This is not a top-level object
+
+PUB Init(CS, SCK, MOSI, MISO, SPI_MODE): status
+
+    CSmask := |< CS
+    SCKmask := |< SCK
+    MOSImask := |< MOSI
+    MISOmask := |< MISO
+
+    status := _cog := cognew (@entry, @_command) + 1
+
+PUB DeInit{}
+
+    if _cog
+        cogstop(_cog - 1)
+        longfill(@CSmask, 0, 5)
+        _cog := 0
+
+PUB DeselectAfter(state)
+' Deselect (raise CS) after a read or write transaction
+'   NOTE: Transitional method for temporary compatibility with interface to PASM engine
+    _des_after := (state <> 0)
+
+PUB Mode(mode_nr): curr_mode    ' XXX non-functional, for now
+' Set SPI mode
+'   Valid values: 0..3
+'   Any other value returns the current setting
+    case mode_nr
+        0, 1:
+            _cpol := 0
+        2, 3:
+            _cpol := 1
+        other:
+            return _spi_mode
+
+    _spi_mode := mode_nr
+
+PUB RdBlock_LSBF(ptr_buff, nr_bytes) | tmp
+' Read block of data from SPI bus, least-significant byte first
+    tmp := _des_after
+    _command := CMD_READ + @ptr_buff
+    repeat while _command
+
+PUB RdBlock_MSBF(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
+' Read block of data from SPI bus, most-significant byte first
+    tmp := _des_after
+    _command := CMD_READ + @ptr_buff
+    repeat while _command
+
+PUB Rd_Byte{}: spi2byte
+' Read byte from SPI bus
+    rdblock_lsbf(@spi2byte, 1)
+
+PUB RdLong_LSBF{}: spi2long
+' Read long from SPI bus, least-significant byte first
+    rdblock_lsbf(@spi2long, 4)
+
+PUB RdLong_MSBF{}: spi2long 'XXX non-functional, for now
+' Read long from SPI bus, least-significant byte first
+    rdblock_msbf(@spi2long, 4)
+
+PUB RdWord_LSBF{}: spi2word
+' Read word from SPI bus, least-significant byte first
+    rdblock_lsbf(@spi2word, 2)
+
+PUB RdWord_MSBF{}: spi2word 'XXX non-functional, for now
+' Read word from SPI bus, least-significant byte first
+    rdblock_msbf(@spi2word, 2)
+
+PUB WrBlock_LSBF(ptr_buff, nr_bytes) | tmp
+' Write block of data to SPI bus from ptr_buff, least-significant byte first
+    tmp := _des_after
+    _command := CMD_WRITE + @ptr_buff
+
+    repeat while _command
+
+PUB WrBlock_MSBF(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
+' Write block of data to SPI bus from ptr_buff, most-significant byte first
+    tmp := _des_after
+    _command := CMD_WRITE + @ptr_buff
+
+    repeat while _command
+
+PUB Wr_Byte(byte2spi)
+' Write byte to SPI bus
+    wrblock_lsbf(@byte2spi, 1)
+
+PUB WrLong_LSBF(long2spi)
+' Write long to SPI bus, least-significant byte first
+    wrblock_lsbf(@long2spi, 4)
+
+PUB WrLong_MSBF(long2spi)   'XXX non-functional, for now
+' Write long to SPI bus, most-significant byte first
+    wrblock_msbf(@long2spi, 4)
+
+PUB WrWord_LSBF(word2spi)
+' Write word to SPI bus, least-significant byte first
+    wrblock_lsbf(@word2spi, 2)
+
+PUB WrWord_MSBF(word2spi)   'XXX non-functional, for now
+' Write word to SPI bus, most-significant byte first
+    wrblock_msbf(@word2spi, 2)
+
+' -- Legacy methods below
 
 PUB Start(CS, SCK, MOSI, MISO): okay
 
