@@ -3,9 +3,9 @@
     Filename: library.gfx.bitmap.spin
     Author: Jesse Burt
     Description: Library of generic bitmap-oriented graphics rendering routines
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started May 19, 2019
-    Updated Nov 21, 2020
+    Updated Jan 30, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,16 +19,18 @@ VAR
     long _font_width, _font_height, _font_addr, _fnt_scl
     long _fgcolor, _bgcolor
 
-PUB BGColor(col)
+PUB BGColor(col): curr_clr
 ' Set background color for subsequent drawing
     return _bgcolor := col
 
+#ifndef GFX_DIRECT
 PUB Bitmap(bitmap_addr, bitmap_size, offset)
 ' Copy a bitmap to the display buffer
 '   bitmap_addr:    Address of bitmap to copy
 '   bitmap_size:    Number of bytes to copy
 '   offset:         Offset within the display buffer to copy to
     bytemove(_ptr_drawbuffer + offset, bitmap_addr, bitmap_size)
+#endif
 
 PUB Box(x0, y0, x1, y1, color, filled) | x, y
 ' Draw a box
@@ -88,7 +90,7 @@ PUB Char(ch) | glyph_col, glyph_row, xs, ys, xe, ye, last_glyph_col, last_glyph_
     case ch
         LF:                                     ' line feed
             _row += char_ht                     ' increment row by one char
-            if _row > _disp_ymax-char_ht        ' if last row reached,
+            if _row > _disp_height-char_ht      ' if last row reached,
                 _row -= char_ht                 '   don't go further; instead,
                 repeat char_ht                  '   scroll up one text row
                     scrollup(0, 0, _disp_xmax, _disp_ymax)
@@ -124,13 +126,9 @@ PUB Char(ch) | glyph_col, glyph_row, xs, ys, xe, ye, last_glyph_col, last_glyph_
             if _col > _disp_xmax-char_wid       ' if last column reached,
                 _col := 0                       '   return to col 0 and go to
                 _row += char_ht                 '   the next row
-                if _row > _disp_ymax- char_ht   ' if last row is reached,
-                    _row -= char_ht             '   stay there and scroll up
-                    repeat char_ht              '   the display
-                        scrollup(0, 0, _disp_xmax, _disp_ymax)
-            if _row > _disp_ymax-char_ht
-                _row -= char_ht
-                repeat char_ht
+            if _row > _disp_height-char_ht      ' if last row is reached,
+                _row -= char_ht                 '   stay there and scroll up
+                repeat char_ht                  '   the display
                     scrollup(0, 0, _disp_xmax, _disp_ymax)
 
 PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
@@ -164,7 +162,8 @@ PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
             cdx += 2
             err += cdx - (radius << 1)
 
-PUB Clear
+#ifndef GFX_DIRECT
+PUB Clear{}
 ' Clear the display buffer
 #ifdef IL3820
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
@@ -185,34 +184,35 @@ PUB Clear
 #elseifdef VGABITMAP6BPP
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
+#endif
 
-PUB ClearAll
+PUB ClearAll{}
 
-    ClearAccel
-    Clear
-    Update
+'    clearaccel
+    clear{}
+    update{}
 
 PUB Copy(sx, sy, ex, ey, dx, dy) | x, y, tmp
 ' Copy rectangular region at (sx, sy, ex, ey) to (dx, dy)
     repeat y from sy to ey
         repeat x from sx to ex
-            tmp := Point(x, y)
-            Plot((dx + x)-sx, (dy + y)-sy, tmp)
+            tmp := point(x, y)
+            plot((dx + x)-sx, (dy + y)-sy, tmp)
 
 PUB Cut(sx, sy, ex, ey, dx, dy) | x, y, tmp
 ' Copy rectangular region at (sx, sy, ex, ey) to (dx, dy)
 '   Subsequently clears original region (sx, sy, ex, ey) to background color
     repeat y from sy to ey
         repeat x from sx to ex
-            tmp := Point(x, y)
-            Plot((dx + x)-sx, (dy + y)-sy, tmp)             ' Copy to destination region
-            Plot(x, y, _bgcolor)                            ' Cut the original region
+            tmp := point(x, y)
+            plot((dx + x)-sx, (dy + y)-sy, tmp)             ' Copy to destination region
+            plot(x, y, _bgcolor)                            ' Cut the original region
 
-PUB FGColor(col)
+PUB FGColor(col): curr_clr
 ' Set foreground color of subsequent drawing operations
     return _fgcolor := col
 
-PUB FontAddress(addr)
+PUB FontAddress(addr): curr_addr
 ' Set address of font definition
     case addr
         $0004..$7FFF:
@@ -220,7 +220,7 @@ PUB FontAddress(addr)
         OTHER:
             return _font_addr
 
-PUB FontHeight
+PUB FontHeight{}: curr_ht
 ' Return the set font height
     return _font_height
 
@@ -251,7 +251,7 @@ PUB FontSize(width, height)
     else
         _row_max := _disp_height/_font_height
 
-PUB FontWidth
+PUB FontWidth{}: curr_wid
 ' Return the set font width
     return _font_width
 
@@ -289,7 +289,7 @@ PUB Line(x1, y1, x2, y2, c) | sx, sy, ddx, ddy, err, e2
                 if e2 < ddx
                     err += ddx
                     y1 += sy
-
+#ifndef GFX_DIRECT
 PUB Plot(x, y, color)
 ' Plot pixel at x, y, color c
 #ifdef __FASTSPIN__
@@ -357,8 +357,9 @@ PUB Plot(x, y, color)
 #else
 #warning "No supported display types defined!"
 #endif
+#endif
 
-PUB Point(x, y)
+PUB Point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -401,41 +402,41 @@ PUB RGB222_RGB6(r, g, b)
 '   NOTE: The least-significant two bits are a requirement of the 6bpp VGA display driver
     return ((((r <# 3) #> 0) << 6) | (((g <# 3) #> 0) << 4) | (((b <# 3) #> 0) << 2) | $3)
 
-PUB RGBW8888_RGB32(r, g, b, w)
+PUB RGBW8888_RGB32(r, g, b, w): rgb32
 ' Return 32-bit long from discrete Red, Green, Blue, White color components (values 0..255)
-    result.byte[3] := r
-    result.byte[2] := g
-    result.byte[1] := b
-    result.byte[0] := w
+    rgb32.byte[3] := r
+    rgb32.byte[2] := g
+    rgb32.byte[1] := b
+    rgb32.byte[0] := w
 
-PUB RGBW8888_RGB32_Brightness(r, g, b, w, level)
+PUB RGBW8888_RGB32_Brightness(r, g, b, w, level): rgb32
 ' Return 32-bit long from discrete Red, Green, Blue, White color components
 '   and clamp all color channels to maximum level or brightness
 '   Valid values:
 '       r, g, b, w: 0..255
 '       level: 0..100 (%)
     if (level =< 0)
-        return $00_00_00_00
+        return 0
 
     elseif (level => 255)
         return RGBW8888_RGB32(r, g, b, w)
 
     else
-        r := r * level / 255                                        ' Apply level to RGBW
+        r := r * level / 255                    ' Apply level to RGBW
         g := g * level / 255
         b := b * level / 255
         w := w * level / 255
         return RGBW8888_RGB32(r, g, b, w)
 
-PUB RGB565_R8(rgb565)
+PUB RGB565_R8(rgb565): r8
 ' Isolate red component of 16-bit RGB565 color and return value scaled to 8-bit range
     return (((rgb565 & $F800) >> 11) * 527 + 23 ) >> 6
 
-PUB RGB565_G8(rgb565)
+PUB RGB565_G8(rgb565): g8
 ' Isolate green component of 16-bit RGB565 color and return value scaled to 8-bit range
     return (((rgb565 & $7E0) >> 5)  * 259 + 33 ) >> 6
 
-PUB RGB565_B8(rgb565)
+PUB RGB565_B8(rgb565): b8
 ' Isolate blue component of 16-bit RGB565 color and return value scaled to 8-bit range
     return ((rgb565 & $1F) * 527 + 23 ) >> 6
 
@@ -454,10 +455,10 @@ PUB ScrollDown(sx, sy, ex, ey) | scr_width, src, dest, x, y
     repeat y from ey-1 to sy
 
 #ifdef IL3820
-        Copy(sx, y, ex, y, sx, y+1)                         ' Use Copy() for display types other than VGA, for now (simpler to implement)
-#elseifdef SSD130X
-        Copy(sx, y, ex, y, sx, y+1)
-#elseifdef SSD1331
+        copy(sx, y, ex, y, sx, y+1)             ' Use Copy() for monochrome
+#elseifdef SSD130X                              ' display types, until a more
+        copy(sx, y, ex, y, sx, y+1)             ' efficient method can be
+#elseifdef SSD1331                              ' devised
         src := sx + (y * BYTESPERLN)
         dest := sx + ((y+1) * BYTESPERLN)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
@@ -466,7 +467,7 @@ PUB ScrollDown(sx, sy, ex, ey) | scr_width, src, dest, x, y
         dest := sx + ((y+1) * BYTESPERLN)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
-        Copy(sx, y, ex, y, sx, y+1)
+        copy(sx, y, ex, y, sx, y+1)
 #elseifdef ST7735
         src := sx + (y * BYTESPERLN)
         dest := sx + ((y+1) * BYTESPERLN)
@@ -480,7 +481,7 @@ PUB ScrollDown(sx, sy, ex, ey) | scr_width, src, dest, x, y
         dest := sx + ((y+1) * _disp_width)
         bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
-        Copy(sx, y, ex, y, sx, y+1)
+        copy(sx, y, ex, y, sx, y+1)
 #else
 #warning "No supported display types defined!"
 #endif
@@ -491,9 +492,9 @@ PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
     repeat y from sy to ey
 
 #ifdef IL3820
-        Copy(sx, y, ex, y, sx-1, y)                         ' Use Copy() for display types other than VGA, for now (simpler to implement)
+        copy(sx, y, ex, y, sx-1, y)
 #elseifdef SSD130X
-        Copy(sx, y, ex, y, sx-1, y)
+        copy(sx, y, ex, y, sx-1, y)
 #elseifdef SSD1331
         src := sx + (y * BYTESPERLN)
         dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
@@ -503,7 +504,7 @@ PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
         dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
-        Copy(sx, y, ex, y, sx-1, y)
+        copy(sx, y, ex, y, sx-1, y)
 #elseifdef ST7735
         src := sx + (y * BYTESPERLN)
         dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
@@ -517,7 +518,7 @@ PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
         dest := (sx-1) + (y * _disp_width)
         bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
-        Copy(sx, y, ex, y, sx-1, y)
+        copy(sx, y, ex, y, sx-1, y)
 #else
 #warning "No supported display types defined!"
 #endif
@@ -528,9 +529,9 @@ PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y
     repeat y from sy to ey
 
 #ifdef IL3820
-        Copy(sx, y, ex, y, sx+1, y)                         ' Use Copy() for display types other than VGA, for now (simpler to implement)
+        copy(sx, y, ex, y, sx+1, y)
 #elseifdef SSD130X
-        Copy(sx, y, ex, y, sx+1, y)
+        copy(sx, y, ex, y, sx+1, y)
 #elseifdef SSD1331
         src := sx + (y * BYTESPERLN)
         dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
@@ -540,7 +541,7 @@ PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y
         dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
-        Copy(sx, y, ex, y, sx+1, y)
+        copy(sx, y, ex, y, sx+1, y)
 #elseifdef ST7735
         src := sx + (y * BYTESPERLN)
         dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
@@ -554,7 +555,7 @@ PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y
         dest := (sx+1) + (y * _disp_width)
         bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
-        Copy(sx, y, ex, y, sx+1, y)
+        copy(sx, y, ex, y, sx+1, y)
 #else
 #warning "No supported display types defined!"
 #endif
@@ -565,9 +566,9 @@ PUB ScrollUp(sx, sy, ex, ey) | scr_width, src, dest, x, y
     repeat y from sy+1 to ey
 
 #ifdef IL3820
-        Copy(sx, y, ex, y, sx, y-1)                         ' Use Copy() for display types other than VGA, for now (simpler to implement)
+        copy(sx, y, ex, y, sx, y-1)
 #elseifdef SSD130X
-        Copy(sx, y, ex, y, sx, y-1)
+        copy(sx, y, ex, y, sx, y-1)
 #elseifdef SSD1331
         src := sx + (y * BYTESPERLN)
         dest := sx + ((y-1) * BYTESPERLN)
@@ -577,7 +578,7 @@ PUB ScrollUp(sx, sy, ex, ey) | scr_width, src, dest, x, y
         dest := sx + ((y-1) * BYTESPERLN)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
-        Copy(sx, y, ex, y, sx, y-1)
+        copy(sx, y, ex, y, sx, y-1)
 #elseifdef ST7735
         src := sx + (y * BYTESPERLN)
         dest := sx + ((y-1) * BYTESPERLN)
@@ -591,16 +592,16 @@ PUB ScrollUp(sx, sy, ex, ey) | scr_width, src, dest, x, y
         dest := sx + ((y-1) * _disp_width)
         bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
-        Copy(sx, y, ex, y, sx, y-1)
+        copy(sx, y, ex, y, sx, y-1)
 #else
 #warning "No supported display types defined!"
 #endif
 
-PUB TextCols
+PUB TextCols{}: cols
 ' Returns number of displayable text columns, based on set display width, font width, and scale
     return (_disp_width / _font_width) / _fnt_scl
 
-PUB TextRows
+PUB TextRows{}: rows
 ' Returns number of displayable text rows, based on set display height, font height, and scale
     return (_disp_height / _font_height) / _fnt_scl
 
