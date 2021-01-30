@@ -3,9 +3,9 @@
     Filename: SGP30-Demo.spin
     Author: Jesse Burt
     Description: Demo of the SGP30 driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 20, 2020
-    Updated Nov 20, 2020
+    Updated Jan 30, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,6 +40,8 @@ VAR
 PUB Main{} | i, tmp
 
     setup{}
+    iaq.reset{}                                 ' reset first for reliability
+
     bytefill(@_sn, 0, 6)
     iaq.serialnum(@_sn)
 
