@@ -3,9 +3,9 @@
     Filename: sensor.imu.6dof.icm20649.i2c.spin
     Author: Jesse Burt
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Aug 28, 2020
-    Updated Nov 1, 2020
+    Updated Jan 31, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,10 +21,6 @@ CON
     DEF_ADDR_BITS           = 0
     I2C_MAX_FREQ            = core#I2C_MAX_FREQ
 
-    DEF_MISO                = 0
-    DEF_SCK                 = 1
-    DEF_MOSI                = 2
-    DEF_CS                  = 3
     DEF_SCK_FREQ            = 1_000_000
 
 ' Indicate to user apps how many Degrees of Freedom each sub-sensor has
@@ -70,67 +66,58 @@ CON
 
 VAR
 
-    word    _abiasraw[ACCEL_DOF], _gbiasraw[GYRO_DOF]
-    word    _ares, _gres, _temp_scale
-    byte    _roomtemp_offs
-    byte    _addr
+    word _abiasraw[ACCEL_DOF], _gbiasraw[GYRO_DOF]
+    word _ares, _gres, _temp_scale
+    byte _roomtemp_offs
+    byte _addr
 
 OBJ
 
 #ifdef ICM20649_SPI
-    spi : "com.spi.bitbang"
+    spi : "com.spi.bitbang"                     ' PASM SPI engine
 #elseifdef ICM20649_I2C
-    i2c : "com.i2c"                                     ' PASM I2C Driver
+    i2c : "com.i2c"                             ' PASM I2C engine
 #endif
-    core: "core.con.icm20649.spin"                      ' Low-level constants
-    time: "time"                                        ' Basic timing functions
+    core: "core.con.icm20649.spin"              ' hw-specific low-level const's
+    time: "time"                                ' basic timing functions
 
 PUB Null{}
 ' This is not a top-level object
 
 #ifdef ICM20649_SPI
-
-PUB Start{}: okay
-' Start with "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_CS, DEF_SCK, DEF_MOSI, DEF_MISO, DEF_SCK_FREQ)
-
-PUB Startx(CS, SCK, MOSI, MISO, SCK_FREQ): okay
-' Start driver using SPI interface
-'   CS: SPI chip-select
-'   SCK: SPI SCK/clock pin
-'   MOSI: SPI MOSI/Propeller to Device
-'   MISO: SPI MISO/Device to Propeller
-'   All pin assignments must be unique and in the range 0..31
-'   SCK_FREQ: SPI bus frequency (device and SPI-engine specific)
-    if lookdown(CS: 0..31) and lookdown(SCK: 0..31) and lookdown(MOSI: 0..31) and lookdown(MISO: 0..31)
-        if SCK_FREQ =< core#SCK_MAX_FREQ
-            if okay := spi.start(CS, SCK, MOSI, MISO)
-                time.usleep(core#TPOR)          ' Device startup delay
-                if deviceid{} == core#DEVID_RESP' Verify device ID
-                    reset{}                     ' Restore default settings
-                    return
-
-    return FALSE                                ' One of the above failed
+PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
+' Start using custom I/O pin settings
+    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
+}   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
+        if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+            time.usleep(core#G_START_COLD)      ' wait for device startup
+            if deviceid{} == core#DEVID_RESP    ' validate device
+                return
+    ' if this point is reached, something above failed
+    ' Re-check I/O pin assignments, bus speed, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 #elseifdef ICM20649_I2C
 
-PUB Start{}: okay
-' Start with "standard" Propeller I2C pins and 100kHz
+PUB Start{}: status
+' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR_BITS)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): okay
-' Start with custom I2C I/O pin settings and bus speed
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)
-                _addr := (||(ADDR_BITS <> 0)) << 1
-                time.usleep(core#TPOR)                  ' Device startup delay
-                if i2c.present(SLAVE_WR | _addr)        ' Response from device?
-                    if deviceid{} == core#DEVID_RESP    ' Verify device ID
-                        reset{}                         ' Restore default settings
-                        return
-
-    return FALSE                                        ' One of the above failed
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
+' Start using custom I/O pin settings and bus frequency
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            _addr := (||(ADDR_BITS <> 0)) << 1  ' if not 0, then it's 1
+            time.usleep(core#G_START_COLD)      ' wait for device startup
+            if i2c.present(SLAVE_WR | _addr)    ' test device bus presence
+                if deviceid{} == core#DEVID_RESP' validate device
+                    return
+    ' if this point is reached, something above failed
+    ' Re-check I/O pin assignments, bus speed, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 #endif
 
@@ -139,52 +126,46 @@ PUB Stop{}
 '   power down the device
 '   stop the low-level interface engine (e.g., I2C, SPI, UART, etc)
 #ifdef ICM20649_SPI
-    spi.stop{}
+    spi.deinit{}
 #elseifdef ICM20649_I2C
-    i2c.terminate{}
+    i2c.deinit{}
 #endif
 
 PUB Defaults{}
 ' Set factory defaults
     reset{}
+
+PUB Preset_Active{}
+' Like Defaults(), but
+'   * powers on sensor
+'   * sets scaling factors
+    reset{}
+    powered(true)
     accelscale(4)
     gyroscale(500)
     tempscale(C)
 
-PUB PresetIMUActive 'XXX tentatively named
-' Preset settings:
-    powered(true)
-    clocksource(AUTO)
-    accelopmode(NORMAL)
-    accelaxisenabled(%111)
-    acceldatarate(1127)
-    accellowpassfilter(50)
-    gyroaxisenabled(%111)
-    gyrodatarate(1100)
-    gyrolowpassfilter(51)
-    tempenabled(true)
-    tempscale(C)
-
-PUB AccelAxisEnabled(xyz_mask): curr_mask
+PUB AccelAxisEnabled(mask): curr_mask
 ' Enable data output for accelerometer (all axes)
 '   Valid values: %000 (disable) or %001..%111 (enable), for all axes
+'       (default: %111)
 '   Any other value polls the chip and returns the current setting
-'   NOTE: All axes are affected. The xyz_mask parameter is used for
+'   NOTE: All axes are affected. The mask parameter is used for
 '       compatibility with other IMU drivers.
-    curr_mask := $00
+    curr_mask := 0
     readreg(core#PWR_MGMT_2, 1, @curr_mask)
-    case xyz_mask
+    case mask
         %000:
-            xyz_mask := %111 << core#DISABLE_ACCEL      ' Chip logic is inverse
-        %001..%111:                                     ' If any bit is set,
-            xyz_mask := %000                            '   enable the accel
+            mask := %111 << core#DIS_ACCEL      ' Chip logic is inverse
+        %001..%111:                             ' If any bit is set,
+            mask := %000                        '   enable the accel
         other:
-            curr_mask >>= core#DISABLE_ACCEL
-            curr_mask &= core#DISABLE_ACCEL_BITS
+            curr_mask >>= core#DIS_ACCEL
+            curr_mask &= core#DIS_ACCEL_BITS
             return (curr_mask ^ %111)
 
-    xyz_mask := (curr_mask & core#DISABLE_ACCEL_MASK) | xyz_mask
-    writereg(core#PWR_MGMT_2, 1, @xyz_mask)
+    mask := (curr_mask & core#DIS_ACCEL_MASK) | mask
+    writereg(core#PWR_MGMT_2, 1, @mask)
 
 PUB AccelBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
 ' Read or write/manually set accelerometer calibration offset values
@@ -194,14 +175,17 @@ PUB AccelBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
 '       When rw == R (0, read)
 '           ptr_x, ptr_y, ptr_z:
 '               Pointers to variables to hold current settings for respective axes
-'   NOTE: The ICM20649 accelerometer is pre-programmed with offsets, which may or may not be adequate for your application
-    readreg(core#XA_OFFS_H, 2, @tmp[X_AXIS])            ' Discrete reads because the three axes
-    readreg(core#YA_OFFS_H, 2, @tmp[Y_AXIS])            '   aren't contiguous register pairs
+'   NOTE: The ICM20649 accelerometer is pre-programmed with offsets, which may
+'       or may not be adequate for your application
+    ' Discrete reads because the three axes aren't contiguous register pairs
+    readreg(core#XA_OFFS_H, 2, @tmp[X_AXIS])
+    readreg(core#YA_OFFS_H, 2, @tmp[Y_AXIS])
     readreg(core#ZA_OFFS_H, 2, @tmp[Z_AXIS])
 
     case rw
          W:
-            tc_bit[X_AXIS] := tmp[X_AXIS] & 1           ' LSB of each axis' data is a temperature compensation flag
+            ' preserve temperature compensation bit
+            tc_bit[X_AXIS] := tmp[X_AXIS] & 1
             tc_bit[Y_AXIS] := tmp[Y_AXIS] & 1
             tc_bit[Z_AXIS] := tmp[Z_AXIS] & 1
 
@@ -224,7 +208,7 @@ PUB AccelClearInt{} | tmp
 ' Clears out any interrupts set up on the Accelerometer
 '   and resets all Accelerometer interrupt registers to their default values.
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    tmp := $00
+    tmp := 0
 
 PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Accelerometer output registers
@@ -236,65 +220,67 @@ PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
 PUB AccelDataOverrun{}: flag
 ' Indicates previously acquired data has been overwritten
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    flag := $00
+    flag := 0
 
-PUB AccelDataRate(Hz): curr_Hz
+PUB AccelDataRate(rate): curr_rate
 ' Set accelerometer output data rate, in Hz
-'   Valid values: 1..1127
+'   Valid values: 1..1127 (default: 1127)
 '   Any other value polls the chip and returns the current setting
-    case Hz
+    case rate
         1..1127:
-            Hz := (1127 / Hz) - 1
-            writereg(core#ACCEL_SMPLRT_DIV, 2, @Hz)
+            rate := (1127 / rate) - 1
+            writereg(core#ACCEL_SMPLRT_DIV, 2, @rate)
         other:
-            curr_Hz := 0
-            readreg(core#ACCEL_SMPLRT_DIV, 2, @curr_Hz)
-            return 1127 / (curr_Hz + 1)
+            curr_rate := 0
+            readreg(core#ACCEL_SMPLRT_DIV, 2, @curr_rate)
+            return (1127 / (curr_rate + 1))
 
 PUB AccelDataReady{}: flag
 ' Flag indicating new accelerometer data available
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
     return xlgdataready{}
 
-PUB AccelG(ax, ay, az) | tmpx, tmpy, tmpz
-' Reads the Accelerometer output registers and scales the outputs to micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
+PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpx, tmpy, tmpz
+' Read the Accelerometer data and scale the outputs to micro-g's
+'   (1_000_000 = 1.000000 g = 9.8 m/s/s)
     acceldata(@tmpx, @tmpy, @tmpz)
-    long[ax] := tmpx * _ares
-    long[ay] := tmpy * _ares
-    long[az] := tmpz * _ares
+    long[ptr_x] := tmpx * _ares
+    long[ptr_y] := tmpy * _ares
+    long[ptr_z] := tmpz * _ares
 
 PUB AccelInt{}: flag
 ' Flag indicating accelerometer interrupt asserted
 '   Returns TRUE if interrupt asserted, FALSE if not
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    flag := $00
+    flag := 0
 
-PUB AccelLowPassFilter(cutoff_Hz): curr_setting | lpf_enable
+PUB AccelLowPassFilter(freq): curr_freq | lpf_enable
 ' Set accelerometer output data low-pass filter cutoff frequency, in Hz
-'   Valid values: 6, 12, 24, 50, 111, 246, 473
+'   Valid values: 6, 12, 24, 50, 111, *246, 473
 '   Any other value polls the chip and returns the current setting
-    curr_setting := lpf_enable := 0
-    readreg(core#ACCEL_CFG, 1, @curr_setting)
-    case cutoff_Hz
-        0:                                                  ' Disable/bypass the LPF
+    curr_freq := lpf_enable := 0
+    readreg(core#ACCEL_CFG, 1, @curr_freq)
+    case freq
+        0:                                      ' Disable/bypass the LPF
             lpf_enable := %0
         6, 12, 24, 50, 111, 246, 473:
-            cutoff_Hz := lookdown(cutoff_Hz: 246, 111, 50, 24, 12, 6, 473) << core#ACCEL_DLPFCFG
-            lpf_enable := %1
+            freq := lookdown(freq: 246, 111, 50, 24, 12, 6, 473) << core#ACCEL_DLPFCFG
+            lpf_enable := 1
         other:
-            if (curr_setting & %1) <> 1                     ' The LPF bypass bit is set, so
-                return 0                                    '   return 0 (LPF bypassed/disabled)
+            if (curr_freq & 1) <> 1
+                return 0                        ' LPF bypass bit set; return 0
             else
-                curr_setting := (curr_setting >> core#ACCEL_DLPFCFG) & core#ACCEL_DLPFCFG_BITS
-                return lookup(curr_setting: 246, 111, 50, 24, 12, 6, 473)
+                curr_freq := (curr_freq >> core#ACCEL_DLPFCFG) & core#ACCEL_DLPFCFG_BITS
+                return lookup(curr_freq: 246, 111, 50, 24, 12, 6, 473)
 
-    cutoff_Hz := (curr_setting & core#ACCEL_DLPFCFG_MASK & core#ACCEL_FCHOICE_MASK) | cutoff_Hz | lpf_enable
-    writereg(core#ACCEL_CFG, 1, @cutoff_Hz)
+    freq := (curr_freq & core#ACCEL_DLPFCFG_MASK & core#ACCEL_FCH_MASK) | {
+}   freq | lpf_enable
+    writereg(core#ACCEL_CFG, 1, @freq)
 
 PUB AccelOpMode(mode): curr_mode
 ' Set accelerometer operating mode
 '   Valid values:
-'       NORMAL (0): Normal operating mode
+'      *NORMAL (0): Normal operating mode
 '       LOWPWR (1): Low-power mode
 '   Any other value polls the chip and returns the current setting
     curr_mode := 0
@@ -303,53 +289,54 @@ PUB AccelOpMode(mode): curr_mode
         LOWPWR, NORMAL:
             mode <<= core#ACCEL_CYCLE
         other:
-            return (curr_mode >> core#ACCEL_CYCLE) & %1
+            return ((curr_mode >> core#ACCEL_CYCLE) & 1)
 
     mode := (curr_mode & core#ACCEL_CYCLE_MASK) | mode
     writereg(core#LP_CONFIG, 1, @mode)
 
-PUB AccelScale(g): curr_scl
+PUB AccelScale(scale): curr_scl
 ' Set accelerometer full-scale range, in g's
 '   Valid values: *4, 8, 16, 30
 '   Any other value polls the chip and returns the current setting
     curr_scl := 0
     readreg(core#ACCEL_CFG, 1, @curr_scl)
-    case g
+    case scale
         4, 8, 16, 30:
-            g := lookdownz(g: 4, 8, 16, 30) << core#ACCEL_FS_SEL
-            _ares := lookupz(g >> core#ACCEL_FS_SEL: 0_000122, 0_000244, 0_000488, 0_000976)
+            scale := lookdownz(scale: 4, 8, 16, 30) << core#ACCEL_FS_SEL
+            _ares := lookupz(scale >> core#ACCEL_FS_SEL: 0_000122, 0_000244, 0_000488, 0_000976)
             ' 1/8192 (LSB per g), 1/4096, 1/2048, 1/1024 * 1_000_000
         other:
             curr_scl := (curr_scl >> core#ACCEL_FS_SEL) & core#ACCEL_FS_SEL_BITS
             return lookupz(curr_scl: 4, 8, 16, 30)
 
-    g := ((curr_scl & core#ACCEL_FS_SEL_MASK) | g) & core#ACCEL_CFG_MASK
-    writereg(core#ACCEL_CFG, 1, @g)
+    scale := ((curr_scl & core#ACCEL_FS_SEL_MASK) | scale) & core#ACCEL_CFG_MASK
+    writereg(core#ACCEL_CFG, 1, @scale)
 
 PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, factory_bias[3], orig_scale, orig_datarate, orig_lpf
 ' Calibrate the accelerometer
-'   NOTE: The accelerometer must be oriented with the package top facing up for this method to be successful
-    longfill(@tmpx, 0, 14)                                  ' Initialize variables to 0
-    orig_scale := accelscale(-2)                            ' Preserve the user's original settings
+'   NOTE: The accelerometer must be oriented with the package top facing up
+'   for this method to be successful
+    longfill(@tmpx, 0, 14)                      ' Initialize variables to 0
+    orig_scale := accelscale(-2)                ' Preserve original settings
     orig_datarate := acceldatarate(-2)
     orig_lpf := accellowpassfilter(-2)
 
-    accelscale(4)                                           ' Set accel to most sensitive scale,
-    acceldatarate(1172)                                     '   fastest sample rate,
-    accellowpassfilter(111)                                 '   and a low-pass filter of 111Hz
+    accelscale(4)                               ' Set accel to most sensitive scale,
+    acceldatarate(1172)                         '   fastest sample rate,
+    accellowpassfilter(111)                     '   and a LPF of 111Hz
 
-                                                            ' ICM20649 accel has factory bias offsets,
-                                                            '   so read them in first
+                                                ' ICM20649 accel has factory bias offsets,
+                                                '   so read them in first
     accelbias(@factory_bias[X_AXIS], @factory_bias[Y_AXIS], @factory_bias[Z_AXIS], 0)
 
-    samples := 40                                           ' # samples to use for averaging
+    samples := 40                               ' # samples to use for averaging
 
     repeat samples
-        repeat until acceldataready
+        repeat until acceldataready{}
         acceldata(@tmpx, @tmpy, @tmpz)
         tmpbias[X_AXIS] += tmpx
         tmpbias[Y_AXIS] += tmpy
-        tmpbias[Z_AXIS] += tmpz - (1_000_000 / _ares)       ' Assumes sensor facing up!
+        tmpbias[Z_AXIS] += tmpz - (1_000_000 / _ares)
 
     repeat axis from X_AXIS to Z_AXIS
         tmpbias[axis] /= samples
@@ -357,36 +344,42 @@ PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, factory_bias
 
     accelbias(tmpbias[X_AXIS], tmpbias[Y_AXIS], tmpbias[Z_AXIS], W)
 
-    accelscale(orig_scale)                                  ' Restore user settings
+    accelscale(orig_scale)                      ' Restore user settings
     acceldatarate(orig_datarate)
     accellowpassfilter(orig_lpf)
 
-PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbiasraw[3], axis, samples, orig_scale, orig_datarate, orig_lpf
+PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, orig_scl, orig_drate, orig_lpf
 ' Calibrate the gyroscope
-    longfill(@tmpx, 0, 8)                                   ' Initialize variables to 0
-    orig_scale := gyroscale(-2)                             ' Preserve the user's original settings
-    orig_datarate := gyrodatarate(-2)
+    longfill(@tmpx, 0, 8)                       ' Initialize variables to 0
+    orig_scl := gyroscale(-2)                   ' Preserve original settings
+    orig_drate := gyrodatarate(-2)
     orig_lpf := gyrolowpassfilter(-2)
 
-    gyroscale(500)                                          ' Set gyro to most sensitive scale,
-    gyrodatarate(1100)                                      '   fastest sample rate,
-    gyrolowpassfilter(197)                                  '   and a low-pass filter of 197Hz
-    gyrobias(0, 0, 0, W)                                    ' Reset gyroscope bias offsets
-    samples := 40                                           ' # samples to use for average
+    gyroscale(500)                              ' Set gyro to most sensitive scale,
+    gyrodatarate(1100)                          '   fastest sample rate,
+    gyrolowpassfilter(197)                      '   and a low-pass filter of 197Hz
+    gyrobias(0, 0, 0, W)                        ' Reset gyroscope bias offsets
+    samples := 40                               ' # samples to use for average
 
-    repeat samples                                          ' Accumulate samples to be averaged
-        repeat until gyrodataready
+    repeat samples                              ' Accumulate samples to be averaged
+        repeat until gyrodataready{}
         gyrodata(@tmpx, @tmpy, @tmpz)
-        tmpbiasraw[X_AXIS] -= tmpx                          ' Bias offsets are _added_ by the chip, so
-        tmpbiasraw[Y_AXIS] -= tmpy                          '   negate the samples
-        tmpbiasraw[Z_AXIS] -= tmpz
+        tmpbias[X_AXIS] -= tmpx                 ' offsets are _added_ by the
+        tmpbias[Y_AXIS] -= tmpy                 ' chip, so negate the samples
+        tmpbias[Z_AXIS] -= tmpz
 
-                                                            ' Write offsets to sensor (scaled to expected range)
-    gyrobias((tmpbiasraw[X_AXIS]/samples) / 4, (tmpbiasraw[Y_AXIS]/samples) / 4, (tmpbiasraw[Z_AXIS]/samples) / 4, W)
+                                                ' Write offsets to sensor (scaled to expected range)
+    gyrobias((tmpbias[X_AXIS]/samples) / 4, (tmpbias[Y_AXIS]/samples) / 4,{
+}   (tmpbias[Z_AXIS]/samples) / 4, W)
 
-    gyroscale(orig_scale)                                   ' Restore user settings
-    gyrodatarate(orig_datarate)
+    gyroscale(orig_scl)                         ' Restore user settings
+    gyrodatarate(orig_drate)
     gyrolowpassfilter(orig_lpf)
+
+PUB CalibrateXLG{}
+
+    calibrateaccel{}
+    calibrategyro{}
 
 PUB ClockSource(src): curr_src
 ' Set sensor clock source
@@ -399,7 +392,7 @@ PUB ClockSource(src): curr_src
     case src
         INT20, AUTO, CLKSTOP:
         other:
-            return curr_src & core#CLKSEL_BITS
+            return (curr_src & core#CLKSEL_BITS)
 
     src := (curr_src & core#CLKSEL_MASK) | src
     writereg(core#PWR_MGMT_1, 1, @src)
@@ -410,7 +403,7 @@ PUB DeviceID{}: id
 
 PUB FIFOEnabled(state): curr_state
 ' Enable the FIFO
-'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: This disables the interface to the FIFO, but the chip will still write data to it, if FIFO data sources are defined with FIFOSource()
     curr_state := 0
@@ -421,20 +414,20 @@ PUB FIFOEnabled(state): curr_state
             state := ((curr_state & core#FIFO_EN_MASK) | state) & core#USER_CTRL_MASK
             writereg(core#USER_CTRL, 1, @state)
         other:
-            return ((curr_state >> core#FIFO_EN) & 1) == 1
+            return (((curr_state >> core#FIFO_EN) & 1) == 1)
 
 PUB FIFOFull{}: flag
 ' Flag indicating FIFO is full
 '   Returns: TRUE (-1) if FIFO is full, FALSE (0) otherwise
 '   NOTE: If this flag is set, the oldest data has already been dropped from the FIFO
     readreg(core#INT_STATUS_2, 1, @flag)
-    return ((flag >> core#FIFO_OVERFLOW_INT) & 1) == 1
+    return (((flag >> core#FIFO_OVRFL_INT) & 1) == 1)
 
 PUB FIFOMode(mode): curr_mode
 ' Set FIFO mode
 '   Valid values:
 '       BYPASS (2): FIFO disabled
-'       STREAM (0): FIFO enabled; when full, new data overwrites old data
+'      *STREAM (0): FIFO enabled; when full, new data overwrites old data
 '       FIFO (15): FIFO enabled; when full, no new data will be written to FIFO
 '   Any other value polls the chip and returns the current setting
 '   NOTE: If no data sources are set using FIFOSource(), the current mode returned will be BYPASS (0), regardless of what the mode was previously set to
@@ -451,7 +444,7 @@ PUB FIFOMode(mode): curr_mode
                 return                          '   either STREAM or FIFO as the current mode
             else
                 return BYPASS                   ' If not, anything besides 0 (BYPASS) doesn't really matter or make sense
-    mode := (curr_mode & core#FIFO_MODE_MASK) | mode
+    mode := ((curr_mode & core#FIFO_MODE_MASK) | mode)
     writereg(core#FIFO_MODE, 1, @mode)
 
 PUB FIFORead(nr_bytes, ptr_data)
@@ -490,32 +483,33 @@ PUB FIFOThreshold(level): curr_lvl
 '   Valid values:
 '   Any other value polls the chip and returns the current setting
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    curr_lvl := $00
+    curr_lvl := 0
 
 PUB FIFOUnreadSamples{}: nr_samples
 ' Number of unread samples stored in FIFO
 '   Returns: unsigned 13bit
     readreg(core#FIFO_COUNTH, 2, @nr_samples)
 
-PUB GyroAxisEnabled(xyz_mask): curr_mask
+PUB GyroAxisEnabled(mask): curr_mask
 ' Enable data output for gyroscope (all axes)
 '   Valid values: %000 (disable) or %001..%111 (enable), for all axes
+'       (default: %111)
 '   Any other value polls the chip and returns the current setting
-'   NOTE: All axes are affected. The xyz_mask parameter is used for
+'   NOTE: All axes are affected. The mask parameter is used for
 '       compatibility with other IMU drivers.
-    curr_mask := $00
+    curr_mask := 0
     readreg(core#PWR_MGMT_2, 1, @curr_mask)
-    case xyz_mask
+    case mask
         %000:
-            xyz_mask := %111                            ' Chip logic is inverse
-        %001..%111:                                     ' If any bit is set,
-            xyz_mask := %000                            '   enable the gyro
+            mask := %111                        ' Chip logic is inverse
+        %001..%111:                             ' If any bit is set,
+            mask := %000                        '   enable the gyro
         other:
-            curr_mask &= core#DISABLE_GYRO_BITS
+            curr_mask &= core#DIS_GYRO_BITS
             return (curr_mask ^ %111)
 
-    xyz_mask := (curr_mask & core#DISABLE_GYRO_MASK) | xyz_mask
-    writereg(core#PWR_MGMT_2, 1, @xyz_mask)
+    mask := ((curr_mask & core#DIS_GYRO_MASK) | mask)
+    writereg(core#PWR_MGMT_2, 1, @mask)
 
 PUB GyroBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3]
 ' Read or write/manually set gyroscope calibration offset values
@@ -544,24 +538,24 @@ PUB GyroBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3]
 PUB GyroClearInt{} | tmp
 ' Clears out any interrupts set up on the Gyroscope and resets all Gyroscope interrupt registers to their default values.
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    tmp := $00
+    tmp := 0
 
-PUB GyroData(gx, gy, gz) | tmp[2]
+PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Gyroscope output registers
-    tmp := $00
+    tmp := 0
     readreg(core#GYRO_XOUT_H, 6, @tmp)
-    long[gx] := ~~tmp.word[2]
-    long[gy] := ~~tmp.word[1]
-    long[gz] := ~~tmp.word[0]
+    long[ptr_x] := ~~tmp.word[2]
+    long[ptr_y] := ~~tmp.word[1]
+    long[ptr_z] := ~~tmp.word[0]
 
-PUB GyroDataRate(Hz): curr_rate
+PUB GyroDataRate(rate): curr_rate
 ' Set gyroscope output data rate, in Hz
-'   Valid values: 1..1100
+'   Valid values: 1..1100 (default: 1100)
 '   Any other value polls the chip and returns the current setting
-    case Hz
+    case rate
         1..1100:
-            Hz := (1100 / Hz) - 1
-            writereg(core#GYRO_SMPLRT_DIV, 1, @Hz)
+            rate := (1100 / rate) - 1
+            writereg(core#GYRO_SMPLRT_DIV, 1, @rate)
         other:
             curr_rate := 0
             readreg(core#GYRO_SMPLRT_DIV, 1, @curr_rate)
@@ -570,22 +564,23 @@ PUB GyroDataRate(Hz): curr_rate
 PUB GyroDataReady{}: flag
 ' Flag indicating new gyroscope data available
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
-    flag := $00
+    flag := 0
     return xlgdataready{}
 
-PUB GyroDPS(gx, gy, gz) | tmp[3]
-' Read the Gyroscope output registers and scale the outputs to micro-degrees of rotation per second (1_000_000 = 1.000000 deg/sec)
-    tmp := $00
+PUB GyroDPS(ptr_x, ptr_y, ptr_z) | tmp[3]
+' Read the Gyroscope output registers and scale the outputs to micro-degrees
+'   per second (1_000_000 = 1.000000 deg/sec)
+    tmp := 0
     gyrodata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[gx] := tmp[X_AXIS] * _gres
-    long[gy] := tmp[Y_AXIS] * _gres
-    long[gz] := tmp[Z_AXIS] * _gres
+    long[ptr_x] := tmp[X_AXIS] * _gres
+    long[ptr_y] := tmp[Y_AXIS] * _gres
+    long[ptr_z] := tmp[Z_AXIS] * _gres
 
 PUB GyroInt{}: flag
 ' Flag indicating gyroscope interrupt asserted
 '   Returns TRUE if interrupt asserted, FALSE if not
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    flag := $00
+    flag := 0
 
 PUB GyroIntSelect(mode): curr_mode
 ' Set gyroscope interrupt generator selection
@@ -593,47 +588,47 @@ PUB GyroIntSelect(mode): curr_mode
 '
 '   Any other value polls the chip and returns the current setting
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    curr_mode := $00
+    curr_mode := 0
 
-PUB GyroLowPassFilter(cutoff_Hz): curr_setting | lpf_enable
+PUB GyroLowPassFilter(freq): curr_freq | lpf_enable
 ' Set gyroscope output data low-pass filter cutoff frequency, in Hz
 '   Valid values: 6, 12, 24, 51, 120, 152, 197, 361, *12106 (LPF disabled)
 '   Any other value polls the chip and returns the current setting
-    curr_setting := lpf_enable := 0
-    readreg(core#GYRO_CFG1, 1, @curr_setting)
-    case cutoff_Hz
-        0, 12106:                                           ' Disable/bypass the LPF
-            lpf_enable := %0
+    curr_freq := lpf_enable := 0
+    readreg(core#GYRO_CFG1, 1, @curr_freq)
+    case freq
+        0, 12106:                               ' Disable/bypass the LPF
+            lpf_enable := 0
         6, 12, 24, 51, 120, 152, 197, 361:
-            cutoff_Hz := lookdownz(cutoff_Hz: 197, 152, 120, 51, 24, 12, 6, 361) << core#GYRO_DLPFCFG
-            lpf_enable := %1
+            freq := lookdownz(freq: 197, 152, 120, 51, 24, 12, 6, 361) << core#GYRO_DLPFCFG
+            lpf_enable := 1
         other:
-            if (curr_setting & %1) <> 1                     ' The LPF bypass bit is clear, so
-                return 12106                                '   return 12106 (LPF bypassed/disabled)
+            if (curr_freq & 1) <> 1
+                return 12106                    ' LPF bypass set; return 12106
             else
-                curr_setting := (curr_setting >> core#GYRO_DLPFCFG) & core#GYRO_DLPFCFG_BITS
-                return lookupz(curr_setting: 197, 152, 120, 51, 24, 12, 6, 361)
+                curr_freq := (curr_freq >> core#GYRO_DLPFCFG) & core#GYRO_DLPFCFG_BITS
+                return lookupz(curr_freq: 197, 152, 120, 51, 24, 12, 6, 361)
 
-    cutoff_Hz := (curr_setting & core#GYRO_DLPFCFG_MASK & core#GYRO_FCHOICE_MASK) | cutoff_Hz | lpf_enable
-    writereg(core#GYRO_CFG1, 1, @cutoff_Hz)
+    freq := (curr_freq & core#GYRO_DLPFCFG_MASK & core#GYRO_FCH_MASK) | freq | lpf_enable
+    writereg(core#GYRO_CFG1, 1, @freq)
 
-PUB GyroScale(dps): curr_scl
+PUB GyroScale(scale): curr_scl
 ' Set gyroscope full-scale range, in degrees per second
 '   Valid values: *500, 1000, 2000, 4000
 '   Any other value polls the chip and returns the current setting
     curr_scl := 0
     readreg(core#GYRO_CFG1, 1, @curr_scl)
-    case dps
+    case scale
         500, 1000, 2000, 4000:
-            dps := lookdownz(dps: 500, 1000, 2000, 4000) << core#GYRO_FS_SEL
-            _gres := lookupz(dps >> core#GYRO_FS_SEL: 15_267, 30_487, 60_975, 121_951)
-            ' _gres: (1/65.5, 1/32.8, 1/16.4, 1/8.2) = LSB/dps * 1_000_000
+            scale := lookdownz(scale: 500, 1000, 2000, 4000) << core#GYRO_FS_SEL
+            _gres := lookupz(scale >> core#GYRO_FS_SEL: 15_267, 30_487, 60_975, 121_951)
+            ' _gres: (1/65.5, 1/32.8, 1/16.4, 1/8.2) = LSB/scale * 1_000_000
         other:
             curr_scl := (curr_scl >> core#GYRO_FS_SEL) & core#GYRO_FS_SEL_BITS
             return lookupz(curr_scl: 500, 1000, 2000, 4000)
 
-    dps := ((curr_scl & core#GYRO_FS_SEL_MASK) | dps) & core#GYRO_CFG1_MASK
-    writereg(core#GYRO_CFG1, 1, @dps)
+    scale := ((curr_scl & core#GYRO_FS_SEL_MASK) | scale) & core#GYRO_CFG1_MASK
+    writereg(core#GYRO_CFG1, 1, @scale)
 
 PUB Interrupt{}: flag
 ' Read interrupt state
@@ -664,7 +659,7 @@ PUB IntMask(mask): curr_mask
 
 PUB Powered(state): curr_state
 ' Enable device power
-'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value polls the chip and returns the current setting
     curr_state := 0
     readreg(core#PWR_MGMT_1, 1, @curr_state)
@@ -672,36 +667,38 @@ PUB Powered(state): curr_state
         0, 1:
             state := (||(state) ^ 1) << core#SLEEP
         other:
-            return ((curr_state >> core#SLEEP) & 1) == 0
+            return (((curr_state >> core#SLEEP) & 1) == 0)
 
     state := (curr_state & core#SLEEP_MASK) | state
     writereg(core#PWR_MGMT_1, 1, @state)
 
 PUB Reset{} | tmp
 ' Reset the device
-    tmp := 1 << core#DEVICE_RESET
+    tmp := (1 << core#DEV_RESET)
     writereg(core#PWR_MGMT_1, 1, @tmp)
+    time.usleep(core#G_START_COLD)
 
 PUB TempDataReady{}: flag
 ' Flag indicating new temperature sensor data available
 '   Returns TRUE or FALSE
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    flag := $00
+    flag := 0
 
-PUB TempEnabled(enable): curr_state
+PUB TempEnabled(state): curr_state
 ' Enable the on-chip temperature sensor
-'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Valid values: *TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current setting
     curr_state := 0
     readreg(core#PWR_MGMT_1, 1, @curr_state)
-    case ||(enable)
+    case ||(state)
         0, 1:
-            enable := (||(enable) ^ 1) << core#TEMP_DIS ' invert logic since
-        other:                                  ' reg function is for disabling
-            return (((curr_state >> core#TEMP_DIS) & %1) ^ 1) == 1 ' the sensor
+            ' invert logic; set bit disables the sensor, clear enables
+            state := (||(state) ^ 1) << core#TEMP_DIS
+        other:
+            return ((((curr_state >> core#TEMP_DIS) & 1) ^ 1) == 1)
 
-    enable := ((curr_state & core#TEMP_DIS_MASK) | enable) & core#PWR_MGMT_1_MASK
-    writereg(core#PWR_MGMT_1, 1, @enable)
+    state := ((curr_state & core#TEMP_DIS_MASK) | state) & core#PWR_MGMT_1_MASK
+    writereg(core#PWR_MGMT_1, 1, @state)
 
 PUB Temperature{}: temp
 ' Read temperature, in hundredths of a degree
@@ -724,7 +721,7 @@ PUB TempOffset(u8): curr_offs
         other:
             return _roomtemp_offs
 
-PUB TempScale(scale)
+PUB TempScale(scale): curr_scl
 ' Set temperature scale used by Temperature method
 '   Valid values:
 '       C (0): Celsius
@@ -736,12 +733,12 @@ PUB TempScale(scale)
         other:
             return _temp_scale
 
-PUB XLGDataRate(Hz): curr_rate
+PUB XLGDataRate(rate): curr_rate
 ' Set output data rate, in Hz, of accelerometer and gyroscope
 '   Valid values:
 '   Any other value polls the chip and returns the current setting
 '   NOT IMPLEMENTED (dummy method for API compatibility only)
-    curr_rate := $00
+    curr_rate := 0
 
 PUB XLGDataReady{}: flag
 ' Flag indicating new gyroscope/accelerometer data is ready to be read
@@ -749,7 +746,7 @@ PUB XLGDataReady{}: flag
 '   NOTE: The update rate of this flag depends upon the GyroDataRate() setting
 '       AccelDataRate() has no effect
     readreg(core#INT_STATUS_1, 1, @flag)
-    return (flag & %1) == 1
+    return ((flag & 1) == 1)
 
 PRI bankSel(bank_nr) | cmd_pkt
 ' Select ICM20649 register bank
@@ -759,35 +756,37 @@ PRI bankSel(bank_nr) | cmd_pkt
 #ifdef ICM20649_SPI
         cmd_pkt.byte[0] := core#REG_BANK_SEL
         cmd_pkt.byte[1] := bank_nr << core#USER_BANK
-        spi.write(true, @cmd_pkt, 2, true)
+        spi.deselectafter(true)
+        spi.wrblock_lsbf(@cmd_pkt, 2)
 #elseifdef ICM20649_I2C
         cmd_pkt.byte[0] := SLAVE_WR
         cmd_pkt.byte[1] := core#REG_BANK_SEL
         cmd_pkt.byte[2] := bank_nr << core#USER_BANK
         i2c.start{}
-        i2c.wr_block(@cmd_pkt, 3)
+        i2c.wrblock_lsbf(@cmd_pkt, 3)
         i2c.stop{}
 #endif
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
 ' Read nr_bytes from the slave device
-    case reg_nr                                         ' Basic register validation
-        core#ACCEL_XOUT_H..core#TEMP_OUT_H:             ' Prioritize output data regs
+    case reg_nr                                 ' validate reg #
+        core#ACCEL_XOUT_H..core#TEMP_OUT_H:     ' prioritize output data regs
 #ifdef ICM20649_SPI
             cmd_pkt.byte[0] := reg_nr | core#R
-            spi.write(true, @cmd_pkt, 1, false)
-            spi.read(@tmp, nr_bytes, true)
+            spi.deselectafter(false)
+            spi.wr_byte(cmd_pkt)
+            spi.deselectafter(true)
+            spi.rdblock_lsbf(@tmp, nr_bytes)
             repeat i from 0 to nr_bytes-1
                 byte[ptr_buff][i] := tmp.byte[nr_bytes-1-i]
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.start{}
-            i2c.write(SLAVE_RD | _addr)
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.wr_byte(SLAVE_RD | _addr)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
 #endif
             return
@@ -798,22 +797,21 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
             banksel(reg_nr.byte[1])
 #ifdef ICM20649_SPI
             cmd_pkt.byte[0] := reg_nr.byte[0] | core#R
-            spi.write(true, @cmd_pkt, 1, false)
-
-            spi.read(@tmp, nr_bytes, true)
+            spi.deselectafter(false)
+            spi.wr_byte(cmd_pkt)
+            spi.deselectafter(true)
+            spi.rdblock_lsbf(@tmp, nr_bytes)
             repeat i from 0 to nr_bytes-1
                 byte[ptr_buff][i] := tmp.byte[nr_bytes-1-i]
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
-            cmd_pkt.byte[1] := reg_nr.byte[0]            ' Actual reg # is just the lower 8 bits
+            cmd_pkt.byte[1] := reg_nr.byte[0]   ' Actual reg # is lower 8 bits
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
 
             i2c.start{}
-            i2c.write(SLAVE_RD | _addr)
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
-
+            i2c.wr_byte(SLAVE_RD | _addr)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
 #endif
             banksel(0)
@@ -822,7 +820,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
 ' Write nr_bytes to the slave device
-    case reg_nr                                         ' Basic reg. validation
+    case reg_nr                                 ' validate reg #
         $003, $005, $006, $007, $00f..$013, $066..$069, $072, $076, $102,{
         } $103, $104, $10e..$110, $114, $115, $117, $118, $11a, $11b, $128,{
         } $200..$209, $210..$215, $252..$254, $300..$316:
@@ -832,16 +830,16 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
                 tmp.byte[i] := byte[ptr_buff][nr_bytes-1-i]
 
             cmd_pkt.byte[0] := reg_nr.byte[0]
-            spi.write(true, @cmd_pkt, 1, false)
-            spi.write(true, @tmp, nr_bytes, true)
+            spi.deselectafter(false)
+            spi.wr_byte(cmd_pkt)
+            spi.deselectafter(true)
+            spi.wrblock_lsbf(@tmp, nr_bytes)
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
-            cmd_pkt.byte[1] := reg_nr.byte[0]           ' Actual reg # is just the lower 8 bits
+            cmd_pkt.byte[1] := reg_nr.byte[0]   ' Actual reg # is lower 8 bits
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
-
-            repeat tmp from nr_bytes-1 to 0
-                i2c.write(byte[ptr_buff][tmp])
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.wrblock_msbf(ptr_buff, nr_bytes)
             i2c.stop{}
 #endif
             banksel(0)

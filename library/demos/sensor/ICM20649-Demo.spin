@@ -22,28 +22,22 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-' I2C:
+' I2C
     SCL_PIN     = 28
     SDA_PIN     = 29
-    I2C_HZ      = 400_000
-    ADDR_BITS   = 0                             ' optional address bit: 0 or 1
+    ADDR_BITS   = 0                             ' optional: 0, 1
+    I2C_HZ      = 400_000                       ' max: 400_000
 
-' SPI:
-    CS          = 0
-    SCK         = 1
-    MOSI        = 2
-    MISO        = 3
-    SCK_FREQ    = 4_000_000
-
-    TEMP_SCALE  = C
+' SPI
+    CS_PIN      = 0
+    SCK_PIN     = 1
+    MOSI_PIN    = 2
+    MISO_PIN    = 3
 ' --
 
     DAT_X_COL   = 20
     DAT_Y_COL   = DAT_X_COL + 15
     DAT_Z_COL   = DAT_Y_COL + 15
-
-    C           = 0
-    F           = 1
 
 OBJ
 
@@ -53,177 +47,57 @@ OBJ
     int     : "string.integer"
     imu     : "sensor.imu.6dof.icm20649.i2cspi"
 
-PUB Main{} | dispmode
+PUB Main{}
 
     setup{}
-    imu.accellowpassfilter(50)                              ' 6, 12, 24, 50, 111, 246, 473
-    imu.acceldatarate(100)                                  ' 1..1121
-    imu.accelscale(4)                                       ' 4, 8, 16, 30 (g's)
-    imu.accelaxisenabled(%111)                              ' 0: disable, %001..%111: enable (all axes)
-
-    imu.gyrolowpassfilter(51)                               ' 6, 12, 24, 51, 120, 152, 197, 361, 12106 (disable LPF)
-    imu.gyrodatarate(100)                                   ' 1..1100
-    imu.gyroscale(500)                                      ' 500, 1000, 2000, 4000
-    imu.gyroaxisenabled(%111)                               ' 0: disable, %001..%111: enable (all axes)
-    imu.gyrobias(0, 0, 0, 1)                                ' x, y, z: -32768..32767, rw = 1 (write)
-
-    imu.tempscale(TEMP_SCALE)                               ' C (0), F (1)
-
-    ser.hidecursor{}
-    dispmode := 0
-    displaysettings{}
+    imu.preset_active{}                         ' default settings, but enable
+                                                ' sensor power, and set
+                                                ' scale factors
     repeat
-        case ser.rxcheck{}
-            "q", "Q":                                       ' Quit the demo
-                ser.position(0, 17)
-                ser.str(string("Halting"))
-                imu.stop{}
-                time.msleep(5)
-                quit
-            "c", "C":                                       ' Perform calibration
-                calibrate{}
-                displaysettings{}
-            "r", "R":                                       ' Change display mode: raw/calculated
-                ser.position(0, 14)
-                repeat 2
-                    ser.clearline{}
-                    ser.newline{}
-                dispmode ^= 1
-        case dispmode
-            0:
-                ser.position(0, 14)
-                accelraw{}
-                gyroraw{}
-                temp{}
-            1:
-                ser.position(0, 14)
-                accelcalc{}
-                gyrocalc{}
-                temp{}
+        ser.position(0, 3)
+        accelcalc{}
+        gyrocalc{}
 
-    ser.showcursor{}
-    repeat
+        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
+            calibrate{}                         ' to calibrate sensor offsets
 
 PUB AccelCalc{} | ax, ay, az
 
-    repeat until imu.acceldataready{}
-    imu.accelg(@ax, @ay, @az)
-    ser.str(string("Accel micro-g: "))
-    ser.position(DAT_X_COL, 14)
-    decimal(ax, 1_000_000)
-    ser.position(DAT_Y_COL, 14)
-    decimal(ay, 1_000_000)
-    ser.position(DAT_Z_COL, 14)
-    decimal(az, 1_000_000)
-    ser.clearline{}
-    ser.newline{}
-
-PUB AccelRaw{} | ax, ay, az
-
-    repeat until imu.acceldataready{}
-    imu.acceldata(@ax, @ay, @az)
-    ser.str(string("Accel raw: "))
-    ser.position(DAT_X_COL, 14)
-    ser.str(int.decpadded(ax, 7))
-    ser.position(DAT_Y_COL, 14)
-    ser.str(int.decpadded(ay, 7))
-    ser.position(DAT_Z_COL, 14)
-    ser.str(int.decpadded(az, 7))
+    repeat until imu.acceldataready{}           ' wait for new sensor data set
+    imu.accelg(@ax, @ay, @az)                   ' read calculated sensor data
+    ser.str(string("Accel (g):"))
+    ser.positionx(DAT_X_COL)
+    decimal(ax, 1000000)                        ' data is in micro-g's; display
+    ser.positionx(DAT_Y_COL)                    ' it as if it were a float
+    decimal(ay, 1000000)
+    ser.positionx(DAT_Z_COL)
+    decimal(az, 1000000)
     ser.clearline{}
     ser.newline{}
 
 PUB GyroCalc{} | gx, gy, gz
 
     repeat until imu.gyrodataready{}
-    imu.gyrodps (@gx, @gy, @gz)
-    ser.str(string("Gyro micro DPS:  "))
-    ser.position(DAT_X_COL, 15)
-    decimal(gx, 1_000_000)
-    ser.position(DAT_Y_COL, 15)
-    decimal(gy, 1_000_000)
-    ser.position(DAT_Z_COL, 15)
-    decimal(gz, 1_000_000)
+    imu.gyrodps(@gx, @gy, @gz)
+    ser.str(string("Gyro (dps):"))
+    ser.positionx(DAT_X_COL)
+    decimal(gx, 1000000)
+    ser.positionx(DAT_Y_COL)
+    decimal(gy, 1000000)
+    ser.positionx(DAT_Z_COL)
+    decimal(gz, 1000000)
     ser.clearline{}
     ser.newline{}
-
-PUB GyroRaw{} | gx, gy, gz
-
-    repeat until imu.gyrodataready{}
-    imu.gyrodata(@gx, @gy, @gz)
-    ser.str(string("Gyro raw:  "))
-    ser.position(DAT_X_COL, 15)
-    ser.str(int.decpadded (gx, 7))
-    ser.position(DAT_Y_COL, 15)
-    ser.str(int.decpadded (gy, 7))
-    ser.position(DAT_Z_COL, 15)
-    ser.str(int.decpadded (gz, 7))
-    ser.clearline{}
-    ser.newline{}
-
-PUB Temp{}
-
-    ser.str(string("Temp:"))
-    ser.position(DAT_X_COL, 16)
-    decimal(imu.temperature{}, 1_00)
-    ser.char(lookupz(TEMP_SCALE: "C", "F"))
 
 PUB Calibrate{}
 
-    ser.position(0, 21)
+    ser.position(0, 7)
     ser.str(string("Calibrating..."))
-    imu.calibrateaccel{}
-    imu.calibrategyro{}
-    ser.position(0, 21)
-    ser.str(string("              "))
+    imu.calibratexlg{}
+    ser.positionx(0)
+    ser.clearline{}
 
-PUB DisplaySettings{} | axo, ayo, azo, gxo, gyo, gzo
-
-    ser.position(0, 3)
-    ser.str(string("AccelScale: "))
-    ser.dec(imu.accelscale(-2))
-    ser.newline{}
-
-    ser.str(string("AccelLowPassFilter: "))
-    ser.dec(imu.accellowpassfilter(-2))
-    ser.newline{}
-
-    ser.str(string("AccelDataRate: "))
-    ser.dec(imu.acceldatarate(-2))
-    ser.newline{}
-
-    ser.str(string("GyroScale: "))
-    ser.dec(imu.gyroscale(-2))
-    ser.newline{}
-
-    ser.str(string("GyroLowPassFilter: "))
-    ser.dec(imu.gyrolowpassfilter(-2))
-    ser.newline{}
-
-    ser.str(string("GyroDataRate: "))
-    ser.dec(imu.gyrodatarate(-2))
-    ser.newline{}
-
-    imu.gyrobias(@gxo, @gyo, @gzo, 0)
-    ser.str(string("GyroBias: "))
-    ser.dec(gxo)
-    ser.str(string("(x), "))
-    ser.dec(gyo)
-    ser.str(string("(y), "))
-    ser.dec(gzo)
-    ser.str(string("(z)"))
-    ser.newline{}
-
-    imu.accelbias(@axo, @ayo, @azo, 0)
-    ser.str(string("AccelBias: "))
-    ser.dec(axo)
-    ser.str(string("(x), "))
-    ser.dec(ayo)
-    ser.str(string("(y), "))
-    ser.dec(azo)
-    ser.str(string("(z)"))
-    ser.newline{}
-
-PUB Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
 ' Display a scaled up number as a decimal
 '   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
     whole := scaled / divisor
@@ -247,6 +121,7 @@ PUB Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
     ser.dec(||(whole))
     ser.char(".")
     ser.str(part)
+    ser.chars(" ", 5)
 
 PUB Setup{}
 
@@ -255,14 +130,10 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 #ifdef ICM20649_SPI
-    if imu.startx(CS, SCK, MOSI, MISO, SCK_FREQ)
-        imu.defaults{}
-        imu.presetimuactive{}
+    if imu.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
         ser.str(string("ICM20649 driver started (SPI)"))
 #elseifdef ICM20649_I2C
     if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
-        imu.defaults{}
-        imu.presetimuactive{}
         ser.str(string("ICM20649 driver started (I2C)"))
 #endif
     else
