@@ -15,13 +15,14 @@ CON
 
 VAR
 
-    byte _CS, _SCK, _MOSI, _MISO
+    long _CS
 
 OBJ
 
+' choose an SPI engine below
 '    spi : "com.spi"                             ' PASM SPI engine (20MHz W/10R)
 '    spi : "com.spi.4w"                          ' PASM SPI engine (up to 1MHz)
-'    spi : "com.spi.bitbang"                     ' PASM SPI engine (~4.5MHz)
+'    spi : "com.spi.bitbang"                     ' PASM SPI engine (~4MHz)
 '    spi : "tiny.com.spi"                        ' SPIN SPI engine (TBD kHz)
     core: "core.con.your_spi_device_here"       ' hw-specific low-level const's
     io  : "io"                                  ' i/o pin convenience methods
@@ -30,13 +31,13 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
+PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 ' Start using custom IO pins
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if okay := spi.start(core#SCK_DELAY, core#CPOL)
-            time.msleep(core#TPOR)              ' wait for device startup
-            longmove(@_CS, @CS_PIN, 4)          ' copy i/o pins to hub vars
+        if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+            time.msleep(core#T_POR)             ' wait for device startup
+            _CS := CS_PIN                       ' copy i/o pin to hub var
             io.high(_CS)                        ' make sure CS starts high
             io.output(_CS)
 
@@ -49,7 +50,7 @@ PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
 
 PUB Stop{}
 
-    spi.stop{}
+    spi.deinit{}
 
 PUB Defaults{}
 ' Set factory defaults
@@ -60,7 +61,7 @@ PUB DeviceID{}: id
 PUB Reset{}
 ' Reset the device
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff)
 ' Read nr_bytes from the device into ptr_buff
     case reg_nr                                 ' validate register num
         $00:
@@ -70,22 +71,20 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
             return
 
     io.low(_CS)
-    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+    spi.wr_byte(reg_nr)
 
 ' choose the block below appropriate to your device
     ' read LSByte to MSByte
-    repeat tmp from 0 to nr_bytes-1
-        byte[ptr_buff][tmp] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+    spi.rdblock_lsbf(ptr_buff, nr_bytes)
     io.high(_CS)
     '
 
     ' read MSByte to LSByte
-    repeat tmp from nr_bytes-1 to 0
-        byte[ptr_buff][tmp] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+    spi.rdblock_msbf(ptr_buff, nr_bytes)
     io.high(_CS)
     '
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to the device from ptr_buff
     case reg_nr
         $00:
@@ -95,18 +94,16 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
             return
 
     io.low(_CS)
-    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
+    spi.wr_byte(reg_nr)
 
 ' choose the block below appropriate to your device
     ' write LSByte to MSByte
-    repeat tmp from 0 to nr_bytes-1
-        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][tmp])
+    spi.wrblock_lsbf(ptr_buff, nr_bytes)
     io.high(_CS)
     '
 
     ' write MSByte to LSByte
-    repeat tmp from nr_bytes-1 to 0
-        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][tmp])
+    spi.wrblock_msbf(ptr_buff, nr_bytes)
     io.high(_CS)
     '
 

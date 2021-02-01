@@ -8,7 +8,7 @@
     Updated Month Day, Year
     See end of file for terms of use.
     --------------------------------------------
-}i
+}
 
 CON
 
@@ -25,7 +25,8 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
+' choose an I2C engine below
+'    i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
 '    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~40kHz)
     core: "core.con.your_i2c_device_here"       ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
@@ -33,16 +34,16 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start{}: okay
+PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom IO pins and I2C bus frequency
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ                 ' validate pins and bus freq
-        if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-            time.msleep(core#TPOR)              ' wait for device startup
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#T_POR)             ' wait for device startup
             if i2c.present(SLAVE_WR)            ' test device bus presence
                 if deviceid{} == core#DEVID_RESP' validate device 
                     return
@@ -53,7 +54,7 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
 
 PUB Stop{}
 
-    i2c.terminate{}
+    i2c.deinit{}
 
 PUB Defaults{}
 ' Set factory defaults
@@ -64,51 +65,47 @@ PUB DeviceID{}: id
 PUB Reset{}
 ' Reset the device
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from the device into ptr_buff
     case reg_nr                                 ' validate register num
         $00..$FF:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.start{}
-            i2c.write(SLAVE_RD)
+            i2c.wr_byte(SLAVE_RD)
 
 ' choose the block below appropriate to your device
     ' write LSByte to MSByte
-            repeat tmp from 0 to nr_bytes-1
-                byte[ptr_buff][tmp] := i2c.read(tmp == nr_bytes-1)
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
     '
 
     ' write MSByte to LSByte
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
     '
         other:                                  ' invalid reg_nr
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes to the device from ptr_buff
     case reg_nr
         $00..$FF:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
 
 ' choose the block below appropriate to your device
     ' write LSByte to MSByte
-            repeat tmp from 0 to nr_bytes-1
-                i2c.write(byte[ptr_buff][tmp])
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)
             i2c.stop{}
     '
 
     ' write MSByte to LSByte
-            repeat tmp from nr_bytes-1 to 0
-                i2c.write(byte[ptr_buff][tmp])
+            i2c.wrblock_msbf(ptr_buff, nr_bytes)
             i2c.stop{}
     '
         other:

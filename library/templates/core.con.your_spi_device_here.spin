@@ -13,13 +13,15 @@
 CON
 
 ' SPI Configuration
-    CPOL                        = 0
-    CLK_DELAY                   = 10
-    MOSI_BITORDER               = 5             'MSBFIRST
-    MISO_BITORDER               = 0             'MSBPRE
+    SPI_MAX_FREQ    = 1_000_000                 ' device max SPI bus freq
+    SPI_MODE        = 0                         ' 0..3
+    T_POR           = 0                         ' startup time (usecs)
+
+    DEVID_RESP      = $00                       ' device ID expected response
 
 ' Register definitions
-    REG_NAME          = $00                   'Brief description of register
+    REG_NAME        = $00
 
-PUB Null
+PUB Null{}
 ' This is not a top-level object
+
