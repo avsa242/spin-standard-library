@@ -12,6 +12,23 @@ VAR
     long  idx                                             ' pointer into string
     byte  nstr[MAX_LEN]                                   ' string for numeric data
 
+PUB Bin(value, digits)
+{{
+    Returns pointer to a digits-wide binary string
+}}
+
+    ClearStr(@nstr, MAX_LEN)
+    return BinToStr(value, digits)
+
+PUB BinIndicated(value, digits)
+{{
+    Returns pointer to a digits-wide, indicated (with %) binary string
+}}
+
+    ClearStr(@nstr, MAX_LEN)
+    nstr[idx++] := "%"                                    ' preface with binary indicator
+    return BinToStr(value, digits)
+
 PUB Dec(value)
 {{
     Returns pointer to signed-decimal string
@@ -90,22 +107,34 @@ PUB HexIndicated(value, digits)
     nstr[idx++] := "$"
     return HexToStr(value, digits)
 
-PUB Bin(value, digits)
+PUB StrToBase(stringptr, base) : value | chr, index
 {{
-    Returns pointer to a digits-wide binary string
+    Converts a zero terminated string representation of a number to a value in the designated base.
+
+    Ignores all non-digit characters (except negative (-) when base is decimal (10)).
 }}
 
-    ClearStr(@nstr, MAX_LEN)
-    return BinToStr(value, digits)
+    value := index := 0
+    repeat until ((chr := byte[stringptr][index++]) == 0)
+        chr := -15 + --chr & %11011111 + 39*(chr > 56)                      ' Make "0"-"9","A"-"F","a"-"f" be 0 - 15, others out of range
+        if (chr > -1) and (chr < base)                                      ' Accumulate valid values into result; ignore others
+            value := value * base + chr
+    if (base == 10) and (byte[stringptr] == "-")                            ' If decimal, address negative sign; ignore otherwise
+        value := - value
 
-PUB BinIndicated(value, digits)
+PRI BinToStr(value, digits)
 {{
-    Returns pointer to a digits-wide, indicated (with %) binary string
+    Converts value to digits-wide binary string equivalent
+    -- characters written to current position of idx
+    -- returns pointer to nstr
 }}
 
-    ClearStr(@nstr, MAX_LEN)
-    nstr[idx++] := "%"                                    ' preface with binary indicator
-    return BinToStr(value, digits)
+    digits := 1 #> digits <# 32                           ' qualify digits
+    value <<= 32 - digits                                 ' prep MSB
+    repeat digits
+        nstr[idx++] := (value <-= 1) & 1 + "0"              ' move digits (ASCII) to string
+
+    return @nstr
 
 PRI ClearStr(strAddr, size)
 {{
@@ -156,32 +185,24 @@ PRI HexToStr(value, digits)
 
     return @nstr
 
-PRI BinToStr(value, digits)
-{{
-    Converts value to digits-wide binary string equivalent
-    -- characters written to current position of idx
-    -- returns pointer to nstr
-}}
+DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
 
-    digits := 1 #> digits <# 32                           ' qualify digits
-    value <<= 32 - digits                                 ' prep MSB
-    repeat digits
-        nstr[idx++] := (value <-= 1) & 1 + "0"              ' move digits (ASCII) to string
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
 
-    return @nstr
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
 
-PUB StrToBase(stringptr, base) : value | chr, index
-{{
-    Converts a zero terminated string representation of a number to a value in the designated base.
-
-    Ignores all non-digit characters (except negative (-) when base is decimal (10)).
-}}
-
-    value := index := 0
-    repeat until ((chr := byte[stringptr][index++]) == 0)
-        chr := -15 + --chr & %11011111 + 39*(chr > 56)                      ' Make "0"-"9","A"-"F","a"-"f" be 0 - 15, others out of range
-        if (chr > -1) and (chr < base)                                      ' Accumulate valid values into result; ignore others
-            value := value * base + chr
-    if (base == 10) and (byte[stringptr] == "-")                            ' If decimal, address negative sign; ignore otherwise
-        value := - value
-
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
