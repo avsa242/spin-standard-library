@@ -1,342 +1,496 @@
 {
     --------------------------------------------
-    Filename: com.onewire.com
-    Author: Jon McPhalen
-    Modified by: Jesse Burt
-    Description: One-wire protocol driver
-    Started Jul 13, 2019
-    Updated Aug 4, 2019
+    Filename: com.onewire.spin2
+    Description: OneWire Bus engine
+    Author: Jesse Burt
+    Created July 15, 2006
+    Updated Feb 7, 2021
     See end of file for terms of use.
     --------------------------------------------
-    NOTE: This driver is a modified version of jm_1-wire.spin, originally
-        by Jon McPhalen. The original header is preserved below.
+
+    NOTE: This is based on OneWire.spin,
+    originally by Cam Thompson
 }
 
-' =================================================================================================
-'
-'   File....... jm_1-wire.spin
-'   Purpose.... Essential 1-Wire interface routines
-'   Author..... Jon "JonnyMac" McPhalen (aka Jon Williams)
-'               Copyright (c) 2009 Jon McPhalen
-'               -- see below for terms of use
-'   E-mail..... jon@jonmcphalen.com
-'   Started.... 29 JUL 2009
-'   Updated.... 01 AUG 2009
-'
-' =================================================================================================
 CON
-' One-Wire bus states
-    OW_STAT_SHORT   = %00
-    OW_STAT_BUS_INT = %01
-    OW_STAT_FOUND   = %10
-    OW_STAT_NODEV   = %11
 
-' One-Wire bus commands
-    RD_ROM          = $33
-    MATCH_ROM       = $55
-    SKIP_ROM        = $CC
-    SRCH_ROM        = $F0
-    ALARM_SRCH      = $EC
+' OneWire PASM engine commands
+    OW_SETUP    = (1 << 16)
+    OW_RESET    = (2 << 16)
+    OW_WRITE    = (3 << 16)
+    OW_READ     = (4 << 16)
+    OW_SEARCH   = (5 << 16)
+    OW_CRC8     = (6 << 16)
+
+' OneWire Bus commands
+    SEARCH_ROM  = $F0
+    RD_ROM      = $33
+    MATCH_ROM   = $55
+    SKIP_ROM    = $CC
+
+' Search flags
+    CHECK_CRC   = $100
+
+    GOOD        = 0
+    PRESENT     = 1
+
+OBJ
+
+    crc : "math.crc"
 
 VAR
 
     long _cog
-    long _owcmd                                                 ' command to 1-Wire interface
-    long _owio                                                  ' data in/out
+    long _command, _cmd_ret
 
-PUB Start(pin): okay
-' Starts 1-Wire object
-    Stop                                                        ' stop if already running
+PUB Null{}
+' This is not a top-level object
 
-    if lookdown(pin: 0..31)
-        US_001   := clkfreq / 1_000_000                         ' initialize cog parameters
-        owmask   := |< pin
-        cmdpntr  := @_owcmd
-        iopntr   := @_owio
+PUB Init(OW_PIN): status | pin, usec
+' Initialize OneWire engine
+    deinit{}                                    ' stop an existing instance
+    status := _cog := cognew(@getcmd, @_command) + 1
 
-    dira[pin] := 0                                              ' float OW pin
-    _owcmd := 0                                                  ' clear command
-    okay := _cog := cognew(@onewire, 0) + 1                      ' start cog
+    ' set pin to use for 1-wire interface and calculate usec delay
+    if status
+        pin := OW_PIN
+        usec := (clkfreq + 999_999) / 1_000_000
+        sendcmd(OW_SETUP + @pin)
 
-    return
-
-PUB Stop
-' Stops 1-Wire driver; frees a cog
+PUB DeInit{}
+' Deinitialize
     if _cog
-        cogstop(_cog~ - 1)
+        cogstop(_cog - 1)
+        _cog := 0
+    _command := 0
 
+PUB CRC8(nr_bytes, ptr_buff): outcrc
+' Calculate CRC of nr_bytes of data at ptr_buff
+    return sendcmd(OW_CRC8 + @nr_bytes)
 
-PUB Reset
-' Resets 1-Wire bus; returns bus status
+PUB Rd_Byte{}: ow2byte
+' Read a byte from the bus
+    return rd_bits(8)
+
+PUB Rd_Long{}: ow2long
+' Read a long from the bus
+    return rd_bits(32)
+
+PUB Rd_Word{}: ow2word
+' Read a word from the bus
+    return rd_bits(16)
+
+PUB Rd_Bits(nr_bits): ow2bits
+' Read nr_bits from the bus
+    return sendcmd(OW_READ + @nr_bits)
+
+PUB RdBlock_LSBF(ptr_buff, nr_bytes) | bytenum
+' Read block of bytes from bus, least-significant byte first
+    repeat bytenum from 0 to nr_bytes-1
+        byte[ptr_buff][bytenum] := rd_bits(8)
+
+PUB RdBlock_MSBF(ptr_buff, nr_bytes) | bytenum
+' Read block of bytes from bus, most-significant byte first
+    repeat bytenum from nr_bytes-1 to 0
+        byte[ptr_buff][bytenum] := rd_bits(8)
+
+PUB ReadAddress(ptr_addr)
+' Read 64-bit address from the bus
+    rdblock_lsbf(ptr_addr, 8)
+
+PUB Reset{}: pres
+' Send Reset signal to bus
+'   Returns:
+'       TRUE (-1): a device is present
+'       FALSE (0): no device present, or bus is busy
+    return (sendcmd(OW_RESET) == PRESENT)
+
+PUB Search(flags, max_addrs, ptr_addr): nr_devs
+' Search bus for devices
+'   flags:
+'       bits[7..0]: restrict search to family code
+'       bits[8]: if set, return only devices with a valid CRC
+'   max_addrs: maximum number of 64-bit addresses to find
+'   ptr_addr: pointer to buffer for storing found addresses (LSW-first)
+'       NOTE: buffer must be a minimum of (max_addrs * 8) bytes
 '
-'   %00 = bus short
-'   %01 = bad response; possible interference on bus
-'   %10 = good bus & presence detection
-'   %11 = no device
-    iopntr := 0
-    _owcmd := 1
-    repeat while _owcmd
+'   Returns: number of devices found
+    return sendcmd(OW_SEARCH + @flags)
 
-    return _owio
+PUB Wr_Bits(byte2ow, nr_bits)
+' Write nr_bits of byte2ow to bus (LSB-first)
+    sendcmd(OW_WRITE + @byte2ow)
 
+PUB Wr_Byte(byte2ow)
+' Write byte to bus
+    wr_bits(byte2ow, 8)
 
-PUB Write(b)
-' Write byte b to 1-Wire bus
-    _owio := b & $FF
-    _owcmd := 2
-    repeat while _owcmd
+PUB Wr_Long(long2ow)
+' Write long to bus
+    wr_bits(long2ow, 32)
 
-PUB WrBit(b)
-' Write bit b to 1-Wire bus
-    _owio := b & %1
-    _owcmd := 3
-    repeat while _owcmd
+PUB Wr_Word(word2ow)
+' Write word to bus
+    wr_bits(word2ow, 16)
 
-PUB Read
-' Reads byte from 1-Wire bus
-    _owio := 0
-    _owcmd := 4
-    repeat while _owcmd
+PUB WrBlock_LSBF(ptr_buff, nr_bytes) | bytenum
+' Writeblock of bytes to bus, least-significant byte first
+    repeat bytenum from 0 to nr_bytes-1
+        wr_bits(byte[ptr_buff][bytenum], 8)
 
-    return _owio & $FF
+PUB WrBlock_MSBF(ptr_buff, nr_bytes) | bytenum
+' Write block of bytes to bus, least-significant byte first
+    repeat bytenum from nr_bytes-1 to 0
+        wr_bits(byte[ptr_buff][bytenum], 8)
 
+PUB WriteAddress(ptr_addr)
+' Write 64-bit address to bus
+    wrblock_lsbf(ptr_addr, 8)
 
-PUB RdBit
-' Reads bit from 1-Wire bus
-' -- useful for monitoring device busy status
-    _owio := 0
-    _owcmd := 5
-    repeat while _owcmd
-
-    return _owio & 1
-
-
-PUB CRC8(pntr, n)
-' Returns CRC8 of n bytes at pntr
-' -- interface to PASM code by Cam Thompson
-    _owio := pntr
-    _owcmd := (n << 8) + 6                                       ' pack count into command
-    repeat while _owcmd
-
-    return _owio
+PRI sendCmd(cmd): cmd_ret
+' Send command to OneWire PASM engine
+    _command := cmd
+    repeat while _command                       ' wait until PASM finished
+    return _cmd_ret
 
 DAT
 
-                        org     0
+                        org
 
-onewire                 andn    outa, owmask                    ' float bus pin
-                        andn    dira, owmask
+getCmd                  rdlong  t1, par wz              ' wait for command
+        if_z            jmp     #getcmd
 
-owmain                  rdlong  tmp1, cmdpntr           wz      ' get command
-                if_z    jmp     #owmain                         ' wait for valid command
-                        mov     bytecount, tmp1                 ' make copy (for crc byte count)
-                        and     tmp1, #$FF                      ' strip off count
-                        max     tmp1, #7                        ' truncate command
+                        mov     t2, t1                  ' get parameter pointer
 
-                        add     tmp1, #owcommands               ' add cmd table base
-                        jmp     tmp1                            ' jump to command handler
+                        shr     t1, #16 wz              ' get command
+                        max     t1, #(OW_CRC8>>16)      ' make sure valid range
+                        add     t1, #:cmdtable-1
+                        jmp     t1                      ' jump to command
 
-owcommands              jmp     #owbadcmd                       ' place holder
-owcmd1                  jmp     #owreset
-owcmd2                  jmp     #owwrbyte
-owcmd3                  jmp     #owwrbit
-owcmd4                  jmp     #owrdbyte
-owcmd5                  jmp     #owrdbit
-owcmd6                  jmp     #owcalccrc
-owcmd7                  jmp     #owbadcmd
+:cmdTable               jmp     #cmd_setup              ' command dispatch table
+                        jmp     #cmd_reset
+                        jmp     #cmd_write
+                        jmp     #cmd_read
+                        jmp     #cmd_search
+                        jmp     #cmd_crc8
 
-owbadcmd                wrlong  ZERO, cmdpntr                   ' clear command
-                        jmp     #owmain
+errorExit               neg     value, #1               ' set return to -1
 
+endCmd                  mov     t1, par                 ' return result
+                        add     t1, #4
+                        wrlong  value, t1
+                        wrlong  zero, par               ' clear command status
+                        jmp     #getcmd                 ' wait for next command
 
-' -----------------
-' Reset 1-Wire bus
-' -----------------
-'
-' %00 = bus short
-' %01 = bad response; possible interference on bus
-' %10 = good bus & presence detection
-' %11 = no device
+'------------------------------------------------------------------------------
+' parameters: data pin, ticks per usec
+' return:     none
+'------------------------------------------------------------------------------
 
-owreset                 mov     value, #%11                     ' assume no device
-                        mov     usecs, #480                     ' reset pulse
-                        or      dira, owmask                    ' bus low
-                        call    #pauseus
-                        andn    dira, owmask                    ' release bus
-                        mov     usecs, #5
-                        call    #pauseus
-                        test    owmask, ina             wc      ' sample for short, 1W -> C
-                        muxc    value, #%10                     ' C -> value.1
-                        mov     usecs, #65
-                        call    #pauseus
-                        test    owmask, ina             wc      ' sample for presence, 1W -> C
-                        muxc    value, #%01                     ' C -> value.0
-                        mov     usecs, #410
-                        call    #pauseus
-                        wrlong  value, iopntr                   ' update hub
-                        wrlong  ZERO, cmdpntr
-                        jmp     #owmain
+cmd_setup               rdlong  t1, t2                  ' get data pin
+                        mov     datamask, #1
+                        shl     datamask, t1
+                        add     t2, #4                  ' get 1 usec delay period
+                        rdlong  dly1usec, t2
 
+                        mov     dly2usec, dly1usec      ' set delay values
+                        add     dly2usec, dly1usec
+                        mov     dly3usec, dly2usec
+                        add     dly3usec, dly1usec
+                        mov     dly4usec, dly3usec
+                        add     dly4usec, dly1usec
+                        sub     dly1usec, #13           ' adjust in-line delay values
+                        sub     dly2usec, #13
+                        sub     dly3usec, #13
+                        jmp     #endcmd
 
-' -------------------------
-' Write byte to 1-Wire bus
-' -------------------------
-'
-owwrbyte                rdlong  value, iopntr                   ' get byte from hub
-                        mov     bitcount, #8                    ' write 8 bits
-wrloop                  shr     value, #1               wc      ' value.0 -> C, value >>= 1
-                if_c    mov     usecs, #6                       ' write 1
-                if_nc   mov     usecs, #60                      ' write 0
-                        or      dira, owmask                    ' pull bus low
-                        call    #pauseus
-                        andn    dira, owmask                    ' release bus
-                if_c    mov     usecs, #64                      ' pad for 1
-                if_nc   mov     usecs, #10                      ' pad for 0
-                        call    #pauseus
-                        djnz    bitcount, #wrloop               ' all bits done?
-                        wrlong  ZERO, cmdpntr                   ' yes, update hub
-                        jmp     #owmain
+'------------------------------------------------------------------------------
+' parameters: none
+' return:     0 if no presence, 1 is presence detected
+'------------------------------------------------------------------------------
 
-owwrbit                 rdlong  value, iopntr                   ' get byte from hub
-                        shr     value, #1               wc      ' value.0 -> C, value >>= 1
-                if_c    mov     usecs, #6                       ' write 1
-                if_nc   mov     usecs, #60                      ' write 0
-                        or      dira, owmask                    ' pull bus low
-                        call    #pauseus
-                        andn    dira, owmask                    ' release bus
-                if_c    mov     usecs, #64                      ' pad for 1
-                if_nc   mov     usecs, #10                      ' pad for 0
-                        call    #pauseus
-                        wrlong  ZERO, cmdpntr                   ' yes, update hub
-                        jmp     #owmain
+cmd_reset               call    #_reset                 ' send reset and exit
+                        jmp     #endcmd
 
+'------------------------------------------------------------------------------
+' parameters: value, number of bits
+' return:     none
+'------------------------------------------------------------------------------
 
-' --------------------------
-' Read byte from 1-Wire bus
-' --------------------------
-'
-owrdbyte                mov     bitcount, #8                    ' read 8 bits
-                        mov     value, #0                       ' clear workspace
-rdloop                  mov     usecs, #6
-                        or      dira, owmask                    ' bus low
-                        call    #pauseus
-                        andn    dira, owmask                    ' release bus
-                        mov     usecs, #9                       ' hold-off before sample
-                        call    #pauseus
-                        test    owmask, ina             wc      ' sample bus, 1W -> C
-                        shr     value, #1                       ' value >>= 1
-                        muxc    value, #%1000_0000              ' C -> value.7
-                        mov     usecs, #55                      ' finish read slot
-                        call    #pauseus
-                        djnz    bitcount, #rdloop               ' all bits done?
-                        wrlong  value, iopntr                   ' yes, update hub
-                        wrlong  ZERO, cmdpntr
-                        jmp     #owmain
+cmd_write               rdlong  value, t2               ' get the data byte
+                        add     t2, #4
+                        rdlong  bitcnt, t2 wz           ' get bit count
+        if_z            mov     bitcnt, #1              ' must be 1 to 32
+                        max     bitcnt, #32
+                        call    #_write                 ' write bits and exit
+                        jmp     #endcmd
 
+'------------------------------------------------------------------------------
+' parameters: number of bits
+' return:     value
+'------------------------------------------------------------------------------
 
-' -------------------------
-' Read bit from 1-Wire bus
-' -------------------------
-'
-owrdbit                 mov     value, #0                       ' clear workspace
-                        mov     usecs, #6
-                        or      dira, owmask                    ' bus low
-                        call    #pauseus
-                        andn    dira, owmask                    ' release bus
-                        mov     usecs, #9                       ' hold-off before sample
-                        call    #pauseus
-                        test    owmask, ina             wc      ' sample bus, 1W -> C
-                        muxc    value, #1                       ' C -> value.0
-                        mov     usecs, #55                      ' finish read slot
-                        call    #pauseus
-                        wrlong  value, iopntr                   ' update hub
-                        wrlong  ZERO, cmdpntr
-                        jmp     #owmain
+cmd_read                rdlong  bitcnt, t2              ' get bit count
+        if_z            mov     bitcnt, #1              ' must be 1 to 32
+                        max     bitcnt, #32
+                        call    #_read                  ' read bits and exit
+                        jmp     #endcmd
 
+'------------------------------------------------------------------------------
+' parameters: family, maximum number of addresses, address pointer
+' return:     number of addresses
+'------------------------------------------------------------------------------
 
-' -------------------------------
-' Calculate CRC8
-' * original code by Cam Thompson
-' -------------------------------
-'
-owcalccrc               mov     value, #0                       ' clear workspace
-                        shr     bytecount, #8           wz      ' clear command from count
-                if_z    jmp     #savecrc
-                        rdlong  hubpntr, iopntr                 ' get address of array
+cmd_search              rdlong  addrl, t2 wz            ' get family code
+                        mov     addrh, #0
+        if_nz           mov     lastunknown, #7         ' if non-zero, restrict search
+        if_z            mov     lastunknown, #0         ' if zero, search all
 
-crcbyte                 rdbyte  tmp1, hubpntr                   ' read byte from array
-                        add     hubpntr, #1                     ' point to next
-                        mov     bitcount, #8
+                        add     t2, #4                  ' get maximum number of addresses
+                        rdlong  datamax, t2
+                        max     datamax, #150 wz
+        if_z            jmp     #:exit
 
-crcbit                  mov     tmp2, tmp1                      ' x^8 + x^5 + x^4 + 1
-                        shr     tmp1, #1
-                        xor     tmp2, value
+                        add     t2, #4                  ' get data pointer
+                        rdlong  dataptr, t2
+                        mov     datacnt, #0             ' clear address count
+
+:nextAddr               call    #_reset                 ' reset the network
+                        cmp     value, #0 wz            ' exit if no presence
+        if_z            jmp     #:exit
+                        mov     searchbit, #1           ' set initial search bit (1 to 64)
+                        mov     unknown, #0             ' clear unknown marker
+                        mov     addr, addrl             ' get address bits
+                        mov     searchmask, #1          ' set search mask
+
+                        mov     value, #SEARCH_ROM      ' send search ROM command
+                        call    #_writebyte
+
+:nextBit                mov     bitcnt, #2              ' read two bits
+                        call    #_read
+
+                        cmp     value, #%00 wz          ' 00 - device conflict
+        if_nz           jmp     #:check10
+                        cmp     searchbit, lastunknown wz, wc
+        if_z            or      addr, searchmask
+        if_z            jmp     #:sendbit
+        if_nc           andn    addr, searchmask
+        if_nc           mov     unknown, searchbit
+        if_nc           jmp     #:sendbit
+                        test    addr, searchmask wz
+        if_z            mov     unknown, searchbit
+                        jmp     #:sendbit
+
+:check10                cmp     value, #%10 wz          ' 10 - all devices have 0 bit
+        if_z            andn    addr, searchmask
+        if_z            jmp     #:sendbit
+
+:check01                cmp     value, #%01 wz          ' 01 - all devices have 1 bit
+        if_z            or      addr, searchmask
+        if_z            jmp     #:sendbit
+
+                        jmp     #:exit                  ' 11 - no devices responding
+
+:sendBit                test    addr, searchmask wc     ' send reply bit
+                        muxc    value, #1
+                        mov     bitcnt, #1
+                        call    #_write
+
+                        add     searchbit, #1           ' increment search count
+                        rol     searchmask, #1          ' adjust mask
+                        cmp     searchbit, #33 wz       ' check for upper 32 bits
+        if_z            mov     addrl, addr
+        if_z            mov     addr, addrh
+                        cmp     searchbit, #65 wz       ' repeat for all 64 bits
+        if_nz           jmp     #:nextbit
+
+                        wrlong  addrl, dataptr          ' store address
+                        add     dataptr, #4
+                        mov     addrh, addr
+                        wrlong  addrh, dataptr
+                        add     dataptr, #4
+
+                        add     datacnt, #1             ' increment address count
+                        cmp     datacnt, datamax wc
+                        mov     lastunknown, unknown wz ' update last unknown bit
+        if_nz_and_c     jmp     #:nextaddr              ' repeat if more addresses
+
+:exit                   mov     value, datacnt          ' return number of addresses found
+                        jmp     #endcmd
+
+'------------------------------------------------------------------------------
+' parameters: byte count, address pointer
+' return:     crc8
+'------------------------------------------------------------------------------
+
+cmd_crc8                rdlong  datacnt, t2             ' get number of bytes
+                        add     t2, #4                  ' get data pointer
+                        rdlong  dataptr, t2
+
+                        mov     value, #0               ' clear CRC
+
+:nextByte               rdbyte  addr, dataptr           ' get next byte
+                        add     dataptr, #1
+                        mov     bitcnt, #8
+
+:nextBit                mov     t1, addr                ' x^8 + x^5 + x^4 + 1
+                        shr     addr, #1
+                        xor     t1, value
                         shr     value, #1
-                        shr     tmp2, #1                wc
-                if_c    xor     value, #$8C
-                        djnz    bitcount, #crcbit
-                        djnz    bytecount, #crcbyte
+                        shr     t1, #1 wc
+        if_c            xor     value, #crc#POLY8_DSMAX
+                        djnz    bitcnt, #:nextbit
+                        djnz    datacnt, #:nextbyte
+                        jmp     #endcmd
 
-savecrc                 wrlong  value, iopntr                   ' update hub
-                        wrlong  ZERO, cmdpntr
-                        jmp     #owmain
+'------------------------------------------------------------------------------
+' input:  none
+' output: value         0 if no presence, 1 is presence detected
+'------------------------------------------------------------------------------
+
+_reset                  test    datamask, ina wc        ' make sure bus is
+        if_nc           jmp     #_reset_ret             '   free, first
+                        andn    outa, datamask          ' set data low
+                        or      dira, datamask
+
+                        mov     t1, #480                ' delay 480 usec
+                        call    #_dly
+
+                        andn    dira, datamask          ' set data to high Z
+
+                        mov     t1, #72                 ' delay 72 usec
+                        call    #_dly
+
+                        test    datamask, ina wc        ' check for presence
+        if_c            mov     value, #0
+        if_nc           mov     value, #1
+
+                        mov     t1, #480                ' delay 480 usec
+                        call    #_dly
+_reset_ret              ret
+
+'------------------------------------------------------------------------------
+' input:  value         data bits
+'         bitCount      number of bits
+' output: none
+'------------------------------------------------------------------------------
+
+_writeByte              mov     bitcnt, #8              ' write an 8-bit byte
+
+_write                  andn    outa, datamask          ' set data low for 8 usec
+                        or      dira, datamask
+                        mov     t1, #8
+                        call    #_dly
+
+                        ror     value, #1 wc            ' check next bit
+        if_c            andn    dira, datamask          ' if 1, set data to high Z
+
+                        mov     t1, #52                 ' hold for 52 usec
+                        call    #_dly
+
+                        andn    dira, datamask          ' set data to high Z for 12 usec
+                        mov     t1, #12
+                        call    #_dly
+
+                        djnz    bitcnt, #_write         ' repeat for all bits
+_writeByte_ret
+_write_ret              ret
+
+'------------------------------------------------------------------------------
+' input:  bitCount      number of bits
+' output: value         data bits
+'------------------------------------------------------------------------------
 
 
-' ---------------------
-' Pause in microseconds
-' ---------------------
-'
-pauseus                 mov     ustimer, US_001                 ' set timer for 1us
-                        add     ustimer, cnt                    ' sync with system clock
-usloop                  waitcnt ustimer, US_001                 ' wait and reload
-                        djnz    usecs, #usloop                  ' update delay count
-pauseus_ret             ret
+_readByte               mov     bitcnt, #8              ' read an 8-bit byte
+
+_read                   mov     shiftcnt, #32           ' get shift count
+                        sub     shiftcnt, bitcnt
+
+:read2                  andn    outa, datamask          ' pull low to get
+                        or      dira, datamask          '   next bit
+                        mov     t1, #4
+                        call    #_dly
+
+                        andn    dira, datamask          ' set data to high Z
+                        mov     t1, #4                  ' delay 4 usec
+                        call    #_dly
+
+                        test    datamask, ina wc        ' read next bit
+                        rcr     value, #1
+
+                        mov     t1, #60                 ' delay for 60 usec
+                        call    #_dly
+
+                        djnz    bitcnt, #:read2         ' repeat for all bits
+
+                        shr     value, shiftcnt         ' right justify
+_readByte_ret
+_read_ret               ret
+
+'------------------------------------------------------------------------------
+' input:  t1            number of usec to delay (must be multiple of 4)
+' output: none
+'------------------------------------------------------------------------------
 
 
-' --------------------------------------------------------------------------------------------------
+_dly                    shr     t1, #2 wz               ' divide delay count by 4
+        if_z            mov     t1, #1                  ' ensure at least one delay
+                        mov     t2, dly4usec            ' get initial delay
+                        add     t2, cnt
+                        sub     t2, #41                 ' adjust for call overhead
 
-ZERO                    long    0
+:wait                   waitcnt t2, dly4usec            ' wait for 4 usec
+                        djnz    t1, #:wait              ' loop while delay count > 0
+_dly_ret                ret
 
-US_001                  long    0-0                             ' ticks per us
+'-------------------- constant values -----------------------------------------
 
-owmask                  long    0-0                             ' pin mask for 1-Wire pin
-cmdpntr                 long    0-0                             ' hub address of command
-iopntr                  long    0-0                             ' hub address of io byte
+Zero                    long    0                       ' constants
 
-value                   res     1
-bitcount                res     1
-bytecount               res     1
-hubpntr                 res     1
-usecs                   res     1
-ustimer                 res     1
+'-------------------- local variables -----------------------------------------
 
-tmp1                    res     1
-tmp2                    res     1
+t1                      res     1                       ' temporary values
+t2                      res     1
+bitcnt                  res     1                       ' bit counter
+shiftcnt                res     1                       ' shift counter
+datamask                res     1                       ' data pin mask
+value                   res     1                       ' data value / return value
+dataptr                 res     1                       ' data pointer
+datacnt                 res     1                       ' data count
+datamax                 res     1                       ' maximum data count
 
-                        fit     492
+searchbit               res     1                       ' current search bit
+searchmask              res     1                       ' search mask
+unknown                 res     1                       ' current unknown bit
+lastunknown             res     1                       ' last unknown search bit
+addr                    res     1                       ' current address
+addrl                   res     1                       ' lower 32 bits of address
+addrh                   res     1                       ' upper 32 bits of address
 
+dly1usec                res     1                       ' 1 usec delay
+dly2usec                res     1                       ' 2 usec delay
+dly3usec                res     1                       ' 3 usec delay
+dly4usec                res     1                       ' 4 usec delay
 
-DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
 
-{{
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
 
-  Copyright (c) 2009 Jon McPhalen (aka Jon Williams)
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this
-  software and associated documentation files (the "Software"), to deal in the Software
-  without restriction, including without limitation the rights to use, copy, modify,
-  merge, PUBlish, distribute, sublicense, and/or sell copies of the Software, and to
-  permit persons to whom the Software is furnished to do so, subject to the following
-  conditions:
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
 
-  The above copyright notice and this permission notice shall be included in all copies
-  or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
-  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
-  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-}}
