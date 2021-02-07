@@ -3,134 +3,155 @@
     Filename: sensor.temperature.ds18b2x.ow.spin
     Author: Jesse Burt
     Description: Driver for the Dallas/Maxim DS18B2x-series temperature sensors
-    Copyright (c) 2019
+    Copyright (c) 2021
     Started Jul 13, 2019
-    Updated Jul 13, 2019
+    Updated Jan 8, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    SCALE_C = 0
-    SCALE_F = 1
+' Temperature scales
+    C       = 0
+    F       = 1
+
+' Operating modes
+    ONE     = 0
+    MULTI   = 1
 
 OBJ
 
-    time    : "time"
     core    : "core.con.ds18b2x"
     ow      : "com.onewire"
 
 VAR
 
-  byte _temp_scale
+    long _sel_addr[2]
+    byte _temp_scale, _opmode
 
-PUB Start(OW_PIN): okay
+PUB Null{}
+' This is not a top-level object
 
-    if lookdown(OW_PIN: 0..31)
-        okay := ow.Start(OW_PIN)
-        if okay
-            if Status == ow#OW_STAT_FOUND
-                return
+PUB Startx(DQ_PIN): status
+
+    if lookdown(DQ_PIN: 0..31)
+        if (status := ow.init(DQ_PIN))
+            return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop
+PUB Stop{}
 
-    ow.Stop
+    ow.deinit{}
 
-PUB Family
-' Returns: 8-bit family code of device
-'   20: DS18B20
-'   22: DS18B22
-    result := 0
-    ow.Reset
-    ow.Write(ow#RD_ROM)
-    result := ow.Read
-    ow.Reset
+PUB Defaults{}
+' Factory default settings
+    adcres(12)
+    tempscale(C)
 
-    case result
-        core#FAMILY_20:
-            return 20
-        core#FAMILY_22:
-            return 22
-        OTHER:
-            'Unknown or not yet implemented - return the raw data
-
-PUB Resolution(bits) | tmp
+PUB ADCRes(bits): curr_res
 ' Set resolution of temperature readings, in bits
 '   Valid values: 9..12
 '   Any other value polls the chip and returns the current setting
-    ow.Reset
-    ow.Write(ow#SKIP_ROM)
-    ow.Write(core#RD_SPAD)
-    repeat 4
-        ow.Read
-    tmp := (ow.Read >> 5)
     case bits
         9..12:
-            bits := lookdownz(bits: 9..12) << 5
-        OTHER:
-            result := lookupz(tmp: 9..12)
-            return result
-    ow.Reset
-    ow.Write(ow#SKIP_ROM)
-    ow.Write(core#WR_SPAD)
-    ow.Write($00)
-    ow.Write($00)
-    ow.Write(bits)
-    OW.Reset
+            bits := lookdownz(bits: 9..12) << core#R0
+            polldev{}
+            ow.wr_byte(core#WR_SPAD)
+            ow.wr_word($0000)                   ' skip over Th, Tl regs
+            ow.wr_byte(bits)
+            ow.reset{}
+        other:
+            polldev{}
+            ow.wr_byte(core#RD_SPAD)
+            ow.rd_long{}                        ' skip over temperature, Th, Tl
+            curr_res := (ow.rd_byte{} >> core#R0)
+            return lookupz(curr_res: 9..12)
 
-PUB Scale(temp_scale)
-' Set scale of temperature data returned by Temperature method
+PUB OpMode(mode): curr_mode
+' Set operation mode
 '   Valid values:
-'       SCALE_C (0): Celsius
-'       SCALE_F (1): Fahrenheit
+'       ONE (0): one connected device
+'       MULTI (1): Multi-drop, for multiple connected devices
+'   Any other value returns the current setting
+    case mode
+        ONE, MULTI:
+            _opmode := mode
+        other:
+            return _opmode
+
+PUB Search(ptr_buff, nr_devs): nr_found
+' Search bus for devices and store their addresses into a buffer
+'   NOTE: This buffer must be at least (8 * nr_devs) bytes
+    return ow.search(ow#CHECK_CRC, nr_devs, ptr_buff)
+
+PUB Select(ptr_addr)
+' Select device, by pointer to address, for subsequent operations
+    longmove(@_sel_addr, ptr_addr, 2)
+
+PUB SN(ptr_buff) | tmp
+' Read 64-bit serial number of device into buffer at ptr_buff
+'   NOTE: Buffer at ptr_buff must be 8 bytes in length
+'   NOTE: Includes family code (LSB) and CRC (MSB)
+    ow.reset{}
+    ow.wr_byte(ow#RD_ROM)
+    ow.readaddress(ptr_buff)
+
+PUB TempData{}: temp_adc
+' Read temperature data
+    temp_adc := 0
+    polldev{}
+
+    ow.wr_byte(core#CONV_TEMP)
+    repeat until ow.rd_bits(1)                  ' wait until measurement ready
+
+    polldev{}
+
+    ow.wr_byte(core#RD_SPAD)
+    temp_adc := ow.rd_word{}
+    ow.reset{}
+
+PUB Temperature{}: temp
+' Returns: Temperature in hundredths of a degree
+    return calctemp(tempdata{})
+
+PUB TempScale(temp_scale): curr_scl
+' Set scale of temperature data returned by Temperature{} method
+'   Valid values:
+'       C (0): Celsius
+'       F (1): Fahrenheit
 '   Any other value returns the current setting
     case temp_scale
-        SCALE_F, SCALE_C:
+        F, C:
             _temp_scale := temp_scale
-        OTHER:
+        other:
             return _temp_scale
 
-PUB SN(buff_addr) | tmp
-' Read 48-bit serial number of device into buffer at buff_addr
-'   NOTE: Buffer at buff_addr must be 6 bytes in length
-    ow.Reset
-    ow.Write(ow#RD_ROM)
-    ow.Read                                 ' Discard first byte (family code)
-    repeat tmp from 5 to 0                  ' Read only the 48-bit unique SN
-        byte[buff_addr][tmp] := ow.Read
- 
-PUB Status
-' Returns: One-Wire bus status
-    return ow.Reset
-
-PUB Temperature
-' Returns: Temperature in centi-degrees
-'   NOTE: Temperature scale is set using the Scale method, and defaults to Celsius
-    result := 0
-    ow.Reset
-    ow.Write(ow#SKIP_ROM)
-    ow.Write(core#CONV_TEMP)
-    repeat
-        result := ow.RdBit
-    until (result == 1)
-    ow.Reset
-    ow.Write(ow#SKIP_ROM)
-    ow.Write(core#RD_SPAD)
-    result := ow.Read
-    result |= ow.Read << 8
-    ow.Reset
-
-    result := ~~result * 5
+PRI calcTemp(temp_word): temp
+' Calculate temperature in hundredths of a degree in the chosen scale,
+'   given temp_word
+    temp := ~~temp_word * 5
     case _temp_scale
-        SCALE_F:
-            if result > 0
-                result := result * 9 / 5 + 32_00
+        F:
+            if temp > 0
+                temp := temp * 9 / 5 + 32_00
             else
-                result := 32_00 - (||result * 9 / 5)
-        OTHER:
-            return result
+                temp := 32_00 - (||(temp) * 9 / 5)
+        other:
+            return temp
+
+PRI pollDev{}
+' Poll a device
+    ow.reset{}
+    case _opmode
+        ONE:                                    ' match first device that
+            ow.wr_byte(ow#SKIP_ROM)             '   responds
+        MULTI:
+            ow.wr_byte(ow#MATCH_ROM)            ' match a specific device
+            ow.writeaddress(@_sel_addr)
 
 DAT
 {
@@ -153,4 +174,3 @@ DAT
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     --------------------------------------------------------------------------------------------------------
 }
-

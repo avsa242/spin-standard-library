@@ -3,27 +3,31 @@
     Filename: DS18B2x-Demo.spin
     Author: Jesse Burt
     Description: Demo of the DS18B2x driver
-    Copyright (c) 2019
+    Copyright (c) 2021
     Started Jul 13, 2019
-    Updated Jul 13, 2019
+    Updated Jan 8, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    _clkmode    = cfg#_CLKMODE
-    _xinfreq    = cfg#_XINFREQ
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
 
+' -- User-modifiable constants
     LED         = cfg#LED1
-
     SER_BAUD    = 115_200
 
-    OW_PIN      = 0
+    OW_PIN      = 2
+    SCALE       = C
+
+    NR_DEVICES  = 2
+    BITS        = 12                            ' ADC res (9..12 bits)
+' --
 
     C           = 0
     F           = 1
-    SCALE       = F
 
 OBJ
 
@@ -31,66 +35,79 @@ OBJ
     time: "time"
     ds  : "sensor.temperature.ds18b2x.ow"
     ser : "com.serial.terminal.ansi"
-    math: "tiny.math.float"
-    fs  : "string.float"
     int : "string.integer"
 
 VAR
 
-    byte _ser_cog, _sn[7]
+    long _devs[NR_DEVICES * 2]
 
-PUB Main | sn_byte, temp
+PUB Main{} | temp, i, nr_found
 
-    Setup
-    ds.Scale(ds#SCALE_F)
-    ds.Resolution(9)
+    setup{}
 
-    ser.Position(0, 4)
-    ser.Str(string("Temp res: "))
-    ser.Dec(ds.Resolution(-2))
-    ser.Str(string("bits", ser#CR, ser#LF))
+    ds.tempscale(SCALE)                         ' set temperature scale
+    ds.opmode(ds#MULTI)                         ' ONE (1 sensor), MULTI
 
-    ser.Str(string("SN: "))
-    ds.SN(@_sn)
-    repeat sn_byte from 0 to 5
-        ser.Hex(_sn[sn_byte], 2)
+    nr_found := ds.search(@_devs, 2)            ' how many sensors found?
+
+    i := 0
+    repeat nr_found                             ' for each sensor,
+        ds.select(@_devs[i])                    '   address it and set its
+        ds.adcres(BITS)                         '   ADC resolution (9..12 bits)
+        i += 2
 
     repeat
-        temp := ds.Temperature
-        ser.Position(0, 6)
-        ser.Str(string("Temp: "))
-        DispTemp(temp)
-    Flash(LED, 100)
+        ser.position(0, 3)
+        nr_found := ds.search(@_devs, 2)        ' how many sensors found?
 
-PUB DispTemp(cent_deg) | temp
+        i := 0
+        repeat nr_found                         ' for each sensor,
+            ds.select(@_devs[i])                '   address it
+            temp := ds.temperature{}            '   read its temperature
+            ser.printf3(string("(%d) %x%x: "), i/2, _devs[i+1], _devs[i])
+            decimal(temp, 100)
+            ser.newline{}
+            i += 2
 
-    ser.Dec(cent_deg/100)
-    ser.Char(".")
-    ser.Str(int.DecZeroed(cent_deg//100, 2))
-
-PUB Setup
-
-    repeat until _ser_cog := ser.Start (SER_BAUD)
-    time.MSleep(200)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
-    if ds.Start (OW_PIN)
-        ser.Str (string("DS18B2x driver started (DS18B"))
-        ser.Dec (ds.Family)
-        ser.Str(string(" found)"))
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
     else
-        ser.Str (string("DS18B2x driver failed to start - halting", ser#CR, ser#LF))
-        ds.Stop
-        time.MSleep (500)
-        ser.Stop
-        Flash(LED, 500)
+        sign := " "
 
-PUB Flash(pin, delay_ms)
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
 
-    dira[pin] := 1
-    repeat   
-        !outa[pin]
-        time.MSleep (delay_ms)
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if ds.startx(OW_PIN)
+        ser.strln(string("DS18B2x driver started"))
+    else
+        ser.strln(string("DS18B2x driver failed to start - halting"))
+        ds.stop{}
+        time.msleep(500)
+        ser.stop{}
+        repeat
 
 DAT
 {
