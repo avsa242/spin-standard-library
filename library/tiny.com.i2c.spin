@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: SPIN I2C Engine
     Started Jun 9, 2019
-    Updated Jan 25, 2021
+    Updated Feb 14, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c.spin, by
@@ -19,6 +19,8 @@ CON
 
     DEF_SDA = 29                                ' Default I2C I/O pins
     DEF_SCL = 28
+
+    HIGH    = 1
 
 CON
 
@@ -114,6 +116,7 @@ PUB Read(ackbit): i2cbyte
 '       NAK (1): Send NAK to slave device after reading
 '       ACK (0): Send ACK to slave device after reading
     dira[_sda] := 0                             ' Make SDA input
+    waitclockstretch{}
 
     repeat 8
         dira[_scl] := 0                         ' SCL high (float to p/u)
@@ -163,6 +166,11 @@ PUB Wait(slave_addr) | ackbit
         start{}
         ackbit := write(slave_addr)
     until (ackbit == ACK)
+
+PUB WaitClockStretch{}
+' Wait for slave device using clock-stretching
+    dira[_SCL] := 0                             ' let SCL float
+    repeat until ina[_SCL] == HIGH              ' wait until slave releases it
 
 PUB Waitx(slaveid, ms): t0
 ' Wait ms milliseconds for I2C device to be ready for new command

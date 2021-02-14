@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: PASM I2C Engine
     Started Mar 9, 2019
-    Updated Jan 25, 2021
+    Updated Feb 14, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -441,6 +441,9 @@ cmd_read_be             mov     tackbit, tcmd                   ' (tackbit := tc
                         sub     thubdest, #1                    '   minus 1
 
 :byteloop               andn    dira, sdamask                   ' Make SDA input
+                        andn    dira, sclmask                   ' let SCL float
+                        test    sclmask, ina            wc      ' wait for slave
+        if_nc           jmp     #:byteloop                      '   to release it
                         mov     t2, #0                          ' Clear result
                         mov     tbits, #8                       ' Prep for 8 bits
 
@@ -483,6 +486,9 @@ cmd_read_le             mov     tackbit, tcmd                   ' (tackbit := tc
                         shr     tcount, #16                     ' Isolate count
 
 :byteloop               andn    dira, sdamask                   ' Make SDA input
+                        andn    dira, sclmask                   ' let SCL float
+                        test    sclmask, ina            wc      ' wait for slave
+        if_nc           jmp     #:byteloop                      '   to release it
                         mov     t2, #0                          ' Clear result
                         mov     tbits, #8                       ' Prep for 8 bits
 
