@@ -3,9 +3,9 @@
     Filename: SHT3x-Demo.spin
     Author: Jesse Burt
     Description: Demo of the SHT3x driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Mar 10, 2018
-    Updated Aug 9, 2020
+    Updated Jan 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,25 +17,18 @@ CON
 
 ' -- User-modifiable constants
     LED             = cfg#LED1
-    SER_RX          = 31
-    SER_TX          = 30
     SER_BAUD        = 115_200
 
-' I2C
     SCL_PIN         = 28
     SDA_PIN         = 29
-    ADDR_BIT        = 0                                     ' Can be 0, or 1 for a second device on the bus
-    I2C_HZ          = 1_000_000                             ' Max: 1_000_000
+    ADDR_BIT        = 0                         ' 0, 1: opt. slave address
+    I2C_HZ          = 1_000_000                 ' max is 1_000_000
+    RESET_PIN       = -1                        ' optional
 ' --
 
 ' Temperature scale
     C               = 0
     F               = 1
-
-' Measurement repeatbility (on-sensor averaging)
-    LOW             = sht3x#LOW                             ' Least averaging / no filtering
-    MED             = sht3x#MED
-    HIGH            = sht3x#HIGH                            ' Most averaging, more stable readings
 
 OBJ
 
@@ -44,71 +37,63 @@ OBJ
     sht3x   : "sensor.temp_rh.sht3x.i2c"
     int     : "string.integer"
     time    : "time"
-    io      : "io"
 
 PUB Main{} | temp, rh
 
     setup{}
 
-    sht3x.heaterenabled(FALSE)                              ' Enable/Disable built-in heater
-    sht3x.repeatability (LOW)                               ' Measurement repeatability (on-chip averaging)
-    sht3x.tempscale(C)                                      ' Temperature scale
+    sht3x.tempscale(C)
 
     repeat
         ser.position(0, 3)
 
-        ser.str(string("Previous temperature: "))
-        decimaldot(sht3x.lasttemperature{}, 100)
-        ser.newline{}
-
-        ser.str(string("Current temperature: "))
-        decimaldot(sht3x.temperature{}, 100)
-        ser.newline{}
-
-        ser.str(string("Previous humidity: "))
-        decimaldot(sht3x.lasthumidity{}, 100)
+        ser.str(string("Temperature: "))
+        decimal(sht3x.temperature{}, 100)
         ser.newline{}
 
         ser.str(string("Relative humidity: "))
-        decimaldot(sht3x.humidity{}, 100)
+        decimal(sht3x.humidity{}, 100)
         ser.newline{}
 
         time.msleep (1000)
 
-PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp
-' Display a fixed-point scaled up number in decimal-dot notation - scale it back down by divisor
-'   e.g., Decimal (314159, 100000) would display 3.14159 on the terminal
-'   scaled: Fixed-point scaled up number
-'   divisor: Divide scaled-up number by this amount
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
     whole := scaled / divisor
     tmp := divisor
     places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
+    else
+        sign := " "
 
     repeat
         tmp /= 10
         places++
     until tmp == 1
-    part := int.deczeroed(||(scaled // divisor), places)
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
 
-    ser.dec (whole)
-    ser.char (".")
-    ser.str (part)
-    ser.clearline{}
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
 
 PUB Setup{}
 
-    repeat until ser.startrxtx (SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+    ser.strln(string("Serial terminal started"))
 
-    if sht3x.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BIT)
-        ser.printf(string("SHT3x driver (S/N %x) started\n"), sht3x.serialnum{}, 0, 0, 0, 0, 0)
+    if sht3x.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BIT, RESET_PIN)
+        ser.strln(string("SHT3x driver started"))
     else
-        ser.str(string("SHT3x driver failed to start - halting"))
-        flashled(LED, 500)
-
-#include "lib.utility.spin"
+        ser.strln(string("SHT3x driver failed to start - halting"))
+        repeat
 
 DAT
 {
