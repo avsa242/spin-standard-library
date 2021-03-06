@@ -5,7 +5,7 @@
     Description: Simple demo of the 23XXXX driver
     Copyright (c) 2020
     Started May 20, 2019
-    Updated Jan 19, 2020
+    Updated Dec 27, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,21 +17,23 @@ CON
     CLK_FREQ    = ((_clkmode - xtal1) >> 6) * _xinfreq
     TICKS_USEC  = CLK_FREQ / 1_000_000
 
-' User-modifiable constants
-    SER_RX      = 31
-    SER_TX      = 30
+' -- User-modifiable constants
     SER_BAUD    = 115_200
     LED         = cfg#LED1
-    CS_PIN      = 4
-    SCK_PIN     = 2
-    MOSI_PIN    = 1
-    MISO_PIN    = 0
-    PART        = 1024                              ' 64 = 23640, 256 = 23256, 512 = 23512, 1024 = 231024
+
+    CS_PIN      = 0
+    SCK_PIN     = 1
+    MOSI_PIN    = 2
+    MISO_PIN    = 3
+
+' 64 = 23640, 256 = 23256, 512 = 23512, 1024 = 231024
+    PART        = 1024
+' --
 
 ' Calculations based on PART
     RAMSIZE     = (PART / 8) * 1024
     RAM_END     = RAMSIZE - 1
-    PAGESIZE    = 32                                ' Page size is the same for all SRAMs
+    PAGESIZE    = 32                            ' Page size is the same for all SRAMs
     LASTPAGE    = (RAMSIZE/PAGESIZE) - 1
 
 OBJ
@@ -40,96 +42,87 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    io      : "io"
     sram    : "memory.sram.23xxxx.spi"
 
 VAR
 
-    byte _ser_cog, _sram_cog
-    byte _sram_buff[PAGESIZE]
+    byte _sram_buff[PAGESIZE]                   ' working buffer for SRAM
 
-PUB Main | base_page, start, elapsed
+PUB Main{} | base_page, start, elapsed
 
-    Setup
-
+    setup{}
+    sram.defaults{}
+    bytefill(@_sram_buff, 0, PAGESIZE)          ' clear out buffer
     ser.position(0, 3)
-    ser.str(string("SRAM size set to "))
-    ser.dec(RAMSIZE)
-    ser.str(string("kbytes (23"))
-    ser.dec(PART)
-    ser.str(string(")", ser#CR, ser#LF))
+    ser.printf2(string("SRAM size set to %dkbytes (23%d)\n"), RAMSIZE, PART)
 
     base_page := 0
-    sram.OpMode(sram#PAGE)                                          ' Set Page access mode
 
     repeat
-        start := cnt                                                '
-        sram.ReadPage(base_page, PAGESIZE, @_sram_buff)             ' Simple speed test
-        elapsed := cnt-start                                        '
-        ser.Hexdump(@_sram_buff, base_page << 5, PAGESIZE, 8, 0, 5)
-        ser.Str(string(ser#CR, ser#LF, "Reading done ("))
-        ser.Dec(usec(elapsed))
-        ser.Str(string("us)", ser#CR, ser#LF))
+        ' simple speed test
+        start := cnt
+        sram.readpage(base_page, PAGESIZE, @_sram_buff)
+        elapsed := cnt-start
 
-        case ser.CharIn
-            "[":                                                    ' Go back a page in SRAM
+        ser.hexdump(@_sram_buff, base_page << 5, PAGESIZE, 8, 0, 5)
+        ser.printf1(string("\nReading done (%dus)\n"), usec(elapsed))
+
+        case ser.charin{}
+            "[":                                ' Go back a page in SRAM
                 base_page--
                 if base_page < 0
                     base_page := 0
-            "]":                                                    ' Go forward a page
+            "]":                                ' Go forward a page
                 base_page++
                 if base_page > LASTPAGE
                     base_page := LASTPAGE
-            "e":                                                    ' Go to the last page
+            "e":                                ' Go to the last page
                 base_page := LASTPAGE
-            "s":                                                    ' Go to the first page
+            "s":                                ' Go to the first page
                 base_page := 0
-            "w":                                                    ' Write a test string to the current page
-                WriteTest(base_page << 5)
-            "x":                                                    ' Erase the current page
-                ErasePage(base_page)
-            "q":                                                    ' Quit the demo and shutdown
-                ser.Str(string("Halting", ser#CR, ser#LF))
-                Stop
+            "w":                                ' Write a test string
+                writetest(base_page << 5)       '   to start of current page
+            "x":                                ' Erase the current page
+                erasepage(base_page)
+            "q":                                ' Quit the demo and halt
+                ser.strln(string("Halting"))
+                stop{}
                 quit
-            OTHER:
+            other:
 
-    FlashLED(LED, 100)
+    repeat
 
 PUB ErasePage(base_page) | tmp[8]
 ' Erase a page of SRAM
-    bytefill(@tmp, $00, PAGESIZE)
-    sram.WritePage(base_page, PAGESIZE, @tmp)
+    bytefill(@tmp, $00, PAGESIZE)               ' fill temp buffer with zeroes
+    sram.writepage(base_page, PAGESIZE, @tmp)   '   and write it to the page
 
-PUB WriteTest(base) | tmp, i
+PUB WriteTest(base) | tmp
 ' Write a test string to the SRAM
     tmp := string("TESTING TESTING 1 2 3")
-    sram.WriteBytes(base, strsize(tmp), tmp)
+    sram.writebytes(base, strsize(tmp), tmp)
 
-PUB usec(ticks)
-
+PRI usec(ticks): usecs
+' Convert system clock ticks to microseconds
     return ticks / TICKS_USEC
 
 PUB Setup
 
-    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
-    time.MSleep(100)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
-    if _sram_cog := sram.Start (CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.Str(string("23XXXX driver started", ser#CR, ser#LF))
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if sram.start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+        ser.strln(string("23XXXX driver started"))
     else
-        ser.Str(string("23XXXX driver failed to start - halting", ser#CR, ser#LF))
-        Stop
-        FlashLED(LED, 500)
+        ser.strln(string("23XXXX driver failed to start - halting"))
+        stop{}
 
-PUB Stop
+PUB Stop{}
 
-    time.MSleep (5)
-    ser.Stop
-    sram.Stop
-
-#include "lib.utility.spin"
+    time.msleep(5)
+    ser.stop{}
+    sram.stop{}
 
 DAT
 {
