@@ -358,7 +358,7 @@ wSPI_Data
                 andn      outa, _cs_mask        ' begin transmission
                 andn      outa, _sck_mask       ' clock off, SCK low
                 mov       phsb, #0
-                mov       phsb, data            ' data to clock out
+                mov       phsb, data            ' load PHSB with data
 
                 shl       phsb, #24             ' left-justify it
                 mov       frqa, frq20           ' set write frequency

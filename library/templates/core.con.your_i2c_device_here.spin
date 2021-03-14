@@ -4,8 +4,8 @@
     Author:
     Description:
     Copyright (c) 20__
-    Started Month Day, Year
-    Updated Month Day, Year
+    Started MMMM DDDD, YYYY
+    Updated MMMM DDDD, YYYY
     See end of file for terms of use.
     --------------------------------------------
 }
