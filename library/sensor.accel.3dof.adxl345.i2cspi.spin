@@ -3,14 +3,23 @@
     Filename: sensor.accel.3dof.adxl345.spi.spin
     Author: Jesse Burt
     Description: Driver for the Analog Devices ADXL345 3DoF Accelerometer
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Mar 14, 2020
-    Updated Jul 19, 2020
+    Updated Mar 21, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
+
+' Constants used for I2C mode only
+    SLAVE_WR        = core#SLAVE_ADDR
+    SLAVE_RD        = core#SLAVE_ADDR|1
+
+    DEF_SCL         = 28
+    DEF_SDA         = 29
+    DEF_HZ          = 100_000
+    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
 ' Indicate to user apps how many Degrees of Freedom each sub-sensor has
 '   (also imply whether or not it has a particular sensor)
@@ -22,7 +31,6 @@ CON
 
     R                   = 0
     W                   = 1
-
 
 ' Operating modes
     STANDBY             = 0
@@ -45,35 +53,64 @@ CON
 VAR
 
     long _ares
-    long _abiasraw[3]
-    long _CS, _SCK, _MOSI, _MISO
+    long _abiasraw[ACCEL_DOF]
+    long _CS
 
 OBJ
 
-    spi : "com.spi.4w"
-    core: "core.con.adxl345"
-    time: "time"
-    io  : "io"
+#ifdef ADXL345_I2C
+    i2c : "com.i2c"                             ' PASM I2C engine (~800kHz)
+#elseifdef ADXL345_SPI
+    spi : "com.spi.4w"                          ' PASM SPI engine (~1MHz)
+#else
+#error "One of ADXL345_I2C or ADXL345_SPI must be defined"
+#endif
+    core: "core.con.adxl345"                    ' HW-specific constants
+    time: "time"                                ' timekeeping methods
+    io  : "io"                                  ' I/O pin abstraction methods
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): okay
+#ifdef ADXL345_I2C
+PUB Start(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
+' Start using custom I/O pin settings (I2C)
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and{
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.msleep(1)
+            if deviceid{} == core#DEVID_RESP
+                return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
+#elseifdef ADXL345_SPI
+PUB Start(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
+' Start using custom I/O pin settings (SPI)
     if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and{
 }   lookdown(SDA_PIN: 0..31) and lookdown(SDO_PIN: 0..31)
-        if okay := spi.start(core#CLK_DELAY, core#CPOL)
+        if (status := spi.init(SCL_PIN, SDA_PIN, SDO_PIN, core#SPI_MODE))
             time.msleep(1)
-            longmove(@_CS, @CS_PIN, 4)          ' copy i/o pins to hub vars
+            _CS := CS_PIN
 
-            io.high(_CS)
+            io.high(_CS)                        ' ensure CS starts high
             io.output(_CS)
             if deviceid{} == core#DEVID_RESP
-                return okay
-    return FALSE                                ' something above failed
+                return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
+#endif
 
 PUB Stop{}
 
-    spi.stop{}
+#ifdef ADXL345_I2C
+    i2c.deinit{}
+#elseifdef ADXL345_SPI
+    spi.deinit{}
+#endif
 
 PUB Defaults{}
 ' Factory default settings
@@ -172,7 +209,7 @@ PUB AccelDataRate(rate): curr_rate
 '   Valid values: See case table below
 '   Any other value polls the chip and returns the current setting
 '   NOTE: Values containing an underscore represent fractional settings.
-'       Examples: 0_10 == 0.1rate, 12_5 == 12.5rate
+'       Examples: 0_10 == 0.1Hz, 12_5 == 12.5Hz
     curr_rate := 0
     readreg(core#BW_RATE, 1, @curr_rate)
     case rate
@@ -381,7 +418,7 @@ PUB MagGauss(x, y, z)
 PUB MagScale(scale)
 ' Dummy method
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from slave device into ptr_buff
     case reg_nr
         $00, $1D..$31, $38, $39:
@@ -390,23 +427,41 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
         other:
             return
 
+#ifdef ADXL345_I2C
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := reg_nr
+    i2c.start{}
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
+    i2c.start{}
+    i2c.wr_byte(SLAVE_RD)
+    i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
+    i2c.stop{}
+#elseifdef ADXL345_SPI
     io.low(_CS)
-    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr | core#R)
-
-    repeat tmp from 0 to nr_bytes-1
-        byte[ptr_buff][tmp] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+    spi.wr_byte(reg_nr | core#R)
+    spi.rdblock_lsbf(ptr_buff, nr_bytes)
     io.high(_CS)
+#endif
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to slave device
     case reg_nr
         $1D..$2A, $2C..$2F, $31, $38:
+#ifdef ADXL345_I2C
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.start{}
+            i2c.wr_byte(SLAVE_RD)
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+            i2c.stop{}
+#elseifdef ADXL345_SPI
             io.low(_CS)
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-
-            repeat tmp from 0 to nr_bytes-1
-                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][tmp])
+            spi.wr_byte(reg_nr)
+            spi.wrblock_lsbf(ptr_buff, nr_bytes)
             io.high(_CS)
+#endif
         other:
             return
 
