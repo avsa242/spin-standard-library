@@ -5,7 +5,7 @@
     Description: Driver for the PCF8563 Real Time Clock
     Copyright (c) 2021
     Started Sep 6, 2020
-    Updated Jan 6, 2021
+    Updated Mar 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -33,32 +33,34 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"                             ' PASM I2C Driver
-    core: "core.con.pcf8563.spin"               ' Low-level constants
-    time: "time"                                ' Basic timing functions
+    i2c : "com.i2c"                             ' PASM I2C engine
+    core: "core.con.pcf8563.spin"               ' HW-specific constants
+    time: "time"                                ' timekeeping functions
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start: okay
+PUB Start: status
 ' Start using 'default' Propeller I2C pins,
 '   at safest universal speed of 100kHz
-    okay := startx (DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
-
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-                time.msleep(1)
-                if i2c.present (SLAVE_WR)       ' Response from device?
-                    return okay
-
-    return FALSE                                ' Something above failed
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+' Start using custom I/O pins and bus speed
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.msleep(1)
+            if i2c.present(SLAVE_WR)            ' test device bus presence
+                return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    i2c.terminate
+    i2c.deinit{}
 
 PUB Defaults{}
 ' Factory default settings
@@ -90,31 +92,13 @@ PUB ClockOutFreq(freq): curr_freq
     freq := ((curr_freq & core#FD_MASK & core#FE_MASK) | freq) & core#CTRL_CLKOUT_MASK
     writereg(core#CTRL_CLKOUT, 1, @freq)
 
-PUB Date(ptr_date)
+PUB Date{}: curr_day
+' Get current date/day of month
+    return bcd2int(_days & core#DAYS_MASK)
 
-PUB DeviceID{}: id
-
-PUB Day(d): curr_day
-' Set day of month
-'   Valid values: 1..31
-'   Any other value returns the last read current day
-    case d
-        1..31:
-            d := int2bcd(d)
-            writereg(core#DAYS, 1, @d)
-        other:
-            return bcd2int(_days & core#DAYS_MASK)
-
-PUB Hours(hr): curr_hr
-' Set hours
-'   Valid values: 0..23
-'   Any other value returns the last read current hour
-    case hr
-        0..23:
-            hr := int2bcd(hr)
-            writereg(core#HOURS, 1, @hr)
-        other:
-            return bcd2int(_hours & core#HOURS_MASK)
+PUB Hours{}: curr_hr
+' Get current hour
+    return bcd2int(_hours & core#HOURS_MASK)
 
 PUB IntClear(mask) | tmp
 ' Clear interrupts, using a bitmask
@@ -169,27 +153,13 @@ PUB IntPinState(state): curr_state
     state := ((curr_state & core#TI_TP_MASK) | state) & core#CTRLSTAT2_MASK
     writereg(core#CTRLSTAT2, 1, @state)
 
-PUB Month(m): curr_month
-' Set month
-'   Valid values: 1..12
-'   Any other value returns the last read current month
-    case m
-        1..12:
-            m := int2bcd(m)
-            writereg(core#CENTMONTHS, 1, @m)
-        other:
-            return bcd2int(_months & core#CENTMONTHS_MASK)
+PUB Month{}: curr_month
+' Get current month
+    return bcd2int(_months & core#CENTMONTHS_MASK)
 
-PUB Minutes(minute): curr_min
-' Set minutes
-'   Valid values: 0..59
-'   Any other value returns the last read current minute
-    case minute
-        0..59:
-            minute := int2bcd(minute)
-            writereg(core#MINUTES, 1, @minute)
-        other:
-            return bcd2int(_mins & core#MINUTES_MASK)
+PUB Minutes{}: curr_min
+' Get current minute
+    return bcd2int(_mins & core#MINUTES_MASK)
 
 PUB PollRTC{}
 ' Read the time data from the RTC and store it in hub RAM
@@ -197,16 +167,86 @@ PUB PollRTC{}
     readreg(core#VL_SECS, 7, @_secs)
     _clkdata_ok := (_secs >> core#VL) & 1       ' Clock integrity bit
 
-PUB Seconds(second): curr_sec
+PUB Seconds{}: curr_sec
+' Get current second
+    return bcd2int(_secs & core#SECS_BITS)
+
+PUB SetDate(d)
+' Set date/day of month
+'   Valid values: 1..31
+'   Any other value is ignored
+    case d
+        1..31:
+            d := int2bcd(d)
+            writereg(core#DAYS, 1, @d)
+        other:
+            return
+
+PUB SetHours(h)
+' Set hours
+'   Valid values: 0..23
+'   Any other value is ignored
+    case h
+        0..23:
+            h := int2bcd(h)
+            writereg(core#HOURS, 1, @h)
+        other:
+            return
+
+PUB SetMinutes(m)
+' Set minutes
+'   Valid values: 0..59
+'   Any other value is ignored
+    case m
+        0..59:
+            m := int2bcd(m)
+            writereg(core#MINUTES, 1, @m)
+        other:
+            return
+
+PUB SetMonth(m)
+' Set month
+'   Valid values: 1..12
+'   Any other value is ignored
+    case m
+        1..12:
+            m := int2bcd(m)
+            writereg(core#CENTMONTHS, 1, @m)
+        other:
+            return
+
+PUB SetSeconds(s)
 ' Set seconds
 '   Valid values: 0..59
-'   Any other value polls the RTC and returns the current second
-    case second
+'   Any other value is ignored
+    case s
         0..59:
-            second := int2bcd(second)
-            writereg(core#VL_SECS, 1, @second)
+            s := int2bcd(s)
+            writereg(core#VL_SECS, 1, @s)
         other:
-            return bcd2int(_secs & core#SECS_BITS)
+            return
+
+PUB SetWeekday(w)
+' Set day of week
+'   Valid values: 1..7
+'   Any other value is ignored
+    case w
+        1..7:
+            w := int2bcd(w-1)
+            writereg(core#WEEKDAYS, 1, @w)
+        other:
+            return
+
+PUB SetYear(y)
+' Set 2-digit year
+'   Valid values: 0..99
+'   Any other value is ignored
+    case y
+        0..99:
+            y := int2bcd(y)
+            writereg(core#YEARS, 1, @y)
+        other:
+            return
 
 PUB Timer(val): curr_val
 ' Set countdown timer value
@@ -264,27 +304,13 @@ PUB TimerEnabled(state): curr_state
     state := ((curr_state & core#TE_MASK) | state) & core#CTRL_TIMER_MASK
     writereg(core#CTRL_TIMER, 1, @state)
 
-PUB Weekday(wkday): curr_wkday
-' Set day of week
-'   Valid values: 1..7
-'   Any other value returns the last read current day of week
-    case wkday
-        1..7:
-            wkday := int2bcd(wkday-1)
-            writereg(core#WEEKDAYS, 1, @wkday)
-        other:
-            return bcd2int(_wkdays & core#WEEKDAYS_MASK) + 1
+PUB Weekday{}: curr_wkday
+' Get current weekday
+    return bcd2int(_wkdays & core#WEEKDAYS_MASK) + 1
 
-PUB Year(yr): curr_yr
-' Set 2-digit year
-'   Valid values: 0..99
-'   Any other value returns the last read current year
-    case yr
-        0..99:
-            yr := int2bcd(yr)
-            writereg(core#YEARS, 1, @yr)
-        other:
-            return bcd2int(_years & core#YEARS_MASK)
+PUB Year{}: curr_yr
+' Get current year
+    return bcd2int(_years & core#YEARS_MASK)
 
 PRI bcd2int(bcd): int
 ' Convert BCD (Binary Coded Decimal) to integer
@@ -294,7 +320,7 @@ PRI int2bcd(int): bcd
 ' Convert integer to BCD (Binary Coded Decimal)
     return ((int / 10) << 4) + (int // 10)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from device into ptr_buff
     case reg_nr                                 ' Validate reg
         $00..$0f:
@@ -302,16 +328,16 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             cmd_pkt.byte[1] := reg_nr
 
             i2c.start{}                         ' Send reg to read
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
 
-            i2c.start{}
+            i2c.start{}                         ' read it
             i2c.write(SLAVE_RD)
-            i2c.rd_block(ptr_buff, nr_bytes, i2c#NAK)  ' Read it
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to device
     case reg_nr
         $00..$0f:                               ' Validate reg
@@ -319,10 +345,9 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             cmd_pkt.byte[1] := reg_nr
 
             i2c.start{}                         ' Send reg to write
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
 
-            repeat tmp from 0 to nr_bytes-1
-                i2c.write(byte[ptr_buff][tmp])  ' Write it
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)' write it
             i2c.stop{}
         other:
             return
