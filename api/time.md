@@ -36,5 +36,3 @@ subset of their API, read-only equivalents of the below methods_
 | `SetSeconds(s)` | W   | Set current second            | -       |
 | `SetWeekday(w)` | W   | Set current week day          | -       |
 | `SetYear(y)`    | W   | Set current year              | -       |
-
-
