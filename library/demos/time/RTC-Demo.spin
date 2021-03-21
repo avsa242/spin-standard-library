@@ -3,9 +3,9 @@
     Filename: RTC-Demo.spin
     Author: Jesse Burt
     Description: RTC date/time set/display demo
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 18, 2020
-    Updated Nov 18, 2020
+    Updated Mar 21, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -13,6 +13,7 @@
 ' Uncomment one of the following:
 #define PCF8563
 '#define DS3231
+'#define RV3028
 
 CON
 
@@ -42,11 +43,13 @@ OBJ
     rtc     : "time.rtc.pcf8563.i2c"
 #elseifdef DS3231
     rtc     : "time.rtc.ds3231.i2c"
+#elseifdef RV3028
+    rtc     : "time.rtc.rv3028.i2c"
 #else
 #error "No RTC defined!"
 #endif
 
-PUB Main{} | wkday, month, day, yr
+PUB Main{} | wkday, month, date, yr
 
     setup{}
 
@@ -56,31 +59,32 @@ PUB Main{} | wkday, month, day, yr
 
     repeat
         rtc.pollrtc{}
-        wkday := @wkday_name[(rtc.weekday(-2) - 1) * 4] ' Pull strings from
-        month := @month_name[(rtc.month(-2) - 1) * 4]   ' DAT table below
-        day := int.deczeroed(rtc.day(-2), 2)
-        yr := rtc.year(-2)
+        ' get weekday and month name strings from DAT table below
+        wkday := @wkday_name[(rtc.weekday{} - 1) * 4]
+        month := @month_name[(rtc.month{} - 1) * 4]
+        date := int.deczeroed(rtc.date{}, 2)
+        yr := rtc.year{}
 
         ser.position(0, 3)
         ser.str(wkday)
-        ser.printf(string(" %s %s 20%d "), day, month, yr, 0, 0, 0)
+        ser.printf(string(" %s %s 20%d "), date, month, yr, 0, 0, 0)
 
-        ser.str(int.deczeroed(rtc.hours(-2), 2))    ' Discrete statements
+        ser.str(int.deczeroed(rtc.hours{}, 2))    ' Discrete statements
         ser.char(":")                               ' due to a bug in
-        ser.str(int.deczeroed(rtc.minutes(-2), 2))  ' string.integer
+        ser.str(int.deczeroed(rtc.minutes{}, 2))  ' string.integer
         ser.char(":")
-        ser.str(int.deczeroed(rtc.seconds(-2), 2))
+        ser.str(int.deczeroed(rtc.seconds{}, 2))
 
 PUB SetDateTime(h, m, s, mmm, dd, wkday, yy)
 
-    rtc.hours(h)                                ' 00..23
-    rtc.minutes(m)                              ' 00..59
-    rtc.seconds(s)                              ' 00..59
+    rtc.sethours(h)                             ' 00..23
+    rtc.setminutes(m)                           ' 00..59
+    rtc.setseconds(s)                           ' 00..59
 
-    rtc.month(mmm)                              ' 01..12
-    rtc.day(dd)                                 ' 01..31
-    rtc.weekday(wkday)                          ' 01..07
-    rtc.year(yy)                                ' 00..99
+    rtc.setmonth(mmm)                           ' 01..12
+    rtc.setdate(dd)                             ' 01..31
+    rtc.setweekday(wkday)                       ' 01..07
+    rtc.setyear(yy)                             ' 00..99
 
 PUB Setup{}
 
@@ -97,6 +101,10 @@ PUB Setup{}
         ser.strln(string("DS3231 driver started"))
     else
         ser.strln(string("DS3231 driver failed to start - halting"))
+#elseifdef RV3028
+        ser.strln(string("RV3028 driver started"))
+    else
+        ser.strln(string("RV3028 driver failed to start - halting"))
 #endif
         rtc.stop{}
         time.msleep(50)
