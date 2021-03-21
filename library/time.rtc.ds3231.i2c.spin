@@ -5,7 +5,7 @@
     Description: Driver for the DS3231 Real-Time Clock
     Copyright (c) 2021
     Started Nov 17, 2020
-    Updated Jan 13, 2021
+    Updated Mar 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,6 +20,7 @@ CON
     DEF_HZ              = 100_000
     I2C_MAX_FREQ        = core#I2C_MAX_FREQ
 
+' Temperature scales
     C                   = 0
     F                   = 1
 
@@ -47,23 +48,26 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start{}: okay
+PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom I2C pins and bus frequency
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-                time.usleep(core#TPOR)
-                if i2c.present(SLAVE_WR)        ' check device bus presence
-                    return
-    return FALSE                                ' something above failed
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#TPOR)          ' wait for device startup
+            if i2c.present(SLAVE_WR)        ' test device bus presence
+                return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    i2c.terminate{}
+    i2c.deinit{}
 
 PUB Defaults{}
 ' Set factory defaults
@@ -216,29 +220,13 @@ PUB ClockOutFreq(freq): curr_freq
     freq := ((curr_freq & core#RS_MASK) | freq) & core#CONTROL_MASK
     writereg(core#CONTROL, 1, @freq)
 
-PUB Date(ptr_date)
+PUB Date{}: curr_date
+' Get current date/day of month
+    return bcd2int(_days & core#DATE_MASK)
 
-PUB Day(d): day_now
-' Set day of month
-'   Valid values: 1..31
-'   Any other value returns the current day
-    case d
-        1..31:
-            d := int2bcd(d)
-            writereg(core#DATE, 1, @d)
-        other:
-            return bcd2int(_days & core#DATE_MASK)
-
-PUB Hours(hr): curr_hr
-' Set hours
-'   Valid values: 0..23
-'   Any other value returns the current hour
-    case hr
-        0..23:
-            hr := int2bcd(hr)
-            writereg(core#HOURS, 1, @hr)
-        other:
-            return bcd2int(_hours & core#HOURS_MASK)
+PUB Hours{}: curr_hr
+' Get current hour
+    return bcd2int(_hours & core#HOURS_MASK)
 
 PUB IntClear(mask) | tmp
 ' Clear asserted interrupts
@@ -274,27 +262,13 @@ PUB IntMask(mask): curr_mask
     mask := ((curr_mask & core#AIE_MASK) | mask) & core#CONTROL_MASK
     writereg(core#CONTROL, 1, @mask)
 
-PUB Minutes(minute): curr_min
-' Set minutes
-'   Valid values: 0..59
-'   Any other value returns the current minute
-    case minute
-        0..59:
-            minute := int2bcd(minute)
-            writereg(core#MINUTES, 1, @minute)
-        other:
-            return bcd2int(_mins & core#MINUTES_MASK)
+PUB Minutes{}: curr_min
+' Get current minute
+    return bcd2int(_mins & core#MINUTES_MASK)
 
-PUB Month(mon): curr_month
-' Set month
-'   Valid values: 1..12
-'   Any other value returns the current month
-    case mon
-        1..12:
-            mon := int2bcd(mon)
-            writereg(core#MONTH, 1, @mon)
-        other:
-            return bcd2int(_months & core#MONTH_MASK)
+PUB Month{}: curr_month
+' Get current month
+    return bcd2int(_months & core#MONTH_MASK)
 
 PUB OscEnabled(state): curr_state
 ' Enable the on-chip oscillator
@@ -344,16 +318,86 @@ PUB Reset{} | tmp
     tmp &= core#OSF_MASK                        ' turn off the
     writereg(core#CTRL_STAT, 1, @tmp)           '   "oscillator-stopped" flag
 
-PUB Seconds(second): curr_sec
+PUB Seconds{}: curr_sec
+' Get current second
+    return bcd2int(_secs & core#SECONDS_MASK)
+
+PUB SetDate(d)
+' Set day of month
+'   Valid values: 1..31
+'   Any other value is ignored
+    case d
+        1..31:
+            d := int2bcd(d)
+            writereg(core#DATE, 1, @d)
+        other:
+            return
+
+PUB SetHours(h)
+' Set hours
+'   Valid values: 0..23
+'   Any other value is ignored
+    case h
+        0..23:
+            h := int2bcd(h)
+            writereg(core#HOURS, 1, @h)
+        other:
+            return
+
+PUB SetMinutes(m)
+' Set minutes
+'   Valid values: 0..59
+'   Any other value is ignored
+    case m
+        0..59:
+            m := int2bcd(m)
+            writereg(core#MINUTES, 1, @m)
+        other:
+            return
+
+PUB SetMonth(m)
+' Set month
+'   Valid values: 1..12
+'   Any other value is ignored
+    case m
+        1..12:
+            m := int2bcd(m)
+            writereg(core#MONTH, 1, @m)
+        other:
+            return
+
+PUB SetSeconds(s)
 ' Set seconds
 '   Valid values: 0..59
-'   Any other value returns the current second
-    case second
+'   Any other value is ignored
+    case s
         0..59:
-            second := int2bcd(second)
-            writereg(core#SECONDS, 1, @second)
+            s := int2bcd(s)
+            writereg(core#SECONDS, 1, @s)
         other:
-            return bcd2int(_secs & core#SECONDS_MASK)
+            return
+
+PUB SetWeekday(w)
+' Set day of week
+'   Valid values: 1..7
+'   Any other value is ignored
+    case w
+        1..7:
+            w := int2bcd(w-1)
+            writereg(core#DAY, 1, @w)
+        other:
+            return
+
+PUB SetYear(y)
+' Set 2-digit year
+'   Valid values: 0..99
+'   Any other value is ignored
+    case y
+        0..99:
+            y := int2bcd(y)
+            writereg(core#YEAR, 1, @y)
+        other:
+            return
 
 PUB TempData{}: temp
 ' Temperature ADC data
@@ -361,8 +405,8 @@ PUB TempData{}: temp
 
 PUB TempDataReady{}: flag
 ' Flag indicating temperature data ready
-    readreg(core#CONTROL, 1, @flag)
-    return ((flag >> core#CONV) & 1) == 0
+    readreg(core#CTRL_STAT, 1, @flag)
+    return ((flag >> core#BSY) & 1) == 0
 
 PUB Temperature{}: temp_cal
 ' Read temperature
@@ -391,27 +435,13 @@ PUB TempScale(scale): curr_scl
         other:
             return _temp_scale
 
-PUB Weekday(wkday): curr_wkday
-' Set day of week
-'   Valid values: 1..7
-'   Any other value returns the current day of week
-    case wkday
-        1..7:
-            wkday := int2bcd(wkday-1)
-            writereg(core#DAY, 1, @wkday)
-        other:
-            return bcd2int(_wkdays & core#DAY_MASK) + 1
+PUB Weekday{}: curr_wkday
+' Get current week day
+    return bcd2int(_wkdays & core#DAY_MASK) + 1
 
-PUB Year(yr): curr_yr
-' Set 2-digit year
-'   Valid values: 0..99
-'   Any other value returns the current year
-    case yr
-        0..99:
-            yr := int2bcd(yr)
-            writereg(core#YEAR, 1, @yr)
-        other:
-            return bcd2int(_years & core#YEAR_MASK)
+PUB Year{}: curr_yr
+' Get current 2-digit year
+    return bcd2int(_years & core#YEAR_MASK)
 
 PRI bcd2int(bcd): int
 ' Convert BCD (Binary Coded Decimal) to integer
@@ -436,20 +466,21 @@ PRI int2bcd(int): bcd
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Read nr_bytes from device into ptr_buff
     case reg_nr
-        core#SECONDS..core#AGE_OFFS:
-            cmd_pkt.byte[0] := SLAVE_WR
-            cmd_pkt.byte[1] := reg_nr
-            i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
-            i2c.start{}
-            i2c.write(SLAVE_RD)
-            i2c.rd_block(ptr_buff, nr_bytes, TRUE)
-            i2c.stop{}
-        core#TEMP_MSB:
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+        core#SECONDS..core#TEMP_MSB:
         other:
             return
+
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := reg_nr
+    i2c.start{}
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
+    i2c.start{}
+    i2c.write(SLAVE_RD)
+    if reg_nr == core#TEMP_MSB
+        i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
+    else
+        i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
+    i2c.stop{}
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Write nr_bytes to device from ptr_buff
@@ -458,9 +489,8 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
-            repeat tmp from 0 to nr_bytes-1
-                i2c.write(byte[ptr_buff][tmp])
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)
             i2c.stop{}
         other:
             return
