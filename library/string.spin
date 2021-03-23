@@ -1,15 +1,30 @@
+{
+    --------------------------------------------
+    Filename: string.spin
+    Description: String manipulation functions
+    Started Jan 5, 2016
+    Updated Mar 23, 2021
+    See end of file for terms of use.
+    --------------------------------------------
+}
+
 ' Derived from ASCII0_STREngine.spin
 ' Original author: Kwabena W. Agyeman, J Moxham
-{{
-    This objects contains generic functions for string manipulation.
-}}
+
+CON
+
+#ifndef FIELDSZ_MAX
+#define FIELDSZ_MAX 32
+#endif
+
 OBJ
 
     cc : "char.type"
 
 VAR
 
-    word    tokenstr
+    word _tokenstr
+    byte _tmp_buff[FIELDSZ_MAX]
 
 PUB Append(destination, source)
 {{
@@ -119,6 +134,56 @@ PUB FindChar(str, char)
     repeat strsize(str--)
         if(byte[++str] == char)
             return str
+
+PUB GetField(ptr_str, field_nr, delimiter): ptr_flddata | char, i_idx, o_idx, cur_field
+' Get data field_nr from ptr_str
+'   ptr_str: pointer to string to extract field data from
+'   field_nr: which field number to return (zero-based)
+'   delimiter: character to identify as a field delimiter (e.g., ",")
+'
+'   Returns: pointer to string containing field data
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)        ' clear working buffer
+    longfill(@char, 0, 4)                       ' initialize in/out indices
+    repeat
+        char := byte[ptr_str][i_idx++]          ' get current char from source
+        case char
+            0:                                  ' NUL - end of string
+                quit
+            10, 13:                             ' newline - end of string
+                cur_field++
+                quit
+            delimiter:                          ' delimiter char (end of field)
+                if cur_field == field_nr        ' found the requested field #?
+                    quit
+                else                            ' not the right field; clear
+                    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
+                    cur_field++                 '   the buffer and keep going
+                    o_idx := 0                  ' reset the output index
+            other:
+                _tmp_buff[o_idx++] := char      ' field text
+    return @_tmp_buff
+
+PUB GetFieldCount(ptr_str, delimiter): nr_fields | char, idx
+' Get number of fields in ptr_str
+'   ptr_str: pointer to string in which to count number of fields
+'   delimiter: character to identify as a field delimiter (e.g., ",")
+'
+'   Returns: number of fields found in ptr_str
+    idx := nr_fields := 0                       ' initialize index
+    repeat
+        char := byte[ptr_str][idx++]
+        case char
+            0:                                  ' NUL - end of string
+                quit
+            10, 13:                             ' newline - end of string
+                nr_fields++                     '
+                quit
+            delimiter:                          ' sep. character (end of field)
+                nr_fields++
+            other:
+                next
+
+    return nr_fields
 
 PUB IsEmpty(str)
 {{
@@ -261,17 +326,17 @@ PUB Tokenize(str)
 }}
 
     if str
-        tokenstr := str
+        _tokenstr := str
 
-    tokenstr := IgnoreSpace(tokenstr)
+    _tokenstr := IgnoreSpace(_tokenstr)
 
-    if strsize(tokenstr)
-        result := tokenstr
+    if strsize(_tokenstr)
+        result := _tokenstr
 
-    repeat while(byte[tokenstr])
-        case byte[tokenstr++]
+    repeat while(byte[_tokenstr])
+        case byte[_tokenstr++]
             8 .. 13, 32, 127:
-                byte[tokenstr - 1] := 0
+                byte[_tokenstr - 1] := 0
                 quit
 
 PUB Upper(str)
