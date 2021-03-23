@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Demo of the software RTC
     Started 2009
-    Updated Sep 7, 2020
+    Updated Mar 23, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: Based on PropellerRTC_Emulator_DEMO.spin,
@@ -18,8 +18,6 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-definable constants
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 ' --
 
@@ -40,14 +38,14 @@ PUB Main{}
     setup{}
 
     rtc.suspend{}
-    rtc.year(20)                            ' 00..31 (Valid from 2000 to 2031)
-    rtc.months(12)                          ' 01..12
-    rtc.days(31)                            ' 01..31
-    rtc.weekday(5)                          ' 01..07
+    rtc.setyear(20)                             ' 00..31 (Valid from 2000 to 2031)
+    rtc.setmonth(12)                            ' 01..12
+    rtc.setdate(31)                             ' 01..31
+    rtc.setweekday(5)                           ' 01..07
 
-    rtc.hours(23)                           ' 01..12
-    rtc.minutes(59)                         ' 00..59
-    rtc.seconds(55)                         ' 00..59
+    rtc.sethours(23)                            ' 01..12
+    rtc.setminutes(59)                          ' 00..59
+    rtc.setseconds(55)                          ' 00..59
     rtc.resume{}
 
     repeat
@@ -57,23 +55,18 @@ PUB Main{}
         ser.position(0, 3)
         ser.str(@_datestamp)
         ser.char(" ")
-        ser.str(@weekday[(rtc.weekday(-2) - 1) * 4])
+        ser.str(@weekday[(rtc.weekday{} - 1) * 4])
         ser.str(string("  "))
         ser.str(@_timestamp)
 
 PUB Setup{}
 
-    repeat until ser.startrxtx(SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
-    if rtc.start(@_timestring)
-        ser.str(string("SoftRTC started", ser#CR, ser#LF))
-    else
-        ser.str(string("SoftRTC failed to start - halting", ser#CR, ser#LF))
-        rtc.stop{}
-        time.msleep(50)
-        ser.stop{}
+    ser.strln(string("Serial terminal started"))
+    rtc.start(@_timestring)
+    ser.strln(string("SoftRTC started"))
 
 DAT
 
