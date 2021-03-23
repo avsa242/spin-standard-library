@@ -6,13 +6,14 @@
         sets the software RTC by it, and continuously
         displays the date and time from the software RTC
     Started Sep 7, 2020
-    Updated Nov 18, 2020
+    Updated Mar 23, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 ' Uncomment one of the following:
 #define PCF8563
 '#define DS3231
+'#define RV3028
 
 CON
 
@@ -20,12 +21,10 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-definable constants
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
-    I2C_SCL     = 28
-    I2C_SDA     = 29
+    SCL_PIN     = 28
+    SDA_PIN     = 29
     I2C_HZ      = 400_000
 ' --
 
@@ -39,6 +38,8 @@ OBJ
     hardrtc : "time.rtc.pcf8563.i2c"
 #elseifdef DS3231
     hardrtc : "time.rtc.ds3231.i2c"
+#elseifdef RV3028
+    hardrtc : "time.rtc.rv3028.i2c"
 #else
 #error "No RTC defined!"
 #endif
@@ -54,29 +55,31 @@ PUB Main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
 
 ' Read in the time from the hardware RTC
     hardrtc.pollrtc{}
-    hyr := hardrtc.year(-2)
-    hmo := hardrtc.month(-2)
-    hdy := hardrtc.day(-2)
-    hwkd := hardrtc.weekday(-2)
-    hhr := hardrtc.hours(-2)
-    hmin := hardrtc.minutes(-2)
-    hsec := hardrtc.seconds(-2)
+    hyr := hardrtc.year{}
+    hmo := hardrtc.month{}
+    hdy := hardrtc.date{}
+    hwkd := hardrtc.weekday{}
+    hhr := hardrtc.hours{}
+    hmin := hardrtc.minutes{}
+    hsec := hardrtc.seconds{}
 
 ' Now write it to the Propeller's SoftRTC
 #ifdef PCF8563
     ser.str(string("Setting SoftRTC from PCF8563..."))
 #elseifdef DS3231
     ser.str(string("Setting SoftRTC from DS3231..."))
+#elseifdef RV3028
+    ser.str(string("Setting SoftRTC from RV3028..."))
 #endif
     softrtc.suspend{}
-    softrtc.year(hyr)                            ' 00..31 (Valid from 2000 to 2031)
-    softrtc.months(hmo)                          ' 01..12
-    softrtc.days(hdy)                            ' 01..31
-    softrtc.weekday(hwkd)                        ' 01..07
+    softrtc.setyear(hyr)                        ' 00..31 (Valid from 2000 to 2031)
+    softrtc.setmonth(hmo)                       ' 01..12
+    softrtc.setdate(hdy)                        ' 01..31
+    softrtc.setweekday(hwkd)                    ' 01..07
 
-    softrtc.hours(hhr)                           ' 01..12
-    softrtc.minutes(hmin)                        ' 00..59
-    softrtc.seconds(hsec)                        ' 00..59
+    softrtc.sethours(hhr)                       ' 01..12
+    softrtc.setminutes(hmin)                    ' 00..59
+    softrtc.setseconds(hsec)                    ' 00..59
     softrtc.resume{}
     ser.str(string("done."))
 
@@ -85,29 +88,24 @@ PUB Main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
         softrtc.parsetimestamp(@_timestamp)
 
         ser.position(0, 7)
-        ser.str(string("SoftRTC date & time:", ser#CR, ser#LF))
+        ser.strln(string("SoftRTC date & time:"))
         ser.str(@_datestamp)
         ser.char(" ")
-        ser.str(@weekday[(softrtc.weekday(-2) - 1) * 4])
+        ser.str(@weekday[(softrtc.weekday{} - 1) * 4])
         ser.str(string("  "))
         ser.str(@_timestamp)
 
 PUB Setup{}
 
-    repeat until ser.startrxtx(SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+    ser.strln(string("Serial terminal started"))
 
-    if softrtc.start(@_timestring)
-        ser.str(string("SoftRTC started", ser#CR, ser#LF))
-    else
-        ser.str(string("SoftRTC failed to start - halting", ser#CR, ser#LF))
-        softrtc.stop{}
-        time.msleep(50)
-        ser.stop{}
+    softrtc.start(@_timestring)
+    ser.strln(string("SoftRTC started"))
 
-    if hardrtc.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+    if hardrtc.startx(SCL_PIN, SDA_PIN, I2C_HZ)
 #ifdef PCF8563
         ser.strln(string("PCF8563 driver started"))
     else
@@ -116,11 +114,15 @@ PUB Setup{}
         ser.strln(string("DS3231 driver started"))
     else
         ser.strln(string("DS3231 driver failed to start - halting"))
+#elseifdef RV3028
+        ser.strln(string("RV3028 driver started"))
+    else
+        ser.strln(string("RV3028 driver failed to start - halting"))
 #endif
-        hardrtc.stop{}
         softrtc.stop{}
         time.msleep(50)
         ser.stop{}
+        repeat
 
 DAT
 

@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Soft RTC
     Started 2009
-    Updated Sep 7, 2020
+    Updated Mar 23, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: Based on PropellerRTC_Emulator.spin,
@@ -46,61 +46,103 @@ PUB Stop{}
     if _cog
         cogstop(_cog-1)
 
-PUB Days(dd)
+PUB Date{}: d
+' Get current date/day of month
+    return _dd
 
-    case dd
+PUB Hours{}: h
+' Get current hour
+    return _hh
+
+PUB Minutes{}: m
+' Get current minute
+    return _mm
+
+PUB Months{}: m
+' Get current month
+    return _mo
+
+PUB Seconds{}: s
+' Get current second
+    return _ss
+
+PUB SetDate(d)
+' Set current date/day of month
+'   Valid values: 1..31
+'   Any other value is ignored
+    case d
         01..31:
-            _dd := dd
+            _dd := d
         other:
-            return _dd
+            return
 
-PUB Hours(hh)
-
-    case hh
+PUB SetHours(h)
+' Set current hour
+'   Valid values: 0..23
+'   Any other value is ignored
+    case h
         00..23:
-            _hh := hh
+            _hh := h
         other:
-            return _hh
+            return
 
-PUB Minutes(mm)
-
-    case mm
+PUB SetMinutes(m)
+' Set current minute
+'   Valid values: 0..59
+'   Any other value is ignored
+    case m
         00..59:
-            _mm := mm
+            _mm := m
         other:
-            return _mm
+            return
 
-PUB Months(mo)
-
-    case mo
+PUB SetMonth(m)
+' Set current month
+'   Valid values: 1..12
+'   Any other value is ignored
+    case m
         01..12:
-            _mo := mo
+            _mo := m
         other:
-            return _mo
+            return
 
-PUB Seconds(ss)
-
-    case ss
+PUB SetSeconds(s)
+' Set current second
+'   Valid values: 0..59
+'   Any other value is ignored
+    case s
         00..59:
-            _ss := ss
+            _ss := s
         other:
-            return _ss
+            return
 
-PUB Weekday(wkday)
-
-    case wkday
+PUB SetWeekDay(w)
+' Set day of week
+'   Valid values: 1..7
+'   Any other value is ignored
+    case w
         1..7:
-            _wkday := wkday
+            _wkday := w
         other:
-            return _wkday
+            return
 
-PUB Year(yy)
-
-    case yy
+PUB SetYear(y)
+' Set 2-digit year
+'   Valid values: 0..99
+'   Any other value is ignored
+    case y
         00..99:
-            _yy := yy
+            _yy := y
         other:
-            return _yy
+            return
+
+PUB Weekday{}
+' Get current week day
+    return _wkday
+
+PUB Year{}
+' Get current year
+    return _yy
 
 PUB UnParseTime(timeaddress)
 
