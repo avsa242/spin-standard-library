@@ -3,7 +3,7 @@
     Filename: string.spin
     Description: String manipulation functions
     Started Jan 5, 2016
-    Updated Mar 23, 2021
+    Updated Mar 25, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -315,6 +315,28 @@ PUB Strip(str)
         case byte[str]
             8 .. 13, 32, 127: byte[str--] := 0
             other: quit
+
+PUB StripChar(ptr_str, stripchr): matchcnt | chr, idx, sz, nextchr, lastchr, movecnt
+' Strip all occurrences of stripchr from string at ptr_str
+'   Returns: number of matches found/stripped, or 0
+    matchcnt := 0
+    longfill(@chr, 0, 6)                        ' initialize variables
+    sz := strsize(ptr_str)                      ' size of source string
+    repeat idx from 0 to sz-1
+        chr := ptr_str+idx                      ' ptr to current working char
+        case byte[chr]
+            stripchr:                           ' matches char to strip
+                matchcnt++                      ' count matches found
+                nextchr := chr+1                ' start pos of string to move
+                lastchr := sz-1                 ' offset of very last char
+                movecnt := (lastchr-idx)        ' = # bytes in string to move
+                ' starting with the next character, move the remains left,
+                '   over the the matched stripchr
+                bytemove(chr, nextchr, movecnt)
+                ' clear out after the end of the newly modified string
+                bytefill(ptr_str+sz-matchcnt, 0, matchcnt)
+            other:                              ' some other char? skip it
+                next
 
 PUB Tokenize(str)
 {{
