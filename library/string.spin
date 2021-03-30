@@ -3,7 +3,7 @@
     Filename: string.spin
     Description: String manipulation functions
     Started Jan 5, 2016
-    Updated Mar 25, 2021
+    Updated Mar 30, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -136,7 +136,7 @@ PUB FindChar(str, char)
             return str
 
 PUB GetField(ptr_str, field_nr, delimiter): ptr_flddata | char, i_idx, o_idx, cur_field
-' Get data field_nr from ptr_str
+' Get field from string containing multiple data separated by delimiter
 '   ptr_str: pointer to string to extract field data from
 '   field_nr: which field number to return (zero-based)
 '   delimiter: character to identify as a field delimiter (e.g., ",")
@@ -164,16 +164,22 @@ PUB GetField(ptr_str, field_nr, delimiter): ptr_flddata | char, i_idx, o_idx, cu
     return @_tmp_buff
 
 PUB GetFieldCount(ptr_str, delimiter): nr_fields | char, idx
-' Get number of fields in ptr_str
+' Get number of delimiter-separated fields in ptr_str
 '   ptr_str: pointer to string in which to count number of fields
 '   delimiter: character to identify as a field delimiter (e.g., ",")
 '
-'   Returns: number of fields found in ptr_str
-    idx := nr_fields := 0                       ' initialize index
+'   Returns:
+'       number of fields found in ptr_str (1-based)
+'       0, if no fields found (e.g., NUL before a delimiter character was
+'           ever encountered)
+    idx := 0                                    ' initialize index
+    nr_fields := 1
     repeat
         char := byte[ptr_str][idx++]
         case char
             0:                                  ' NUL - end of string
+                if nr_fields == 1               ' no delimiter chars found yet
+                    nr_fields := 0              ' but NUL found? 0 fields found
                 quit
             10, 13:                             ' newline - end of string
                 nr_fields++                     '
