@@ -3,7 +3,7 @@
     Filename: string.spin
     Description: String manipulation functions
     Started Jan 5, 2016
-    Updated Mar 30, 2021
+    Updated Apr 2, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -25,6 +25,9 @@ VAR
 
     word _tokenstr
     byte _tmp_buff[FIELDSZ_MAX]
+
+PUB Null{}
+' This is not a top-level object
 
 PUB Append(destination, source)
 {{
@@ -149,9 +152,8 @@ PUB GetField(ptr_str, field_nr, delimiter): ptr_flddata | char, i_idx, o_idx, cu
         case char
             0:                                  ' NUL - end of string
                 quit
-            10, 13:                             ' newline - end of string
-                cur_field++
-                quit
+            10, 13:                             ' newline
+                next
             delimiter:                          ' delimiter char (end of field)
                 if cur_field == field_nr        ' found the requested field #?
                     quit
@@ -181,9 +183,8 @@ PUB GetFieldCount(ptr_str, delimiter): nr_fields | char, idx
                 if nr_fields == 1               ' no delimiter chars found yet
                     nr_fields := 0              ' but NUL found? 0 fields found
                 quit
-            10, 13:                             ' newline - end of string
-                nr_fields++                     '
-                quit
+            10, 13:                             ' newline
+                next
             delimiter:                          ' sep. character (end of field)
                 nr_fields++
             other:
