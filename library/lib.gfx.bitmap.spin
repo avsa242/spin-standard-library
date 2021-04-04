@@ -5,7 +5,7 @@
     Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2021
     Started May 19, 2019
-    Updated Jan 30, 2021
+    Updated Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -51,7 +51,7 @@ PUB Box(x0, y0, x1, y1, color, filled) | x, y
             repeat y from y0 to y1                          ' Temporary for 1bpp drivers
                 repeat x from x0 to x1
                     Plot(x, y, color)
-#elseifdef IL3820
+#elseifdef IL38xx
             repeat y from y0 to y1
                 repeat x from x0 to x1
                     Plot(x, y, color)
@@ -131,41 +131,49 @@ PUB Char(ch) | glyph_col, glyph_row, xs, ys, xe, ye, last_glyph_col, last_glyph_
                 repeat char_ht                  '   the display
                     scrollup(0, 0, _disp_xmax, _disp_ymax)
 
-PUB Circle(x0, y0, radius, color) | x, y, err, cdx, cdy
+PUB Circle(x0, y0, radius, color, filled) | x, y, err, cdx, cdy, ht
 ' Draw a circle
 '   x0, y0: Coordinates
 '   radius: Circle radius
 '   color: Color to draw circle
-    x := radius - 1
-    y := 0
-    cdx := 1
-    cdy := 1
-    err := cdx - (radius << 1)
+'   filled: Whether or not to draw a filled circle (0: no, nonzero: yes)
+    case filled
+        FALSE:
+            x := radius - 1
+            y := 0
+            cdx := 1
+            cdy := 1
+            err := cdx - (radius << 1)
 
-    repeat while (x => y)
-        Plot(x0 + x, y0 + y, color)
-        Plot(x0 + y, y0 + x, color)
-        Plot(x0 - y, y0 + x, color)
-        Plot(x0 - x, y0 + y, color)
-        Plot(x0 - x, y0 - y, color)
-        Plot(x0 - y, y0 - x, color)
-        Plot(x0 + y, y0 - x, color)
-        Plot(x0 + x, y0 - y, color)
+            repeat while (x => y)
+                plot(x0 + x, y0 + y, color)
+                plot(x0 + y, y0 + x, color)
+                plot(x0 - y, y0 + x, color)
+                plot(x0 - x, y0 + y, color)
+                plot(x0 - x, y0 - y, color)
+                plot(x0 - y, y0 - x, color)
+                plot(x0 + y, y0 - x, color)
+                plot(x0 + x, y0 - y, color)
 
-        if (err =< 0)
-            y++
-            err += cdy
-            cdy += 2
+                if (err =< 0)
+                    y++
+                    err += cdy
+                    cdy += 2
 
-        if (err > 0)
-            x--
-            cdx += 2
-            err += cdx - (radius << 1)
+                if (err > 0)
+                    x--
+                    cdx += 2
+                    err += cdx - (radius << 1)
+        other:
+            repeat x from -radius to radius
+                ht := ^^((radius * radius) - (x * x))
+                repeat y from -ht to ht-1
+                    plot(x0 + x, y0 + y, color)
 
 #ifndef GFX_DIRECT
 PUB Clear{}
 ' Clear the display buffer
-#ifdef IL3820
+#ifdef IL38xx
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef SSD130X
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
@@ -300,7 +308,7 @@ PUB Plot(x, y, color)
         return
 #endif
 
-#ifdef IL3820
+#ifdef IL38xx
     case color
         1:
             byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] |= $80 >> (x & 7)
@@ -364,7 +372,7 @@ PUB Point(x, y): pix_clr
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
 
-#ifdef IL3820
+#ifdef IL38xx
     return byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3]
 #elseifdef SSD130X
     return (byte[_ptr_drawbuffer][(x + (y >> 3) * _disp_width)] & (1 << (y & 7)) <> 0) * -1
@@ -454,27 +462,27 @@ PUB ScrollDown(sx, sy, ex, ey) | scr_width, src, dest, x, y
     scr_width := ex-sx
     repeat y from ey-1 to sy
 
-#ifdef IL3820
+#ifdef IL38xx
         copy(sx, y, ex, y, sx, y+1)             ' Use Copy() for monochrome
 #elseifdef SSD130X                              ' display types, until a more
         copy(sx, y, ex, y, sx, y+1)             ' efficient method can be
 #elseifdef SSD1331                              ' devised
-        src := sx + (y * BYTESPERLN)
-        dest := sx + ((y+1) * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := sx + ((y+1) * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef NEOPIXEL
-        src := sx + (y * BYTESPERLN)
-        dest := sx + ((y+1) * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := sx + ((y+1) * _bytesperln)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
         copy(sx, y, ex, y, sx, y+1)
 #elseifdef ST7735
-        src := sx + (y * BYTESPERLN)
-        dest := sx + ((y+1) * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := sx + ((y+1) * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef SSD1351
-        src := sx + (y * BYTESPERLN)
-        dest := sx + ((y+1) * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := sx + ((y+1) * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef VGABITMAP6BPP
         src := sx + (y * _disp_width)
@@ -491,27 +499,27 @@ PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
     scr_width := ex-sx
     repeat y from sy to ey
 
-#ifdef IL3820
+#ifdef IL38xx
         copy(sx, y, ex, y, sx-1, y)
 #elseifdef SSD130X
         copy(sx, y, ex, y, sx-1, y)
 #elseifdef SSD1331
-        src := sx + (y * BYTESPERLN)
-        dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := (sx-BYTESPERPX) + (y * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef NEOPIXEL
-        src := sx + (y * BYTESPERLN)
-        dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := (sx-BYTESPERPX) + (y * _bytesperln)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
         copy(sx, y, ex, y, sx-1, y)
 #elseifdef ST7735
-        src := sx + (y * BYTESPERLN)
-        dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := (sx-BYTESPERPX) + (y * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef SSD1351
-        src := sx + (y * BYTESPERLN)
-        dest := (sx-BYTESPERPX) + (y * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := (sx-BYTESPERPX) + (y * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef VGABITMAP6BPP
         src := sx + (y * _disp_width)
@@ -528,27 +536,27 @@ PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y
     scr_width := ex-sx
     repeat y from sy to ey
 
-#ifdef IL3820
+#ifdef IL38xx
         copy(sx, y, ex, y, sx+1, y)
 #elseifdef SSD130X
         copy(sx, y, ex, y, sx+1, y)
 #elseifdef SSD1331
-        src := sx + (y * BYTESPERLN)
-        dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := (sx+BYTESPERPX) + (y * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef NEOPIXEL
-        src := sx + (y * BYTESPERLN)
-        dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := (sx+BYTESPERPX) + (y * _bytesperln)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
         copy(sx, y, ex, y, sx+1, y)
 #elseifdef ST7735
-        src := sx + (y * BYTESPERLN)
-        dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := (sx+BYTESPERPX) + (y * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef SSD1351
-        src := sx + (y * BYTESPERLN)
-        dest := (sx+BYTESPERPX) + (y * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := (sx+BYTESPERPX) + (y * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef VGABITMAP6BPP
         src := sx + (y * _disp_width)
@@ -565,27 +573,27 @@ PUB ScrollUp(sx, sy, ex, ey) | scr_width, src, dest, x, y
     scr_width := ex-sx
     repeat y from sy+1 to ey
 
-#ifdef IL3820
+#ifdef IL38xx
         copy(sx, y, ex, y, sx, y-1)
 #elseifdef SSD130X
         copy(sx, y, ex, y, sx, y-1)
 #elseifdef SSD1331
-        src := sx + (y * BYTESPERLN)
-        dest := sx + ((y-1) * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := sx + ((y-1) * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef NEOPIXEL
-        src := sx + (y * BYTESPERLN)
-        dest := sx + ((y-1) * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := sx + ((y-1) * _bytesperln)
         longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef HT16K33-ADAFRUIT
         copy(sx, y, ex, y, sx, y-1)
 #elseifdef ST7735
-        src := sx + (y * BYTESPERLN)
-        dest := sx + ((y-1) * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := sx + ((y-1) * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef SSD1351
-        src := sx + (y * BYTESPERLN)
-        dest := sx + ((y-1) * BYTESPERLN)
+        src := sx + (y * _bytesperln)
+        dest := sx + ((y-1) * _bytesperln)
         wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef VGABITMAP6BPP
         src := sx + (y * _disp_width)
@@ -610,24 +618,24 @@ PRI memFill(xs, ys, val, count)
 '   xs, ys: Start of region
 '   val: Color
 '   count: Number of consecutive memory locations to write
-#ifdef IL3820
-    bytefill(_ptr_drawbuffer + (xs + (ys * BYTESPERLN)), val, count)
+#ifdef IL38xx
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 #elseifdef SSD130X
-    bytefill(_ptr_drawbuffer + (xs + (ys * BYTESPERLN)), val, count)
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 #elseifdef SSD1331
-    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * BYTESPERLN)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
+    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
 #elseifdef NEOPIXEL
-    longfill(_ptr_drawbuffer + ((xs << 1) + (ys * BYTESPERLN)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
+    longfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
 #elseifdef HT16K33-ADAFRUIT
-    bytefill(_ptr_drawbuffer + (xs + (ys * BYTESPERLN)), val, count)
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 #elseifdef ST7735
-    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * BYTESPERLN)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
+    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
 #elseifdef SSD1351
-    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * BYTESPERLN)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
+    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
     bytefill(ptr_start, val, count)
 #elseifdef VGABITMAP6BPP
-    bytefill(_ptr_drawbuffer + (xs + (ys * BYTESPERLN)), (val << 2) | $3, count)
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), (val << 2) | $3, count)
 #endif
 #include "lib.terminal.spin"
 

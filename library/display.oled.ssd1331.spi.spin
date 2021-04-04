@@ -3,9 +3,9 @@
     Filename: display.oled.ssd1331.spi.spin
     Author: Jesse Burt
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started: Apr 28, 2019
-    Updated: Jun 6, 2020
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -14,13 +14,7 @@
 
 CON
 
-    _DISP_WIDTH = 96
-    _DISP_HEIGHT= 64
-    _DISP_XMAX  = _DISP_WIDTH-1
-    _DISP_YMAX  = _DISP_HEIGHT-1
-    _BUFF_SZ    = _DISP_WIDTH * _DISP_HEIGHT * 2
     BYTESPERPX  = 2
-    BYTESPERLN  = _DISP_WIDTH * BYTESPERPX
     MAX_COLOR   = 65535
 
 ' Transaction type selection
@@ -62,6 +56,9 @@ VAR
 
     long _CS, _SCK, _MOSI, _DC, _RES
     long _ptr_drawbuffer
+    word _buff_sz
+    word _bytesperln
+    byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
 
     ' shadow registers used since the display registers can't be read from
     byte _sh_SETCOLUMN, _sh_SETROW, _sh_SETCONTRAST_A, _sh_SETCONTRAST_B, _sh_SETCONTRAST_C
@@ -80,6 +77,12 @@ PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, ptr_drawbuff): okay
             io.high(_DC)
             io.output(_DC)
             reset{}
+            _disp_width := 96
+            _disp_height := 64
+            _disp_xmax := _disp_width-1
+            _disp_ymax := _disp_height-1
+            _buff_sz := _disp_width * _disp_height * 2
+            _bytesperln := _disp_width * BYTESPERPX
             address(ptr_drawbuff)
             return okay
     return FALSE                                ' something above failed

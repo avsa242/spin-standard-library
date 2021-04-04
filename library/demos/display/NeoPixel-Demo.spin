@@ -3,9 +3,9 @@
     Filename: NeoPixel-Demo.spin
     Description: Demo of the NeoPixel driver
     Author: Jesse Burt
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started: Jun 18, 2020
-    Updated: Jun 18, 2020
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,7 +21,7 @@ CON
     SER_TX      = 30
     SER_BAUD    = 115_200
 
-    NEOPIX_PIN  = 23
+    NEOPIX_PIN  = 0
     NEOPIX_MODEL= $6812_32                                  ' LED array type: $2811, $2812, $2812B, $2813, $6812_24, $6812_32, $1803
 ' --
 
@@ -147,7 +147,7 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
         if (bx =< radius OR bx => WIDTH - radius)           'Ditto with the left or right sides
             dx *= -1
 
-        neopixel.Circle (bx, by, radius, $00_00_00_FF)
+        neopixel.Circle (bx, by, radius, $00_00_00_FF, false)
         neopixel.Update
         iteration++
         neopixel.Clear
@@ -196,7 +196,7 @@ PUB Demo_Circle(testtime) | iteration, x, y, r, c
         y := rnd(YMAX)
         r := rnd(YMAX/2)
         ?c
-        neopixel.Circle (x, y, r, c)
+        neopixel.Circle (x, y, r, c, false)
         neopixel.Update
         iteration++
 

@@ -3,9 +3,9 @@
     Filename: display.oled.ssd1351.spi.spin
     Author: Jesse Burt
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started: Mar 11, 2020
-    Updated: Mar 29, 2020
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -57,7 +57,7 @@ VAR
     long _DC, _RES, _MOSI, _SCK, _CS
     long _ptr_drawbuffer
     word _disp_width, _disp_height, _disp_xmax, _disp_ymax, _buff_sz
-    word BYTESPERLN
+    word _bytesperln
 
     byte _sh_CLK, _sh_REMAPCOLOR, _sh_PHASE12PER                            ' Shadow registers
 
@@ -79,7 +79,7 @@ PUB Start (CS_PIN, DC_PIN, DIN_PIN, CLK_PIN, RES_PIN, WIDTH, HEIGHT, drawbuffer_
             _disp_xmax := _disp_width - 1
             _disp_ymax := _disp_height - 1
             _buff_sz := _disp_width * _disp_height * 2
-            BYTESPERLN := _disp_width * BYTESPERPX
+            _bytesperln := _disp_width * BYTESPERPX
 
             Address(drawbuffer_address)
             Reset

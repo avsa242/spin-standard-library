@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Jun 6, 2020
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -44,13 +44,13 @@ CON
     DISP_WIDTH  = 160
     DISP_HEIGHT = 120
     BYTESPERPX  = 1
-    BYTESPERLN  = DISP_WIDTH * BYTESPERPX
     PIX_CLK     = 25_175_000
 
 VAR
 
     long _ptr_drawbuffer
     word _disp_width, _disp_height, _disp_xmax, _disp_ymax, _buff_sz
+    word _bytesperln
     byte _cog
 
 OBJ
@@ -66,7 +66,7 @@ PUB Start(pinGroup, WIDTH, HEIGHT, drawbuffer_address): okay
     _disp_xmax := _disp_width - 1                           '   for API compatibility with other drivers
     _disp_ymax := _disp_height - 1
     _buff_sz := _disp_width * _disp_height
-
+    _bytesperln := DISP_WIDTH * BYTESPERPX
     Address(drawbuffer_address)
 
     pinGroup := ((pinGroup <# 3) #> 0)

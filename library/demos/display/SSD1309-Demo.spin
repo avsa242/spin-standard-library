@@ -3,9 +3,9 @@
     Filename: SSD1309-Demo.spin
     Description: Demo of the SSD1309 driver
     Author: Jesse Burt
-    Copyright (c) 2020
+    Copyright (c) 2021
     Created: Apr 26, 2018
-    Updated: May 6, 2020
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -133,7 +133,7 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
         if (bx =< radius OR bx => WIDTH - radius)
             dx *= -1                            ' left/right edges
 
-        oled.circle(bx, by, radius, 1)
+        oled.circle(bx, by, radius, 1, false)
         oled.update{}
         iteration++
         oled.clear{}
@@ -165,7 +165,7 @@ PUB Demo_Circle(testtime) | iteration, x, y, r
         x := rnd(XMAX)
         y := rnd(YMAX)
         r := rnd(YMAX/2)
-        oled.circle(x, y, r, -1)
+        oled.circle(x, y, r, -1, false)
         oled.update{}
         iteration++
 

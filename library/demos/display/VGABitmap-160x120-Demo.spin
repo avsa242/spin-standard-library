@@ -3,9 +3,9 @@
     Filename: VGA Bitmap-Demo.spin
     Description: Demo of the VGA Bitmap driver
     Author: Jesse Burt
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started: Apr 24, 2020
-    Updated: Jun 28, 2020
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -132,7 +132,7 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
         if (bx =< radius OR bx => WIDTH - radius)           'Ditto with the left or right sides
             dx *= -1
         display.WaitVSync
-        display.Circle (bx, by, radius, display#MAX_COLOR)
+        display.Circle (bx, by, radius, display#MAX_COLOR, false)
         iteration++
 
     Report(testtime, iteration)
@@ -191,7 +191,7 @@ PUB Demo_Circle(testtime) | iteration, x, y, r, c
         y := rnd(YMAX)
         r := rnd(YMAX/2)
         c := rnd(display#MAX_COLOR)
-        display.Circle (x, y, r, c)
+        display.Circle (x, y, r, c, false)
         iteration++
 
     Report(testtime, iteration)

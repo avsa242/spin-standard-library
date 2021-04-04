@@ -3,13 +3,12 @@
     Filename: SSD1351-Demo.spin
     Description: Demo of the SSD1351 driver
     Author: Jesse Burt
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started: Mar 11, 2019
-    Updated: Mar 29, 2020
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
-
 CON
 
     _clkmode    = cfg#_clkmode
@@ -20,11 +19,11 @@ CON
     SER_TX      = 30
     SER_BAUD    = 115_200
 
-    RES_PIN     = 4
-    DC_PIN      = 3
-    CS_PIN      = 2
+    RES_PIN     = 3
+    DC_PIN      = 4
+    CS_PIN      = 0
     CLK_PIN     = 1
-    DIN_PIN     = 0
+    DIN_PIN     = 2
 
     WIDTH       = 128
     HEIGHT      = 64
@@ -92,9 +91,6 @@ PUB Main | time_ms, r
     Demo_Plot (time_ms)
     oled.ClearAll
 
-    Demo_PlotAccel (time_ms)
-    oled.ClearAll
-
     Demo_BouncingBall (time_ms, 5)
     oled.ClearAll
 
@@ -134,7 +130,7 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
         if (bx =< radius OR bx => WIDTH - radius)           'Ditto with the left or right sides
             dx *= -1
 
-        oled.Circle (bx, by, radius, $FFFF)
+        oled.Circle (bx, by, radius, $FFFF, false)
         oled.Update
         iteration++
         oled.Clear
@@ -167,7 +163,7 @@ PUB Demo_Circle(testtime) | iteration, x, y, r, c
         y := rnd(YMAX)
         r := rnd(YMAX/2)
         c := (?_rndseed >> 26) << 11 | (?_rndseed >> 25) << 5 | (?_rndseed >> 26)
-        oled.Circle (x, y, r, c)
+        oled.Circle (x, y, r, c, false)
         oled.Update
         iteration++
 
@@ -301,21 +297,6 @@ PUB Demo_Plot(testtime) | iteration, x, y, c
         oled.Update
         iteration++
 
-    Report(testtime, iteration)
-    return iteration
-
-PUB Demo_PlotAccel(testtime) | iteration, x, y, c
-' Draws random pixels (accelerated/native) to the screen, with color -1 (invert)
-    ser.str(string("Demo_PlotAccel - "))
-    _timer_set := testtime
-    iteration := 0
-
-    repeat while _timer_set
-        c := (?_rndseed >> 26) << 11 | (?_rndseed >> 25) << 5 | (?_rndseed >> 26)
-        oled.PlotAccel (rnd(XMAX), rnd(YMAX), c)
-        iteration++
-
-    oled.DisplayBounds(0, 0, XMAX, YMAX)
     Report(testtime, iteration)
     return iteration
 

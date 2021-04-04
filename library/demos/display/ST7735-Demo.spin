@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Mar 10, 2020
-    Updated: Jan 10, 2021
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -142,7 +142,7 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
         if (bx =< radius OR bx => (XMAX-radius))
             dx *= -1                            ' left/right edges
 
-        disp.circle(bx, by, radius, disp#MAX_COLOR)
+        disp.circle(bx, by, radius, disp#MAX_COLOR, false)
         disp.update{}
         iteration++
         disp.clear{}
@@ -200,7 +200,7 @@ PUB Demo_Circle(testtime) | iteration, x, y, r
         x := rnd(XMAX)
         y := rnd(YMAX)
         r := rnd(YMAX/2)
-        disp.circle(x, y, r, rnd(disp#MAX_COLOR))
+        disp.circle(x, y, r, rnd(disp#MAX_COLOR), false)
         disp.update{}
         iteration++
 

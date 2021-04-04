@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Driver for Neopixel addressable LED arrays
     Started Jan 4, 2020
-    Updated Jun 18, 2020
+    Updated Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -95,7 +95,7 @@ VAR
     long _ptr_framebuffer, _ptr_drawbuffer, _buff_sz            ' pointer to active pixel buffer
     long _disp_width, _disp_height, _disp_xmax, _disp_ymax
     long _npixels                                               ' number of pixels in buffer
-    word BYTESPERLN
+    word _bytesperln
 
 ' do not modify order; this structure passed to PASM cog
 '
@@ -109,7 +109,7 @@ VAR
 
 PUB Null
 ' This is not a top-level object
-' -- this code should only be calleuud from another object
+' -- this code should only be called from another object
   
 PUB Start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bits, ns0h, ns1h, nsperiod, count
 ' Start smart pixel driver driver
@@ -200,7 +200,7 @@ PUB Start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bit
     _disp_xmax := _disp_width - 1
     _disp_ymax := _disp_height - 1
     _buff_sz := (_disp_width * _disp_height) * (bits >> 3)
-    BYTESPERLN := _disp_width * BYTESPERPX
+    _bytesperln := _disp_width * BYTESPERPX
     return _cog
 
 PUB Stop

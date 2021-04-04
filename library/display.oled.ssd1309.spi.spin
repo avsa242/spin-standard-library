@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Created: Dec 27, 2019
-    Updated: Jan 2, 2021
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,7 +34,7 @@ VAR
     long _CS, _SCK, _MOSI, _DC, _RES
     long _ptr_drawbuffer
     word _buff_sz
-    word bytesperln
+    word _bytesperln
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
 
 PUB Null{}
@@ -64,7 +64,7 @@ PUB Start(width, height, CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, ptr_dispbuff
             _disp_height := height
             _disp_xmax := _disp_width-1
             _disp_ymax := _disp_height-1
-            bytesperln := _disp_width * BYTESPERPX
+            _bytesperln := _disp_width * BYTESPERPX
             _buff_sz := (_disp_width * _disp_height) / 8
             address(ptr_dispbuff)
             return

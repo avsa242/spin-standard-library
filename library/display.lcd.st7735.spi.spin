@@ -5,7 +5,7 @@
     Description: Driver for Sitronix ST7735-based displays (4W SPI)
     Copyright (c) 2021
     Started Mar 07, 2020
-    Updated Jan 10, 2021
+    Updated Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -59,7 +59,7 @@ VAR
     long _ptr_drawbuffer
     word _buff_sz
     word _framerate
-    word BYTESPERLN
+    word _bytesperln
     byte _RESET, _DC
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax, _offs_x, _offs_y
 
@@ -91,7 +91,7 @@ PUB Start(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, disp_width, disp_height, 
         _disp_height := disp_height
         _disp_xmax := _disp_width-1
         _disp_ymax := _disp_height-1
-        BYTESPERLN := _disp_width * BYTESPERPX
+        _bytesperln := _disp_width * BYTESPERPX
         _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
         reset{}
         address(ptr_drawbuff)

@@ -3,9 +3,9 @@
     Filename: IL3820-Demo.spin
     Author: Jesse Burt
     Description: Demo of the IL3820 driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 30, 2019
-    Updated Jun 19, 2020
+    Updated Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,16 +17,14 @@ CON
 
 ' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
-    DIN_PIN     = 11
-    CLK_PIN     = 10
-    CS_PIN      = 9
-    DC_PIN      = 8
-    RST_PIN     = 7
-    BUSY_PIN    = 6
+    DIN         = 0
+    CLK         = 1
+    CS          = 2
+    DC          = 3
+    RST         = 4
+    BUSY        = 5
 
     WIDTH       = 128
     HEIGHT      = 296
@@ -38,152 +36,84 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.activityboard"
+    cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    io      : "io"
     epaper  : "display.epaper.il3820.spi"
     fnt     : "font.5x8"
 
 VAR
 
     byte _framebuff[BUFF_SZ]
-    byte _ser_cog
 
-PUB Main | i
+PUB Main{} | i
 
-    Setup
-    ser.Position (0, 3)
+    setup{}
+    ser.position(0, 3)
 
-    repeat until epaper.DisplayReady                            ' Wait for the display to be ready
+    repeat until epaper.displayready{}          ' Wait for display to be ready
 
-    epaper.BGColor($FF)
-    epaper.Clear
-    epaper.FGColor(0)
-    epaper.Box(0, 0, XMAX, YMAX, 0, FALSE)
-    epaper.Position(5, 5)
-    epaper.Str(string("HELLO WORLD"))
+    epaper.bgcolor(epaper#WHITE)                ' set BG color for text, and
+    epaper.clear{}                              '   also Clear() color
+    epaper.fgcolor(epaper#BLACK)                ' set FG color for text
+    epaper.box(0, 0, XMAX, YMAX, 0, FALSE)      ' draw box full-screen size
 
-    epaper.Line(0, 0, 100, 100, 0)                              ' Draw diagonal line
-    repeat i from 0 to 64 step 10
-        epaper.Circle(64, 148, i, 0)
+    epaper.position(5, 5)
+    epaper.str(string("HELLO WORLD"))
 
-    repeat i from 0 to 100                                      ' Same, but mirror, and use Plot()
-        epaper.Plot(127-i, i, 0)
-    epaper.Box(28, 100, 100, 200, 0, FALSE)
+    epaper.line(0, 0, 100, 100, 0)              ' Draw diagonal line
 
-    HRule
-    VRule
+    repeat i from 0 to 100                      ' Same, mirrored, using Plot()
+        epaper.plot(127-i, i, 0)
 
-    epaper.Update                                               ' Send the display buffer to the display
+    repeat i from 0 to 64 step 10               ' concentric circles
+        epaper.circle(64, 148, i, 0, false)
 
-    FlashLED (LED, 100)
+    epaper.box(28, 100, 100, 200, 0, FALSE)     ' box around circles
 
-PUB HRule | x, grad_len
+    hrule{}                                     ' draw rulers at screen edges
+    vrule{}
+
+    epaper.update{}                             ' Update the display
+
+    repeat
+
+PUB HRule{} | x, grad_len
 ' Draw a simple rule along the x-axis
     grad_len := 5
 
     repeat x from 0 to WIDTH step 5
         if x // 10 == 0
-            epaper.line(x, 0, x, grad_len, -1)
+            epaper.line(x, 0, x, grad_len, epaper#INVERT)
         else
-            epaper.line(x, 0, x, grad_len*2, -1)
+            epaper.line(x, 0, x, grad_len*2, epaper#INVERT)
 
-PUB VRule | y, grad_len
+PUB VRule{} | y, grad_len
 ' Draw a simple rule along the y-axis
     grad_len := 5
 
     repeat y from 0 to HEIGHT step 5
         if y // 10 == 0
-            epaper.line(0, y, grad_len, y, -1)
+            epaper.line(0, y, grad_len, y, epaper#INVERT)
         else
-            epaper.line(0, y, grad_len*2, y, -1)
+            epaper.line(0, y, grad_len*2, y, epaper#INVERT)
 
-PUB Setup
+PUB Setup{}
 
-    repeat until ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
-    time.msleep(100)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
-    if epaper.Start (CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, @_framebuff)
-        ser.Str (string("IL3820 driver started"))
-        epaper.FontAddress(fnt.BaseAddr)
-        epaper.FontSize(6, 7)
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if epaper.startx(CS, CLK, DIN, DC, RST, BUSY, WIDTH, HEIGHT, @_framebuff)
+        ser.strln(string("IL3820 driver started"))
+        epaper.fontscale(1)
+        epaper.fontaddress(fnt.baseaddr{})
+        epaper.fontsize(6, 8)
     else
-        ser.Str (string("IL3820 driver failed to start - halting"))
-        epaper.Stop
-        time.MSleep (500)
-        ser.Stop
-        FlashLED (LED, 500)
-
-#include "lib.utility.spin"
-
-DAT
-'1024 bytes
-    Beanie      byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $80, $C0
-                byte    $C0, $C0, $C0, $C0, $C0, $C0, $C0, $C0, $80, $80, $80, $80, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $80
-                byte    $80, $00, $00, $00, $80, $80, $80, $80, $C0, $C0, $C0, $C0, $C0, $E0, $E0, $E0
-                byte    $E0, $E0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0
-                byte    $E0, $E0, $80, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $0F, $1F, $3F
-                byte    $3F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $7F, $3F, $3F, $3F, $3F
-                byte    $3F, $3F, $1F, $1F, $1E, $1E, $1E, $0E, $0E, $0E, $0E, $06, $06, $06, $F7, $FF
-                byte    $FF, $F7, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $03, $07
-                byte    $07, $07, $07, $07, $07, $0F, $0F, $0F, $0F, $0F, $1F, $1F, $1F, $1F, $1F, $1F
-                byte    $0F, $0F, $07, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $80, $C0, $C0, $E0, $E0, $60, $70, $30, $30, $18, $18, $C8, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $C8, $18, $18, $30, $30, $70, $60, $E0, $E0, $C0, $C0, $80, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $80, $C0, $E0, $F0, $F8, $FC, $FE, $7F
-                byte    $3F, $0F, $07, $03, $01, $00, $00, $00, $00, $C0, $FC, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FC, $C0, $00, $00, $00, $00, $01, $03, $07, $0F, $3F
-                byte    $7F, $FE, $FC, $F8, $F0, $E0, $C0, $80, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $80, $E0, $F8, $FC, $FF, $FF, $FF, $FF, $FF, $3F, $07, $01, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $F8, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F8, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $01, $07, $3F, $FF, $FF, $FF, $FF, $FF, $FC, $F8, $E0, $80, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $C0, $FC, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $BF, $81, $80, $80, $80, $C0
-                byte    $C0, $C0, $C0, $C0, $C0, $C0, $C0, $F0, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                byte    $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F0, $C0, $C0, $C0, $C0, $C0, $C0, $C0
-                byte    $C0, $80, $80, $80, $81, $BF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FC, $C0, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $78, $FF, $FF, $FF, $FF, $FF, $FF, $CF, $CF, $CF, $CF, $CF, $C7, $87, $87, $87
-                byte    $87, $87, $87, $87, $87, $87, $87, $07, $03, $03, $03, $03, $03, $03, $03, $03
-                byte    $03, $03, $03, $03, $03, $03, $03, $03, $07, $87, $87, $87, $87, $87, $87, $87
-                byte    $87, $87, $87, $C7, $CF, $CF, $CF, $CF, $CF, $FF, $FF, $FF, $FF, $FF, $FF, $78
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $01, $01, $03, $03, $03, $03, $03, $07, $07, $07, $07, $07, $07, $07
-                byte    $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-                byte    $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
-                byte    $07, $07, $07, $07, $07, $07, $07, $03, $03, $03, $03, $03, $01, $01, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-                byte    $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+        ser.strln(string("IL3820 driver failed to start - halting"))
+        epaper.stop{}
+        time.msleep(500)
+        ser.stop{}
 
 DAT
 {

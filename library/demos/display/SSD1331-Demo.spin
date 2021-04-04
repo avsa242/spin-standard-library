@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Nov 3, 2019
-    Updated: Jan 9, 2021
+    Updated: Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -155,7 +155,7 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
         if (bx =< radius OR bx => WIDTH - radius)
             dx *= -1                            ' left/right edges
 
-        oled.circle(bx, by, radius, oled#MAX_COLOR)
+        oled.circle(bx, by, radius, oled#MAX_COLOR, false)
         oled.update{}
         iteration++
         oled.clear{}
@@ -178,7 +178,7 @@ PUB Demo_Box(testtime) | iteration, c
     report(testtime, iteration)
     return iteration
 
-PUB Demo_BoxFilled (testtime) | iteration, c
+PUB Demo_BoxFilled(testtime) | iteration, c
 ' Draws random lines
     ser.str(string("Demo_BoxFilled - "))
     _timer_set := testtime
@@ -203,7 +203,7 @@ PUB Demo_Circle(testtime) | iteration, x, y, r
         x := rnd(XMAX)
         y := rnd(YMAX)
         r := rnd(YMAX/2)
-        oled.circle(x, y, r, rnd(oled#MAX_COLOR))
+        oled.circle(x, y, r, rnd(oled#MAX_COLOR), false)
         oled.update{}
         iteration++
 
