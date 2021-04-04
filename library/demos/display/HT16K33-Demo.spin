@@ -35,12 +35,12 @@ CON
 
 OBJ
 
-    cfg         : "core.con.boardcfg.flip"
-    ser         : "com.serial.terminal.ansi"
-    time        : "time"
-    disp        : "display.led.ht16k33.i2c"
-    int         : "string.integer"
-    fnt5x8      : "font.5x8"
+    cfg : "core.con.boardcfg.flip"
+    ser : "com.serial.terminal.ansi"
+    time: "time"
+    disp: "display.led.ht16k33.i2c"
+    int : "string.integer"
+    fnt : "font.5x8"
 
 VAR
 
@@ -110,7 +110,6 @@ PUB Demo_Bitmap(testtime, bitmap_addr) | iteration
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Circle(testtime) | iteration, x, y, r
 ' Draws circles at random locations
@@ -121,13 +120,12 @@ PUB Demo_Circle(testtime) | iteration, x, y, r
     repeat while _timer_set
         x := rnd(XMAX)
         y := rnd(YMAX)
-        r := rnd(YMAX/2)
+        r := rnd(HEIGHT/2)
         disp.circle(x, y, r, -1, false)
         disp.update{}
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Greet{} | ch, idx
 ' Display the banner/greeting on the disp
@@ -158,7 +156,6 @@ PUB Demo_Line(testtime) | iteration
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_LineSweepX(testtime) | iteration, x
 ' Draws lines top left to lower-right, sweeping across the screen, then
@@ -178,7 +175,6 @@ PUB Demo_LineSweepX(testtime) | iteration, x
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_LineSweepY(testtime) | iteration, y
 ' Draws lines top left to lower-right, sweeping across the screen, then
@@ -198,7 +194,6 @@ PUB Demo_LineSweepY(testtime) | iteration, y
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, pos, st, en
 ' Dumps Propeller Hub RAM (and/or ROM) to the display buffer
@@ -217,7 +212,6 @@ PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, pos, st, en
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Plot(testtime) | iteration, x, y
 ' Draws random pixels to the screen, with color -1 (invert)
@@ -231,7 +225,6 @@ PUB Demo_Plot(testtime) | iteration, x, y
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Sinewave(testtime) | iteration, x, y, modifier, offset, div
 ' Draws a sine wave the length of the screen, influenced by the system counter
@@ -255,7 +248,6 @@ PUB Demo_Sinewave(testtime) | iteration, x, y, modifier, offset, div
         disp.clear{}
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_SeqText(testtime) | iteration, col, row, maxcol, maxrow, ch, st
 ' Sequentially draws the whole font table to the screen, then random characters
@@ -281,7 +273,6 @@ PUB Demo_SeqText(testtime) | iteration, col, row, maxcol, maxrow, ch, st
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_RndText(testtime) | iteration, col, row, maxcol, maxrow, ch, st
 
@@ -307,7 +298,6 @@ PUB Demo_RndText(testtime) | iteration, col, row, maxcol, maxrow, ch, st
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_TriWave(testtime) | iteration, x, y, ydir
 ' Draws a simple triangular wave
@@ -331,7 +321,6 @@ PUB Demo_TriWave(testtime) | iteration, x, y, ydir
         disp.clear{}
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Wander(testtime) | iteration, x, y, d
 ' Draws randomly wandering pixels
@@ -366,7 +355,6 @@ PUB Demo_Wander(testtime) | iteration, x, y, d
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Sin(angle): sine
 ' Return the sine of angle
@@ -433,13 +421,12 @@ PUB Setup{}
     ser.start(SER_BAUD)
     time.msleep(100)
     ser.clear{}
-    ser.str (string("Serial terminal started", ser#CR, ser#LF))
-    if disp.startx(WIDTH, HEIGHT, I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS, @_framebuff)
-        ser.str(string("HT16K33 driver started. Draw buffer @ $"))
-        ser.hex(disp.Address(-2), 8)
+    ser.strln(string("Serial terminal started"))
+    if disp.startx(I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT, @_framebuff)
+        ser.strln(string("HT16K33 driver started"))
         disp.defaults{}
         disp.fontsize(6, 8)
-        disp.fontaddress(fnt5x8.baseaddr{})
+        disp.fontaddress(fnt.baseaddr{})
     else
         ser.str(string("HT16K33 driver failed to start - halting"))
         stop{}

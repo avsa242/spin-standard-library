@@ -47,6 +47,7 @@ VAR
 PUB Main{} | i
 
     setup{}
+    matrix.defaults{}
     matrix.fontsize(6, 8)
     matrix.fontaddress(fnt.baseaddr{})
 
@@ -100,18 +101,14 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if matrix.startx(WIDTH, HEIGHT, I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS, @_framebuff)
+    if matrix.startx(I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT, @_framebuff)
         ser.strln(string("HT16K33 driver started"))
     else
         ser.strln(string("HT16K33 driver failed to start - halting"))
         matrix.stop{}
         time.msleep(5)
         ser.stop{}
-
-PUB Stop{}
-
-    matrix.stop{}
-    ser.stop{}
+        repeat
 
 DAT
 {
