@@ -199,7 +199,7 @@ PUB Start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bit
     _disp_height := height
     _disp_xmax := _disp_width - 1
     _disp_ymax := _disp_height - 1
-    _buff_sz := (_disp_width * _disp_height) * (bits >> 3)
+    _buff_sz := (_disp_width * _disp_height) * (bits >> 3) + 1
     _bytesperln := _disp_width * BYTESPERPX
     return _cog
 
