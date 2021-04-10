@@ -20,11 +20,11 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 3
-    DC_PIN      = 2
-    RES_PIN     = 4
-    SDA_PIN     = 1
-    SCK_PIN     = 0
+    CS_PIN      = 8
+    DC_PIN      = 11
+    RES_PIN     = 12
+    SDA_PIN     = 10
+    SCK_PIN     = 9
 
     WIDTH       = 128
     HEIGHT      = 64
@@ -494,7 +494,7 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if disp.start(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+    if disp.startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         ser.str(string("ST7735 driver started. Draw buffer @ $"))
         ser.hex(disp.address(-2), 8)
         disp.fontscale(1)

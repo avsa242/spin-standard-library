@@ -4,8 +4,8 @@
     Author: Jesse Burt
     Description: Driver for Sitronix ST7735-based displays (4W SPI)
     Copyright (c) 2021
-    Started Mar 07, 2020
-    Updated Apr 4, 2021
+    Started Mar 7, 2020
+    Updated Apr 9, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -76,32 +76,35 @@ OBJ
 PUB Null{}
 'This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, disp_width, disp_height, ptr_drawbuff): okay
-
-    if okay := spi.start(CS_PIN, SCK_PIN, SDA_PIN, SDA_PIN)
-        _RESET := RESET_PIN
-        _DC := DC_PIN
-
-        io.high(_RESET)
-        io.output(_RESET)
-        io.high(_DC)
-        io.output(_DC)
-
-        _disp_width := disp_width
-        _disp_height := disp_height
-        _disp_xmax := _disp_width-1
-        _disp_ymax := _disp_height-1
-        _bytesperln := _disp_width * BYTESPERPX
-        _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
-        reset{}
-        address(ptr_drawbuff)
-        return okay
-    return                                                'If we got here, something went wrong
+PUB Startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, WIDTH, HEIGHT, ptr_drawbuff): status
+' Start using custom I/O settings
+'   RES_PIN optional, but recommended (pin # only validated in Reset())
+    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
+}   lookdown(SDA_PIN: 0..31) and lookdown(DC_PIN: 0..31)
+        if (status := spi.init(CS_PIN, SCK_PIN, SDA_PIN, -1, core#SPI_MODE))
+            _RESET := RESET_PIN
+            _DC := DC_PIN
+            io.high(_DC)
+            io.output(_DC)
+            reset{}
+            _disp_width := WIDTH
+            _disp_height := HEIGHT
+            _disp_xmax := _disp_width-1
+            _disp_ymax := _disp_height-1
+            _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
+            _bytesperln := _disp_width * BYTESPERPX
+            address(ptr_drawbuff)
+            return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
+    displayvisibility(ALL_OFF)
     powered(FALSE)
-    spi.stop{}
+    spi.deinit{}
 
 PUB Defaults{} | tmp
 ' Apply power-on-reset default settings
@@ -160,16 +163,16 @@ PUB Preset_GreenTab128x128{} | tmp
 
     mirrorh(TRUE)
     mirrorv(TRUE)
-    subpixelorder(BGR)
+    subpixelorder(RGB)
 
     colordepth(16)
-    displayoffset(2, 3)
+    displayoffset(2, 1)
     displaybounds(0, 0, _disp_xmax, _disp_ymax)
 
     gammatablep(@gammatable_pos)
     gammatablen(@gammatable_neg)
 
-    partialarea(0, _disp_ymax)                     ' Can be 0, 159 also, depending on configuration of GM pins
+    partialarea(0, _disp_ymax/2)
     opmode(NORMAL)
     displayvisibility(NORMAL)
 
@@ -334,7 +337,7 @@ PUB GammaTableN(ptr_buff)
     writereg(core#GMCTRN1, 16, ptr_buff)
 
 PUB GammaTableP(ptr_buff)
-' Modify gamma table (negative polarity)
+' Modify gamma table (positive polarity)
     writereg(core#GMCTRP1, 16, ptr_buff)
 
 PUB InversionCtrl(mask)
@@ -432,12 +435,14 @@ PUB Powered(state)
 
 PUB Reset{}
 ' Reset the display controller
-    io.high(_RESET)
-    time.usleep(10)
-    io.low(_RESET)
-    time.usleep(10)
-    io.high(_RESET)
-    time.msleep(5)
+    io.output(_RESET)
+    if lookdown(_RESET: 0..31)
+        io.high(_RESET)
+        time.usleep(10)
+        io.low(_RESET)
+        time.usleep(10)
+        io.high(_RESET)
+        time.msleep(5)
 
 PUB PowerControl(mode, ap, sap, bclkdiv1, bclkdiv2, bclkdiv3, bclkdiv4, bclkdiv5) | tmp
 ' Set partial mode/full-colors power control
@@ -515,7 +520,7 @@ PUB PowerControl1(avdd, gvdd, gvcl, mode) | tmp
 '   Any other value is ignored
     case avdd
         4_500..5_100:
-            avdd := ((avdd / 100) - 45) << core#avdd
+            avdd := ((avdd / 100) - 45) << core#AVDD
         other:
             return
 
@@ -546,7 +551,7 @@ PUB PowerControl2(v25, vgh, vgl) | tmp
 ' Set LCD supply voltages, in millivolts
 '   Valid values:
 '       V25: 2_100, 2_200, 2_300, 2_400 (default: 2_400)
-'       VGH: AVDD_X2_VGH25 (0), AVDD_X3 (1), AVDD_X3_VGH25 (2) (default: AVDD3X)
+'       VGH: AVDD_X2_VGH25 (0), AVDD_X3 (1), AVDD_X3_VGH25 (2) (default: AVDD_X3)
 '       VGL: -13_000, -12_500, -10_000, -7_500 (default: -10_000)
     case v25
         2_100, 2_200, 2_300, 2_400:
@@ -588,7 +593,12 @@ PUB SubpixelOrder(order): curr_ord
 
 PUB Update{}
 ' Write the draw buffer to the display
-    writereg(core#RAMWR, _buff_sz, _ptr_drawbuffer)
+    io.low(_DC)
+    spi.deselectafter(false)
+    spi.wr_byte(core#RAMWR)
+    io.high(_DC)                                ' D/C high = data
+    spi.deselectafter(true)
+    spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to device from ptr_buff
@@ -596,20 +606,17 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff)
         ' single-byte commands
         $00, $01, $11, $12, $13, $20, $21, $28, $29, $38, $39:
             io.low(_DC)                         ' D/C low = command
-            spi.write(TRUE, @reg_nr, 1, TRUE)   ' Write reg_nr, raise CS after
-            return
-        core#RAMWR:
-            io.low(_DC)
-            spi.write(TRUE, @reg_nr, 1, FALSE)  ' leave CS low after
-            io.high(_DC)                        ' D/C high = data
-            spi.write(TRUE, ptr_buff, nr_bytes, TRUE)
+            spi.deselectafter(true)
+            spi.wr_byte(reg_nr)
             return
         ' multi-byte commands
         $2A..$2C, $30, $36, $3A, $B1..$B4, $B6, $C0..$C5, $E0, $E1, $FC:
             io.low(_DC)
-            spi.write(TRUE, @reg_nr, 1, FALSE)
+            spi.deselectafter(false)
+            spi.wr_byte(reg_nr)
             io.high(_DC)
-            spi.write(TRUE, ptr_buff, nr_bytes, TRUE)
+            spi.deselectafter(true)
+            spi.wrblock_lsbf(ptr_buff, nr_bytes)
             return
 
 DAT
