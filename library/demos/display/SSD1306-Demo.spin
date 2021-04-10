@@ -516,7 +516,7 @@ PUB Setup{}
         disp.fontsize(6, 8)
         disp.fontaddress(fnt5x8.baseaddr{})
         disp.reset{}
-        disp.defaults{}
+        disp.preset_128x{}
     else
         ser.strln(string("SSD1306 driver failed to start - halting"))
         stop{}

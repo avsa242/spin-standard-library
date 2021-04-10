@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: display.oled.ssd1306.i2c.spin
-    Description: Driver for Solomon Systech SSD1306 I2C OLED display drivers
+    Filename: display.oled.ssd1306.i2cspi.spin
+    Description: Driver for Solomon Systech SSD1306 OLED displays
     Author: Jesse Burt
     Copyright (c) 2021
     Created: Apr 26, 2018
-    Updated: Apr 4, 2021
+    Updated: Apr 5, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -29,6 +29,11 @@ CON
     NORMAL          = 0
     ALL_ON          = 1
     INVERTED        = 2
+
+' Addressing modes
+    HORIZ           = 0
+    VERT            = 1
+    PAGE            = 2
 
 OBJ
 
@@ -57,6 +62,7 @@ PUB Startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BIT, WIDTH, HEIGHT, ptr_dispb
 ' Start the driver with custom I/O settings
 '   SCL_PIN: 0..31
 '   SDA_PIN: 0..31
+'   RES_PIN: 0..31 (optional; use -1 to disable)
 '   I2C_HZ: max official is 400_000 (unenforced, YMMV!)
 '   SLAVE_LSB: 0, 1
 '   WIDTH: 96, 128
@@ -66,7 +72,7 @@ PUB Startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BIT, WIDTH, HEIGHT, ptr_dispb
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#TPOR)              ' wait for device startup
             _sa0 := ||(ADDR_BIT == 1) << 1      ' slave address bit option
-            _RES := RES_PIN
+            _RES := RES_PIN                     ' -1 to disable
 
             if i2c.present(SLAVE_WR | _sa0)     ' test device bus presence
                 _disp_width := width
@@ -130,14 +136,22 @@ PUB Stop{}
 PUB Defaults{}
 ' Apply power-on-reset default settings
     powered(FALSE)
-    clockfreq(372)
-    displaylines(_disp_height)
-    displayoffset(0)
+    displaylines(64)
     displaystartline(0)
     chargepumpreg(TRUE)
-    addrmode(0)
-    mirrorh(FALSE)
-    mirrorv(FALSE)
+    addrmode(PAGE)
+    contrast(127)
+    displayvisibility(NORMAL)
+    displaybounds(0, 0, _disp_xmax, _disp_ymax)
+    powered(TRUE)
+
+PUB Preset_128x{}
+' Preset: 128px wide, determine settings for height at runtime
+    displaylines(_disp_height)
+    displaystartline(0)
+    chargepumpreg(TRUE)
+    addrmode(HORIZ)
+    displayvisibility(NORMAL)
     case _disp_height
         32:
             compincfg(0, 0)
@@ -145,11 +159,26 @@ PUB Defaults{}
             compincfg(1, 0)
         other:
             compincfg(0, 0)
-    contrast(127)
-    prechargeperiod(1, 15)
-    comlogichighlevel(0_77)
+    powered(TRUE)
+
+PUB Preset_128x32{}
+' Preset: 128px wide, setup for 32px height
+    displaylines(32)
+    displaystartline(0)
+    chargepumpreg(TRUE)
+    addrmode(HORIZ)
     displayvisibility(NORMAL)
-    displaybounds(0, 0, _disp_xmax, _disp_ymax)
+    compincfg(0, 0)
+    powered(TRUE)
+
+PUB Preset_128x64{}
+' Preset: 128px wide, setup for 64px height
+    displaylines(64)
+    displaystartline(0)
+    chargepumpreg(TRUE)
+    addrmode(HORIZ)
+    displayvisibility(NORMAL)
+    compincfg(1, 0)
     powered(TRUE)
 
 PUB Address(addr)
@@ -168,7 +197,7 @@ PUB AddrMode(mode)
 '      *2: Page
 '   Any other value is ignored
     case mode
-        0, 1:
+        HORIZ, VERT, PAGE:
         other:
             return
 
