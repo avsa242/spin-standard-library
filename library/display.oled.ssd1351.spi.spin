@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
     Copyright (c) 2021
     Started: Mar 11, 2020
-    Updated: Apr 4, 2021
+    Updated: Apr 8, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -47,260 +47,302 @@ CON
 
 OBJ
 
-    core    : "core.con.ssd1351"
-    time    : "time"
-    spi     : "com.spi.fast"
-    io      : "io"
+    core    : "core.con.ssd1351"                ' HW-specific constants
+    time    : "time"                            ' timekeeping methods
+    spi     : "com.spi.fast"                    ' PASM SPI engine (20MHz)
+    io      : "io"                              ' I/O pin abstraction
 
 VAR
 
-    long _DC, _RES, _MOSI, _SCK, _CS
+    long _CS, _DC, _RES
     long _ptr_drawbuffer
     word _disp_width, _disp_height, _disp_xmax, _disp_ymax, _buff_sz
     word _bytesperln
 
-    byte _sh_CLK, _sh_REMAPCOLOR, _sh_PHASE12PER                            ' Shadow registers
+    ' shadow registers
+    byte _sh_CLK, _sh_REMAPCOLOR, _sh_PHASE12PER
 
-PUB Start (CS_PIN, DC_PIN, DIN_PIN, CLK_PIN, RES_PIN, WIDTH, HEIGHT, drawbuffer_address): okay
+PUB Null{}
+' This is not a top-level object
 
-    if lookdown(CS_PIN: 0..31) and lookdown(DC_PIN: 0..31) and lookdown(DIN_PIN: 0..31) and lookdown(CLK_PIN: 0..31) and lookdown(RES_PIN: 0..31)
-        if okay := spi.start (CS_PIN, CLK_PIN, DIN_PIN, -1)
+PUB Startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuff): status
+' Start driver using custom I/O settings
+    if lookdown(CS_PIN: 0..31) and lookdown(DC_PIN: 0..31) {
+}   and lookdown(DIN_PIN: 0..31) and lookdown(CLK_PIN: 0..31) {
+}   and lookdown(RES_PIN: 0..31)
+        if (status := spi.init(CS_PIN, CLK_PIN, DIN_PIN, -1, core#SPI_MODE))
             _DC := DC_PIN
             _RES := RES_PIN
-            _MOSI := DIN_PIN
-            _SCK := CLK_PIN
             _CS := CS_PIN
-            io.High(_DC)
-            io.Output(_DC)
-            io.High(_RES)
-            io.Output(_RES)
+            io.high(_DC)
+            io.output(_DC)
+            io.high(_RES)
+            io.output(_RES)
             _disp_width := WIDTH
             _disp_height := HEIGHT
             _disp_xmax := _disp_width - 1
             _disp_ymax := _disp_height - 1
-            _buff_sz := _disp_width * _disp_height * 2
+            _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
             _bytesperln := _disp_width * BYTESPERPX
 
-            Address(drawbuffer_address)
-            Reset
-            Powered(TRUE)
-            time.MSleep(300)
-            LockDisplay(ALL_UNLOCK)
-            LockDisplay(CFG_UNLOCK)
-            return okay
+            address(ptr_dispbuff)
+            reset{}
+            powered(TRUE)
+            time.msleep(300)
+            lockdisplay(ALL_UNLOCK)
+            lockdisplay(CFG_UNLOCK)
+            return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop
+PUB Stop{}
 
-    DisplayVisibility(ALL_OFF)
-    Powered (FALSE)
+    displayvisibility(ALL_OFF)
+    powered(FALSE)
+    spi.deinit{}
 
-PUB Address(addr)
-' Set address of display buffer
-'   Example:
-'       display.Address(@_framebuffer)
-    _ptr_drawbuffer := addr
-
-PUB Defaults
+PUB Defaults{}
 ' Apply power-on-reset default settings
-    DisplayBounds(0, 0, 127, 127)
-    AddrMode(ADDR_HORIZ)
-    MirrorH(FALSE)
-    SubpixelOrder(RGB)
-    MirrorV(FALSE)
-    Interlaced(FALSE)
-    ColorDepth (COLOR_65K)
-    DisplayStartLine(0)
-    DisplayOffset(96)
-    Phase1Period (5)
-    Phase2Period (8)
-    ClockFreq (3020)
-    ClockDiv (2)
-    Phase3Period (8)
-    PrechargeLevel (497)
-    COMHVoltage (820)
-    ContrastABC (138, 81, 138)
-    DisplayLines(128)
+    displayvisibility(ALL_OFF)
+    displaystartline(0)
+    displaylines(128)
+    clockfreq(3020)
+    clockdiv(1)
+    contrastabc(138, 81, 138)
+    powered(TRUE)
+    displaybounds(0, 0, 127, 127)
+    clearaccel{}
+    displayvisibility(NORMAL)
 
-    Powered(TRUE)
-    DisplayVisibility(NORMAL)
+PUB Preset_OLED_C_Click_96x96{}
+' Preset: 96px wide, 96px high, MikroE OLED C Click
+'   (Parallax #64208, MikroE #MIKROE-1585)
+'   origin (upper-left) isn't at 0, 0 on this panel
+'   start at 16 pixels in from the left, and add that to the right-hand side
+    displaybounds(16, 0, 16+95, 95)
+    addrmode(ADDR_HORIZ)
+    subpixelorder(RGB)
+    interlaced(FALSE)
+    colordepth(COLOR_65K)
+    displaystartline(0)
+    displayoffset(96)
+    clockfreq(3020)
+    clockdiv(1)
+    contrast(127)
+    displaylines(96)
 
-PUB DefaultsCommon
-' Apply settings that may be more commonly used but differ from factory settings
-    DisplayBounds(0, 0, _disp_xmax, _disp_ymax)
-    AddrMode(ADDR_HORIZ)
-    MirrorH(TRUE)
-    SubpixelOrder(RGB)
-    MirrorV(FALSE)
-    Interlaced(FALSE)
-    ColorDepth (COLOR_65K)
-    DisplayStartLine(0)
-    DisplayOffset(0)
-    Phase1Period (5)
-    Phase2Period (8)
-    ClockFreq (3020)
-    ClockDiv (2)
-    Phase3Period (8)
-    PrechargeLevel (497)
-    COMHVoltage (820)
-    ContrastABC (138, 81, 138)
-    DisplayLines(128)
+    powered(TRUE)
+    displayvisibility(NORMAL)
 
-    Powered(TRUE)
-    DisplayVisibility(NORMAL)
+PUB Preset_128x{}
+' Preset: 128px wide, determine settings for height at runtime
+    displaybounds(0, 0, _disp_xmax, _disp_ymax)
+    addrmode(ADDR_HORIZ)
+    subpixelorder(RGB)
+    interlaced(FALSE)
+    colordepth(COLOR_65K)
+    displaystartline(0)
+    displayoffset(0)
+    clockfreq(3020)
+    clockdiv(1)
+    contrast(127)
+    displaylines(_disp_height)
 
-PUB AddrMode(mode) | tmp
+    powered(TRUE)
+    displayvisibility(NORMAL)
+
+PUB Preset_128x128{}
+' Preset: 128px wide, determine settings for height at runtime
+    displaybounds(0, 0, 127, 127)
+    addrmode(ADDR_HORIZ)
+    subpixelorder(RGB)
+    interlaced(FALSE)
+    colordepth(COLOR_65K)
+    displaystartline(0)
+    displayoffset(0)
+    clockfreq(3020)
+    clockdiv(1)
+    contrast(127)
+    displaylines(128)
+
+    powered(TRUE)
+    displayvisibility(NORMAL)
+
+PUB Preset_128xHiPerf{}
+' Preset: 128px wide, determine settings for height at runtime
+'   display osc. set to max clock
+    displaybounds(0, 0, _disp_xmax, _disp_ymax)
+    addrmode(ADDR_HORIZ)
+    subpixelorder(RGB)
+    interlaced(FALSE)
+    colordepth(COLOR_65K)
+    displaystartline(0)
+    displayoffset(0)
+    clockfreq(3100)
+    clockdiv(1)
+    contrast(127)
+    displaylines(_disp_height)
+
+    powered(TRUE)
+    displayvisibility(NORMAL)
+
+PUB Address(addr): curr_addr
+' Set framebuffer/display buffer address
+    case addr
+        $0004..$7FFF-_buff_sz:
+            _ptr_drawbuffer := addr
+        other:
+            return _ptr_drawbuffer
+
+PUB AddrMode(mode): curr_mode
 ' Set display internal addressing mode
 '   Valid values:
 '  *ADDR_HORIZ (0): Horizontal addressing mode
 '   ADDR_VERT (1): Vertical addressing mode
-    tmp := _sh_REMAPCOLOR
+    curr_mode := _sh_REMAPCOLOR
     case mode
         ADDR_HORIZ, ADDR_VERT:
-        OTHER:
-            return (tmp >> core#FLD_ADDRINC) & %1
+        other:
+            return ((curr_mode >> core#ADDRINC) & 1)
 
-    _sh_REMAPCOLOR &= core#MASK_SEGREMAP
-    _sh_REMAPCOLOR := (_sh_REMAPCOLOR | mode) & core#SETREMAP_MASK
-    writeReg (core#SETREMAP, 1, @_sh_REMAPCOLOR)
+    _sh_REMAPCOLOR := ((_sh_REMAPCOLOR & core#SEGREMAP_MASK) | mode)
+    writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
-PUB ClearAccel | tmp
+PUB ClearAccel{} | tmp
 ' Clear the display directly, bypassing the display buffer
-    tmp := $00_00_00_00
+    tmp := 0
     repeat _buff_sz/4
-        writeReg(core#WRITERAM, 4, @tmp)
+        writereg(core#WRITERAM, 4, @tmp)
 
-PUB ClockDiv(divider) | tmp
+PUB ClockDiv(divider): curr_div
 ' Set clock frequency divider used by the display controller
-'   Valid values: 1..1024 (default: 2)
+'   Valid values: 1..16 (default: 1)
 '   Any other value returns the current setting
-    tmp := _sh_CLK
+    curr_div := _sh_CLK
     case divider
-        1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024:
+        1..16:
             divider -= 1
-        OTHER:
-            return 1 << (tmp & core#BITS_CLKDIV)
+        other:
+            return (curr_div & core#CLK_DIV_BITS) + 1
 
-    _sh_CLK &= core#MASK_CLKDIV
-    _sh_CLK := _sh_CLK | divider
-    writeReg (core#CLOCKDIV, 1, @_sh_CLK)
+    _sh_CLK := ((curr_div & core#CLK_DIV_MASK) | divider)
+    writereg(core#CLKDIV, 1, @_sh_CLK)
 
-PUB ClockFreq(freq) | tmp
+PUB ClockFreq(freq): curr_freq
 ' Set display internal oscillator frequency, in kHz
 '   Valid values: 2500..3100 (default: 3020)
 '   Any other value returns the current setting
-'   NOTE: Range is interpolated, based on the datasheet min/max values and number of steps,
-'       so actual clock frequency may not be accurate. Value set will be rounded to the nearest 40kHz
-    tmp := _sh_CLK
+'   NOTE: Range is interpolated, based on the datasheet min/max values and
+'   number of steps, so actual clock frequency may not be accurate.
+'   Value set will be rounded to the nearest 40kHz
+    curr_freq := _sh_CLK
     case freq
         2500..3100:
-            freq := ((freq-2500) / 40) << core#FLD_FOSCFREQ
-        OTHER:
-            tmp := (tmp >> core#FLD_FOSCFREQ) & core#BITS_FOSCFREQ
-            return (tmp * 40) + 2500
+            freq := ((freq-2500) / 40) << core#FOSCFREQ
+        other:
+            curr_freq := (curr_freq >> core#FOSCFREQ) & core#FOSCFREQ_BITS
+            return (curr_freq * 40) + 2500
 
-    _sh_CLK &= core#MASK_FOSCFREQ
-    _sh_CLK := _sh_CLK | freq
-    writeReg (core#CLOCKDIV, 1, @_sh_CLK)
+    _sh_CLK := ((curr_freq & core#FOSCFREQ_MASK) | freq)
+    writereg(core#CLKDIV, 1, @_sh_CLK)
 
-PUB ColorDepth(format) | tmp
+PUB ColorDepth(format): curr_fmt
 ' Set expected color format of pixel data
 '   Valid values:
 '      *COLOR_65K (0): 16-bit/65536 color format 1
 '       COLOR_262K (1): 18-bits/262144 color format
 '       COLOR_262K65K2 (2): 18-bit/262144 color format, 16-bit/65536 color format 2
 '   Any other value returns the current setting
-    tmp := _sh_REMAPCOLOR
+    curr_fmt := _sh_REMAPCOLOR
     case format
         COLOR_65K, COLOR_262K, COLOR_262K65K2:
-            format <<= core#FLD_COLORFORMAT
-        OTHER:
-            return tmp >> core#FLD_COLORFORMAT
+            format <<= core#COLORFMT
+        other:
+            return (curr_fmt >> core#COLORFMT)
 
-    _sh_REMAPCOLOR &= core#MASK_COLORFORMAT
-    _sh_REMAPCOLOR := _sh_REMAPCOLOR | format
+    _sh_REMAPCOLOR := ((curr_fmt & core#COLORFMT_MASK) | format)
+    writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
-    writeReg (core#SETREMAP, 1, @_sh_REMAPCOLOR)
-
-PUB COMHVoltage(mV) | tmp
+PUB COMHVoltage(level): curr_lvl
 ' Set logic high level threshold of COM pins rel. to Vcc, in millivolts
 '   Valid values: 720..860 (default: 820)
-'   Any other value returns the current setting
+'   Any other value is ignored
 '   NOTE: Range is interpolated, based on the datasheet min/max values and number of steps,
 '       so actual voltage may not be accurate. Value set will be rounded to the nearest 20mV
-    case mV
+    case level
         720..860:
-            mV := (mV - 720) / 20
-        OTHER:
-            return FALSE
-
-    writeReg (core#VCOMH, 1, @mV)
+            level := (level - 720) / 20
+            writereg(core#VCOMH, 1, @level)
+        other:
+            return
 
 PUB Contrast(level)
 ' Set display contrast/brightness of all subpixels to the same value
 '   Valid values: 0..255
 '   Any other value is ignored
-    ContrastABC(level, level, level)
+    contrastabc(level, level, level)
 
-PUB ContrastABC(a, b, c)
+PUB ContrastABC(a, b, c) | tmp
 ' Set contrast/brightness level of subpixels a, b, c
 '   Valid values: 0..255 (default a: 138, b: 81, c: 138)
 '   Any other value is ignored
     case a
         0..255:
-        OTHER:
-            return FALSE
+        other:
+            return
     case b
         0..255:
-        OTHER:
-            return FALSE
+        other:
+            return
     case c
         0..255:
-        OTHER:
-            return FALSE
+        other:
+            return
 
-    a.byte[0] := a
-    a.byte[1] := b
-    a.byte[2] := c 
-    writeReg(core#SETCONTRASTABC, 3, @a)
+    tmp.byte[0] := a
+    tmp.byte[1] := b
+    tmp.byte[2] := c
+    writereg(core#SETCNTRSTABC, 3, @tmp)
 
-PUB DisplayBounds(sx, sy, ex, ey) | tmp[2]
+PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
 ' Set drawable display region for subsequent drawing operations
 '   Valid values:
 '       sx, ex: 0..127
 '       sy, ey: 0..127
 '   Any other value will be ignored
-    ifnot lookup(sx: 0..127) or lookup(sy: 0..127) or lookup(ex: 0..127) or lookup(ey: 0..127)
+    ifnot lookup(sx: 0..127) or lookup(sy: 0..127) or lookup(ex: 0..127) {
+}   or lookup(ey: 0..127)
         return
 
-    tmp.byte[0] := sx
-    tmp.byte[1] := ex
-    tmp.byte[2] := sy
-    tmp.byte[3] := ey
-    writeReg (core#SETCOLUMN, 2, @tmp)
-    writeReg (core#SETROW, 2, @tmp.byte[2])
+    tmpx.byte[0] := sx
+    tmpx.byte[1] := ex
+    tmpy.byte[0] := sy
+    tmpy.byte[1] := ey
+    writereg(core#SETCOLUMN, 2, @tmpx)
+    writereg(core#SETROW, 2, @tmpy)
 
 PUB DisplayLines(lines)
 ' Set total number of display lines
 '   Valid values: 16..128 (default: 128)
-'   Any other value returns the current setting
+'   Any other value is ignored
     case lines
         16..128:
             lines -= 1
-        OTHER:
-            return FALSE
+            writereg(core#SETMUXRATIO, 1, @lines)
+        other:
+            return
 
-    writeReg (core#SETMUXRATIO, 1, @lines)
-
-PUB DisplayInverted(enabled)
+PUB DisplayInverted(state)
 ' Invert display colors
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
-'   Any other value returns the current setting
-    case ||enabled
+'   Any other value is ignored
+    case ||(state)
         0, 1:
-            DisplayVisibility(INVERTED - ||enabled)
-        OTHER:
-            return FALSE
+            displayvisibility(INVERTED - ||(state))
+        other:
+            return
 
 PUB DisplayOffset(disp_line)
 ' Set display offset/vertical shift, in lines
@@ -308,21 +350,20 @@ PUB DisplayOffset(disp_line)
 '   Any other value is ignored
     case disp_line
         0..127:
-        OTHER:
-            return FALSE
-
-    writeReg (core#DISPLAYOFFSET, 1, @disp_line)
+            writereg(core#DISPOFFSET, 1, @disp_line)
+        other:
+            return
 
 PUB DisplayStartLine(disp_line)
 ' Set display start line
 '   Valid values: 0..127 (default: 0)
-'   Any other value returns the current setting
+'   Any other value is ignored
     case disp_line
         0..127:
-        OTHER:
-            return FALSE
+        other:
+            return
 
-    writeReg (core#STARTLINE, 1, @disp_line)
+    writereg(core#STARTLINE, 1, @disp_line)
 
 PUB DisplayVisibility(mode)
 ' Set display visibility
@@ -331,31 +372,30 @@ PUB DisplayVisibility(mode)
 '       ALL_ON (1): Turns on all pixels (white)
 '      *NORMAL (2): Normal display (display graphics RAM contents)
 '       INVERTED (3): Like NORMAL, but with inverted colors
-'   NOTE: This setting doesn't affect the contents of graphics RAM, only how they are displayed
+'   NOTE: This setting doesn't affect the contents of graphics RAM,
+'       only how they are displayed
     case mode
         ALL_OFF, ALL_ON, NORMAL, INVERTED:
-            mode := mode + core#DISPLAYALLOFF
-        OTHER:
+            mode := mode + core#DISPALLOFF
+            writereg(mode, 0, 0)
+        other:
             return
 
-    writeReg(mode, 0, 0)
-
-PUB Interlaced(enabled) | tmp
+PUB Interlaced(state): curr_state
 ' Alternate every other display line:
 ' Lines 0..31 will appear on even rows (starting on row 0)
 ' Lines 32..63 will appear on odd rows (starting on row 1)
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value returns the current setting
-    tmp := _sh_REMAPCOLOR
-    case ||enabled
+    curr_state := _sh_REMAPCOLOR
+    case ||(state)
         0, 1:
-            enabled := (||enabled ^ 1) << core#FLD_COMSPLIT
-        OTHER:
-            return not (((tmp >> core#FLD_COMSPLIT) & %1) * TRUE)
+            state := (||(state) ^ 1) << core#COMSPLIT
+        other:
+            return (not (((curr_state >> core#COMSPLIT) & 1) == 1))
 
-    _sh_REMAPCOLOR &= core#MASK_COMSPLIT
-    _sh_REMAPCOLOR := (_sh_REMAPCOLOR | enabled) & core#SETREMAP_MASK
-    writeReg (core#SETREMAP, 1, @_sh_REMAPCOLOR)
+    _sh_REMAPCOLOR := ((curr_state & core#COMSPLIT_MASK) | state)
+    writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
 PUB LockDisplay(mode)
 ' Lock the display controller from executing commands
@@ -366,162 +406,163 @@ PUB LockDisplay(mode)
 '       CFG_UNLOCK ($B1): Configuration registers unlocked
     case mode
         ALL_UNLOCK, ALL_LOCK, CFG_LOCK, CFG_UNLOCK:
-        OTHER:
-            return FALSE
+            writereg(core#SETLOCK, 1, @mode)
+        other:
+            return
 
-    writeReg(core#SETLOCK, 1, @mode)
-
-PUB MirrorH(enabled) | tmp
+PUB MirrorH(state): curr_state
 ' Mirror the display, horizontally
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value returns the current setting
-    tmp := _sh_REMAPCOLOR
-    case ||enabled
+    curr_state := _sh_REMAPCOLOR
+    case ||(state)
         0, 1:
-            enabled := (||enabled) << core#FLD_SEGREMAP
-        OTHER:
-            return ((tmp >> core#FLD_SEGREMAP) & %1) * TRUE
+            state := (||(state)) << core#SEGREMAP
+        other:
+            return (((curr_state >> core#SEGREMAP) & 1) == 1)
 
-    _sh_REMAPCOLOR &= core#MASK_SEGREMAP
-    _sh_REMAPCOLOR := (_sh_REMAPCOLOR | enabled) & core#SETREMAP_MASK
-    writeReg (core#SETREMAP, 1, @_sh_REMAPCOLOR)
+    _sh_REMAPCOLOR := ((curr_state & core#SEGREMAP_MASK) | state)
+    writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
-PUB MirrorV(enabled) | tmp
+PUB MirrorV(state): curr_state
 ' Mirror the display, vertically
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value returns the current setting
-    tmp := _sh_REMAPCOLOR
-    case ||enabled
+    curr_state := _sh_REMAPCOLOR
+    case ||(state)
         0, 1:
-            enabled := (||enabled) << core#FLD_COMREMAP
-        OTHER:
-            return ((tmp >> core#FLD_COMREMAP) & %1) * TRUE
+            state := (||(state)) << core#COMREMAP
+        other:
+            return (((curr_state >> core#COMREMAP) & 1) == 1)
 
-    _sh_REMAPCOLOR &= core#MASK_COMREMAP
-    _sh_REMAPCOLOR := (_sh_REMAPCOLOR | enabled) & core#SETREMAP_MASK
-    writeReg (core#SETREMAP, 1, @_sh_REMAPCOLOR)
+    _sh_REMAPCOLOR := ((curr_state & core#COMREMAP_MASK) | state)
+    writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
-PUB Phase1Period(clks) | tmp
+PUB Phase1Period(clks): curr_per
 ' Set discharge/phase 1 period, in display clocks
 '   Valid values: *5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
 '   Any other value returns the current setting
-    tmp := _sh_PHASE12PER
+    curr_per := _sh_PHASE12PER
     case clks
         5..31:
             clks := lookdown(clks: 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31)
-        OTHER:
-            tmp &= core#BITS_PHASE1
-            return lookup(tmp: 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31)
+        other:
+            curr_per &= core#PHASE1_BITS
+            return lookup(curr_per: 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31)
 
-    _sh_PHASE12PER &= core#MASK_PHASE1
-    _sh_PHASE12PER := (_sh_PHASE12PER | clks)
-    writeReg (core#PRECHARGE, 1, @_sh_PHASE12PER)
+    clks := ((curr_per & core#PHASE1_MASK) | clks)
+    writereg(core#PRECHG, 1, @_sh_PHASE12PER)
 
-PUB Phase2Period(clks) | tmp
+PUB Phase2Period(clks): curr_per
 ' Set charge/phase 2 period, in display clocks
 '   Valid values: 3..15 (default: 8)
 '   Any other value returns the current setting
-    tmp := _sh_PHASE12PER
+    curr_per := _sh_PHASE12PER
     case clks
         3..15:
-            clks <<= core#FLD_PHASE2
-        OTHER:
-            return (tmp >> core#FLD_PHASE2) & core#BITS_PHASE2
+            clks <<= core#PHASE2
+        other:
+            return (curr_per >> core#PHASE2) & core#PHASE2_BITS
 
-    _sh_PHASE12PER &= core#MASK_PHASE2
-    _sh_PHASE12PER := (_sh_PHASE12PER | clks)
-    writeReg (core#PRECHARGE, 1, @_sh_PHASE12PER)
+    _sh_PHASE12PER := ((curr_per & core#PHASE2_MASK) | clks)
+    writereg(core#PRECHG, 1, @_sh_PHASE12PER)
 
-PUB Phase3Period(clks) | tmp[2]
+PUB Phase3Period(clks)
 ' Set second charge/phase 3 period, in display clocks
 '   Valid values: 1..15 (default: 8)
-'   Any other value returns the current setting
+'   Any other value is ignored
     case clks
         1..15:
-        OTHER:
-            return FALSE
+        other:
+            return
 
-    writeReg (core#SETSECPRECHG, 1, @clks)
+    writereg(core#SETSECPRECHG, 1, @clks)
 
-PUB PlotAccel(x, y, c) | tmp[2]
+#ifdef GFX_DIRECT
+PUB Plot(x, y, c)
 ' Draw a pixel, using the display's native/accelerated plot/pixel function
     x := 0 #> x <# _disp_width-1
     y := 0 #> y <# _disp_height-1
 
-    DisplayBounds(x, y, x, y)
-    writeReg (core#WRITERAM, 2, @c)
+    displaybounds(x, y, x, y)
+    writereg(core#WRITERAM, 2, @c)
+#endif
 
-PUB Powered(enabled) | tmp
+PUB Powered(state)
 ' Enable display power
 '   Valid values:
 '       OFF/FALSE (0): Turn off display power
 '       ON/TRUE (-1 or 1): Turn on display power
-'   Any other value returns the current setting
-    case ||enabled
+'   Any other value is ignored
+    case ||(state)
         OFF, ON:
-            enabled := lookupz(||enabled: core#DISPLAYOFF, core#DISPLAYON)
-        OTHER:
-            return FALSE
+            state := lookupz(||(state): core#DISPOFF, core#DISPON)
+            writereg(state, 0, 0)
+        other:
+            return
 
-    writeReg (enabled, 0, 0)
-
-PUB PrechargeLevel(mV) | tmp
+PUB PrechargeLevel(level)
 ' Set first pre-charge voltage level (phase 2) of segment pins, in millivolts
 '   Valid values: 200..600 (default: 497)
 '   Any other value is ignored
 '   NOTE: Range is interpolated, based on the datasheet min/max values and number of steps,
 '       so actual voltage may not be accurate. Value set will be rounded to the nearest 13mV
-    case mV
+    case level
         200..600:
-            mV := (mv-200) / 13
-        OTHER:
-            return FALSE
+            level := (level-200) / 13
+            writereg(core#PRECHGLEVEL, 1, @level)
+        other:
+            return
 
-    writeReg (core#PRECHARGELEVEL, 1, @mV)
-
-PUB SubpixelOrder(order)
+PUB SubpixelOrder(order): curr_ord
 ' Set subpixel color order
 '   Valid values:
 '      *RGB (0): Red-Green-Blue order
 '       BGR (1): Blue-Green-Red order
 '   Any other value returns the current setting
+    curr_ord := _sh_REMAPCOLOR
     case order
         RGB, BGR:
-            order <<= core#FLD_SUBPIX_ORDER
-        OTHER:
-            return (_sh_REMAPCOLOR >> core#FLD_SUBPIX_ORDER) & %1
+            order <<= core#SUBPIX_ORDER
+        other:
+            return ((curr_ord >> core#SUBPIX_ORDER) & 1)
 
-    _sh_REMAPCOLOR &= core#MASK_SUBPIX_ORDER
-    _sh_REMAPCOLOR := (_sh_REMAPCOLOR | order) & core#SETREMAP_MASK
-    writeReg (core#SETREMAP, 1, @_sh_REMAPCOLOR)
+    _sh_REMAPCOLOR := ((curr_ord & core#SUBPIX_ORDER_MASK) | order)
+    writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
-PUB Reset
+PUB Reset{}
 ' Reset the display controller
-    io.High(_RES)
-    io.Low(_RES)
-    time.USleep (2)
-    io.High(_RES)
+    io.high(_RES)
+    io.low(_RES)
+    time.usleep(2)
+    io.high(_RES)
 
-PUB Update
+PUB Update{}
 ' Send the draw buffer to the display
-    writeReg(core#WRITERAM, _buff_sz, _ptr_drawbuffer)
+    writereg(core#WRITERAM, _buff_sz, _ptr_drawbuffer)
 
-PRI writeReg(reg, nr_bytes, buff_addr) | tmp
-
-    case reg
-        $9E, $9F, $A4..$A7, $AD..$AF, $B0, $B9, $D1, $E3:                               ' Single-byte command
-            io.Low(_DC)
-            spi.Write(TRUE, @reg, 1, TRUE)
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
+' Write nr_bytes to device from ptr_buff
+    case reg_nr
+        $9E, $9F, $A4..$A7, $AD..$AF, $B0, $B9, $D1, $E3:
+        ' Single-byte command
+            io.low(_DC)
+            spi.deselectafter(true)
+            spi.wr_byte(reg_nr)
             return
 
-        $15, $5C, $75, $96, $A0..$A2, $AB, $B1..$B6, $B8, $BB, $BE, $C1, $C7, $CA, $FD:     ' Multi-byte command
-            io.Low(_DC)
-            spi.Write(TRUE, @reg, 1, FALSE)
-            io.High(_DC)
-            spi.Write(TRUE, buff_addr, nr_bytes, TRUE)
+        $15, $5C, $75, $96, $A0..$A2, $AB, $B1..$B6, $B8, $BB, $BE, $C1, {
+}       $C7, $CA, $FD:
+        ' Multi-byte command
+            io.low(_DC)
+            spi.deselectafter(false)
+            spi.wr_byte(reg_nr)
+            io.high(_DC)
+            spi.deselectafter(true)
+            spi.wrblock_lsbf(ptr_buff, nr_bytes)
             return
 
-        OTHER:
+        other:
             return
 
 {
