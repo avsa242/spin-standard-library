@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Nov 3, 2019
-    Updated: Apr 4, 2021
+    Updated: Apr 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,11 +19,11 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    DIN_PIN     = 0
-    CLK_PIN     = 1
-    CS_PIN      = 2
-    DC_PIN      = 3
-    RES_PIN     = 4
+    DIN_PIN     = 10
+    CLK_PIN     = 9
+    CS_PIN      = 8
+    DC_PIN      = 11
+    RES_PIN     = 12
 
     WIDTH       = 96
     HEIGHT      = 64
@@ -116,7 +116,6 @@ PUB Main{} | time_ms
     demo_contrast(2, 1)
     oled.clearall{}
 
-    stop{}
     repeat
 
 PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
@@ -131,7 +130,6 @@ PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
 ' Draws a simple ball bouncing off screen edges
@@ -161,7 +159,6 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
         oled.clear{}
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Box(testtime) | iteration, c
 ' Draws random lines
@@ -176,7 +173,6 @@ PUB Demo_Box(testtime) | iteration, c
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_BoxFilled(testtime) | iteration, c
 ' Draws random lines
@@ -191,7 +187,6 @@ PUB Demo_BoxFilled(testtime) | iteration, c
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Circle(testtime) | iteration, x, y, r
 ' Draws circles at random locations
@@ -208,7 +203,6 @@ PUB Demo_Circle(testtime) | iteration, x, y, r
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Contrast(reps, delay_ms) | contrast_level
 ' Fades out and in display contrast
@@ -247,7 +241,6 @@ PUB Demo_Line(testtime) | iteration
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_LineSweepX(testtime) | iteration, x
 ' Draws lines top left to lower-right, sweeping across the screen, then
@@ -267,7 +260,6 @@ PUB Demo_LineSweepX(testtime) | iteration, x
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_LineSweepY(testtime) | iteration, y
 ' Draws lines top left to lower-right, sweeping across the screen, then
@@ -287,7 +279,6 @@ PUB Demo_LineSweepY(testtime) | iteration, y
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, ptr
 ' Dumps Propeller Hub RAM (and/or ROM) to the display buffer
@@ -306,7 +297,6 @@ PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, ptr
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Plot(testtime) | iteration, x, y
 ' Draws random pixels to the screen, with color -1 (invert)
@@ -320,7 +310,6 @@ PUB Demo_Plot(testtime) | iteration, x, y
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Sinewave(testtime) | iteration, x, y, modifier, offset, div
 ' Draws a sine wave the length of the screen, influenced by the system counter
@@ -350,7 +339,6 @@ PUB Demo_Sinewave(testtime) | iteration, x, y, modifier, offset, div
         oled.clear{}
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_SeqText(testtime) | iteration, ch
 ' Sequentially draws the whole font table to the screen, then random characters
@@ -372,7 +360,6 @@ PUB Demo_SeqText(testtime) | iteration, ch
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_RndText(testtime) | iteration
 
@@ -390,7 +377,6 @@ PUB Demo_RndText(testtime) | iteration
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_TriWave(testtime) | iteration, x, y, ydir
 ' Draws a simple triangular wave
@@ -414,7 +400,6 @@ PUB Demo_TriWave(testtime) | iteration, x, y, ydir
         oled.clear{}
 
     report(testtime, iteration)
-    return iteration
 
 PUB Demo_Wander(testtime) | iteration, x, y, d
 ' Draws randomly wandering pixels
@@ -449,7 +434,6 @@ PUB Demo_Wander(testtime) | iteration, x, y, d
         iteration++
 
     report(testtime, iteration)
-    return iteration
 
 PRI Sin(angle): sine
 ' Return the sine of angle
@@ -510,24 +494,16 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if oled.start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, @_framebuff)
+    if oled.startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         ser.strln(string("SSD1331 driver started"))
-        oled.defaultscommon{}
+        oled.preset_96x64_hiperf{}
         oled.fontscale(1)
         oled.fontsize(6, 8)
         oled.fontaddress(fnt5x8.baseaddr{})
     else
         ser.strln(string("SSD1331 driver failed to start - halting"))
-        stop{}
         repeat
     _timer_cog := cognew(cog_timer{}, @_stack_timer)
-
-PUB Stop{}
-
-    oled.powered(FALSE)
-    oled.stop{}
-    cogstop(_timer_cog)
-    ser.stop{}
 
 {
     --------------------------------------------------------------------------------------------------------

@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
     Copyright (c) 2021
     Started: Apr 28, 2019
-    Updated: Apr 4, 2021
+    Updated: Apr 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -47,10 +47,10 @@ CON
 
 OBJ
 
-    core    : "core.con.ssd1331"
-    time    : "time"
-    spi     : "com.spi.fast"
-    io      : "io"
+    core    : "core.con.ssd1331"                ' HW-specific constants
+    time    : "time"                            ' timekeeping methods
+    spi     : "com.spi.fast"                    ' Counter-based SPI (20MHzW/10R)
+    io      : "io"                              ' I/O abstraction
 
 VAR
 
@@ -67,65 +67,96 @@ VAR
     byte _sh_PHASE12PER, _sh_CLK, _sh_GRAYTABLE, _sh_PRECHGLEV, _sh_VCOMH, _sh_CMDLOCK
     byte _sh_HVSCROLL, _sh_FILL
 
-PUB Start(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, ptr_drawbuff): okay
+PUB Startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_drawbuff): status
 ' Start using custom I/O settings
 '   RES_PIN optional, but recommended (pin # only validated in Reset())
     if lookdown(CS_PIN: 0..31) and lookdown(DC_PIN: 0..31) and {
 }   lookdown(DIN_PIN: 0..31) and lookdown(CLK_PIN: 0..31)
-        if okay := spi.start(CS_PIN, CLK_PIN, DIN_PIN, -1)
+        if (status := spi.init(CS_PIN, CLK_PIN, DIN_PIN, -1, core#SPI_MODE))
             longmove(@_CS, @CS_PIN, 5)
             io.high(_DC)
             io.output(_DC)
             reset{}
-            _disp_width := 96
-            _disp_height := 64
+            _disp_width := WIDTH
+            _disp_height := HEIGHT
             _disp_xmax := _disp_width-1
             _disp_ymax := _disp_height-1
-            _buff_sz := _disp_width * _disp_height * 2
+            _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
             _bytesperln := _disp_width * BYTESPERPX
             address(ptr_drawbuff)
-            return okay
-    return FALSE                                ' something above failed
+            return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
     displayvisibility(ALL_OFF)
     powered(FALSE)
+    spi.deinit{}
 
 PUB Defaults{}
 ' Factory default settings
-    colordepth(COLOR_65K)
-    mirrorh(FALSE)
-    powered(FALSE)
     displayvisibility(ALL_OFF)
     displaystartline(0)
-    displayoffset(0)
-    displayinverted(FALSE)
     displaylines(64)
     extsupply{}
-    powersaving(TRUE)
-    phase1period(7)
-    phase2period(4)
     clockfreq(956)
     clockdiv(1)
-    prechargespeed(127, 127, 127)
-    prechargelevel(500)
-    comhighlogiclevel(830)
-    currentlimit(16)
-    contrasta(127)
-    contrastb(127)
-    contrastc(127)
+    contrast(127)
     powered(TRUE)
     displaybounds(0, 0, 95, 63)
     clearaccel{}
     displayvisibility(NORMAL)
 
-PUB DefaultsCommon{}
-' Like Defaults, but with clock speed maxed out
-    clockfreq(980)
-    interlaced(FALSE)
+PUB Preset_96x64{}
+' Preset: 96px wide, setup for 64px height
+    displayvisibility(ALL_OFF)
     colordepth(COLOR_65K)
+    powered(FALSE)
+    displaylines(64)
+    extsupply{}
+    clockfreq(956)
+    clockdiv(1)
+    contrast(127)
+    interlaced(false)
     powered(TRUE)
+    displaybounds(0, 0, 95, 63)
+    clearaccel{}
+    displayvisibility(NORMAL)
+
+PUB Preset_96x64_HiPerf{}
+' Preset: 96px wide, setup for 64px height, display osc. set to max clock
+    displayvisibility(ALL_OFF)
+    colordepth(COLOR_65K)
+    powered(FALSE)
+    displaylines(64)
+    extsupply{}
+    clockfreq(980)
+    clockdiv(1)
+    contrast(127)
+    interlaced(false)
+    powered(TRUE)
+    displaybounds(0, 0, 95, 63)
+    clearaccel{}
+    displayvisibility(NORMAL)
+
+PUB Preset_96x{}
+' Preset: 96px wide, determine settings for height at runtime
+    displayvisibility(ALL_OFF)
+    colordepth(COLOR_65K)
+    powered(FALSE)
+    displaylines(_disp_height)
+    extsupply{}
+    clockfreq(956)
+    clockdiv(1)
+    contrast(127)
+    interlaced(false)
+    powered(TRUE)
+    displaybounds(0, 0, _disp_width, _disp_height)
+    clearaccel{}
+    displayvisibility(NORMAL)
 
 PUB Address(addr): curr_addr
 ' Set framebuffer/display buffer address
@@ -718,8 +749,8 @@ PRI writeReg(trans_type, nr_bytes, ptr_buff)
         other:
             return
 
-    ' write with blocking enabled, and raise CS afterwards
-    spi.write(TRUE, ptr_buff, nr_bytes, TRUE)
+    spi.deselectafter(true)
+    spi.wrblock_lsbf(ptr_buff, nr_bytes)
 
 {
     --------------------------------------------------------------------------------------------------------
