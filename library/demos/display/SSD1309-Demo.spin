@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Created: Apr 26, 2018
-    Updated: Apr 4, 2021
+    Updated: Apr 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -24,11 +24,11 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 4
-    SCK_PIN     = 0
-    SDA_PIN     = 1
-    DC_PIN      = 3
-    RES_PIN     = 2
+    CS_PIN      = 8
+    SCK_PIN     = 9
+    SDA_PIN     = 10
+    DC_PIN      = 11
+    RES_PIN     = 12
 
     WIDTH       = 128
     HEIGHT      = 64
@@ -473,16 +473,16 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if oled.start(WIDTH, HEIGHT, CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, @_framebuff)
+    if oled.startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         ser.str(string("SSD1309 driver started. Draw buffer @ $"))
         ser.hex(oled.address(-2), 8)
-        oled.defaults{}
+        oled.preset_128x
         oled.clockfreq(540)
         oled.fontscale(1)
         oled.fontsize(6, 8)
         oled.fontaddress(fnt5x8.baseaddr{})
     else
-        ser.str{} (string("SSD1309 driver failed to start - halting"))
+        ser.str(string("SSD1309 driver failed to start - halting"))
         stop{}
         repeat
     _timer_cog := cognew(cog_Timer, @_stack_timer)

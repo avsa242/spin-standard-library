@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Created: Dec 27, 2019
-    Updated: Apr 4, 2021
+    Updated: Apr 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,12 +22,17 @@ CON
     ALL_ON          = 1
     INVERTED        = 2
 
+' Addressing modes
+    HORIZ           = 0
+    VERT            = 1
+    PAGE            = 2
+
 OBJ
 
-    core    : "core.con.ssd1309"
-    time    : "time"
-    io      : "io"
-    spi     : "com.spi.bitbang"
+    core    : "core.con.ssd1309"                ' HW-specific constants
+    time    : "time"                            ' timekeeping methods
+    io      : "io"                              ' I/O abstraction
+    spi     : "com.spi.bitbang"                 ' PASM SPI engine (~4MHz)
 
 VAR
 
@@ -40,7 +45,7 @@ VAR
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(width, height, CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, ptr_dispbuff): okay
+PUB Startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuff): status
 ' Start the driver with custom settings
 ' Valid values:
 '       width: 0..128
@@ -48,9 +53,8 @@ PUB Start(width, height, CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, ptr_dispbuff
 '       CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN: 0..31
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(SDA_PIN: 0..31) and lookdown(DC_PIN: 0..31)
-        ' SPI engine started with MISO param same pin as MOSI (SDA); it
-        '   shouldn't matter though, as spi.Read() is never called.
-        if okay := spi.start(CS_PIN, SCK_PIN, SDA_PIN, SDA_PIN)
+        if (status := spi.init(CS_PIN, SCK_PIN, SDA_PIN, SDA_PIN, {
+}       core#SPI_MODE))
             longmove(@_CS, @CS_PIN, 5)
 
             io.low(_DC)
@@ -60,31 +64,43 @@ PUB Start(width, height, CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, ptr_dispbuff
 
             reset{}
 
-            _disp_width := width
-            _disp_height := height
+            _disp_width := WIDTH
+            _disp_height := HEIGHT
             _disp_xmax := _disp_width-1
             _disp_ymax := _disp_height-1
-            _bytesperln := _disp_width * BYTESPERPX
             _buff_sz := (_disp_width * _disp_height) / 8
+            _bytesperln := _disp_width * BYTESPERPX
+
             address(ptr_dispbuff)
             return
-    return FALSE                                ' something above failed
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
     powered(FALSE)
+    spi.deinit{}
 
 PUB Defaults{}
 ' Factory default settings
     powered(FALSE)
-    clockfreq(444)
-    displaylines(_disp_height-1)
-    displayoffset(0)
+    displaylines(64)
     displaystartline(0)
     chargepumpreg(TRUE)
-    addrmode(0)
-    mirrorh(FALSE)
-    mirrorv(FALSE)
+    addrmode(PAGE)
+    contrast(127)
+    displayvisibility(NORMAL)
+    displaybounds(0, 0, 127, 63)
+
+PUB Preset_128x{}
+' Preset: 128px wide, determine settings for height at runtime
+    displaylines(_disp_height)
+    displaystartline(0)
+    chargepumpreg(TRUE)
+    addrmode(HORIZ)
+    displayvisibility(NORMAL)
     case _disp_height
         32:
             compincfg(0, 0)
@@ -92,11 +108,26 @@ PUB Defaults{}
             compincfg(1, 0)
         other:
             compincfg(0, 0)
-    contrast(127)
-    prechargeperiod(1, 15)
-    comlogichighlevel(0_77)
+    powered(TRUE)
+
+PUB Preset_128x32{}
+' Preset: 128px wide, setup for 32px height
+    displaylines(32)
+    displaystartline(0)
+    chargepumpreg(TRUE)
+    addrmode(HORIZ)
     displayvisibility(NORMAL)
-    displaybounds(0, 0, _disp_xmax, _disp_ymax)
+    compincfg(0, 0)
+    powered(TRUE)
+
+PUB Preset_128x64{}
+' Preset: 128px wide, setup for 64px height
+    displaylines(64)
+    displaystartline(0)
+    chargepumpreg(TRUE)
+    addrmode(HORIZ)
+    displayvisibility(NORMAL)
+    compincfg(1, 0)
     powered(TRUE)
 
 PUB Address(addr): curr_addr
@@ -115,7 +146,7 @@ PUB AddrMode(mode)
 '       1: Vertical
 '       2: Page (POR)
     case mode
-        0, 1, 2:
+        HORIZ, VERT, PAGE:
         other:
             return
 
@@ -335,14 +366,16 @@ PUB Update{}
     displaybounds(0, 0, _disp_xmax, _disp_ymax)
 
     io.high(_DC)
-    spi.write(TRUE, _ptr_drawbuffer, _buff_sz, TRUE)
+    spi.deselectafter(true)
+    spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
 
 PUB WriteBuffer(ptr_buff, buff_sz) | tmp
 ' Write buff_sz bytes of ptr_buff to display
     displaybounds(0, 0, _disp_xmax, _disp_ymax)
 
     io.high(_DC)
-    spi.write(TRUE, ptr_buff, buff_sz, TRUE)
+    spi.deselectafter(true)
+    spi.wrblock_lsbf(ptr_buff, buff_sz)
 
 PRI writeReg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp
 ' Write nr_bytes to register 'reg_nr' stored in val
@@ -367,7 +400,8 @@ PRI writeReg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp
             return
 
     io.low(_DC)
-    spi.write(TRUE, @cmd_pkt, nr_bytes, TRUE)
+    spi.deselectafter(true)
+    spi.wrblock_lsbf(@cmd_pkt, nr_bytes)
 
 DAT
 {
