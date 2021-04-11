@@ -112,6 +112,12 @@ PUB DisplayRate(rate)
 '   Rate - A display rate to return at. 0=0.234375Hz, 1=0.46875Hz, 2=0.9375Hz, 3=1.875Hz, 4=3.75Hz, 5=7.5Hz, 6=15Hz, 7=30Hz.
     result or= (($80 >> ((rate <# 7) #> 0)) & syncIndicator)
 
+PUB MirrorH(state)
+' dummy method
+
+PUB MirrorV(state)
+' dummy method
+
 PUB WaitVSync
 ' Waits for the display vertical refresh.
     result := syncIndicator
