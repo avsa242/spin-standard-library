@@ -172,7 +172,7 @@ PUB Preset_GreenTab128x128{} | tmp
     gammatablep(@gammatable_pos)
     gammatablen(@gammatable_neg)
 
-    partialarea(0, _disp_ymax/2)
+    partialarea(0, _disp_ymax)
     opmode(NORMAL)
     displayvisibility(NORMAL)
 
