@@ -5,19 +5,21 @@
     Description: Driver for Nordic Semi. nRF24L01+
     Copyright (c) 2021
     Started Jan 6, 2019
-    Updated Jan 2, 2021
+    Updated Mar 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    TX          = 0
-    RX          = 1
+    PAYLD_LEN_MAX   = 32
+
+    TX              = 0
+    RX              = 1
 
 ' RXAddr and TXAddr constants
-    READ        = 0
-    WRITE       = 1
+    READ            = 0
+    WRITE           = 1
 
 VAR
 
@@ -26,10 +28,10 @@ VAR
 
 OBJ
 
-    spi     : "com.spi.bitbang"
-    core    : "core.con.nrf24l01"
-    time    : "time"
-    io      : "io"
+    spi     : "com.spi.bitbang"                 ' PASM SPI engine (~4MHz)
+    core    : "core.con.nrf24l01"               ' hw-specific constants
+    time    : "time"                            ' basic timekeeping methods
+    io      : "io"                              ' I/O pin abstraction
 
 PUB Null{}
 'This is not a top-level object
@@ -39,7 +41,7 @@ PUB Startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay | tmp[2], i
     if lookdown(CE_PIN: 0..31) and lookdown(CS_PIN: 0..31) and{
 }   lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and{
 }   lookdown(MISO_PIN: 0..31)
-        if okay := spi.start (CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+        if okay := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE)
             longmove(@_CE, @CE_PIN, 5)
             time.usleep(core#TPOR)
             time.usleep(core#TPD2STBY)
@@ -53,16 +55,19 @@ PUB Startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay | tmp[2], i
                 if tmp.byte[i] <> $E7           ' doesn't match default?
                     return FALSE                ' connection prob, or no nRF24
             return okay                         ' nRF24 found
-    return FALSE                                ' something above failed
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
     io.high(_CS)
     io.low(_CE)
     sleep{}
-    spi.stop{}
+    spi.deinit{}
 
-PUB Defaults{} | tmp[2]
+PUB Defaults{} | pipe_nr
 ' The nRF24L01+ has no RESET pin or function to restore the chip to a known initial operating state,
 '   so use this method to establish default settings, per the datasheet
     crccheckenabled(TRUE)
@@ -80,25 +85,135 @@ PUB Defaults{} | tmp[2]
     datarate(2000)
     txpower(0)
     intclear(%111)
-    tmp := string($E7, $E7, $E7, $E7, $E7)
-    rxaddr(tmp, 0, WRITE)
-    tmp := string($C2, $C2, $C2, $C2, $C2)
-    rxaddr(tmp, 1, WRITE)
-    tmp := $C3
-    rxaddr(@tmp, 2, WRITE)
-    tmp := $C4
-    rxaddr(@tmp, 3, WRITE)
-    tmp := $C5
-    rxaddr(@tmp, 4, WRITE)
-    tmp := $C6
-    rxaddr(@tmp, 5, WRITE)
-    tmp := string($E7, $E7, $E7, $E7, $E7)
-    txaddr(tmp, WRITE)
-    repeat tmp from 0 to 5
-        payloadlen(0, tmp)
+    rxaddr(string($E7, $E7, $E7, $E7, $E7), 0, WRITE)
+    rxaddr(string($C2, $C2, $C2, $C2, $C2), 1, WRITE)
+    rxaddr(string($C3), 2, WRITE)
+    rxaddr(string($C4), 3, WRITE)
+    rxaddr(string($C5), 4, WRITE)
+    rxaddr(string($C6), 5, WRITE)
+    txaddr(string($E7, $E7, $E7, $E7, $E7), WRITE)
+    repeat pipe_nr from 0 to 5
+        payloadlen(0, pipe_nr)
     dynamicpayload(%000000)
     dynpayloadenabled(FALSE)
     enableack(FALSE)
+
+PUB Preset_RX250k{}
+' Receive mode, 250kbps (AutoAck enabled)
+    rxmode{}
+    flushrx{}
+    powered(TRUE)
+    intclear(%111)
+    pipesenabled(%000011)
+    autoackenabledpipes(%111111)
+    datarate(250)
+
+PUB Preset_RX250k_NoAA{}
+' Receive mode, 250kbps (AutoAck disabled)
+    rxmode{}
+    flushrx{}
+    powered(TRUE)
+    intclear(%111)
+    pipesenabled(%000011)
+    autoackenabledpipes(%000000)
+    datarate(250)
+
+PUB Preset_RX1M{}
+' Receive mode, 1Mbps (AutoAck enabled)
+    rxmode{}
+    flushrx{}
+    powered(TRUE)
+    intclear(%111)
+    pipesenabled(%000011)
+    autoackenabledpipes(%111111)
+    datarate(1000)
+
+PUB Preset_RX1M_NoAA{}
+' Receive mode, 1Mbps (AutoAck disabled)
+    rxmode{}
+    flushrx{}
+    powered(TRUE)
+    intclear(%111)
+    pipesenabled(%000011)
+    autoackenabledpipes(%000000)
+    datarate(1000)
+
+PUB Preset_RX2M{}
+' Receive mode, 2Mbps (AutoAck enabled)
+    rxmode{}
+    flushrx{}
+    powered(TRUE)
+    intclear(%111)
+    pipesenabled(%000011)
+    autoackenabledpipes(%111111)
+    datarate(2000)
+
+PUB Preset_RX2M_NoAA{}
+' Receive mode, 2Mbps (AutoAck disabled)
+    rxmode{}
+    flushrx{}
+    powered(TRUE)
+    intclear(%111)
+    pipesenabled(%000011)
+    autoackenabledpipes(%000000)
+    datarate(2000)
+
+PUB Preset_TX250k{}
+' Transmit mode, 250kbps (AutoAck enabled)
+    txmode{}
+    flushtx{}
+    powered(true)
+    autoackenabledpipes(%111111)
+    intclear(%111)
+    datarate(250)
+    autoretransmitdelay(1500)                   ' covers worst-case
+
+PUB Preset_TX250k_NoAA{}
+' Transmit mode, 250kbps (AutoAck disabled)
+    txmode{}
+    flushtx{}
+    powered(true)
+    autoackenabledpipes(%000000)
+    intclear(%111)
+    datarate(250)
+
+PUB Preset_TX1M{}
+' Transmit mode, 1Mbit (AutoAck enabled)
+    txmode{}
+    flushtx{}
+    powered(true)
+    autoackenabledpipes(%111111)
+    intclear(%111)
+    datarate(1000)
+    autoretransmitdelay(500)                    ' covers worst-case
+
+PUB Preset_TX1M_NoAA{}
+' Transmit mode, 1Mbit (AutoAck disabled)
+    txmode{}
+    flushtx{}
+    powered(true)
+    autoackenabledpipes(%000000)
+    intclear(%111)
+    datarate(1000)
+
+PUB Preset_TX2M{}
+' Transmit mode, 2Mbit (AutoAck enabled)
+    txmode{}
+    flushtx{}
+    powered(true)
+    autoackenabledpipes(%111111)
+    intclear(%111)
+    datarate(2000)
+    autoretransmitdelay(500)                    ' covers worst-case
+
+PUB Preset_TX2M_NoAA{}
+' Transmit mode, 2Mbit (AutoAck disabled)
+    txmode{}
+    flushtx{}
+    powered(true)
+    autoackenabledpipes(%000000)
+    intclear(%111)
+    datarate(2000)
 
 PUB CE(state)
 ' Set state of nRF24L01+ Chip Enable pin
@@ -175,8 +290,19 @@ PUB AutoRetransmitCount(tries): curr_tries
 PUB AutoRetransmitDelay(delay_us): curr_dly
 ' Setup of automatic retransmission - Auto Retransmit Delay, in microseconds
 ' Delay defined from end of transmission to start of next transmission
-'   Valid values: *250..4000
+'   Valid values: *250..4000 (in steps of 250)
 '   Any other value polls the chip and returns the current setting
+'   NOTE: The minimum value required for successful transmission depends on the
+'       current DataRate() and PayloadLen() settings:
+'       DataRate()  PayloadLen() max:   AutoRetransmitDelay() minimum:
+'       2000        15                  250
+'       2000        Any                 500
+'       1000        5                   250
+'       1000        Any                 500
+'       250         8                   750
+'       250         16                  1000
+'       250         24                  1250
+'       250         Any                 1500
     curr_dly := 0
     readreg(core#SETUP_RETR, 1, @curr_dly)
     case delay_us
@@ -692,20 +818,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
 ' Write nr_bytes from ptr_buff to device
     case reg_nr
         core#CMD_W_TX_PAYLOAD:
-            spi.write(TRUE, @reg_nr, 1, 0)
-            spi.write(TRUE, ptr_buff, nr_bytes, TRUE)
-        core#CMD_FLUSH_TX:
-            spi.write(TRUE, @reg_nr, 1, TRUE)
-        core#CMD_FLUSH_RX:
-            spi.write(TRUE, @reg_nr, 1, TRUE)
+            spi.deselectafter(false)
+            spi.wr_byte(reg_nr)
+            spi.deselectafter(true)
+            spi.wrblock_lsbf(ptr_buff, nr_bytes)
+        core#CMD_FLUSH_TX, core#CMD_FLUSH_RX:
+            spi.deselectafter(true)
+            spi.wr_byte(reg_nr)
         $00..$17, $1C..$1D:
             reg_nr |= core#W_REG
             case nr_bytes
                 0:
-                    spi.write(TRUE, @reg_nr, 1, TRUE)
+                    spi.deselectafter(true)
+                    spi.wr_byte(reg_nr)
                 1..5:
-                    spi.write(TRUE, @reg_nr, 1, FALSE)
-                    spi.write(TRUE, ptr_buff, nr_bytes, TRUE)
+                    spi.deselectafter(false)
+                    spi.wr_byte(reg_nr)
+                    spi.deselectafter(true)
+                    spi.wrblock_lsbf(ptr_buff, nr_bytes)
                 other:
                     return
         other:
@@ -715,18 +845,22 @@ PRI readreg(reg_nr, nr_bytes, ptr_buff) | tmp
 ' Read nr_bytes from device into ptr_buff
     case reg_nr
         core#CMD_R_RX_PAYLOAD:
-            spi.write(TRUE, @reg_nr, 1, FALSE)
-            spi.read(ptr_buff, nr_bytes, TRUE)
-
+            spi.deselectafter(false)
+            spi.wr_byte(reg_nr)
+            spi.deselectafter(true)
+            spi.rdblock_lsbf(ptr_buff, nr_bytes)
         core#RPD:
-            spi.write(TRUE, @reg_nr, 1, FALSE)
-            spi.read(ptr_buff, 1, TRUE)
-
+            spi.deselectafter(false)
+            spi.wr_byte(reg_nr)
+            spi.deselectafter(true)
+            byte[ptr_buff][0] := spi.rd_byte{}
         $00..$08, $0A..$17, $1C..$1D:
             case nr_bytes
                 1..5:
-                    spi.write(TRUE, @reg_nr, 1, FALSE)
-                    spi.read(ptr_buff, nr_bytes, TRUE)
+                    spi.deselectafter(false)
+                    spi.wr_byte(reg_nr)
+                    spi.deselectafter(true)
+                    spi.rdblock_lsbf(ptr_buff, nr_bytes)
                 other:
                     return
         other:

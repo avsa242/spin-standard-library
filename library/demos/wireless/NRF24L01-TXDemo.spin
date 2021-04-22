@@ -3,9 +3,9 @@
     Filename: NRF24L01-TXDemo.spin
     Author: Jesse Burt
     Description: nRF24L01+ Transmit demo
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 23, 2019
-    Updated Oct 19, 2020
+    Updated Mar 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,16 +19,14 @@ CON
     LED             = cfg#LED1
     SER_BAUD        = 115_200
 
-    CS_PIN          = 9
-    SCK_PIN         = 10
-    MOSI_PIN        = 11
-    MISO_PIN        = 12
-    CE_PIN          = 8
+    CS_PIN          = 1
+    SCK_PIN         = 2
+    MOSI_PIN        = 3
+    MISO_PIN        = 4
+    CE_PIN          = 0
 
-    CHANNEL         = 2                         ' 0..127
+    CHANNEL         = 2                         ' 0..125
 ' --
-
-    CLEAR           = 1
 
 OBJ
 
@@ -44,43 +42,45 @@ VAR
     byte _payld_len
     byte _addr[5]
 
-PUB Main{}
+PUB Main{} | payld_cnt, tmp[2], i, max_retrans, pkts_retrans, lost_pkts
 
     setup{}
 
+' -- User-modifiable settings
     nrf24.channel(CHANNEL)
-    transmit{}
 
-PUB Transmit{} | payld_cnt, tmp, i, max_retrans, pkts_retrans, lost_pkts
+    ' choose a transmit mode preset (250kbps, 1Mbps, 2Mbps)
+    '   with optional Auto-Ack/ShockBurst (power-on default)
+'    nrf24.preset_tx250k{}                       ' 250kbps
+'    nrf24.preset_tx250k_noaa{}                  ' 250kbps, no Auto-Ack
+'    nrf24.preset_tx1m{}                         ' 1Mbps
+'    nrf24.preset_tx1m_noaa{}                    ' 1Mbps, no Auto-Ack
+    nrf24.preset_tx2m{}                         ' 2Mbps
+'    nrf24.preset_tx2m_noaa{}                    ' 2Mbps, no Auto-Ack
 
-    _payld_len := 8
-    longfill(@payld_cnt, 0, 8)
-
-    ' Set transmit address (note: order is LSB, ..., MSB)
-    bytemove(@_addr, string($e7, $e7, $e7, $e7, $e7), 5)
-    nrf24.nodeaddress(@_addr)                   ' Set TX/RX address to the same
-                                                ' (RX pipe 0 used for auto-ack)
-    nrf24.txmode{}                              ' Set to transmit mode and
-    nrf24.flushtx{}                             '   empty the transmit FIFO
     nrf24.txpower(0)                            ' -18, -12, -6, 0 (dBm)
-    nrf24.powered(TRUE)
-    nrf24.autoackenabledpipes(%000000)          ' Auto-ack/Shockburst, per pipe
 
-    nrf24.intclear(%111)                        ' Clear interrupts
-    nrf24.payloadlen(_payld_len, 0)             ' 1..32 (len), 0..5 (pipe #)
+    _payld_len := 8                             ' 1..32 (_must_ match RX side)
 
-    ser.clear{}
-    ser.position(0, 0)
-    ser.str(string("Transmit mode (channel "))
-    ser.dec(nrf24.channel(-2))
-    ser.strln(string(")"))
-    ser.str(string("Transmitting..."))
+    ' Set transmit/receive address (note: order in string() is LSB, ..., MSB)
+    nrf24.nodeaddress(string($e7, $e7, $e7, $e7, $e7))
 
     _payload[0] := "T"                          ' Start of payload
     _payload[1] := "E"
     _payload[2] := "S"
     _payload[3] := "T"
 
+' --
+
+    nrf24.payloadlen(_payld_len, 0)
+    nrf24.txaddr(@_addr, nrf24#READ)
+
+    ser.clear{}
+    ser.position(0, 0)
+    ser.printf1(string("Transmit mode (channel %d)\n"), nrf24.channel(-2))
+    ser.str(string("Transmitting..."))
+
+    longfill(@payld_cnt, 0, 6)
     repeat
         ' Collect some packet statistics
         max_retrans := nrf24.maxretransreached{}
@@ -90,12 +90,10 @@ PUB Transmit{} | payld_cnt, tmp, i, max_retrans, pkts_retrans, lost_pkts
         ser.position(0, 5)
         ser.str(string("Max retransmissions reached? "))
         ser.str(lookupz(||(max_retrans): string("No "), string("Yes")))
+        ser.newline{}
 
-        ser.str(string(ser#CR, ser#LF, "Packets retransmitted: "))
-        ser.str(int.decpadded(pkts_retrans, 2))
-
-        ser.str(string(ser#CR, ser#LF, "Lost packets: "))
-        ser.str(int.decpadded(lost_pkts, 2))
+        ser.printf1(string("Packets retransmitted: %s"), int.decpadded(pkts_retrans, 2))
+        ser.printf1(string("\nLost packets: %s"), int.decpadded(lost_pkts, 2))
 
         if max_retrans == TRUE                  ' Max retransmissions reached?
             nrf24.intclear(%001)                '   If yes, clear the int

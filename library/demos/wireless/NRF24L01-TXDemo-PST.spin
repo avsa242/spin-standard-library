@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: nRF24L01+ Transmit demo
         (PST-compatible)
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 23, 2019
-    Updated Oct 19, 2020
+    Updated Mar 19, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -53,19 +53,17 @@ PUB Main{}
 PUB Transmit{} | payld_cnt, tmp, i, max_retrans, pkts_retrans, lost_pkts
 
     _payld_len := 8
-    longfill(@payld_cnt, 0, 8)
+    longfill(@payld_cnt, 0, 6)
 
-    ' Set transmit address (note: order is LSB, ..., MSB)
-    bytemove(@_addr, string($e7, $e7, $e7, $e7, $e7), 5)
-    nrf24.nodeaddress(@_addr)                   ' Set TX/RX address to the same
-                                                ' (RX pipe 0 used for auto-ack)
-    nrf24.txmode{}                              ' Set to transmit mode and
-    nrf24.flushtx{}                             '   empty the transmit FIFO
+    ' Set transmit/receive address (note: order in string() is LSB, ..., MSB)
+    nrf24.nodeaddress(string($e7, $e7, $e7, $e7, $e7))
+    nrf24.txaddr(@_addr, nrf24#READ)            ' read it back
+
+    ' choose a transmit mode preset (2Mbps, with or without AutoAck/ShockBurst)
+    nrf24.preset_tx2m{}                         ' transmit mode, 2Mbps
+'    nrf24.preset_tx2m_noaa{}                    ' transmit mode, 2Mbps, no AA
     nrf24.txpower(0)                            ' -18, -12, -6, 0 (dBm)
-    nrf24.powered(TRUE)
-    nrf24.autoackenabledpipes(%000000)          ' Auto-ack/Shockburst, per pipe
 
-    nrf24.intclear(%111)                        ' Clear interrupts
     nrf24.payloadlen(_payld_len, 0)             ' 1..32 (len), 0..5 (pipe #)
 
     ser.clear{}
@@ -97,7 +95,7 @@ PUB Transmit{} | payld_cnt, tmp, i, max_retrans, pkts_retrans, lost_pkts
         ser.str(int.decpadded(lost_pkts, 2))
 
         if max_retrans == TRUE                  ' Max retransmissions reached?
-            nrf24.maxretransreached{}           '   If yes, clear the int
+            nrf24.intclear(%001)                '   If yes, clear the int
 
         if lost_pkts => 15                      ' Packets lost exceeds 15?
             nrf24.channel(CHANNEL)              '   If yes, clear the int
@@ -165,6 +163,7 @@ PUB Setup{}
         ser.str(string("NRF24L01+ driver started", ser#NL))
     else
         ser.str(string("NRF24L01+ driver failed to start - halting", ser#NL))
+        repeat
 
 DAT
 
