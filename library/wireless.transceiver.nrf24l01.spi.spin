@@ -5,7 +5,7 @@
     Description: Driver for Nordic Semi. nRF24L01+
     Copyright (c) 2021
     Started Jan 6, 2019
-    Updated Mar 20, 2021
+    Updated Apr 22, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,6 +21,11 @@ CON
     READ            = 0
     WRITE           = 1
 
+' Interrupt flags
+    PAYLD_RDY       = 1 << 2
+    PAYLD_SENT      = 1 << 1
+    MAX_RETRANS     = 1 << 0
+
 VAR
 
     long _CE, _CS, _SCK, _MOSI, _MISO
@@ -34,7 +39,7 @@ OBJ
     io      : "io"                              ' I/O pin abstraction
 
 PUB Null{}
-'This is not a top-level object
+' This is not a top-level object
 
 PUB Startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay | tmp[2], i
 
