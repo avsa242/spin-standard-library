@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: SerLogWindow-Demo.spin
+    Filename: SerialLogwindow.spin
     Author: Jesse Burt
     Description: Display a scrolling text/logging
         "window" on the serial terminal
