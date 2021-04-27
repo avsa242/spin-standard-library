@@ -3,9 +3,9 @@
     Filename: memory.eeprom.24xxxx.i2c.spin
     Author: Jesse Burt
     Description: Driver for 24xxxx-series I2C EEPROMs
-    Copyright (c) 2019
+    Copyright (c) 2021
     Started Oct 26, 2019
-    Updated Jun 29, 2020
+    Updated Jan 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,86 +22,120 @@ CON
 
 VAR
 
+    long _ee_max_addr
+    byte _page_size                             ' EE page size, in bytes
 
 OBJ
 
-    i2c : "com.i2c"
-    core: "core.con.24xxxx.spin"
-    time: "time"
+    i2c : "com.i2c"                             ' PASM bit-banged I2C engine
+    core: "core.con.24xxxx"                     ' HW-specific constants
+    time: "time"                                ' timekeeping methods
 
-PUB Null
+PUB Null{}
 'This is not a top-level object
 
-PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
+PUB Start{}: okay
+' Start using "standard" Propeller I2C pins and 100kHz
+    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+' Start using custom I/O settings
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.msleep(1)
+            eesize(512)                     ' most common P1 EE size
+            if i2c.present(SLAVE_WR)        ' check device bus presence
+                return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Stop{}
 
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
-                time.MSleep (1)
-                if i2c.present (SLAVE_WR)                       'Response from device?
-                    return okay
+    i2c.deinit{}
 
-    return FALSE                                                'If we got here, something went wrong
+PUB EEMaxAddr{}: maxaddr
 
-PUB Stop
+    return _ee_max_addr
 
-    i2c.terminate
+PUB EESize(size): curr_eesize
+' Set EEPROM size, in kilobits
+    case size
+        1, 2:
+            _page_size := 8
+        4, 8, 16:
+            _page_size := 16
+        32, 64:
+            _page_size := 32
+        128, 256:
+            _page_size := 64
+        512:
+            _page_size := 128
+        1024, 2048:
+            _page_size := 256
+        other:
+            return
+    _ee_max_addr := ((size * 1024) >> 3) - 1
 
-PUB ReadByte(ee_addr)
+PUB PageSize{}: psz
+' Page size of currently set EEPROM size
+    return _page_size
+
+PUB ReadByte(ee_addr): eebyte
 ' Read single byte from EEPROM
-    readReg(ee_addr, 1, @result)
+    readreg(ee_addr, 1, @eebyte)
 
-PUB ReadBytes(ee_addr, nr_bytes, buff_addr)
+PUB ReadBytes(ee_addr, nr_bytes, ptr_buff)
 ' Read multiple bytes from EEPROM
-    readReg(ee_addr, nr_bytes, buff_addr)
+    readreg(ee_addr, nr_bytes, ptr_buff)
 
 PUB WriteByte(ee_addr, data)
 ' Write single byte to EEPROM
-    writeReg(ee_addr, 1, @data)
+    writereg(ee_addr, 1, @data)
 
-PUB WriteBytes(ee_addr, nr_bytes, buff_addr) | tmp
+PUB WriteBytes(ee_addr, nr_bytes, ptr_buff)
 ' Write multiple bytes to EEPROM
-'   nr_bytes Valid values: 1..64 (page boundary)
+'   Valid values (nr_bytes):
+'       128, 256kbit EE: 1..64
+'       512kbit EE: 1..128
     case nr_bytes
-        1..64:
-            writeReg(ee_addr, nr_bytes, buff_addr)
-        OTHER:
-            return FALSE
-
-PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Read num_bytes from the slave device into the address stored in buff_addr
-    case reg
-        $000000..$01FFFF:
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg.byte[1]
-            cmd_packet.byte[2] := reg.byte[0]
-            i2c.Start
-            i2c.Wr_Block (@cmd_packet, 3)
-
-            i2c.Start
-            i2c.Write (SLAVE_RD)
-            i2c.Rd_Block (buff_addr, nr_bytes, TRUE)
-            i2c.Stop
-        OTHER:
+        1..128:
+            writereg(ee_addr, nr_bytes, ptr_buff)
+        other:
             return
 
-PRI writeReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Write num_bytes to the slave device from the address stored in buff_addr
-    case reg
-        $000000..$01FFFF:
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg.byte[1]
-            cmd_packet.byte[2] := reg.byte[0]
-            i2c.Start
-            i2c.Wr_Block (@cmd_packet, 3)
-            i2c.Wr_Block (buff_addr, nr_bytes)
-            i2c.Stop
-            time.MSleep (core#T_WR)                         ' Wait "Write cycle time"
-        OTHER:
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Read nr_bytes from the slave device into ptr_buff
+    case reg_nr
+        0.._ee_max_addr:
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr.byte[1]
+            cmd_pkt.byte[2] := reg_nr.byte[0]
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 3)
+
+            i2c.start{}
+            i2c.write(SLAVE_RD)
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
+            i2c.stop{}
+        other:
+            return
+
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Write nr_bytes from ptr_buff to the slave device
+    case reg_nr
+        0.._ee_max_addr:
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr.byte[1]
+            cmd_pkt.byte[2] := reg_nr.byte[0]
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 3)
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+            i2c.stop{}
+            time.msleep(core#T_WR)              ' Wait "Write cycle time"
+        other:
             return
 
 

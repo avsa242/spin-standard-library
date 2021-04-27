@@ -1,13 +1,16 @@
 {
     --------------------------------------------
-    Filename: 24xxxx-Demo.spin2
+    Filename: 24xxxx-Demo.spin
     Author: Jesse Burt
     Description: Demo of the 24xxxx driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started May 9, 2020
-    Updated Aug 9, 2020
+    Updated Apr 27, 2021
     See end of file for terms of use.
     --------------------------------------------
+    NOTE: Use the write and erase tests with care,
+    if the contents of the EEPROM are valuable. The
+    EEPROM data isn't backed up first.
 }
 
 CON
@@ -17,125 +20,119 @@ CON
 
 ' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
-    SER_BAUD    = 115200
+    SER_BAUD    = 115_200
 
     I2C_SCL     = 28
     I2C_SDA     = 29
-    I2C_HZ      = 1_000_000
-    READCNT     = 64
+    I2C_HZ      = 1_000_000                     ' max is 1_000_000
+
+    EE_SZ       = 512                           ' EEPROM size, in kbits
 ' --
 
-    STATUS_LINE = 10
-    CLK_FREQ    = (_clkmode >> 6) * _xinfreq
-    CYCLES_USEC = CLK_FREQ / 1_000_000
+    STATUS_LINE = 15
+    CLK_FREQ    = (_clkmode >> 6) * _xinfreq    ' extract P1 clock freq
+    CYCLES_USEC = CLK_FREQ / 1_000_000          ' calc # cycles in 1 microsec
 
-    MEM_END     = 65535
-    ERASED_CELL = $FF
+    ERASED_CELL = $FF                           ' erased EE cell character
 
 OBJ
 
-    ser         : "com.serial.terminal.ansi"
-    cfg         : "core.con.boardcfg.flip"
-    io          : "io"
-    time        : "time"
-    mem         : "memory.eeprom.24xxxx.i2c"
+    ser : "com.serial.terminal.ansi"
+    cfg : "core.con.boardcfg.flip"
+    time: "time"
+    mem : "memory.eeprom.24xxxx.i2c"
 
 VAR
 
-    byte _buff[READCNT+1]
+    long _ee_max_addr
+    byte _buff[256]                             ' buffer up to max size EEPROM
+    byte _pagesize
 
-PUB Main | mem_base, stime, etime
+PUB Main{} | mem_base, stime, etime
 
-    setup
+    setup{}
+    mem.eesize(EE_SZ)
+    _pagesize := mem.pagesize{}
+    _ee_max_addr := mem.eemaxaddr{}
 
+    ser.position(0, 3)
+    ser.printf3(string("EE: %dkbits, page size: %d, max addr: %x"), EE_SZ, _pagesize, _ee_max_addr)
     mem_base := 0
     repeat
         readtest(mem_base)
 
-        ser.hexdump(@_buff, mem_base, READCNT, 16, 0, 5)
-        ser.newline
+        ser.hexdump(@_buff, mem_base, _pagesize, 16, 0, 5)
+        ser.newline{}
 
-        case ser.charin
-            "[":
-                mem_base := mem_base - READCNT
-                if mem_base < 0
-                    mem_base := 0
-            "]":
-                mem_base := mem_base + READCNT
-                if mem_base > (MEM_END-READCNT)
-                    mem_base := (MEM_END-READCNT)
-            "s":
+        case ser.charin{}                       ' wait for terminal keypress
+            "[":                                ' previous EEPROM page
+                mem_base := 0 #> (mem_base - _pagesize)
+            "]":                                ' next page
+                mem_base := (mem_base + _pagesize) <# ((_ee_max_addr-_pagesize)+1)
+            "s":                                ' start/first EEPROM page
                 mem_base := 0
-            "e":
-                mem_base := MEM_END-READCNT
-            "w":
+            "e":                                ' last EEPROM page
+                mem_base := (_ee_max_addr-_pagesize)+1
+            "w":                                ' write test on current page
                 writetest(mem_base)
-            "x":
+            "x":                                ' erase current page
                 erasetest(mem_base)
-            "q":
-                ser.str(string("Halting", ser#CR, ser#LF))
+            "q":                                ' quit demo
+                ser.strln(string("Halting"))
                 quit
-            OTHER:
+            other:
 
-    flashled(LED, 100)     ' Signal execution finished
+    repeat
 
-PUB EraseTest(start_addr) | stime, etime
-
-    bytefill(@_buff, ERASED_CELL, READCNT)
-    ser.position(0, STATUS_LINE+2)
+PUB EraseTest(st_addr) | stime, etime
+' Erase EEPROM page
+    bytefill(@_buff, ERASED_CELL, _pagesize)    ' fill buff with erase char
+    ser.position(0, STATUS_LINE+1)
     ser.str(string("Erasing page..."))
     stime := cnt
-    mem.writebytes(start_addr, READCNT, @_buff)
+    mem.writebytes(st_addr, _pagesize, @_buff)  ' write the buffer to EEPROM
     etime := cnt-stime
 
-    cycletime(etime)
+    cycletime(etime)                            ' display how long it took
 
-PUB ReadTest(start_addr) | stime, etime
-
-    bytefill(@_buff, 0, READCNT)
+PUB ReadTest(st_addr) | stime, etime
+' Read EEPROM page
+    bytefill(@_buff, 0, _pagesize)
     ser.position(0, STATUS_LINE)
     ser.str(string("Reading page..."))
     stime := cnt
-    mem.readbytes(start_addr, READCNT, @_buff)
+    mem.readbytes(st_addr, _pagesize, @_buff)   ' read EEPROM page to buffer
     etime := cnt-stime
 
     cycletime(etime)
 
-PUB WriteTest(start_addr) | stime, etime, tmp[2]
-
-    bytemove(@tmp, string("TEST"), 4)
-    ser.position(0, STATUS_LINE+1)
+PUB WriteTest(st_addr) | stime, etime
+' Write a test string to EEPROM page
+    ser.position(0, STATUS_LINE+2)
     ser.str(string("Writing test value..."))
     stime := cnt
-    mem.writebytes(start_addr, 4, @tmp)
+    mem.writebytes(st_addr, 4, string("TEST"))  ' write 4 bytes from string
+
     etime := cnt-stime
 
     cycletime(etime)
 
-PUB CycleTime(cycles)
-
-    ser.dec(cycles)
-    ser.str(string(" cycles ("))
-    ser.dec(cycles / CYCLES_USEC)
-    ser.str(string("usec)"))
+PRI CycleTime(cycles)
+' Display elapsed time in cycles and microseconds
+    ser.printf2(string("%d cycles (%dusec)"), cycles, cycles / CYCLES_USEC)
     ser.clearline{}
-    return cycles / CYCLES_USEC
 
-PUB Setup
+PUB Setup{}
 
-    repeat until ser.startrxtx (SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
-    ser.clear
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
-    if mem.startx (I2C_SCL, I2C_SDA, I2C_HZ)
-        ser.str(string("24xxxx driver started", ser#CR, ser#LF))
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if mem.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+        ser.strln(string("24xxxx driver started"))
     else
-        ser.str(string("24xxxx driver failed to start - halting", ser#CR, ser#LF))
-        flashled(LED, 500)
-
-#include "lib.utility.spin"
+        ser.strln(string("24xxxx driver failed to start - halting"))
+        repeat
 
 DAT
 {
