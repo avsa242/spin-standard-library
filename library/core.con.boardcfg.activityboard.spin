@@ -6,12 +6,12 @@ CON
     _XINFREQ    = 5_000_000
 
     ' Pin definitions
-    SERVO1      = 14                            ' 6 3-pin servo headers
-    SERVO2      = 15
-    SERVO3      = 16
-    SERVO4      = 17
-    SERVO5      = 18
-    SERVO6      = 19
+    SERVO1      = 12                            ' 6 3-pin servo headers
+    SERVO2      = 13
+    SERVO3      = 14
+    SERVO4      = 15
+    SERVO5      = 16
+    SERVO6      = 17
 
     ADC_DI      = 18                            ' ADC
     ADC_DO      = 19
