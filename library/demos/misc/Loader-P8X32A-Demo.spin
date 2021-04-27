@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Simple demo of the misc.loader.p8x32a object
         Loads another connected Propeller with a binary
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started May 25, 2020
-    Updated Nov 7, 2020
+    Updated Apr 27, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,8 +18,6 @@ CON
 
 ' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
 ' Pins your destination Propeller is connected to
@@ -46,9 +44,12 @@ PUB Main{} | errmsg
         0:
             ser.str(string("complete"))
 
-        loader#ERRORCONNECT, loader#ERRORVERSION, loader#ERRORCHECKSUM, loader#ERRORPROGRAM, loader#ERRORVERIFY:
+        loader#ERRORCONNECT, loader#ERRORVERSION, loader#ERRORCHECKSUM, {
+}       loader#ERRORPROGRAM, loader#ERRORVERIFY:
             ser.str(string("Load failed: "))
-            errmsg := lookup(result: string("Error connecting"), string("Version mismatch"), string("Checksum mismatch"), string("Error during programming"), string("Verification failed"))
+            errmsg := lookup(result: string("Error connecting"), {
+}           string("Version mismatch"), string("Checksum mismatch"), {
+}           string("Error during programming"), string("Verification failed"))
             ser.str(errmsg)
 
         other:
