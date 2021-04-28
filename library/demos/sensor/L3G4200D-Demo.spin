@@ -2,11 +2,10 @@
     --------------------------------------------
     Filename: L3G4200D-Demo.spin
     Author: Jesse Burt
-    Description: Simple demo of the L3G4200D driver that
-        outputs live data from the chip.
+    Description: Simple demo of the L3G4200D driver
     Copyright (c) 2020
     Started Nov 27, 2019
-    Updated Aug 9, 2020
+    Updated Dec 26, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,122 +15,92 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' User-modifiable constants
+' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
-    CS_PIN      = 10
-    SCL_PIN     = 15
-    SDA_PIN     = 14
-    SDO_PIN     = 13
+    CS_PIN      = 16
+    SCL_PIN     = 17
+    SDA_PIN     = 18
+    SDO_PIN     = 19
+' --
+
+    DAT_X_COL   = 15
+    DAT_Y_COL   = DAT_X_COL + 15
+    DAT_Z_COL   = DAT_Y_COL + 15
 
 OBJ
 
     cfg         : "core.con.boardcfg.flip"
     ser         : "com.serial.terminal.ansi"
     time        : "time"
-    io          : "io"
     l3g4200d    : "sensor.gyroscope.3dof.l3g4200d.spi"
     int         : "string.integer"
 
-VAR
+PUB Main{} | gx, gy, gz
 
-    long _overruns
-    byte _ser_cog, _l3g4200d_cog
+    setup{}
 
-PUB Main | dispmode
-
-    Setup
-
-    l3g4200d.GyroOpMode(l3g4200d#NORMAL)                ' POWERDOWN (0), SLEEP (1), NORMAL (2)
-    l3g4200d.GyroDataRate(800)                          ' 100, 200, 400, 800 Hz
-    l3g4200d.GyroAxisEnabled(%111)                      ' 0 or 1 for each bit (Axis: %XYZ)
-    l3g4200d.GyroScale(2000)                            ' 250, 500, 200 degrees per second
-
-    ser.HideCursor
+    l3g4200d.defaults_active{}
+    ser.hidecursor{}
+    ser.position(DAT_X_COL, 3)
+    ser.char("X")
+    ser.position(DAT_Y_COL, 3)
+    ser.char("Y")
+    ser.position(DAT_Z_COL, 3)
+    ser.char("Z")
     repeat
-        case ser.RxCheck
-            "q", "Q":                                   ' Quit the demo, and power down
-                ser.Position(0, 5)
-                ser.str(string("Halting"))
-                l3g4200d.Stop
-                time.MSleep(5)
-                ser.Stop
-                quit
-            "r", "R":                                   ' Switch between raw ADC output and DPS
-                ser.Position(0, 3)
-                repeat 2
-                    ser.clearline{}
-                    ser.Newline
-                dispmode ^= 1
+        repeat until l3g4200d.gyrodataready{}
+        l3g4200d.gyrodps(@gx, @gy, @gz)
+        ser.position(0, 4)
+        ser.str(string("Gyro DPS:  "))
+        ser.positionx(DAT_X_COL)
+        decimal(gx, 1_000_000)
+        ser.positionx(DAT_Y_COL)
+        decimal(gy, 1_000_000)
+        ser.positionx(DAT_Z_COL)
+        decimal(gz, 1_000_000)
 
-
-        ser.Position (0, 3)
-        case dispmode
-            0:
-                GyroRaw
-                ser.Newline
-                TempRaw
-            1:
-                GyroCalc
-                ser.Newline
-                TempRaw
-
-    ser.ShowCursor
-    FlashLED(LED, 100)
-
-PUB GyroCalc | gx, gy, gz
-' Display calculated gyroscope output, in micro-degrees per second
-    repeat until l3g4200d.GyroDataReady
-    l3g4200d.GyroDPS (@gx, @gy, @gz)
-    if l3g4200d.GyroDataOverrun
-        _overruns++
-    ser.Str (string("Gyro micro-DPS:  "))
-    ser.Str (int.DecPadded (gx, 12))
-    ser.Str (int.DecPadded (gy, 12))
-    ser.Str (int.DecPadded (gz, 12))
-    ser.Newline
-    ser.Str (string("Overruns: "))
-    ser.Dec (_overruns)
-
-PUB GyroRaw | gx, gy, gz
-' Display gyroscope raw ADC output
-    repeat until l3g4200d.GyroDataReady
-    l3g4200d.GyroData (@gx, @gy, @gz)
-    if l3g4200d.GyroDataOverrun
-        _overruns++
-    ser.Str (string("Raw Gyro:  "))
-    ser.Str (int.DecPadded (gx, 7))
-    ser.Str (int.DecPadded (gy, 7))
-    ser.Str (int.DecPadded (gz, 7))
-    ser.Newline
-    ser.Str (string("Overruns: "))
-    ser.Dec (_overruns)
-
-PUB TempRaw
-' Display temperature raw output
-    ser.Str (string("Temperature: "))
-    ser.Str (int.DecPadded (l3g4200d.Temperature, 7))
-
-PUB Setup
-
-    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, %0000, SER_BAUD)
-    time.MSleep(20)
-    ser.Clear
-    ser.Str (string("Serial terminal started", ser#CR, ser#LF))
-    if _l3g4200d_cog := l3g4200d.Start (CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
-        ser.Str (string("L3G4200D driver started", ser#CR, ser#LF))
-        l3g4200d.Defaults
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor                   ' separate the whole part
+    tmp := divisor                              ' temp/working copy of divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0                               ' determine sign character
+        sign := "-"
     else
-        ser.Str (string("L3G4200D driver failed to start - halting", ser#CR, ser#LF))
-        l3g4200d.Stop
-        time.MSleep (5)
-        ser.Stop
-        FlashLED(LED, 500)
+        sign := " "
 
-#include "lib.utility.spin"
+    repeat                                      ' how many places to display:
+        tmp /= 10                               ' increment every divide-by-10
+        places++                                '   until we're left with 1
+    until tmp == 1
+    scaled //= divisor                          ' separate the fractional part
+    part := int.deczeroed(||(scaled), places)   ' convert to string
+
+    ser.char(sign)                              ' display it
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+    ser.chars(32, 5)                            ' erase trailing chars
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if l3g4200d.start(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+        ser.strln(string("L3G4200D driver started"))
+    else
+        ser.strln(string("L3G4200D driver failed to start - halting"))
+        l3g4200d.stop{}
+        time.msleep(5)
+        ser.stop{}
+        repeat
 
 DAT
 {
