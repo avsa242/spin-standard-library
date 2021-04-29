@@ -5,7 +5,7 @@
     Description: Driver for the ST LIS3DH 3DoF accelerometer
     Copyright (c) 2021
     Started Mar 15, 2020
-    Updated Jan 27, 2021
+    Updated Apr 29, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -80,7 +80,8 @@ PUB Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
 ' Start using custom I/O pins
     if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
 }   lookdown(SDA_PIN: 0..31) and lookdown(SDO_PIN: 0..31)
-        if status := spi.start(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+        if (status := spi.init(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN, {
+}       core#SPI_MODE))
             time.msleep(core#TPOR)
             if deviceid{} == core#WHO_AM_I_RESP
                 return status
@@ -113,7 +114,7 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, SA0_BIT): status
 PUB Stop{}
 
 #ifdef LIS3DH_SPI
-    spi.stop{}
+    spi.deinit{}
 #elseifdef LIS3DH_I2C
     i2c.deinit{}
 #endif
@@ -685,8 +686,10 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 #ifdef LIS3DH_SPI
     reg_nr |= core#R
-    spi.write(TRUE, @reg_nr, 1, FALSE)          ' leave CS low after
-    spi.read(ptr_buff, nr_bytes, TRUE)          '   now, raise CS
+    spi.deselectafter(false)
+    spi.wr_byte(reg_nr)
+    spi.deselectafter(true)
+    spi.rdblock_lsbf(ptr_buff, nr_bytes)
 #elseifdef LIS3DH_I2C
     cmd_pkt.byte[0] := SLAVE_WR | _sa0
     cmd_pkt.byte[1] := reg_nr
@@ -706,8 +709,10 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return FALSE
 #ifdef LIS3DH_SPI
-    spi.write(TRUE, @reg_nr, 1, FALSE)          ' leave CS low after
-    spi.write(TRUE, ptr_buff, nr_bytes, TRUE)   '   now, raise CS
+    spi.deselectafter(false)
+    spi.wr_byte(reg_nr)
+    spi.deselectafter(true)
+    spi.wrblock_lsbf(ptr_buff, nr_bytes)
 #elseifdef LIS3DH_I2C
     cmd_pkt.byte[0] := SLAVE_WR | _sa0
     cmd_pkt.byte[1] := reg_nr
