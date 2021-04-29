@@ -5,7 +5,7 @@
     Description: Demo of the LIS3DH driver
     Copyright (c) 2021
     Started Aug 12, 2017
-    Updated Jan 27, 2021
+    Updated Apr 29, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -120,6 +120,7 @@ PUB Setup{}
         accel.stop{}
         time.msleep(5)
         ser.stop{}
+        repeat
 
 DAT
 {
