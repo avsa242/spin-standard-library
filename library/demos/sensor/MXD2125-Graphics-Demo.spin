@@ -4,20 +4,14 @@
     Author: Jesse Burt
     Description: Graphical demo of the
         Memsic MXD2125 driver
-        (based on demo originally by Beau Schwabe)
     Started 2009
-    Updated Sep 8, 2020
+    Updated Apr 29, 2021
     See end of file for terms of use.
     --------------------------------------------
+
+    NOTE: Based on Memsic2125v2_Graphics_Demo.spin,
+        originally by Beau Schwabe (Copyright 2009 Parallax, Inc)
 }
-
-'***************************************
-'*  Memsic 2125 Accelerometer DEMO     *
-'*  Author: Beau Schwabe               *
-'*  Copyright (c) 2009 Parallax, Inc.  *
-'*  See end of file for terms of use.  *
-'***************************************
-
 
 CON
 
@@ -35,8 +29,8 @@ CON
     DISPLAY_BASE= $5000
 
 ' -- User-modifiable constants
-    MXD_XPIN    = 0
-    MXD_YPIN    = 1
+    MXD_XPIN    = 6
+    MXD_YPIN    = 7
 
 ' --
 
@@ -53,23 +47,23 @@ Yout ──│2 │ /\ │ 5│── Xout
 
 VAR
 
-    long tv_status     '0/1/2 = off/visible/invisible           read-only
-    long tv_enable     '0/? = off/on                            write-only
-    long tv_pins       '%ppmmm = pins                           write-only
-    long tv_mode       '%ccinp = chroma,interlace,ntsc/pal,swap write-only
-    long tv_screen     'pointer to screen (words)               write-only
-    long tv_colors     'pointer to colors (longs)               write-only
-    long tv_hc         'horizontal cells                        write-only
-    long tv_vc         'vertical cells                          write-only
-    long tv_hx         'horizontal cell expansion               write-only
-    long tv_vx         'vertical cell expansion                 write-only
-    long tv_ho         'horizontal offset                       write-only
-    long tv_vo         'vertical offset                         write-only
-    long tv_broadcast  'broadcast frequency (Hz)                write-only
-    long tv_auralcog   'aural fm cog                            write-only
+    long _tv_status     '0/1/2 = off/visible/invisible           read-only
+    long _tv_enable     '0/? = off/on                            write-only
+    long _tv_pins       '%ppmmm = pins                           write-only
+    long _tv_mode       '%ccinp = chroma,interlace,ntsc/pal,swap write-only
+    long _tv_screen     'pointer to _screen (words)              write-only
+    long _tv_colors     'pointer to _colors (longs)              write-only
+    long _tv_hc         'horizontal cells                        write-only
+    long _tv_vc         'vertical cells                          write-only
+    long _tv_hx         'horizontal cell expansion               write-only
+    long _tv_vx         'vertical cell expansion                 write-only
+    long _tv_ho         'horizontal offset                       write-only
+    long _tv_vo         'vertical offset                         write-only
+    long _tv_broadcast  'broadcast frequency (Hz)                write-only
+    long _tv_auralcog   'aural fm cog                            write-only
 
-    word screen[X_TILES * Y_TILES]
-    long colors[64]
+    word _screen[X_TILES * Y_TILES]
+    long _colors[64]
 
 OBJ
 
@@ -77,11 +71,11 @@ OBJ
     tv      : "display.tv"
     gr      : "display.tv.graphics"
     mxd2125 : "sensor.accel.2dof.mxd2125.pwm"
+    math    : "math.int"
 
 PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlength, size
 
     setup{}
-
     size := 95
     repeat
         gr.clear{}                                      ' clear bitmap
@@ -102,14 +96,14 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
         repeat i from (-180 + offset) to (180 + offset)
             if (i - offset) // 5 == 0
                 if i => -size and i =< size
-                    dx := (sin(-e + 4096) * i) ~> 16
-                    dy := (cos(-e + 4096) * i) ~> 16
+                    dx := (math.sin(-e + 4096) * i) ~> 16
+                    dy := (math.cos(-e + 4096) * i) ~> 16
                     if i == offset                      ' Draw moving Horizon
                         cordlength := ^^((size * size)-(fdeg * fdeg))
-                        dx1 := dx + (sin(-e + 2048) * cordlength) ~> 16
-                        dy1 := dy + (cos(-e + 2048) * cordlength) ~> 16
-                        dx2 := dx + (sin(-e - 2048) * cordlength) ~> 16
-                        dy2 := dy + (cos(-e - 2048) * cordlength) ~> 16
+                        dx1 := dx + (math.sin(-e + 2048) * cordlength) ~> 16
+                        dy1 := dy + (math.cos(-e + 2048) * cordlength) ~> 16
+                        dx2 := dx + (math.sin(-e - 2048) * cordlength) ~> 16
+                        dy2 := dy + (math.cos(-e - 2048) * cordlength) ~> 16
                         gr.plot(dx1, dy1)
                         gr.line(dx2, dy2)
                         gr.text(dx, dy, string("0 "))
@@ -137,19 +131,19 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
                                 180:
                                     gr.text(dx, dy, string("180 "))
 
-                        dx1 := dx + (sin(-e + 2048) * bar) ~> 16
-                        dy1 := dy + (cos(-e + 2048) * bar) ~> 16
-                        dx2 := dx + (sin(-e - 2048) * bar) ~> 16
-                        dy2 := dy + (cos(-e - 2048) * bar) ~> 16
+                        dx1 := dx + (math.sin(-e + 2048) * bar) ~> 16
+                        dy1 := dy + (math.cos(-e + 2048) * bar) ~> 16
+                        dx2 := dx + (math.sin(-e - 2048) * bar) ~> 16
+                        dy2 := dy + (math.cos(-e - 2048) * bar) ~> 16
                         gr.plot(dx1, dy1)
                         gr.line(dx2, dy2)
 
-                    dx := (sin(-e + 4096){*i}) ~> 16  ' Draw fixed Horizon
-                    dy := (cos(-e + 4096){*i}) ~> 16
-                    dx1 := dx + (sin(-e + 2048) * size) ~> 16
-                    dy1 := dy + (cos(-e + 2048) * size) ~> 16
-                    dx2 := dx + (sin(-e - 2048) * size) ~> 16
-                    dy2 := dy + (cos(-e - 2048) * size) ~> 16
+                    dx := (math.sin(-e + 4096){*i}) ~> 16  ' Draw fixed Horizon
+                    dy := (math.cos(-e + 4096){*i}) ~> 16
+                    dx1 := dx + (math.sin(-e + 2048) * size) ~> 16
+                    dy1 := dy + (math.cos(-e + 2048) * size) ~> 16
+                    dx2 := dx + (math.sin(-e - 2048) * size) ~> 16
+                    dy2 := dy + (math.cos(-e - 2048) * size) ~> 16
                     gr.color(1)
                     gr.plot(dx1, dy1)
                     gr.line(dx2, dy2)
@@ -163,15 +157,15 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
         gr.width(0)
 
         'Draw reference '0' Deg in motion
-        dx1 := 8 + (sin(d + 2048) * ((size * 50) / 90)) ~> 16
-        dy1 := 8 + (cos(d + 2048) * ((size * 50) / 90)) ~> 16
+        dx1 := 8 + (math.sin(d + 2048) * ((size * 50) / 90)) ~> 16
+        dy1 := 8 + (math.cos(d + 2048) * ((size * 50) / 90)) ~> 16
         gr.text(dx1, dy1, string("0"))
 
         gr.color(1)
         repeat i from 0 to 8192 step 128                ' Rotational Ticks Text
             if (i / 8) // 128 == 0
-                dx1 := 8 + (sin(-i + 2048) * ((size * 65) / 90)) ~> 16
-                dy1 := 8 + (cos(-i + 2048) * ((size * 65) / 90)) ~> 16
+                dx1 := 8 + (math.sin(-i + 2048) * ((size * 65) / 90)) ~> 16
+                dy1 := 8 + (math.cos(-i + 2048) * ((size * 65) / 90)) ~> 16
                 case i
                     0:
                         gr.text(dx1, dy1, string("0"))
@@ -198,36 +192,22 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
         gr.color(2)
         gr.copy(DISPLAY_BASE)
 
-PUB Cos(angle): x
-' Get cosine of angle (0-8191)
-    x := sin(angle + $800)
-
-PUB Sin(angle): y
-' Get sine of angle (0-8191)
-    y := angle << 1 & $FFE
-    if angle & $800
-        y := word[$F000 - y]
-    else
-        y := word[$E000 + y]
-    if angle & $1000
-        -y
-
 PUB Setup{} | i, dx, dy, clk_scale
 
     'start tv
-    longmove(@tv_status, @tvparams, PARAMCOUNT)
-    tv_screen := @screen
-    tv_colors := @colors
-    tv.start(@tv_status)
+    longmove(@_tv_status, @tvparams, PARAMCOUNT)
+    _tv_screen := @_screen
+    _tv_colors := @_colors
+    tv.start(@_tv_status)
 
-    'init colors
+    'init _colors
     repeat i from 0 to 63
-        colors[i] := $9D_07_1C_02
+        _colors[i] := $9D_07_1C_02
 
-    'init tile screen
-    repeat dx from 0 to tv_hc - 1
-        repeat dy from 0 to tv_vc - 1
-            screen[dy * tv_hc + dx] := DISPLAY_BASE >> 6 + dy + dx * tv_vc + ((dy & $3F) << 10)
+    'init tile _screen
+    repeat dx from 0 to _tv_hc - 1
+        repeat dy from 0 to _tv_vc - 1
+            _screen[dy * _tv_hc + dx] := DISPLAY_BASE >> 6 + dy + dx * _tv_vc + ((dy & $3F) << 10)
 
     'start and setup graphics
     gr.start
@@ -238,6 +218,7 @@ PUB Setup{} | i, dx, dy, clk_scale
     clk_scale := clkfreq / 500_000                      ' based on system clock
 
     gr.textmode(1, 1, 6, %%22)
+
 
 DAT
 
