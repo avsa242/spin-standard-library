@@ -5,7 +5,7 @@
     Description: Driver for the ST L3GD20H 3DoF gyroscope
     Copyright (c) 2021
     Started Jul 11, 2020
-    Updated Jan 26, 2021
+    Updated Apr 29, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -87,8 +87,8 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom I/O pins and I2C bus speed
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }       I2C_HZ =< core#I2C_MAX_FREQ
-        if status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ)
-            time.msleep(1)
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.msleep(1)                      ' wait for device startup
             if i2c.present(SLAVE_WR)            ' check device bus presence
                 if deviceid{} == core#DEVID_RESP' validate device
                     return status
@@ -101,7 +101,8 @@ PUB Startx(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN): status
 ' Start using custom I/O pins
     if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if status := spi.start(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN)
+        if (status := spi.init(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN, {
+}       core#SPI_MODE))
             time.msleep(1)
             if deviceid{} == core#DEVID_RESP
                 return status
@@ -116,7 +117,7 @@ PUB Stop{}
 #ifdef L3GD20H_I2C
     i2c.deinit{}
 #elseifdef L3GD20H_SPI
-    spi.stop
+    spi.deinit{}
 #endif
 
 PUB Defaults{}
@@ -667,8 +668,10 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 #ifdef L3GD20H_SPI
     reg_nr |= core#R
     ' request read from reg_nr
-    spi.write(TRUE, @reg_nr, 1, FALSE)          ' don't raise CS after
-    spi.read(ptr_buff, nr_bytes, TRUE)          ' now raise it
+    spi.deselectafter(false)
+    spi.wr_byte(reg_nr)
+    spi.deselectafter(true)
+    spi.rdblock_lsbf(ptr_buff, nr_bytes)
 #elseifdef L3GD20H_I2C
     cmd_pkt.byte[0] := SLAVE_WR
     cmd_pkt.byte[1] := reg_nr
@@ -686,8 +689,10 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
         $20..$25, $2E, $30, $32..$39:
 #ifdef L3GD20H_SPI
             ' request read from reg_nr
-            spi.write(TRUE, @reg_nr, 1, FALSE)  ' don't raise CS after
-            spi.write(TRUE, ptr_buff, nr_bytes, TRUE) ' now raise it
+            spi.deselectafter(false)
+            spi.wr_byte(reg_nr)
+            spi.deselectafter(true)
+            spi.wrblock_lsbf(ptr_buff, nr_bytes)
 #elseifdef L3GD20H_I2C
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr

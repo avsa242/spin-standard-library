@@ -10,8 +10,8 @@
     --------------------------------------------
 }
 ' Uncomment one of the lines below to select an interface
-'#define L3GD20H_I2C
-#define L3GD20H_SPI
+#define L3GD20H_I2C
+'#define L3GD20H_SPI
 
 CON
 
@@ -20,8 +20,6 @@ CON
 
 ' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
 ' I2C
