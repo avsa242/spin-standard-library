@@ -4,8 +4,9 @@
     Author: Jesse Burt
     Description: Serial terminal demo of the
         MXD2125 driver
+    Copyright (c) 2021
     Started Sep 8, 2020
-    Updated Sep 8, 2020
+    Updated Apr 29, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,14 +20,16 @@ CON
     CLK_SCALE   = CLK_FREQ / 500_000
 
 ' -- User-modifiable constants
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
-    MXD_XPIN    = 0
-    MXD_YPIN    = 1
+    MXD_XPIN    = 6
+    MXD_YPIN    = 7
 
 ' --
+
+    DAT_X_COL   = 20
+    DAT_Y_COL   = DAT_X_COL + 15
+    DAT_Z_COL   = DAT_Y_COL + 15
 
 OBJ
 
@@ -36,105 +39,68 @@ OBJ
     accel   : "sensor.accel.2dof.mxd2125.pwm"
     time    : "time"
 
-VAR
-
-    long _overruns
-
-PUB Main{} | dispmode
+PUB Main{} | ax, ay, az
 
     setup{}
 
-    ser.hidecursor{}
     repeat
-        case ser.rxcheck{}
-            "q", "Q":
-                ser.position(0, 12)
-                ser.str(string("Halting"))
-                accel.stop{}
-                time.msleep(5)
-                ser.stop{}
-                quit
-'            "c", "C":
-'                calibrate{}
-            "r", "R":
-                ser.position(0, 10)
-                repeat 2
-                    ser.clearline{}
-                    ser.newline{}
-                dispmode ^= 1
+        ser.position(0, 3)
 
-        ser.position (0, 10)
-        case dispmode
-            0: accelraw{}
-            1: accelcalc{}
+        repeat until accel.acceldataready{}
+        accel.accelg(@ax, @ay, @az)
+        ser.str(string("Accel g: "))
+        ser.positionx(DAT_X_COL)
+        decimal(ax, 1000)                        ' data is in micro-g's; display
+        ser.positionx(DAT_Y_COL)                    ' it as if it were a float
+        decimal(ay, 1000)
+        ser.positionx(DAT_Z_COL)
+        decimal(az, 1000)
+        ser.clearline{}
+        ser.newline{}
 
-    ser.showcursor{}
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
+    else
+        sign := " "
 
-PUB AccelCalc{} | ax, ay, az
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
 
-    repeat until accel.acceldataready{}
-    accel.accelg (@ax, @ay, @az)
-    if accel.acceldataoverrun
-        _overruns++
-    ser.str (string("Accel micro-g: "))
-    ser.str (int.decpadded (ax, 10))
-    ser.str (int.decpadded (ay, 10))
-    ser.str (int.decpadded (az, 10))
-    ser.newline
-    ser.str (string("Overruns: "))
-    ser.dec (_overruns)
-
-PUB AccelTilt{} | x, y, z
-
-    repeat until accel.acceldataready{}
-    accel.acceltilt (@x, @y, @z)
-    if accel.acceldataoverrun
-        _overruns++
-    ser.str (string("Accel tilt: "))
-    ser.str (int.decpadded (x, 10))
-    ser.str (int.decpadded (y, 10))
-    ser.str (int.decpadded (z, 10))
-    ser.newline
-    ser.str (string("Overruns: "))
-    ser.dec (_overruns)
-
-PUB AccelRaw{} | ax, ay, az
-
-    repeat until accel.acceldataready{}
-    accel.acceldata (@ax, @ay, @az)
-    if accel.acceldataoverrun{}
-        _overruns++
-    ser.str (string("Raw Accel: "))
-    ser.str (int.decpadded (ax, 7))
-    ser.str (int.decpadded (ay, 7))
-    ser.str (int.decpadded (az, 7))
-
-    ser.newline
-    ser.str (string("Overruns: "))
-    ser.dec (_overruns)
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+    ser.chars(" ", 5)
 
 PUB Setup{}
 
-    repeat until ser.startrxtx(SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+    ser.strln(string("Serial terminal started"))
 
-    if accel.start(MXD_XPIN, MXD_YPIN)
-        ser.str(string("MXD2125 driver started", ser#CR, ser#LF))
-    else
-        ser.str(string("MXD2125 driver failed to start - halting", ser#CR, ser#LF))
-        accel.stop{}
-        time.msleep(50)
-        ser.stop{}
-        repeat
+    accel.start(MXD_XPIN, MXD_YPIN)
+    ser.strln(string("MXD2125 driver started"))
 
 {{
-Note: At rest, normal RAW x and y values should be at about 400_000 if the Propeller is running at 80MHz.
-
-Since the frequency of the mxd2125 is about 100Hz this means that the Period is 10ms... At rest this is a
-50% duty cycle, the signal that we are measuring is only HIGH for 5ms.  At 80MHz (12.5ns) this equates to
-a value of 400_000 representing a 5ms pulse width.
+    NOTE: At rest, normal RAW x and y values should be at about 400_000 if
+    the Propeller is running at 80MHz.
+    Since the frequency of the mxd2125 is about 100Hz this means that the
+    Period is 10ms... At rest this is a 50% duty cycle, the signal that we
+    are measuring is only HIGH for 5ms.  At 80MHz (12.5ns) this equates to
+    a value of 400_000 representing a 5ms pulse width.
 }}
 
 {
