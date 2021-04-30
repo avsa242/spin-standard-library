@@ -42,19 +42,18 @@ PUB Main{} | mm, inches
 
     setup{}
     lcd.printf1(string("PING))) Demo\rInches      -\rCentimeters -"), 0)
-    if lookdown(LCD_PIN: 0..31)
-        repeat
-            inches := ping.inches(PING_PIN)
-            lcd.position(16, 1)
-            lcd.dec(inches)
-            lcd.str(string(".0 "))
+    repeat
+        inches := ping.inches(PING_PIN)
+        lcd.position(16, 1)
+        lcd.dec(inches)
+        lcd.str(string(".0 "))
 
-            mm := ping.millimeters(PING_PIN)
-            lcd.position(14, 2)
-            lcd.str(int.decpadded((mm / 10), 3))
-            lcd.char(".")
-            lcd.str(int.decpadded((mm // 10), 1))
-            time.msleep(100)
+        mm := ping.millimeters(PING_PIN)
+        lcd.position(14, 2)
+        lcd.str(int.decpadded((mm / 10), 3))
+        lcd.char(".")
+        lcd.str(int.decpadded((mm // 10), 1))
+        time.msleep(100)
 
 PUB Setup
 
