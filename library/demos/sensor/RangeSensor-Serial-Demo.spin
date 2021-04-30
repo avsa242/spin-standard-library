@@ -1,8 +1,8 @@
 {
     --------------------------------------------
-    Filename: RangeSensor-LCD-Demo.spin
+    Filename: RangeSensor-Serial-Demo.spin
     Description: Demo of the ultrasonic/laser
-        range sensor driver (serial LCD display)
+        range sensor driver (serial display)
         * PING))) Parallax #28015
         * LaserPing Parallax #28041
     Author: Chris Savage, Jeff Martin
@@ -25,15 +25,12 @@ CON
 ' Ultrasonic or LaserPing
     PING_PIN    = 0
 
-' Serial LCD (Parallax #27977: 2 line, #27979: 4 line)
-    LCD_PIN     = 16
-    LCD_BAUD    = 19_200                        ' 2400, 9600, 19_200
-    LCD_LINES   = 4                             ' 2, 4
+    SER_BAUD    = 115_200
 ' --
 
 OBJ
 
-    lcd     : "display.lcd.serial"
+    ser     : "com.serial.terminal.ansi"
     ping    : "sensor.range.ultrasonic"
     int     : "string.integer"
     time    : "time"
@@ -41,26 +38,25 @@ OBJ
 PUB Main{} | mm, inches
 
     setup{}
-    lcd.printf1(string("PING))) Demo\rInches      -\rCentimeters -"), 0)
+    ser.printf1(string("PING))) Demo\nInches      -\nCentimeters -"), 0)
     repeat
         inches := ping.inches(PING_PIN)
-        lcd.position(16, 1)
-        lcd.dec(inches)
-        lcd.str(string(".0 "))
+        ser.position(16, 1)
+        ser.dec(inches)
+        ser.str(string(".0 "))
 
         mm := ping.millimeters(PING_PIN)
-        lcd.position(14, 2)
-        lcd.str(int.decpadded((mm / 10), 3))
-        lcd.char(".")
-        lcd.str(int.decpadded((mm // 10), 1))
+        ser.position(14, 2)
+        ser.str(int.decpadded((mm / 10), 3))
+        ser.char(".")
+        ser.str(int.decpadded((mm // 10), 1))
         time.msleep(100)
 
-PUB Setup
+PUB Setup{}
 
-    lcd.start(LCD_PIN, LCD_BAUD, LCD_LINES)
-    lcd.cursormode(0)
-    lcd.enablebacklight(true)
-    lcd.clear{}
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
 
 {
     --------------------------------------------------------------------------------------------------------
