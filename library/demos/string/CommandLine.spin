@@ -1,162 +1,204 @@
+{
+    --------------------------------------------
+    Filename: CommandLine.spin
+    Author: Brett Weir
+    Description: Simulated commandline interface
+    Copyright (c) 2021
+    Started Jan 8, 2016
+    Updated May 1, 2021
+    See end of file for terms of use.
+    --------------------------------------------
+}
+
 CON
 
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+    _clkmode    = xtal1 + pll16x
+    _xinfreq    = 5_000_000
 
-    MAX_LINE = 40
-    MAX_COMMANDS = 10
+' -- User-modifiable constants
+    SER_BAUD    = 115_200
+
+' --
+    MAX_LINE    = 40
+    MAX_CMDS    = 10
 
 OBJ
 
-    term    : "com.serial.terminal"
+    term    : "com.serial.terminal.ansi"
     str     : "string"
+    time    : "time"
 
 VAR
 
-    long    argc
-    word    argv[MAX_COMMANDS]          ' max 10 arguments
+    long _argc
+    word _argv[MAX_CMDS]                        ' max 10 arguments
+    byte _line[MAX_LINE]
+    byte _prompt[70]
+    byte _directory[64]
 
-    byte    line[MAX_LINE]
-    byte    prompt[70]
-    byte    directory[64]
+PUB Main{}
 
-PUB Main
+    term.start(SER_BAUD)
+    time.msleep(30)
+    term.clear{}
 
-    term.Start (115200)
+    setdir(string("~"))
 
-    SetDir(string("~"))
-
-    term.Str (@data_signon)
+    term.str(@data_signon)
 
     repeat
-        term.Flush
-        term.Str (@prompt)
+        term.flush{}
+        term.str(@_prompt)
 
-        term.ReadLine (@line, MAX_LINE)
-
-        if Process(@line)
-            term.Str (@data_usage)
+        term.readline(@_line, MAX_LINE)
+        term.newline{}
+        if process(@_line)
+            term.str(@data_usage)
             next
 
 PUB Process(s)
 
-    argc := 0
-    argv[argc] := str.Tokenize (s)
-    repeat while argv[argc]
-        argv[++argc] := str.Tokenize (0)
+    _argc := 0
+    _argv[_argc] := str.tokenize(s)
+    repeat while _argv[_argc]
+        _argv[++_argc] := str.tokenize(0)
 
-    if argc < 1
+    if _argc < 1
         return
 
-    if Match(argv[0], string("ls"))
-        ListStuff
+    if match(_argv[0], string("ls"))
+        liststuff{}
 
-    elseif Match(argv[0], string("cd"))
-        ChangeDir
+    elseif match(_argv[0], string("cd"))
+        changedir{}
 
-    elseif Match(argv[0], string("pwd"))
-        PrintWorkingDirectory
+    elseif match(_argv[0], string("pwd"))
+        printworkingdirectory{}
 
-    elseif Match(argv[0], string("bizz"))
-        Bizz
+    elseif match(_argv[0], string("bizz"))
+        bizz{}
 
-    elseifnot str.Compare (argv[0], string("help"), false)
+    elseifnot str.compare(_argv[0], string("help"), false)
         return true
 
     else
-        term.Str (string("Bad command or file name!",10))
+        term.str(string("Bad command or file name!", term#CR, term#LF))
 
 
-PUB PrintWorkingDirectory
+PUB PrintWorkingDirectory{}
 
-    term.Str (@directory)
-    term.NewLine
+    term.str(@_directory)
+    term.newline{}
 
-PUB ListStuff | i
+PUB ListStuff{} | i
 
-    if Match(@directory, string("~/another"))
-        term.Str (@data_dir2)
+    if match(@_directory, string("~/another"))
+        term.str(@data_dir2)
     else
-        term.Str (@data_dir1)
+        term.str(@data_dir1)
 
-PUB ChangeDir | i
+PUB ChangeDir{} | i
 
-    if Match(@directory, string("~"))
+    if match(@_directory, string("~"))
 
-        if Match(argv[1], string("another")) or Match(argv[1], string("another/"))
-            SetDir(string("~/another"))
+        if match(_argv[1], string("another")) or match(_argv[1], string("another/"))
+            setdir(string("~/another"))
         else
-            term.Str (string("Not a directory!",10))
+            term.strln(string("Not a directory!"))
 
-    elseif Match(@directory, string("~/another"))
+    elseif match(@_directory, string("~/another"))
 
-        if Match(argv[1], string(".."))
-            SetDir(string("~"))
+        if match(_argv[1], string(".."))
+            setdir(string("~"))
         else
-            term.Str (string("Not a directory!",10))
+            term.strln(string("Not a directory!"))
 
-    elseif str.IsEmpty (argv[1]) or Match(argv[1], string("~"))
+    elseif str.isempty(_argv[1]) or match(_argv[1], string("~"))
 
-        SetDir(string("~"))
-        term.Str (string("Not a directory!",10))
+        setdir(string("~"))
+        term.strln(string("Not a directory!"))
 
 PRI SetDir(d)
 
-    str.Copy (@directory, d)
-    SetPrompt
+    str.copy(@_directory, d)
+    setprompt{}
 
-PUB Bizz | ran
+PUB Bizz{} | ran
 
     ran := cnt
 
-    term.Str (string("RUNNING BIZZ BANG 4.0 in",10,"3...",10))
+    term.strln(string("RUNNING BIZZ BANG 4.0 in"))
+    term.strln(string("3..."))
 
-    repeat 200000
+    time.msleep(500)
 
-    term.Str (string("2...",10))
+    term.strln(string("2..."))
 
-    repeat 200000
+    time.msleep(500)
 
-    term.Str (string("1...",10))
+    term.strln(string("1..."))
 
-    repeat 200000
+    time.msleep(500)
 
     repeat 1000
-        term.Char (((ran? & $FF)//64)+32)
+        term.char(((ran? & $FF) // 64) + 32)
         repeat 100
 
-PUB SetPrompt
+PUB SetPrompt{}
 
-    str.Copy (@prompt, string("user@propeller:"))
-    str.Append (@prompt, @directory)
-    str.Append (@prompt, string("$ "))
+    str.copy(@_prompt, string("user@propeller:"))
+    str.append(@_prompt, @_directory)
+    str.append(@_prompt, string("$ "))
 
 PRI Match(s1, s2)
 
-    return (str.Compare (s1, s2, true) == 0)
+    return (str.compare(s1, s2, true) == 0)
 
 DAT
 
 data_usage
-byte    "Commands:",10
-byte    "   ls      list files",10
-byte    "   pwd     print working directory",10
-byte    "   cd      change directory",10
-byte    "   bizz    frobnicate the bar library",10
-byte    10,0
+    byte    "Commands:", term#CR, term#LF
+    byte    "   ls      list files", term#CR, term#LF
+    byte    "   pwd     print working directory", term#CR, term#LF
+    byte    "   cd      change directory", term#CR, term#LF
+    byte    "   bizz    frobnicate the bar library", term#CR, term#LF
+    byte    term#CR, term#LF,0
 
 data_dir1
-byte    "another/",10
-byte    "coolmusic.mp3",10
-byte    "file1.txt",10
-byte    "file2.txt",10
-byte    0
+    byte    "another/", term#CR, term#LF
+    byte    "coolmusic.mp3", term#CR, term#LF
+    byte    "file1.txt", term#CR, term#LF
+    byte    "file2.txt", term#CR, term#LF
+    byte    0
 
 data_dir2
-byte    "..",10
-byte    "morestuff.txt",10
-byte    0
+    byte    "..", term#CR, term#LF
+    byte    "morestuff.txt", term#CR, term#LF
+    byte    0
 
 data_signon
-byte    "Type 'help' for commands",10
-byte    0
+    byte    "Type 'help' for commands", term#CR, term#LF
+    byte    0
+
+DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
+
