@@ -3,26 +3,26 @@
     Filename: signal.audio.amp.max9744.i2c.spin
     Author: Jesse Burt
     Description: Driver for the MAX9744 20W audio amplifier IC
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Jul 7, 2018
-    Updated Nov 22, 2020
+    Updated May 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    SLAVE_WR            = core#SLAVE_ADDR
-    SLAVE_RD            = core#SLAVE_ADDR|1
+    SLAVE_WR        = core#SLAVE_ADDR
+    SLAVE_RD        = core#SLAVE_ADDR|1
 
-    DEF_SCL             = 28
-    DEF_SDA             = 29
-    DEF_HZ              = 100_000
-    I2C_MAX_FREQ        = core#I2C_MAX_FREQ
+    DEF_SCL         = 28
+    DEF_SDA         = 29
+    DEF_HZ          = 100_000
+    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
 ' Filter setting
-    NONE                = 0
-    PWM                 = 1
+    NONE            = 0
+    PWM             = 1
 
 VAR
 
@@ -31,43 +31,71 @@ VAR
 
 OBJ
 
-    i2c     : "com.i2c"
-    core    : "core.con.max9744"
-    io      : "io"
-    time    : "time"
+#ifdef PASM
+    i2c     : "com.i2c"                         ' PASM I2C engine
+#elseifdef SPIN
+    i2c     : "tiny.com.i2c"
+#else
+#error "One of PASM or SPIN must be defined"
+#endif
+    core    : "core.con.max9744"                ' HW-specific constants
+    io      : "io"                              ' I/O abstraction
+    time    : "time"                            ' timekeeping methods
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(SHDN_PIN): okay
+#ifdef PASM
+PUB Start(SHDN_PIN): status
 ' Start using "standard" Propeller I2C pins and 100kHz
 '   Still requires SHDN_PIN
-    if lookdown(SHDN_PIN: 0..31)
-        okay := startx(DEF_SCL, DEF_SDA, DEF_HZ, SHDN_PIN)
-    else
-        return FALSE
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, SHDN_PIN)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, SHDN_PIN): okay
-' Start with custom settings
-'   Returns: Core/cog number+1 of I2C driver, FALSE if no cogs available
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-                time.msleep(1)
-                if i2c.present (SLAVE_WR)       ' check device bus presence
-                    _shdn := SHDN_PIN
-                    powered(TRUE)               ' SHDN pin high
-                    return okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, SHDN_PIN): status
+' Start using custom I/O settings
+'   Returns: Core/cog number+1 of I2C engine, FALSE if no cogs available
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.msleep(1)
+            if i2c.present(SLAVE_WR)            ' test device bus presence
+                _shdn := SHDN_PIN
+                powered(TRUE)                   ' SHDN pin high
+                return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
+#elseifdef SPIN
+PUB Start(SHDN_PIN): status
+' Start using "standard" Propeller I2C pins
+'   Still requires SHDN_PIN
+    return startx(DEF_SCL, DEF_SDA, SHDN_PIN)
 
-    return FALSE                                ' something above failed
+PUB Startx(SCL_PIN, SDA_PIN, SHDN_PIN): status
+' Start using custom I/O settings
+'   Returns: Core/cog number+1 of current cog (doesn't use an additional cog)
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   lookdown(SHDN_PIN: 0..31)
+        i2c.init(SCL_PIN, SDA_PIN)
+        time.msleep(1)
+        if i2c.present(SLAVE_WR)                ' test device bus presence
+            _shdn := SHDN_PIN
+            powered(TRUE)                       ' SHDN pin high
+            return (cogid + 1)
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
+#endif
 
 PUB Stop{}
 
     mute{}
     powered(FALSE)
-    i2c.terminate{}
+    i2c.deinit{}
 
-PUB ModulationMode(mode)
+PUB ModulationMode(mode): curr_mode
 ' Set output filter mode
 '   Valid values:
 '       NONE (0): Filterless
@@ -78,7 +106,7 @@ PUB ModulationMode(mode)
             _mod_mode := core#MOD_FILTERLESS
         1:                                      ' classic PWM
             _mod_mode := core#MOD_CLASSICPWM
-        OTHER:
+        other:
             return _mod_mode
 
     powered(FALSE)                              ' cycle power
@@ -90,33 +118,33 @@ PUB Mute{}
 ' Set 0 Volume
     volume(0)
 
-PUB Powered(enabled)
+PUB Powered(state): curr_state
 ' Power on or off
 '   Valid values:
 '       FALSE (0): Power off
 '       TRUE (-1 or 1): Power on
 '   Any other value returns the current setting
-    case ||(enabled)
+    case ||(state)
         0:
             io.low(_shdn)
         1:
             io.high(_shdn)
             volume(_vol_level)
-        OTHER:
+        other:
             return io.state(_shdn)
 
 PUB VolDown{}
 ' Decrease volume level
     writereg(core#CMD_VOL_DN)
 
-PUB Volume(level)
+PUB Volume(level): curr_lvl
 ' Set Volume to a specific level
 '   Valid values: 0..63
 '   Any other value returns the current setting
     case level
         0..63:
             _vol_level := level
-        OTHER:
+        other:
             return _vol_level
 
     writereg(_vol_level)
@@ -125,13 +153,13 @@ PUB VolUp{}
 ' Increase volume level
     writereg(core#CMD_VOL_UP)
 
-PRI writeReg(reg) | cmd_pkt
+PRI writeReg(reg_nr) | cmd_pkt
 ' Write register/command to device
     cmd_pkt.byte[0] := SLAVE_WR
-    cmd_pkt.byte[1] := reg
+    cmd_pkt.byte[1] := reg_nr
 
     i2c.start{}
-    i2c.wr_block(@cmd_pkt, 2)
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
     i2c.stop{}
 
 DAT

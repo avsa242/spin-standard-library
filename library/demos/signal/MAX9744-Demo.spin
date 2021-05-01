@@ -4,12 +4,16 @@
     Author: Jesse Burt
     Description: Simple serial terminal-based demo of the MAX9744
         audio amp driver.
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Jul 7, 2018
-    Updated Nov 22, 2020
+    Updated May 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
+' Uncomment one of the below lines to start the driver with the
+'   PASM I2C engine (1 additional cog) or SPIN I2C engine (no additional cog)
+#define PASM
+'#define SPIN
 
 CON
 
@@ -20,20 +24,18 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    I2C_SCL     = 28
-    I2C_SDA     = 29
+    SCL_PIN     = 28
+    SDA_PIN     = 29
     I2C_HZ      = 400_000                       ' max 400_000 (PASM I2C only)
-    SHDN_PIN    = 18
+    SHDN_PIN    = 24
 ' --
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
-    io      : "io"
     time    : "time"
-    amp     : "signal.audio.amp.max9744.i2c"    ' PASM driver (req's 1 cog)
-'    amp     : "tiny.signal.audio.amp.max9744.i2c" ' SPIN-only driver
+    amp     : "audio.amp.max9744.i2c"
 
 PUB Main{} | i, level
 
@@ -44,10 +46,16 @@ PUB Main{} | i, level
 
     repeat
         ser.position(0, 0)
-        ser.str(string("Volume: "))
-        ser.dec(level)
+        ser.strln(string("Help:"))
+        ser.strln(string("[: Volume down"))
+        ser.strln(string("]: Volume up"))
+        ser.strln(string("f: Filterless modulation"))
+        ser.strln(string("m: Mute"))
+        ser.strln(string("p: Classic PWM modulation"))
         ser.newline{}
-        ser.strln(string("Press [ or ] for Volume Down or Up, respectively"))
+        ser.newline{}
+        ser.printf1(string("Volume: %d \n"), level)
+
         i := ser.charin{}
             case i
                 "[":
@@ -59,12 +67,14 @@ PUB Main{} | i, level
                 "f":
                     ser.strln(string("Modulation mode: Filterless "))
                     amp.modulationmode(amp#NONE)
+                    amp.volume(level)
                 "m":
-                    ser.strln(string("MUTE"))
                     amp.mute{}
+                    level := 0
                 "p":
                     ser.strln(string("Modulation mode: Classic PWM"))
                     amp.modulationmode(amp#PWM)
+                    amp.volume(level)
                 other:
 
 PUB Setup{}
@@ -73,14 +83,18 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if amp.startx(I2C_SCL, I2C_SDA, I2C_HZ, SHDN_PIN)                  ' PASM driver
-'    if amp.startx(I2C_SCL, I2C_SDA, SHDN_PIN)                         ' SPIN-only driver
+#ifdef PASM
+    if amp.startx(SCL_PIN, SDA_PIN, I2C_HZ, SHDN_PIN)
+#elseifdef SPIN
+    if amp.startx(SCL_PIN, SDA_PIN, SHDN_PIN)
+#endif
         ser.strln(string("MAX9744 driver started"))
     else
         ser.strln(string("MAX9744 driver failed to start - halting"))
         amp.stop{}
         time.msleep(500)
         ser.stop{}
+        repeat
 
 DAT
 {
