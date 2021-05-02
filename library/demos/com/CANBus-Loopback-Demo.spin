@@ -5,65 +5,60 @@
     Author: Chris Gadd
     Modified by: Jesse Burt
     Created: 2015
-    Updated: May 11, 2020
+    Updated: May 2, 2021
     See end of file for terms of use.
     --------------------------------------------
 
-    NOTE: This is a modified version of CANbus Loopback demo.spin, originally by Chris Gadd
-        The original header is preserved below.
+    NOTE: This is based on CANbus Loopback demo.spin,
+        originally by Chris Gadd
 
-  ┌────────────────────────────────────┐
-  │ CANbus loopback demos              │
-  │ Author: Chris Gadd                 │
-  │ Copyright (c) 2015 Chris Gadd      │
-  │ See end of file for terms of use.  │
-  └────────────────────────────────────┘
-  For this demo, place a pull-up resistor on the Tx_pin, and connect the Tx_pin to the Rx_pin - also works with loopback through a MCP2551
-   The writer object transmits a bitstream containing ID, data length, and data to the reader.
-   The reader object receives and decodes the bitstream, and displays it on a serial terminal at 115_200bps
+    For this demo, place a pull-up resistor on the Tx_pin, and connect
+        the Tx_pin to the Rx_pin - also works with loopback through a MCP2551
+    The writer object transmits a bitstream containing
+        ID, data length, and data to the reader.
+    The reader object receives and decodes the bitstream,
+        and displays it on a serial terminal
 }
 
 CON
+
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' User-modifiable constants
-    SER_RX      = 31
-    SER_TX      = 30
-    SER_BAUD    = 115_200
+' -- User-modifiable constants
     LED         = cfg#LED1
+    SER_BAUD    = 115_200
 
     CAN_RX      = 25
     CAN_TX      = 24
     CAN_BPS     = 500_000
+' --
 
 VAR
 
     long    _ident
-    byte    _ser_cog, _can_cog
-    byte    _dlc, _tx_data[8]                                   ' String of bytes to send
+    byte    _dlc, _tx_data[8]                   ' string of bytes to send
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
-    io      : "io"
     time    : "time"
-    canbus  : "com.can.txrx"                                    ' Unified reader/writer, good up to 500Kbps, requires 1 cog
+    canbus  : "com.can.txrx"                    ' RX/TX, 500Kbps max, req 1 cog
 
-PUB Main | i, n
+PUB Main{} | i, n
 
-    Setup
+    setup{}
 
-    time.Sleep(1)
-    _ident := $001                                              ' $000 is invalid and will cause reader to hang
+    time.sleep(1)
+    _ident := $001                              ' $000 is invalid and will cause reader to hang
     _dlc := 0
     n := 0
 
     repeat
         time.msleep(50)
-        SendCAN
-        CheckCAN
+        sendcan{}
+        checkcan{}
         _ident++
         if ++_dlc == 9
             _dlc := 0
@@ -71,49 +66,41 @@ PUB Main | i, n
             repeat i from 0 to _dlc - 1
                 _tx_data[i] := n++
 
-PUB SendCAN
+PUB SendCAN{}
 
     if _dlc == 0
-        canbus.SendRTR(_ident)                                  ' Send either a remote-transmission request
-    else                                                        '   or a normal message
-        canbus.Sendstr(_ident, @_dlc)
+        canbus.sendrtr(_ident)                  ' send a remote-trans. request
+    else                                        '   or a normal message
+        canbus.sendstr(_ident, @_dlc)
 
-PUB CheckCAN | a
+PUB CheckCAN{} | a
 
-    if canbus.ID                                                ' Check if an ID was received
-        if canbus.ID > $7FF
-            ser.hex(canbus.ID, 8)
+    if canbus.id{}                              ' check if an ID was received
+        if canbus.id{} > $7FF
+            ser.hex(canbus.id{}, 8)
         else
-            ser.hex(canbus.ID, 3)
+            ser.hex(canbus.id{}, 3)
         ser.char(ser#TB)
-        if canbus.CheckRTR
+        if canbus.checkrtr{}
             ser.str(string("Remote transmission request"))
         else
-            a := canbus.DataAddress                             ' DataAddress returns the address of a string of data bytes
-            repeat byte[a++]                                    '  The first byte contains the string length
-                ser.hex(byte[a++],2)                            '  Display bytes
+            a := canbus.dataaddress{}            ' pointer to str of data bytes
+            repeat byte[a++]                     ' first byte contains str len
+                ser.hex(byte[a++], 2)            '  Display bytes
                 ser.char(" ")
         ser.newline
-        canbus.NextID                                           ' Clear current ID buffer and advance to next
-        return TRUE
+        canbus.nextid{}                          ' clear ID buffer, adv to next
 
-PUB Setup
+PUB Setup{}
 
-    repeat until _ser_cog := ser.StartRXTX(SER_RX, SER_TX, 0, SER_BAUD)
+    ser.start(SER_BAUD)
     time.msleep(30)
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
 
-    canbus.Loopback(TRUE)
-    if _can_cog := canbus.Start(CAN_RX, CAN_TX, CAN_BPS)
-        ser.str(string("CANbus engine started", ser#CR, ser#LF))
-    else
-        ser.str(string("CANbus engine failed to start - halting", ser#CR, ser#LF))
-        canbus.Stop
-        time.msleep(500)
-        ser.Stop
-        FlashLED(LED, 500)
-
-#include "lib.utility.spin"
+'    canbus.loopback(TRUE)
+    canbus.start(CAN_RX, CAN_TX, CAN_BPS)
+    ser.strln(string("CANbus engine started"))
 
 DAT
 {
