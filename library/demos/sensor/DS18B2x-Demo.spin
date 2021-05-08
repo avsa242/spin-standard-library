@@ -19,7 +19,7 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    OW_PIN      = 2
+    OW_PIN      = 5
     SCALE       = C
 
     NR_DEVICES  = 2
@@ -44,7 +44,6 @@ VAR
 PUB Main{} | temp, i, nr_found
 
     setup{}
-
     ds.tempscale(SCALE)                         ' set temperature scale
     ds.opmode(ds#MULTI)                         ' ONE (1 sensor), MULTI
 
