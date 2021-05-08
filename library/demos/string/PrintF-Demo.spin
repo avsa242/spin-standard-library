@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Demonstrate the functionality of
         the printf() method variants
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 9, 2020
-    Updated Nov 9, 2020
+    Updated May 8, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -39,7 +39,9 @@ VAR
 
 PUB Main{} | sz, format, str1, str2
 
-    setup{}
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
 
 '   printf() prints directly to the terminal (serial, vga, oled, lcd, etc)
 '       whereas sprintf() and snprintf() output to a user-allocated buffer
@@ -63,6 +65,10 @@ PUB Main{} | sz, format, str1, str2
 '           The last five params (0, 0, 0, 0, 0) will be ignored, because only
 '           one format specifier was defined in the string (%d)
 '           The output will be: Number 1234
+'
+'   Alternatively, n-parameter variants of printf can be used:
+'       e.g.:   printf1(string("Number %d"), 1234)
+'               printf2(string("Numbers %d %d"), 1234, 5678)
 
 '   a simple example:
     format := string("A decimal: %d\n")
@@ -73,7 +79,7 @@ PUB Main{} | sz, format, str1, str2
     str1 := string("a string")
     str2 := string("another")
 
-    ser.position(0, 5)
+    ser.position(0, 0)
 
     ' You can specify the format inline:
     ser.printf(string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\nnext line\n\n\n"), "A", -1000, $DEADBEEF, str1, str2, 0)
@@ -97,19 +103,18 @@ PUB Main{} | sz, format, str1, str2
 
     ' An example showing comma-separated values, which could, for example,
     '   be written to a file on an SD-card
-    format := string("%d,%d,%d,%d,%d,%d\n")
+    format := string("%d,%d,%d,%d,%d,%d\n\n")
     sf.sprintf(@_buff, format, 7, 10, 3, 84, 16, 51)
     ser.str(@_buff)
 
+    ' n-parameter alternate variants of printf that can be used
+    ser.printf1(string("printf1() prints format with 1 param: %d\n"), 1234)
+    ser.printf2(string("printf2() prints format with 2 params: %d %d\n"), 1234, 5678)
+    ser.printf3(string("printf3() prints format with 3 params: %d %d %d\n"), 1234, 5678, 9012)
+    ser.printf4(string("printf4() prints format with 4 params: %d %d %d %d\n"), 1234, 5678, 9012, 3456)
+    ser.printf5(string("printf5() prints format with 5 params: %d %d %d %d %d\n"), 1234, 5678, 9012, 3456, 7890)
+
     repeat
-
-PUB Setup{}
-
-    ser.start(SER_BAUD)
-    time.msleep(30)
-    ser.reset{}
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
 
 DAT
 {
