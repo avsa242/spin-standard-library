@@ -3,9 +3,9 @@
     Filename: LM75-Demo.spin
     Author: Jesse Burt
     Description: Demo of the LM75 driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 19, 2020
-    Updated Nov 19, 2020
+    Updated May 8, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -28,8 +28,6 @@ CON
     ADDR_BITS   = %000                          ' %000..%111
 ' --
 
-    DAT_COL     = 20
-
     C           = 0
     F           = 1
 
@@ -41,59 +39,17 @@ OBJ
     int     : "string.integer"
     temp    : "sensor.temperature.lm75.i2c"
 
-PUB Main{} | dispmode
+PUB Main{} | tmp
 
     setup{}
     temp.tempscale(C)                           ' C (0), F (1)
 
-    ser.hidecursor{}
-    dispmode := 0
-    displaysettings{}
     repeat
-        case ser.rxcheck{}
-            "q", "Q":                           ' Quit the demo
-                ser.position(0, 17)
-                ser.str(string("Halting"))
-                temp.stop{}
-                time.msleep(5)
-                quit
-            "r", "R":                           ' Change display mode
-                ser.position(0, 14)             '   (raw or calculated)
-                repeat 2
-                    ser.clearline{}
-                    ser.newline{}
-                dispmode ^= 1
-        case dispmode
-            0:
-                ser.position(0, 14)
-                tempraw{}
-            1:
-                ser.position(0, 14)
-                tempcalc{}
-
-    ser.showcursor{}
-    repeat
-
-PUB TempCalc{} | tmp
-
-    tmp := temp.temperature{}
-    ser.str(string("Temp deg:  "))
-    ser.position(DAT_COL, 14)
-    decimal(tmp, 100)
-    ser.clearline{}
-    ser.newline{}
-
-PUB TempRaw{} | tmp
-
-    tmp := temp.tempdata{}
-    ser.str(string("Temp raw:  "))
-    ser.position(DAT_COL, 14)
-    ser.hex(tmp, 6)
-    ser.clearline{}
-    ser.newline{}
-
-PUB DisplaySettings{}
-
+        tmp := temp.temperature{}
+        ser.position(0, 3)
+        ser.str(string("Temp deg:  "))
+        decimal(tmp, 100)
+        ser.clearline{}
 
 PUB Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
 ' Display a scaled up number as a decimal
@@ -128,9 +84,9 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
     if temp.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
         temp.defaults{}
-        ser.str(string("LM75 driver started (I2C)"))
+        ser.strln(string("LM75 driver started (I2C)"))
     else
-        ser.str(string("LM75 driver failed to start - halting"))
+        ser.strln(string("LM75 driver failed to start - halting"))
         temp.stop{}
         time.msleep(5)
         repeat

@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Driver for the Maxim LM75
         Digital Temperature Sensor
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started May 19, 2019
-    Updated Nov 19, 2020
+    Updated May 8, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -41,33 +41,34 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"
-    core: "core.con.lm75"
-    time: "time"
+    i2c : "com.i2c"                             ' PASM I2C engine
+    core: "core.con.lm75"                       ' HW-specific constants
+    time: "time"                                ' timekeeping methods
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start{}: okay
+PUB Start{}: status
 ' Start using "standard" Propeller I2C pins, 100kHz
-    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-                if lookdown(ADDR_BITS: %000..%111)
-                    _addr := (ADDR_BITS << 1)
-                    time.msleep(1)
-                    if i2c.present(SLAVE_WR | _addr)    ' check device bus presence
-                        return okay
-
-    return FALSE                                ' something above failed
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ and lookdown(ADDR_BITS: %000..%111)
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            _addr := (ADDR_BITS << 1)
+            time.msleep(1)                      ' wait for device startup
+            if i2c.present(SLAVE_WR | _addr)    ' check device bus presence
+                return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    i2c.stop{}
+    i2c.deinit{}
 
 PUB Defaults{}
 ' Factory default settings
@@ -96,15 +97,29 @@ PUB IntActiveState(state): curr_state
 
 PUB IntClearThresh(thr): curr_thr
 ' Interrupt clear threshold (hysteresis), in hundredths of a degree
-'   Valid values: -55_00..12_00 (default: 75_00)
-    curr_thr := 0
-    readreg(core#T_HYST, 2, @curr_thr)
-    case thr
-        -55_00..125_00:
-            thr := temp2adc(thr)
-            writereg(core#T_HYST, 2, @thr)
-        other:
-            return adc2temp(curr_thr)
+'   Valid values:
+'       TempScale() == C: -55_00..125_00 (default: 80_00)
+'       TempScale() == F: -67_00..257_00 (default: 176_00)
+'   Any other value polls the chip and returns the current setting
+    case tempscale(-2)
+        C:
+            case thr
+                -55_00..125_00:
+                    thr := temp2adc(thr)
+                    writereg(core#T_HYST, 2, @thr)
+                other:
+                    curr_thr := 0
+                    readreg(core#T_HYST, 2, @curr_thr)
+                    return adc2temp(curr_thr)
+        F:
+            case thr
+                -67_00..257_00:
+                    thr := temp2adc(thr)
+                    writereg(core#T_HYST, 2, @thr)
+                other:
+                    curr_thr := 0
+                    readreg(core#T_HYST, 2, @curr_thr)
+                    return adc2temp(curr_thr)
 
 PUB IntMode(mode): curr_mode
 ' Interrupt output mode
@@ -140,16 +155,30 @@ PUB IntPersistence(thr): curr_thr
     writereg(core#CONFIG, 1, @thr)
 
 PUB IntThresh(thr): curr_thr
-' Interrupt threshold (overtemperature), in hundredths of a degree
-'   Valid values: -55_00..12_00 (default: 75_00)
-    case thr
-        -55_00..125_00:
-            thr := temp2adc(thr)
-            writereg(core#T_OS, 2, @thr)
-        other:
-            curr_thr := 0
-            readreg(core#T_OS, 2, @curr_thr)
-            return adc2temp(curr_thr)
+' Interrupt threshold (overtemperature), in hundredths of a degree Celsius
+'   Valid values:
+'       TempScale() == C: -55_00..125_00 (default: 80_00)
+'       TempScale() == F: -67_00..257_00 (default: 176_00)
+'   Any other value polls the chip and returns the current setting
+    case tempscale(-2)
+        C:
+            case thr
+                -55_00..125_00:
+                    thr := temp2adc(thr)
+                    writereg(core#T_OS, 2, @thr)
+                other:
+                    curr_thr := 0
+                    readreg(core#T_OS, 2, @curr_thr)
+                    return adc2temp(curr_thr)
+        F:
+            case thr
+                -67_00..257_00:
+                    thr := temp2adc(thr)
+                    writereg(core#T_OS, 2, @thr)
+                other:
+                    curr_thr := 0
+                    readreg(core#T_OS, 2, @curr_thr)
+                    return adc2temp(curr_thr)
 
 PUB Powered(state): curr_state
 ' Enable sensor power
@@ -159,11 +188,13 @@ PUB Powered(state): curr_state
     readreg(core#CONFIG, 1, @curr_state)
     case ||(state)
         0, 1:
+            ' bit is actually a "shutdown" bit, so its logic is inverted
+            ' (i.e., 0 = powered on, 1 = shutdown), so flip the bit
             state := ||(state) ^ 1
         other:
-            return (curr_state & 1) == 1
+            return (curr_state & 1) == 0
 
-    state := ((curr_state & core#SHUTDOWN_MASK) | state) & core#CONFIG_MASK
+    state := ((curr_state & core#SHUTDOWN_MASK) | state)
     writereg(core#CONFIG, 1, @state)
 
 PUB TempData{}: temp_raw
@@ -213,31 +244,26 @@ PRI temp2adc(temp_cal): temp_word
     temp_word := (temp_cal / 50) << 7
     return ~~temp_word
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from device into ptr_buff
     cmd_pkt.byte[0] := SLAVE_WR | _addr
     cmd_pkt.byte[1] := reg_nr
 
     i2c.start{}
-    i2c.wr_block(@cmd_pkt, 2)
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
     i2c.start{}
     i2c.write(SLAVE_RD | _addr)
-    repeat tmp from nr_bytes-1 to 0
-        byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+    i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
     i2c.stop{}
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2], tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Writes nr_bytes from ptr_buff to device
     cmd_pkt.byte[0] := SLAVE_WR | _addr
     cmd_pkt.byte[1] := reg_nr
 
     i2c.start{}
-    repeat tmp from 0 to 1
-        i2c.write(cmd_pkt.byte[tmp])
-
-    repeat tmp from nr_bytes-1 to 0
-        i2c.write(byte[ptr_buff][tmp])
-
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
+    i2c.wrblock_msbf(ptr_buff, nr_bytes)
     i2c.stop{}
 
 DAT
