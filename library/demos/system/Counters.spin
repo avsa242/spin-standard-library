@@ -1,4 +1,20 @@
-' Author: Chip Gracey
+{
+    --------------------------------------------
+    Filename: Counters.spin
+    Author: Chip Gracey
+    Modified by: Jesse Burt
+    Description: Demo of the Propeller's counters'
+        frequency synthesis ability
+        (square waves; up to 128MHz)
+    Started May 2006
+    Updated May 8, 2021
+    See end of file for terms of use.
+    --------------------------------------------
+
+    NOTE: This is based on CTR.spin, originally
+        by Chip Gracey
+}
+
 {{
     # CTRA and CTRB
 
@@ -49,7 +65,7 @@
     immediately disable the CTR, stopping all pin output and PHS accumulation.
 
 
-    ### FRQA / FRQB - Frequency register
+    ### FRQA / FRQB - frequency register
 
     FRQ holds the value that will be accumulated into the PHS register. For some
     applications, FRQ may be written once, and then ignored. For others, it may be
@@ -169,93 +185,113 @@ CON
     _CLKMODE    = cfg#_clkmode
     _XINFREQ    = cfg#_xinfreq
 
+' -- User-modifiable constants
+    SER_BAUD    = 115_200
+
     AUDIO_L     = cfg#SOUND_L
     AUDIO_R     = cfg#SOUND_R
 
+' --
+
 OBJ
 
-    cfg         : "core.con.boardcfg.activityboard"
-    term        : "com.serial.terminal"
-    counters    : "core.con.counters"
-    time        : "time"
+    cfg     : "core.con.boardcfg.activityboard"
+    term    : "com.serial.terminal.ansi"
+    time    : "time"
+    ctrs    : "core.con.counters"
 
 VAR
 
-    long  ctr, frq
+    long _ctr, _frq
 
-PUB Main
-{{
-    Synthesize frequencies on pin 0 and pin 1
-    also show FRQ values on tv
-}}
+PUB Main{}
+' Synthesize frequencies on pin AUDIO_L and AUDIO_R
+'   also show FRQ values on terminal
+    term.start(SER_BAUD)
+    time.msleep(30)
+    term.clear{}
 
-    term.start(115200)
-    time.Sleep(1)
-    SynthFreq(AUDIO_L, 1000)                                ' Determine ctr and frq for pin 0
-    CTRA := ctr                                             ' Set CTRA
-    FRQA := frq                                             ' Set FRQA
-    DIRA[AUDIO_L] := 1                                      ' Make pin output
+    term.printf2(string("Playing tone on pins %d and %d\n"), AUDIO_L, AUDIO_R)
+    term.strln(string("(press q to stop"))
 
-    term.Str(string("CTRA = "))                             ' Show CTRA value
-    term.Hex(ctr, 8)
-    term.Str(string("  FRQA = "))                           ' Show FRQA value
-    term.Hex(frq, 8)
+    synthfreq(AUDIO_L, 1000)                    ' Determine ctr and frq for pin 0
+    ctra := _ctr                                ' Set CTRA
+    frqa := _frq                                ' Set FRQA
+    dira[AUDIO_L] := 1                          ' Make pin output
 
-    SynthFreq(AUDIO_R, 500)                                 ' Determine ctr and frq for pin1
-    CTRB := ctr                                             ' Set CTRB
-    FRQB := frq                                             ' Set FRQB
-    DIRA[AUDIO_R] := 1                                      ' Make pin output
+    term.printf2(string("CTRA = %x  FRQA = %x\n"), _ctr, _frq)
 
-    term.Str(string(term#NL, term#LF, "CTRB = "))           ' Show CTRB value
-    term.Hex(ctr, 8)
-    term.Str(string("  FRQB = "))                           ' Show FRQB value
-    term.Hex(frq, 8)
-    term.Str (string(term#NL, term#LF, "Playing tone on pins "))
-    term.Dec (AUDIO_L)
-    term.Str (string(" and "))
-    term.Dec (AUDIO_R)
+    synthfreq(AUDIO_R, 500)                     ' Determine ctr and frq for pin1
+    ctrb := _ctr                                ' Set CTRB
+    frqb := _frq                                ' Set FRQB
+    dira[AUDIO_R] := 1                          ' Make pin output
+
+    term.printf2(string("CTRB = %x  FRQB = %x\n"), _ctr, _frq)
+
+    repeat until term.charin{} == "q"
+    ctra := ctrb := frqa := frqb := 0
 
     repeat
 
-PRI SynthFreq(Pin, Freq) | s, d
+PRI Synthfreq(pin, freq) | s, d
+' Determine CTR settings for synthesis of 0..128 MHz, in 1 Hz steps
+'
+'   pin = pin to output frequency on
+'   freq = actual Hz to synthesize
+'
+'   ctr and frq hold CTRA/CTRB and FRQA/FRQB values
+'
+'   Uses NCO mode %00100 for 0..499_999 Hz
+'   Uses PLL mode %00010 for 500_000..128_000_000 Hz
+'
+    freq := freq #> 0 <# 128_000_000            ' Limit frequency range
 
-'' Determine CTR settings for synthesis of 0..128 MHz in 1 Hz steps
-''
-'' in:    Pin = pin to output frequency on
-''        Freq = actual Hz to synthesize
-''
-'' out:   ctr and frq hold CTRA/CTRB and FRQA/FRQB values
-''
-''   Uses NCO mode %00100 for 0..499_999 Hz
-''   Uses PLL mode %00010 for 500_000..128_000_000 Hz
-''
-    Freq := Freq #> 0 <# 128_000_000                        ' Limit frequency range
+    if freq < 500_000                           ' If 0 to 499_999 Hz,
+        _ctr := ctrs#NCO_SINGLEEND              '   ..set NCO mode
+        s := 1                                  '   ..shift = 1
 
-    if Freq < 500_000                                       ' If 0 to 499_999 Hz,
-        ctr := counters#NCO_SINGLEEND                       '   ..set NCO mode
-        s := 1                                              '   ..shift = 1
+    else                                        ' If 500_000 to 128_000_000 Hz,
+        _ctr := ctrs#PLL_SINGLEEND              '   ..set PLL mode
+        d := >|((freq - 1) / 1_000_000)         ' Determine PLLDIV
+        s := 4 - d                              ' Determine shift
+        _ctr |= d << ctrs#PLLDIV                ' Set PLLDIV
 
-    else                                                    ' If 500_000 to 128_000_000 Hz,
-        ctr := counters#PLL_SINGLEEND                       '   ..set PLL mode
-        d := >|((Freq - 1) / 1_000_000)                     ' Determine PLLDIV
-        s := 4 - d                                          ' Determine shift
-        ctr |= d << counters#PLLDIV                         ' Set PLLDIV
+    _frq := fraction(freq, clkfreq, s)          ' Compute FRQA/FRQB value
+    _ctr |= pin                                 ' Set PINA to complete CTRA/CTRB value
 
-    frq := fraction(Freq, CLKFREQ, s)                       ' Compute FRQA/FRQB value
-    ctr |= Pin                                              ' Set PINA to complete CTRA/CTRB value
+PRI Fraction(a, b, shift) : f
 
-
-PRI fraction(a, b, shift) : f
-
-    if shift > 0                                            ' If shift, pre-shift a or b left
-        a <<= shift                                         '   to maintain significant bits while
-    if shift < 0                                            '   insuring proper result
+    if shift > 0                                ' If shift, pre-shift a or b left
+        a <<= shift                             '   to maintain significant bits while
+    if shift < 0                                '   insuring proper result
         b <<= -shift
 
-    repeat 32                                               ' Perform long division of a/b
+    repeat 32                                   ' Perform long division of a/b
         f <<= 1
         if a => b
             a -= b
             f++
         a <<= 1
+
+DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
 
