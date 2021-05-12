@@ -1,15 +1,18 @@
-i{{
-┌──────────────────────────────────────────────────────────────┐
-│ Object File: Clock Demo.spin                                 │
-│ Version:     1.01 (for Clock v1.2)                           │
-│ Date:        July 16, 2012                                   │
-│ Author:      Jeff Martin                                     │
-│ Company:     Parallax Semiconductor                          │
-│ Email:       jmartin@parallaxsemiconductor.com               │
-│ Licensing:   MIT License - see end of file for terms of use. │
-└──────────────────────────────────────────────────────────────┘
+{
+    --------------------------------------------
+    Filename: SysClock-Demo.spin
+    Author: Jeff Martin
+    Modified by: Jesse Burt
+    Description: Demo of the system.clock object
+        Show effect of clock speed on loops using delays
+        that are clock speed-sensitive
+    Started Jul 16, 2012
+    Updated May 12, 2021
+    See end of file for terms of use.
+    --------------------------------------------
+    NOTE: This is based on Clock Demo.spin, originally
+        by Jeff Martin
 
-Description:
 This is a demonstration of the Clock object.  It indicates the effects of clock source
 changes (speed changes) through the use of eight LEDs on the Propeller Demo Board;
 "scrolling" a lit LED back and forth across the eight-LED-display at a clock-dependant rate.
@@ -50,105 +53,100 @@ below (standard Propeller connections assumed).
    │        P23├──────────┫
    │           │              │
    └───────────┘              
-
-{{------------------------------------REVISION HISTORY-------------------------------------
- v1.01 - Updated 05/02/2013 to fix typos in description.
-
-}}
+}
 
 CON
-  _clkmode   = xtal1 + pll16x
-  _xinfreq   = 5_000_000                                'Set to standard clock mode and frequency (80 MHz)
 
-  SLED       = 16                                       'Starting LED (for scrolling display)
-  ELED       = 23                                       'Ending LED (for scrolling display)
-  SDELAY     = 115_000                                  'Scrolling LED delay
-  SHIFTCOUNT = ||(ELED-SLED)                            'Scrolling LED shift count
+    _clkmode    = xtal1 + pll16x
+    _xinfreq    = 5_000_000                      ' Set to standard clock mode and frequency (80 MHz)
+
+    SLED        = 16                             ' Starting LED (for scrolling display)
+    ELED        = 23                             ' Ending LED (for scrolling display)
+    SDELAY      = 115_000                        ' Scrolling LED delay
+    SHIFTCOUNT  = ||(ELED-SLED)                  ' Scrolling LED shift count
 
 VAR
-  long  stack[9]                                        'Stack space for ScrollLeds method
-  byte  cmIdx                                           'Clock Mode array index
+
+    long _scrl_stack[9]                          ' Stack space for ScrollLeds method
+    byte _cmode_idx                              ' Clock Mode array index
 
 OBJ
 
-  clk           : "system.clock"
-  time          : "time"
+    clk : "system.clock"
+    time: "time"
 
 PUB Main
-{{Launch cog to scroll LEDs right/left and occasionally switch clock sources (indicated by
-flash on all LEDs).}}
+' Launch cog to scroll LEDs right/left and occasionally switch clock sources (indicated by
+'   flash on all LEDs).
+    clk.setclock(5_000_000)                     ' Initialize Clock object
+    dira[SLED..ELED]~~                          ' Drive LEDs
+    cognew(scrollleds, @_scrl_stack)            ' Launch cog to scroll time-dependant LEDs
 
-  clk.SetClock(5_000_000)                               'Initialize Clock object
-  dira[SLED..ELED]~~                                    'Drive LEDs
-  cognew(ScrollLeds, @stack)                            'Launch cog to scroll time-dependant LEDs
-
-  repeat                                                'Loop
-    clk.SetMode(clockMode[cmIdx++])                     'Switch to new clockmode
-    FlashLeds                                           '  Flash LEDs
-    time.Sleep(3)                                     '  Wait before repeating
-    if ~~clockMode[cmIdx] == true                       '  Check clock mode list; reached end?
-      cmIdx~                                            '    Reset back to with first entry
+    repeat                                      ' Loop
+        clk.setmode(_clockmode[_cmode_idx++])   ' Switch to new clockmode
+        flashleds                               ' Flash LEDs
+        time.sleep(3)                           ' Wait before repeating
+        if _clockmode[_cmode_idx] == true       ' Check clock mode list; reached end?
+            _cmode_idx := 0                     ' Reset back to with first entry
 
 PRI ScrollLeds
-{Scroll a single lit LED left/right across display at a clock-dependant speed.}
+' Scroll a single lit LED left/right across display at a clock-dependant speed
+    time.msleep(10)                             ' Wait a little before driving LED
+    dira[SLED..ELED]~~                          ' Drive LEDs
+    outa[ELED]~~                                ' Turn on only last LED
 
-  time.MSleep(10)                                     'Wait a little before driving LED
-  dira[SLED..ELED]~~                                    'Drive LEDs
-  outa[ELED]~~                                          'Turn on only last LED
-
-  repeat                                                'Loop forever
-    repeat SHIFTCOUNT                                   '  Loop to scroll left
-      waitcnt(SDELAY + cnt)                             '    Wait specific count (clock speed sensitive)
-      outa[SLED..ELED] <<= 1                            '    Shift lit LED left
-    repeat SHIFTCOUNT                                   '  Loop to scroll right
-      waitcnt(SDELAY + cnt)                             '    Wait specific count (clock speed sensitive)
-      outa[SLED..ELED] >>= 1                            '    Shift lit LED right
+    repeat                                      ' Loop forever
+        repeat SHIFTCOUNT                       ' Loop to scroll left
+            waitcnt(SDELAY + cnt)               ' Wait specific count (clock speed sensitive)
+            outa[SLED..ELED] <<= 1              ' Shift lit LED left
+        repeat SHIFTCOUNT                       ' Loop to scroll right
+            waitcnt(SDELAY + cnt)               ' Wait specific count (clock speed sensitive)
+            outa[SLED..ELED] >>= 1              ' Shift lit LED right
 
 PRI FlashLeds
-{Flash all LEDs briefly.}
-
-  outa[SLED..ELED]~~                                    'All LEDs on
-  time.MSleep(125)                                    'Pause
-  outa[SLED..ELED]~                                     'LEDs back to normal
+' Flash all LEDs briefly
+      outa[SLED..ELED]~~                        ' All LEDs on
+      time.msleep(125)                          ' Pause
+      outa[SLED..ELED]~                         ' LEDs back to normal
 
 DAT
-{New clock mode table.  The traversal of this table by the code above takes the Propeller's
-clock source from the slowest speed through the fastest speed, then back through slowest
-speed again.}
+' New clock mode table.  The traversal of this table by the code above takes the Propeller's
+' clock source from the slowest speed through the fastest speed, then back through slowest
+' speed again.
 
-  clockMode  word  clk#XTAL1_PLL1x                      '=  5_000_000 Hz
-             word  clk#XTAL1_PLL2x                      '= 10_000_000 Hz
-             word  clk#RCFAST_                          '~ 12_000_000 Hz
-             word  clk#XTAL1_PLL4x                      '= 20_000_000 Hz
-             word  clk#XTAL1_PLL8x                      '= 40_000_000 Hz
-             word  clk#XTAL1_PLL16x                     '= 80_000_000 Hz
-             word  clk#XTAL1_PLL8x                      '= 40_000_000 Hz
-             word  clk#XTAL1_PLL4x                      '= 20_000_000 Hz
-             word  clk#RCFAST_                          '~ 12_000_000 Hz
-             word  clk#XTAL1_PLL2x                      '= 10_000_000 Hz
-             word  clk#XTAL1_PLL1x                      '=  5_000_000 Hz
-             word  clk#RCSLOW_                          '~     20_000 Hz
-             word  true                                 '<end of list>
+_clockMode  long    clk#XTAL1_PLL1x             '=  5_000_000 Hz
+            long    clk#XTAL1_PLL2x             '= 10_000_000 Hz
+            long    clk#RCFAST_                 '~ 12_000_000 Hz
+            long    clk#XTAL1_PLL4x             '= 20_000_000 Hz
+            long    clk#XTAL1_PLL8x             '= 40_000_000 Hz
+            long    clk#XTAL1_PLL16x            '= 80_000_000 Hz
+            long    clk#XTAL1_PLL8x             '= 40_000_000 Hz
+            long    clk#XTAL1_PLL4x             '= 20_000_000 Hz
+            long    clk#RCFAST_                 '~ 12_000_000 Hz
+            long    clk#XTAL1_PLL2x             '= 10_000_000 Hz
+            long    clk#XTAL1_PLL1x             '=  5_000_000 Hz
+            long    clk#RCSLOW_                 '~     20_000 Hz
+            long    true                        '<end of list>
 
-{{
+DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
 
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                                TERMS OF USE: MIT License                                │
-├─────────────────────────────────────────────────────────────────────────────────────────┤
-│Permission is hereby granted, free of charge, to any person obtaining a copy of this     │
-│software and associated documentation files (the "Software"), to deal in the Software    │
-│without restriction, including without limitation the rights to use, copy, modify, merge,│
-│publish, distribute, sublicense, and/or sell copies of the Software, and to permit       │
-│persons to whom the Software is furnished to do so, subject to the following conditions: │
-│                                                                                         │
-│The above copyright notice and this permission notice shall be included in all copies or │
-│substantial portions of the Software.                                                    │
-│                                                                                         │
-│THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESSED OR IMPLIED,    │
-│INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR │
-│PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE│
-│FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR     │
-│OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER   │
-│DEALINGS IN THE SOFTWARE.                                                                │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-}}
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
+
