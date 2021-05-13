@@ -62,11 +62,7 @@ PUB Start{}
 
     repeat
         term.hex(kb.getkey{}, 3)
-#ifdef HAS_TV
-        term.out(" ")
-#else
         term.char(" ")
-#endif
 
 DAT
 {

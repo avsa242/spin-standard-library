@@ -11,7 +11,7 @@
     NOTE: This is based on TV_Terminal.spin, originally
         by Chip Gracey
 }
-
+#define _HAS_NEWLINE_
 CON
 
     X_TILES         = 16
@@ -99,14 +99,14 @@ PUB Start(TV_BASEPIN): status
     gr.setup(X_TILES, Y_TILES, 0, Y_SCREEN, _ptr_bitmap)
     gr.textmode(X_SCALE, Y_SCALE, X_SPACING, 0)
     gr.width(WIDTH)
-    out(0)
+    char(0)
 
 PUB Stop{}
 ' Stop terminal
     tv.stop
     gr.stop
 
-PUB out(c)
+PUB Char(c)
 ' Print a character
 '
 '       $00 = home
@@ -116,66 +116,29 @@ PUB out(c)
 '       $0D = return
 '  $20..$7E = character
     case c
-
-        $00:                'home?
+        $00:                                    ' home?
             gr.clear
             _x := _y := 0
-
-        $01..$03:           'color?
+        $01..$03:                               ' color?
             gr.color(c)
-
-        $04..$07:           'color scheme?
+        $04..$07:                               ' color scheme?
             _tv_colors := @_color_schemes[c & 3]
-
-        $09:                'tab?
+        TB:                                     ' tab?
             repeat
-                out($20)
+                char($20)
             while _x & 7
-
-        $0D:                'return?
+        CR:                                     ' return?
             newline
-
-        $20..$7E:           'character?
+        " ".."~":                               ' character?
             gr.text(_x * X_CHR, -_y * Y_CHR - Y_OFFSET, @c)
             gr.finish
             if ++_x == X_LIMIT
                 newline
 
-PUB Str(string_ptr)
-' Print a zero-terminated string
-    repeat strsize(string_ptr)
-        out(byte[string_ptr++])
+' pull in terminal lib methods (Bin(), Dec(), Hex(), PrintF(), Str(), etc)
+#include "lib.terminal.spin"
 
-PUB Dec(value) | i
-' Print a decimal number
-    if value < 0
-        -value
-        out("-")
-
-    i := 1_000_000_000
-
-    repeat 10
-        if value => i
-            out(value / i + "0")
-            value //= i
-            result~~
-        elseif result or (i == 1)
-            out("0")
-        i /= 10
-
-PUB Hex(value, digits)
-' Print a hexadecimal number
-    value <<= (8 - digits) << 2
-    repeat digits
-        out(lookupz((value <-= 4) & $F : "0".."9", "A".."F"))
-
-PUB Bin(value, digits)
-' Print a binary number
-    value <<= 32 - digits
-    repeat digits
-        out((value <-= 1) & 1 + "0")
-
-PRI Newline
+PUB Newline
 
     if ++_y == Y_LIMIT
         gr.finish
