@@ -12,6 +12,7 @@
     NOTE: This is based on VGA_Text.spin, originally
         by Chip Gracey
 }
+#define _HAS_NEWLINE_
 
 CON
 
@@ -56,7 +57,10 @@ OBJ
 
     vga : "display.vga"
 
-PUB Start(basepin): status
+PUB Null{}
+' This is not a top-level object
+
+PUB Start(VGA_BASEPIN): status
 ' Start terminal - starts a cog
 '   Returns:
 '       cog number of VGA engine
@@ -67,7 +71,7 @@ PUB Start(basepin): status
     char(0)
 
     longmove(@_vga_status, @_vga_params, PARAM_CNT)
-    _vga_pins := basepin | %000_111
+    _vga_pins := VGA_BASEPIN | %000_111
     _vga_screen := @_screen
     _vga_colors := @_colors
     _vga_rate := clkfreq >> 2
@@ -77,12 +81,6 @@ PUB Start(basepin): status
 PUB Stop
 ' Stop terminal - frees a cog
     vga.stop
-
-PUB Bin(value, digits)
-' Print a binary number
-    value <<= 32 - digits
-    repeat digits
-        char((value <-= 1) & 1 + "0")
 
 PUB Char(c) | i, k
 ' Output a character
@@ -95,26 +93,26 @@ PUB Char(c) | i, k
 '     $0B = set Y position (Y follows)
 '     $0C = set _color (_color follows)
 '     $0D = return
-'  others = printable characters
+'   others = printable characters
     case _flag
         $00:
             case c
                 $00:
                     wordfill(@_screen, $220, SCREENSIZE)
                     _col := _row := 0
-                $01:
+                HM:
                     _col := _row := 0
-                $08:
+                BS:
                     if _col
                         _col--
-                $09:
+                TB:
                     repeat
                         print(" ")
                     while _col & 7
-                $0A..$0C:
+                LF..CB:
                     _flag := c
                     return
-                $0D:
+                CR:
                     newline
                 other:
                     print(c)
@@ -123,31 +121,8 @@ PUB Char(c) | i, k
         $0C: _color := c & 7
     _flag := 0
 
-PUB Dec(value) | i
-' Print a decimal number
-    if value < 0
-        -value
-        char("-")
-
-    i := 1_000_000_000
-
-    repeat 10
-        if value => i
-            Char(value / i + "0")
-            value //= i
-            result~~
-        elseif result or i == 1
-            Char("0")
-        i /= 10
-
-PUB Hex(value, digits)
-' Print a hexadecimal number
-    value <<= (8 - digits) << 2
-    repeat digits
-        Char(lookupz((value <-= 4) & $F : "0".."9", "A".."F"))
-
-PUB Newline | i
-
+PUB Newline
+' Move to first column of next line
     _col := 0
 
     ' reached last row? scroll up the display
@@ -173,16 +148,13 @@ PUB SetColors(ptr_color) | i, fore, back
         _colors[i << 1]     := (fore << 24) + (back << 16) + (fore << 8) + back
         _colors[i << 1 + 1] := (fore << 24) + (fore << 16) + (back << 8) + back
 
-PUB Str(stringptr)
-' Print a zero-terminated string
-    repeat strsize(stringptr)
-        Char(byte[stringptr++])
-
 PRI print(c)
 
     _screen[(_row * COLS) + _col] := ((_color << 1) + (c & 1)) << 10 + $200 + c & $FE
     if ++_col == COLS
         newline
+
+#include "lib.terminal.spin"
 
 DAT
 
