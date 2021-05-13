@@ -112,7 +112,7 @@ VAR
 OBJ
   tv    : "display.tv"
   gr    : "display.tv.graphics"
-  RC    : "math.rctime"
+  RC    : "signal.adc.rctime"
   Num   : "misc.numbers"
 
 PUB start | i,dx,dy

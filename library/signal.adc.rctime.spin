@@ -5,7 +5,7 @@
     Description: Measure capacitor charge time
         through resistor
     Started 2007
-    Updated Apr 26, 2021
+    Updated May 13, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -32,7 +32,7 @@ PUB Start(pin, state, ptr_rcvalue): status
 ' Start CalculateRCTime - starts a cog
 ' returns false if no cog available
     stop{}
-    status := _cog := (cognew(calculaterctime(pin, state, ptr_rcvalue), @rcstack) + 1)
+    status := _cog := (cognew(calculaterctime(pin, state, ptr_rcvalue), @_rcstack) + 1)
     _mode := 1
 
 PUB Stop{}
