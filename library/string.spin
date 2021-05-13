@@ -3,7 +3,7 @@
     Filename: string.spin
     Description: String manipulation functions
     Started Jan 5, 2016
-    Updated Apr 2, 2021
+    Updated May 13, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -100,29 +100,32 @@ PUB Fill(str, char)
     byte[str + strsize(str)] := 0
     return str
 
-PUB Find(str, substr) | i, size
+PUB Find(ptr_str, ptr_srchstr): ptr_match | i, srch_sz, mismatch
 {{
     Searches a string of characters for the first occurence of the specified string of characters.
 
     Returns the address of that string of characters if found and zero if not found.
 
-    str - A pointer to the string of characters to search.
-    substr - A pointer to the string of characters to find in the string of characters to search.
+    ptr_str - pointer to the string of characters to search
+    ptr_srchstr - pointer to the string of characters to find in ptr_str
 }}
 
-    size := strsize(substr)
-    if(size--)
+    ptr_match := mismatch := 0                  ' initialize vars to 0
+    srch_sz := strsize(ptr_srchstr)             ' get size of search string
+    if (srch_sz--)
+        repeat strsize(ptr_str--)
+            if(byte[++ptr_str] == byte[ptr_srchstr])
+            ' if the current char in the source string matches the first char
+            ' of the search string, then it could be a match
+                repeat i from 0 to srch_sz
+                ' walk through each char of the source string to see if it
+                ' matches the next char of the search string
+                    if(byte[ptr_str][i] <> byte[ptr_srchstr][i])
+                        mismatch := true        ' no - they're different;
+                        quit                    ' set flag: there's no match
 
-        repeat strsize(str--)
-            if(byte[++str] == byte[substr])
-
-                repeat i from 0 to size
-                    if(byte[str][i] <> byte[substr][i])
-                        result := true
-                        quit
-
-                ifnot(result~)
-                    return str
+                ifnot(mismatch~)                ' flag is clear
+                    return ptr_str              ' return updated pointer
 
 PUB FindChar(str, char)
 {{
