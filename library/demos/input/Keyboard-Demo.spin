@@ -4,7 +4,8 @@
     Author: Chip Gracey
     Modified by: Jesse Burt
     Description: Demo of the PS/2 keyboard input driver
-        Displays scancodes of keypresses on terminal output
+        Displays ASCII value of keypresses on terminal output
+        (plus modifier key codes, if applicable)
     Started May 15, 2006
     Updated May 13, 2021
     See end of file for terms of use.
