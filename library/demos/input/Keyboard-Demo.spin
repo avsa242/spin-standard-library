@@ -1,24 +1,28 @@
 {
     --------------------------------------------
-    Filename: Keyboard.spin
+    Filename: Keyboard-Demo.spin
     Author: Chip Gracey
     Modified by: Jesse Burt
     Description: Demo of the PS/2 keyboard input driver
-        Displays typed text on terminal output
-    Copyright (c) 2021
+        Displays scancodes of keypresses on terminal output
     Started May 15, 2006
-    Updated Apr 27, 2021
+    Updated May 13, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is based on Keyboard_Demo.spin, originally by
         Chip Gracey
 }
+' Uncomment the line below to use composite video output
+'#define HAS_TV
+
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
+    SER_BAUD    = 115_200
+
 ' Composite TV
     TV_BASEPIN  = cfg#VIDEO
 
@@ -29,25 +33,39 @@ CON
 
 OBJ
 
-' Uncomment one of the object below for your board,
+' Uncomment one of the boardcfg objects below for your board,
 '   or define the constants above appropriately
 
     cfg : "core.con.boardcfg.demoboard"
 '    cfg : "core.con.boardcfg.quickstart-hib"
-'    cfg : "core.con.boardcfg.badge.spin"
+#ifdef HAS_TV
     term: "display.tv.terminal"
+#else
+    term: "com.serial.terminal.ansi"
+#endif
     kb  : "input.keyboard.ps2"
+    time: "time"
 
 PUB Start{}
 
+#ifdef HAS_TV
     term.start(TV_BASEPIN)
-    term.str(string("Keyboard Demo...", 13))
+#else
+    term.start(SER_BAUD)
+    time.msleep(30)
+    term.clear{}
+#endif
+    term.str(string("Keyboard Demo...", 13, 10))
 
     kb.start(KEYB_CLK, KEYB_DATA)
 
     repeat
         term.hex(kb.getkey{}, 3)
+#ifdef HAS_TV
         term.out(" ")
+#else
+        term.char(" ")
+#endif
 
 DAT
 {
