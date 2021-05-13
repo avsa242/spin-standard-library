@@ -15,13 +15,10 @@
         originally by Chip Gracey
 }
 
-' This program uses the Propeller Demo Board, Rev C
-' The microphone is digitized and the samples are played on the headphones.
-
 CON
 
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+    _clkmode    = xtal1 + pll16x
+    _xinfreq    = 5_000_000
 
 
 ' At 80MHz the ADC/DAC sample resolutions and rates are as follows:
@@ -40,47 +37,60 @@ CON
 ' 13     9.77 KHz
 ' 14     4.88 KHz
 
-' try different values from table here
-    BITS = 11
+' -- User-modifiable constants
+    MIC_IN      = cfg#MIC_IN
+    MIC_FB      = cfg#MIC_FB
+    AUDIO_L     = cfg#AUDIO_L
+    AUDIO_R     = cfg#AUDIO_R
+    BITS        = 11                            ' 5..14 (see above table)
+
+' --
+
+OBJ
+
+    cfg : "core.con.boardcfg.demoboard"
+    ctrs: "core.con.counters"
 
 PUB Go
 
     cognew(@asm_entry, 0)   'launch assembly program into a COG
 
+' tell the counters object we want constants shifted into position
+'   for PASM programs
+#define _PASM_
 
 DAT
 ' Assembly program
             org
 
-asm_entry   mov       dira, asm_dira                   'make pins 8 (ADC) and 0 (DAC) outputs
+asm_entry   mov       dira, asm_dira            ' make pins 8 (ADC) and 0 (DAC) outputs
 
-            movs      ctra, #8                         'POS W/FEEDBACK mode for CTRA
-            movd      ctra, #9
-            movi      ctra, #%01001_000
+            movs      ctra, #MIC_IN             ' POS W/FEEDBACK mode for CTRA
+            movd      ctra, #MIC_FB
+            movi      ctra, #ctrs#POS_DETECT_FB
             mov       frqa, #1
 
-            movs      ctrb, #10                        'DUTY DIFFERENTIAL mode for CTRB
-            movd      ctrb, #11
-            movi      ctrb, #%00111_000
+            movs      ctrb, #AUDIO_L            ' DUTY DIFFERENTIAL mode for CTRB
+            movd      ctrb, #AUDIO_R
+            movi      ctrb, #ctrs#DUTY_DIFFERENTIAL
 
-            mov       asm_cnt, cnt                     'prepare for WAITCNT loop
+            mov       asm_cnt, cnt              ' prepare for WAITCNT loop
             add       asm_cnt, asm_cycles
 
+:loop       waitcnt   asm_cnt, asm_cycles       ' wait for next CNT value (timing is determinant after WAITCNT)
 
-:loop       waitcnt   asm_cnt, asm_cycles              'wait for next CNT value (timing is determinant after WAITCNT)
-
-            mov       asm_sample, phsa                 'capture PHSA and get difference
+            mov       asm_sample, phsa          ' capture PHSA and get difference
             sub       asm_sample, asm_old
             add       asm_old, asm_sample
 
-            shl       asm_sample, #32-BITS             'justify sample and output to FRQB
+            shl       asm_sample, #32-BITS      ' justify sample and output to FRQB
             mov       frqb, asm_sample
 
-            jmp       #:loop                          'wait for next sample period
+            jmp       #:loop                    ' wait for next sample period
 
 ' Data
-asm_cycles  long      |< BITS - 1                     'sample time
-asm_dira    long      $00000E00                       'output mask
+asm_cycles  long      |< BITS - 1               ' sample time
+asm_dira    long      $00000E00                 ' output mask
 
 asm_cnt     res       1
 asm_old     res       1
