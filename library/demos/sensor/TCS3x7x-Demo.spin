@@ -3,9 +3,9 @@
     Filename: TCS3x7x-Demo.spin
     Author: Jesse Burt
     Description: Demo of the TCS3x7x driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started: Jun 24, 2018
-    Updated: Dec 24, 2020
+    Updated: May 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -39,7 +39,8 @@ OBJ
 PUB Main{}
 
     setup{}
-
+    rgb.preset_active{}                         ' default settings, but enable
+                                                '   sensor power
     repeat
         rgb.opmode(rgb#RUN)
         if LED_ENABLED                          ' if LED is enabled,
@@ -69,7 +70,6 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
     if rgb.startx(I2C_SCL, I2C_SDA, I2C_HZ)
         ser.strln(string("TCS3X7X driver started"))
-        rgb.defaults_measure{}
     else
         ser.strln(string("TCS3X7X driver failed to start - halting"))
         rgb.stop{}
