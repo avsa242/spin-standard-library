@@ -3,9 +3,9 @@
     Filename: 23XXXX-Demo.spin
     Author: Jesse Burt
     Description: Simple demo of the 23XXXX driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started May 20, 2019
-    Updated Dec 27, 2020
+    Updated May 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -64,7 +64,8 @@ PUB Main{} | base_page, start, elapsed
         sram.readpage(base_page, PAGESIZE, @_sram_buff)
         elapsed := cnt-start
 
-        ser.hexdump(@_sram_buff, base_page << 5, PAGESIZE, 8, 0, 5)
+        ser.position(0, 5)
+        ser.hexdump(@_sram_buff, base_page << 5, 5, PAGESIZE, 8)
         ser.printf1(string("\nReading done (%dus)\n"), usec(elapsed))
 
         case ser.charin{}

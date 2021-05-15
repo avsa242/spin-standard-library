@@ -61,7 +61,8 @@ PUB Main{} | mem_base, stime, etime
     repeat
         readtest(mem_base)
 
-        ser.hexdump(@_buff, mem_base, _pagesize, 16, 0, 5)
+        ser.position(0, 5)
+        ser.hexdump(@_buff, mem_base, 5, _pagesize, 16)
         ser.newline{}
 
         case ser.charin{}                       ' wait for terminal keypress
