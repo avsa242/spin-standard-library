@@ -3,9 +3,9 @@
     Filename: sensor.thermocouple.max31856.spi.spin
     Author: Jesse Burt
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
-    Copyright (c) 2020
+    Copyright (c) 2021
     Created: Sep 30, 2018
-    Updated: Dec 6, 2020
+    Updated: May 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -51,31 +51,34 @@ CON
 
 VAR
 
-    long _CS, _SCK, _MOSI, _MISO
+    byte _CS
     byte _temp_scale
 
 OBJ
 
-    core    : "core.con.max31856"
-    spi     : "com.spi.4w"
+    core    : "core.con.max31856"               ' HW-specific constants
+    spi     : "com.spi.4w"                      ' PASM SPI engine (1MHz)
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN): okay
-
-    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and{
+PUB Startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN): status
+' Start using custom settings
+    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(SDI_PIN: 0..31) and lookdown(SDO_PIN: 0..31)
-        if okay := spi.start(core#CLK_DELAY, core#CPOL)
-            longmove(@_CS, @CS_PIN, 4)
+        if (status := spi.init(SCK_PIN, SDI_PIN, SDO_PIN, core#SPI_MODE))
+            _CS := CS_PIN
             outa[_CS] := 1
             dira[_CS] := 1
-            return okay
-    return FALSE                                ' something above failed
+            return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    spi.stop{}
+    spi.deinit{}
 
 PUB CJIntHighThresh(thresh): curr_thr
 ' Set Cold-Junction HIGH fault threshold
@@ -108,7 +111,7 @@ PUB CJSensorEnabled(state): curr_state
         0, 1:
             state := (||(state) ^ 1) << core#CJ ' logic is inverted in the reg
         other:                                  ' so flip the bit
-            return (((curr_state >> core#CJ) & %1) ^ 1) == 1
+            return (((curr_state >> core#CJ) & 1) ^ 1) == 1
 
     state := ((curr_state & core#CJ_MASK) | state) & core#CR0_MASK
     writereg(core#CR0, 1, @state)
@@ -236,7 +239,7 @@ PUB NotchFilter(freq): curr_freq | opmode_orig
             freq := lookdownz(freq: 60, 50)
         other:
             opmode(opmode_orig)
-            curr_freq &= %1
+            curr_freq &= 1
             return lookupz(curr_freq: 60, 50)
 
     freq := ((curr_freq & core#NOTCHFILT_MASK) | freq) & core#CR0_MASK
@@ -271,7 +274,7 @@ PUB OpMode(mode): curr_mode
         SINGLE, CONT:
             mode := (mode << core#CMODE)
         other:
-            return (curr_mode >> core#CMODE) & %1
+            return (curr_mode >> core#CMODE) & 1
 
     mode := ((curr_mode & core#CMODE_MASK) | mode) & core#CR0_MASK
     writereg(core#CR0, 1, @mode)
@@ -356,10 +359,9 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
         other:                                  ' invalid; return
             return
 
-    outa[_CS] := 0                              ' shift out reg number
-    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-    repeat tmp from nr_bytes-1 to 0             ' then read the data, MSB-first
-        byte[ptr_buff][tmp] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+    outa[_CS] := 0
+    spi.wr_byte(reg_nr)                         ' shift out reg number
+    spi.rdblock_msbf(ptr_buff, nr_bytes)        ' then read data, MSByte-first
     outa[_CS] := 1
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
@@ -371,9 +373,8 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
             return
 
     outa[_CS] := 0
-    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-    repeat tmp from nr_bytes-1 to 0
-        spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][tmp])
+    spi.wr_byte(reg_nr)
+    spi.wrblock_msbf(ptr_buff, nr_bytes)
     outa[_CS] := 1
 
 DAT

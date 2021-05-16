@@ -3,9 +3,9 @@
     Filename: MAX31856-Demo.spin
     Description: Demo for the MAX31856 driver
     Author: Jesse Burt
-    Copyright (c) 2020
+    Copyright (c) 2021
     Created Sep 30, 2018
-    Updated Dec 6, 2020
+    Updated May 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,10 +19,10 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS          = 0
-    SCK         = 1
-    SDI         = 2
-    SDO         = 3
+    CS_PIN      = 0
+    SCK_PIN     = 1
+    SDI_PIN     = 2
+    SDO_PIN     = 3
 
     SCALE       = F
 ' --
@@ -96,10 +96,10 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if max31856.start(CS, SCK, SDI, SDO)
-        ser.strln(string("max31856 driver started"))
+    if max31856.startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN)
+        ser.strln(string("MAX31856 driver started"))
     else
-        ser.strln(string("max31856 driver failed to start - halting"))
+        ser.strln(string("MAX31856 driver failed to start - halting"))
         max31856.stop{}
         time.msleep(5)
         ser.stop{}
