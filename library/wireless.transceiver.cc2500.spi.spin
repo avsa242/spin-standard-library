@@ -5,7 +5,7 @@
     Description: Driver for TI's CC2500 ISM-band (2.4GHz) transceiver
     Copyright (c) 2021
     Started Jul 7, 2019
-    Updated Jan 11, 2021
+    Updated May 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -90,7 +90,7 @@ CON
 
 VAR
 
-    byte _CS, _MOSI, _MISO, _SCK
+    byte _CS
     byte _status
 
 OBJ
@@ -103,22 +103,19 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
+PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 ' Start using custom I/O settings and 1MHz SPI bus speed
-    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and{
+    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
     } lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if okay := spi.start(core#CLK_DELAY, core#CPOL)
-            time.msleep(5)
+        if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+            time.usleep(core#T_POR)
             _CS := CS_PIN
-            _MOSI := MOSI_PIN
-            _MISO := MISO_PIN
-            _SCK := SCK_PIN
 
             outa[_CS] := 1
             dira[_CS] := 1
-            if lookdown(deviceid{}: $03)
+            if deviceid{} == $03
                 reset{}
-                return okay
+                return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -126,7 +123,7 @@ PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
 
 PUB Stop{}
 
-    spi.stop{}
+    spi.deinit{}
 
 PUB Defaults{}
 ' Factory default settings
@@ -922,11 +919,6 @@ PUB State{}: curr_state
     curr_state := 0
     readreg(core#MARCSTATE, 1, @curr_state)
 
-PUB Status{}: curr_status
-' Read the status byte
-    writereg(core#CS_SNOP, 0, 0)
-    return _status
-
 PUB SyncMode(mode): curr_mode
 ' Set sync-word qualifier mode
 '   Valid values:
@@ -1022,6 +1014,11 @@ PUB WOR{}
 ' Change chip state to WOR (Wake-on-Radio)
     writereg(core#CS_SWOR, 0, 0)
 
+PRI getStatus{}: curr_status
+' Read the status byte
+    writereg(core#CS_SNOP, 0, 0)
+    return _status
+
 PRI log2(num): l2
 ' Return log2 of num
     l2 := 0
@@ -1054,17 +1051,14 @@ PUB readReg(reg_nr, nr_bytes, ptr_buff) | i
                 0:
                     return
             outa[_CS] := 0
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr | core#R)
-            repeat i from 0 to nr_bytes-1
-                byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+            spi.wr_byte(reg_nr | core#R)
+            spi.rdblock_lsbf(ptr_buff, nr_bytes)
             outa[_CS] := 1
             return
 
     outa[_CS] := 0
-    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr | core#R)
-
-    repeat i from nr_bytes-1 to 0
-        byte[ptr_buff][i] := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+    spi.wr_byte(reg_nr | core#R)
+    spi.rdblock_msbf(ptr_buff, nr_bytes)
     outa[_CS] := 1
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
@@ -1080,15 +1074,14 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
                 other:
                     return
             outa[_CS] := 0
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-            repeat tmp from nr_bytes-1 to 0
-                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][tmp])
+            spi.wr_byte(reg_nr)
+            spi.wrblock_msbf(ptr_buff, nr_bytes)
             outa[_CS] := 1
             return
         core#CS_SRES..core#CS_SNOP:             ' Command strobes
             outa[_CS] := 0
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-            _status := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 8)
+            spi.wr_byte(reg_nr)
+            _status := spi.rd_byte{}
             outa[_CS] := 1
             return
         core#FIFO:
@@ -1099,9 +1092,8 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
                 0:
                     return
             outa[_CS] := 0
-            spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)
-            repeat tmp from 0 to nr_bytes-1
-                spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[ptr_buff][tmp])
+            spi.wr_byte(reg_nr)
+            spi.wrblock_lsbf(ptr_buff, nr_bytes)
             outa[_CS] := 1
             return
         other:                                  ' Invalid reg - ignore
