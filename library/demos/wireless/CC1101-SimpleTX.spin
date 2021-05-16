@@ -3,9 +3,9 @@
     Filename: CC1101-SimpleTX.spin
     Author: Jesse Burt
     Description: Simple transmit demo of the cc1101 driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 29, 2020
-    Updated Nov 29, 2020
+    Updated May 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -103,7 +103,7 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if cc1101.start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if cc1101.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
         ser.strln(string("CC1101 driver started"))
     else
         ser.strln(string("CC1101 driver failed to start - halting"))
