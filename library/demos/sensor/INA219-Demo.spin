@@ -3,9 +3,9 @@
     Filename: INA219-Demo.spin
     Author: Jesse Burt
     Description: Demo of the INA219 driver
-    Copyright (c) 2019
+    Copyright (c) 2021
     Started Sep 18, 2019
-    Updated Sep 22, 2019
+    Updated May 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,160 +15,107 @@ CON
     _clkmode        = cfg#_clkmode
     _xinfreq        = cfg#_xinfreq
 
+' -- User-modifiable constants
+    LED             = cfg#LED1
+    SER_BAUD        = 115_200
+
     SCL_PIN         = 28
     SDA_PIN         = 29
     I2C_HZ          = 400_000
+' --
 
-    LED             = cfg#LED1
-
-    MEASUREMENT_COL = 0
-    CURR_MEAS_COL   = 20
-    MIN_MEAS_COL    = CURR_MEAS_COL + 20
-    MAX_MEAS_COL    = MIN_MEAS_COL + 20
+    VBUS_COL        = 0
+    VSHUNT_COL      = VBUS_COL+15
+    I_COL           = VSHUNT_COL+15
+    P_COL           = I_COL+15
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
+    ser     : "com.serial.terminal.ansi"
     time    : "time"
     ina219  : "sensor.power.ina219.i2c"
     int     : "string.integer"
 
-VAR
+PUB Main{} | vbus, vshunt, i, p
 
-    byte _ser_cog, _row
+    setup{}
 
-PUB Main | vbus, vbus_min, vbus_max, vshunt, vshunt_min, vshunt_max, i, i_min, i_max, p, p_min, p_max, cnf, cnf_init
+    ina219.preset320s_2a_100mohm{}
 
-    Setup
-    ina219.Calibration (20480)
-    ina219.BusVoltageRange (32)
-    ina219.ShuntVoltageRange (320)
-    ina219.ShuntADCRes (12)
-'    ina219.ShuntSamples (128)
-    ina219.BusADCRes (12)
+    ina219.currentbias(4096)                    ' 0..65535
+                                                ' (>0 for current readings)
 
-    cnf_init := ina219.ConfigWord
-    _row := 5
-    ser.Position (MEASUREMENT_COL, _row)
-    ser.Str (string("Measurement:"))
-    ser.Position (CURR_MEAS_COL, _row)
-    ser.Str (string("Current val:"))
-    ser.Position (MIN_MEAS_COL, _row)
-    ser.Str (string("Min:"))
-    ser.Position (MAX_MEAS_COL, _row)
-    ser.Str (string("Max:"))
-
-    _row += 2
-    vbus_min := ina219.BusVoltage
-    vshunt_min := ina219.ShuntVoltage
-    i_min := ina219.Current
-    p_min := ina219.Power
+    ser.position(VBUS_COL, 3)
+    ser.str(string("Bus voltage"))
+    ser.position(VSHUNT_COL, 3)
+    ser.str(string("Shunt voltage"))
+    ser.position(I_COL, 3)
+    ser.str(string("Current"))
+    ser.position(P_COL, 3)
+    ser.str(string("Power"))
 
     repeat
-        vbus := ina219.BusVoltage
-        vshunt := ina219.ShuntVoltage
-        i := ina219.Current
-        p := ina219.Power
-        cnf := ina219.ConfigWord
+        vbus := ina219.busvoltage{}
+        vshunt := ina219.shuntvoltage{}
+        i := ina219.current{}
+        p := ina219.power{}
 
-        vbus_min := vbus <# vbus_min
-        vbus_max := vbus #> vbus_max
-        vshunt_min := vshunt_min <# vshunt
-        vshunt_max := vshunt #> vshunt_max
-        i_min := i_min <# i
-        i_max := i #> i_max
-        p_min := p_min <# p
-        p_max := p #> p_max
+        ser.position(VBUS_COL, 5)
+        decimal(vbus, 1000)
+        ser.str(string("V  "))
 
-        ser.Position (MEASUREMENT_COL, _row)
-        ser.Str (string("Bus voltage"))
-        ser.Position (CURR_MEAS_COL+3, _row)
-        ser.Str (int.DecPadded(vbus, 7))
-        ser.Str (string("mV"))
-        ser.Position (MIN_MEAS_COL-3, _row)
-        ser.Str (int.DecPadded(vbus_min, 7))
-        ser.Position (MAX_MEAS_COL-3, _row)
-        ser.Str (int.DecPadded(vbus_max, 7))
+        ser.position(VSHUNT_COL, 5)
+        decimal(vshunt, 1_000_000)
+        ser.str(string("V  "))
 
-        _row++
-        ser.Position (MEASUREMENT_COL, _row)
-        ser.Str (string("Shunt voltage"))
-        ser.Position (CURR_MEAS_COL+3, _row)
-        ser.Str (int.DecPadded(vshunt, 7))
-        ser.Str (string("uV"))
-        ser.Position (MIN_MEAS_COL-3, _row)
-        ser.Str (int.DecPadded(vshunt_min, 7))
-        ser.Position (MAX_MEAS_COL-3, _row)
-        ser.Str (int.DecPadded(vshunt_max, 7))
+        ser.position(I_COL, 5)
+        decimal(i, 10)
+        ser.str(string("mA  "))
 
-        _row++
-        ser.Position (MEASUREMENT_COL, _row)
-        ser.Str (string("Current"))
-        ser.Position (CURR_MEAS_COL+3, _row)
-        ser.Str (int.DecPadded(i, 7))
-        ser.Str (string("uA"))
-        ser.Position (MIN_MEAS_COL-3, _row)
-        ser.Str (int.DecPadded(i_min, 7))
-        ser.Position (MAX_MEAS_COL-3, _row)
-        ser.Str (int.DecPadded(i_max, 7))
+        ser.position(P_COL, 5)
+        decimal(p, 1000)
+        ser.str(string("W  "))
 
-        _row++
-        ser.Position (MEASUREMENT_COL, _row)
-        ser.Str (string("Power"))
-        ser.Position (CURR_MEAS_COL+3, _row)
-        ser.Str (int.DecPadded(p, 7))
-        ser.Str (string("uW"))
-        ser.Position (MIN_MEAS_COL-3, _row)
-        ser.Str (int.DecPadded(p_min, 7))
-        ser.Position (MAX_MEAS_COL-3, _row)
-        ser.Str (int.DecPadded(p_max, 7))
-
-        _row++
-        ser.Position (MEASUREMENT_COL, _row)
-        ser.Str (string("Config word"))
-        ser.Position (CURR_MEAS_COL, _row)
-        ser.Bin (cnf, 16)
-
-        _row++
-        ser.Position (CURR_MEAS_COL+2, _row)
-        ser.Char ("|")
-        ser.Position (CURR_MEAS_COL+4, _row)
-        ser.Char ("|")
-        ser.Position (CURR_MEAS_COL+8, _row)
-        ser.Char ("|")
-        ser.Position (CURR_MEAS_COL+12, _row)
-        ser.Char ("|")
-        ser.Position (CURR_MEAS_COL+15, _row)
-        ser.Char ("|")
-
-        _row++
-        ser.Position (CURR_MEAS_COL, _row)
-        ser.Bin (cnf_init, 16)
-
-        _row := 7
-        time.MSleep (10)
-
-PUB Setup
-
-    repeat until _ser_cog := ser.Start (115_200)
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#NL))
-    if ina219.Startx (SCL_PIN, SDA_PIN, I2C_HZ)
-        ser.Str (string("INA219 driver started", ser#NL))
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
     else
-        ser.Str (string("INA219 driver failed to start - halting", ser#NL))
-        ina219.Stop
-        time.MSleep (500)
-        ser.Stop
-        Flash (LED, 500)
+        sign := " "
 
-PUB Flash(pin, delay_ms)
-
-    dira[pin] := 1
     repeat
-        !outa[pin]
-        time.MSleep (delay_ms)
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
+
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+    if ina219.startx(SCL_PIN, SDA_PIN, I2C_HZ)
+        ser.strln(string("INA219 driver started"))
+    else
+        ser.strln(string("INA219 driver failed to start - halting"))
+        ina219.stop{}
+        time.msleep(500)
+        ser.stop{}
+        repeat
 
 DAT
 {
