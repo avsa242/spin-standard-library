@@ -5,7 +5,7 @@
     Description: Simple demo of the INA260 driver
     Copyright (c) 2020
     Started Jan 18, 2020
-    Updated Dec 5, 2020
+    Updated May 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
