@@ -5,7 +5,7 @@
     Description: Driver for the FXOS8700 6DoF IMU
     Copyright (c) 2021
     Started Sep 19, 2020
-    Updated Jan 3, 2021
+    Updated May 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -68,9 +68,9 @@ CON
 
 OBJ
 
-    i2c     : "com.i2c"
-    core    : "core.con.fxos8700.spin"
-    time    : "time"
+    i2c     : "com.i2c"                         ' PASM I2C engine
+    core    : "core.con.fxos8700"               ' HW-specific constants
+    time    : "time"                            ' timekeeping methods
 
 VAR
 
@@ -85,29 +85,32 @@ PUB Start{}
 ' Start using "standard" Propeller I2C pins and 100kHz, default slave address
     startx(DEF_SCL, DEF_SDA, DEF_HZ, %00)
 
-PUB Startx(SCL_PIN, SDA_PIN, SCL_HZ, SL_ADDR_BITS): okay | tmp
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, SL_ADDR_BITS): status
 ' Start using custom pins, I2C bus freq, slave address bits
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        okay := i2c.setupx(SCL_PIN, SDA_PIN, SCL_HZ)
-        time.usleep(core#TPOR)
-' Unfortunately, the chip's mapping of SAx bits to the slave address isn't
-'   logical, so to work around it, determine it conditionally:
-        case SL_ADDR_BITS
-            %00: _slave_addr := core#SLAVE_ADDR_1E
-            %01: _slave_addr := core#SLAVE_ADDR_1D
-            %10: _slave_addr := core#SLAVE_ADDR_1C
-            %11: _slave_addr := core#SLAVE_ADDR_1F
-            other: _slave_addr := core#SLAVE_ADDR_1E
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#TPOR)
+            ' Unfortunately, the chip's mapping of SAx bits to the slave address isn't
+            '   logical, so to work around it, determine it conditionally:
+            case SL_ADDR_BITS
+                %00: _slave_addr := core#SLAVE_ADDR_1E
+                %01: _slave_addr := core#SLAVE_ADDR_1D
+                %10: _slave_addr := core#SLAVE_ADDR_1C
+                %11: _slave_addr := core#SLAVE_ADDR_1F
+                other: _slave_addr := core#SLAVE_ADDR_1E
 
-        if deviceid{} == core#DEVID_RESP
-            defaults{}
-            return okay
-    stop{}                                      ' Something above failed
+            if deviceid{} == core#DEVID_RESP
+                defaults{}
+                return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
 PUB Stop{}
 
-    i2c.terminate{}
+    i2c.deinit{}
 
 PUB Defaults{}
 ' Factory default settings
@@ -131,7 +134,7 @@ PUB Defaults{}
     magthreshintsenabled(FALSE)
     tempscale(C)
 
-PUB Preset_AccelMag_on{}
+PUB Preset_Active{}
 ' Like factory defaults, but with the following changes:
 '   Accelerometer + Magnetometer enabled
 '   Active/measurement mode
@@ -302,7 +305,7 @@ PUB CalibrateAccel{} | acceltmp[3], axis, ax, ay, az, samples, scale_orig, drate
 '       for this method to be successful
     longfill(@acceltmp, 0, 12)
     accelbias(0, 0, 0, W)
-    scale_orig := accelscale(-2)                ' Preserve users' original
+    scale_orig := accelscale(-2)                ' Preserve user's original
     drate_orig := acceldatarate(-2)             '   settings
     fifo_orig := fifomode(-2)
 
@@ -832,33 +835,31 @@ PUB TempScale(scale): curr_scale
         other:
             return _temp_scale
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from device into ptr_buff
     case reg_nr                                 ' Validate regs
         $01, $03, $05, $33, $35, $37, $39, $3b, $3d:' Prioritize data output
             cmd_pkt.byte[0] := _slave_addr
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}                         ' S
-            i2c.wr_block(@cmd_pkt, 2)           ' SL|W, reg_nr
+            i2c.wrblock_lsbf(@cmd_pkt, 2)       ' SL|W, reg_nr
             i2c.start{}                         ' Sr
             i2c.write(_slave_addr | 1)          ' SL|R
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
-            i2c.stop{}                              ' P
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)' R sl -> ptr_buff
+            i2c.stop{}                          ' P
         $00, $02, $04, $06, $09..$18, $1d..$32, $34, $36, $38, $3a, $3e..$78:
             cmd_pkt.byte[0] := _slave_addr
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}                         ' S
-            i2c.wr_block(@cmd_pkt, 2)           ' SL|W, reg_nr
+            i2c.wrblock_lsbf(@cmd_pkt, 2)       ' SL|W, reg_nr
             i2c.start{}                         ' Sr
             i2c.write(_slave_addr | 1)          ' SL|R
-            repeat tmp from nr_bytes-1 to 0     ' R nr_bytes-1..0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)' R sl -> ptr_buff
             i2c.stop{}                          ' P
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to device
     case reg_nr
         $09, $0a, $0e, $0f, $11..$15, $17..$1d, $1f..$21, $23..$31, $3f..$44,{
@@ -866,9 +867,8 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             cmd_pkt.byte[0] := _slave_addr
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}                         ' S
-            i2c.wr_block(@cmd_pkt, 2)           ' SL|W, reg_nr
-            repeat tmp from nr_bytes-1 to 0     ' W ptr_buff[nr_bytes-1..0]
-                i2c.write(byte[ptr_buff][tmp])
+            i2c.wrblock_lsbf(@cmd_pkt, 2)       ' SL|W, reg_nr
+            i2c.wrblock_msbf(ptr_buff, nr_bytes)' W ptr_buff -> sl
             i2c.stop{}                          ' P
         other:
             return

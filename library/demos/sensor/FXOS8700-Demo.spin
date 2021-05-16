@@ -5,7 +5,7 @@
     Description: Demo of the FXOS8700 driver
     Copyright (c) 2021
     Started Sep 19, 2020
-    Updated Jan 3, 2021
+    Updated May 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,8 +19,8 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    I2C_SCL     = 28
-    I2C_SDA     = 29
+    I2C_SCL     = 24
+    I2C_SDA     = 25
     I2C_HZ      = 400_000
     SL_ADDR_BITS= %11                   ' %00..11 ($1E, 1D, 1C, 1F)
 ' --
@@ -45,7 +45,7 @@ OBJ
 PUB Main{}
 
     setup{}
-    imu.preset_accelmag_on{}
+    imu.preset_active{}
     imu.tempscale(C)
 
     ser.hidecursor{}
@@ -146,9 +146,9 @@ PUB Setup{}
         ser.strln(string("FXOS8700 driver started"))
     else
         ser.strln(string("FXOS8700 driver failed to start - halting"))
-        imu.stop{}
         time.msleep(50)
         ser.stop{}
+        repeat
 
 DAT
 {
