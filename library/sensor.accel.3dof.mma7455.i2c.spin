@@ -3,9 +3,9 @@
     Filename: sensor.accel.3dof.mma7455.i2c.spin
     Author: Jesse Burt
     Description: Driver for the NXP/Freescale MMA7455 3-axis accelerometer
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 27, 2019
-    Updated Jul 18, 2020
+    Updated May 17, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -28,136 +28,137 @@ CON
     BARO_DOF            = 0
     DOF                 = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
 
-'   Operating modes
+' Operating modes
     #0, STANDBY, MEASURE, LEVELDET, PULSEDET
+
+' Individual axes
+    X_AXIS              = 0
+    Y_AXIS              = 1
+    Z_AXIS              = 2
 
 VAR
 
-    long _aRes
+    long _ares
 
 OBJ
 
     i2c : "com.i2c"
-    core: "core.con.mma7455.spin"
+    core: "core.con.mma7455"
     time: "time"
 
-PUB Null
-''This is not a top-level object
+PUB Null{}
+'This is not a top-level object
 
-PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
+PUB Start{}: status
+' Start using "standard" Propeller I2C pins and 100kHz
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+' Start using custom settings
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.msleep(1)
+            if i2c.present(SLAVE_WR)        ' check device bus presence
+                if deviceid{} == core#DEVID_RESP
+                    return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Stop{}
 
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
-                time.MSleep (1)
-                if i2c.present (SLAVE_WR)                       'Response from device?
-                    if DeviceID == core#DEVID_RESP
-                        return okay
-
-    return FALSE                                                'If we got here, something went wrong
-
-PUB Stop
-' Put any other housekeeping code here required/recommended by your device before shutting down
-    i2c.terminate
+    i2c.deinit{}
 
 PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Accelerometer output registers
-    bytefill(@tmp, $00, 8)
-    readReg(core#XOUTL, 6, @tmp)
+    longfill(@tmp, 0, 2)
+    readreg(core#XOUTL, 6, @tmp)    'XXX these regs only valid for 8g scale
+                                    'use hub var to hold reg# depending on scale?
+                                    'set in accelscale()
 
-    long[ptr_x] := tmp.word[0]
-    long[ptr_y] := tmp.word[1]
-    long[ptr_z] := tmp.word[2]
+    ' shift left to put the sign into bit 31, then SAR back down to the
+    '   original position
+    long[ptr_x] := (tmp.word[X_AXIS] << 22) ~> 22
+    long[ptr_y] := (tmp.word[Y_AXIS] << 22) ~> 22
+    long[ptr_z] := (tmp.word[Z_AXIS] << 22) ~> 22
 
-    if long[ptr_x] > 511
-        long[ptr_x] := long[ptr_x]-1024
-    if long[ptr_y] > 511
-        long[ptr_y] := long[ptr_y]-1024
-    if long[ptr_z] > 511
-        long[ptr_z] := long[ptr_z]-1024
-
-PUB AccelDataOverrun
-' Indicates previously acquired data has been overwritten
+PUB AccelDataOverrun{}: flag
+' Flag indicating previously acquired data has been overwritten
 '   Returns: TRUE (-1) if data has overflowed/been overwritten, FALSE otherwise
-    readReg(core#STATUS, 1, @result)
-    result := ((result >> core#FLD_DOVR) & %1) * TRUE
+    readreg(core#STATUS, 1, @flag)
+    return (((flag >> core#DOVR) & 1) == 1)
 
-PUB AccelDataReady
-' Indicates data is ready
+PUB AccelDataReady{}: flag
+' Flag indicating data is ready
 '   Returns: TRUE (-1) if data ready, FALSE otherwise
-    readReg(core#STATUS, 1, @result)
-    result := (result & %1) * TRUE
+    readreg(core#STATUS, 1, @flag)
+    return ((flag & 1) == 1)
 
-PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpX, tmpY, tmpZ, factor
+PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpx, tmpy, tmpz
 ' Reads the Accelerometer output registers and scales the outputs to micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
-    AccelData(@tmpX, @tmpY, @tmpZ)
-    long[ptr_x] := tmpX * _aRes
-    long[ptr_y] := tmpY * _aRes
-    long[ptr_z] := tmpZ * _aRes
+    acceldata(@tmpx, @tmpy, @tmpz)
+    long[ptr_x] := tmpx * _ares
+    long[ptr_y] := tmpy * _ares
+    long[ptr_z] := tmpz * _ares
 
-PUB AccelScale(g) | tmp
+PUB AccelScale(scale): curr_scl
 ' Set measurement range of the accelerometer, in g's
 '   Valid values: 2, 4, *8
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#MCTL, 1, @tmp)
-    case g
-        2, 4, 8:
-            g := lookdownz(g: 8, 2, 4)
-            _aRes := (2_000000 * lookupz(g: 8, 2, 4)) / 1024     '/1024 = for 10-bit output
-            g <<= core#FLD_GLVL
-        OTHER:
-            tmp >>= core#FLD_GLVL
-            tmp &= core#BITS_GLVL
-            result := lookupz(tmp: 8, 2, 4)
-            return
+    curr_scl := 0
+    readreg(core#MCTL, 1, @curr_scl)
+    case scale
+        2, 4:
+            _ares := (2_000000 * scale) / 256   ' 8-bit output
+            scale := lookdownz(scale: 8, 2, 4) << core#GLVL
+        8:
+            _ares := (2_000000 * scale) / 1024  ' 10-bit output
+            scale := lookdownz(scale: 8, 2, 4) << core#GLVL
+        other:
+            curr_scl := (curr_scl >> core#GLVL) & core#GLVL_BITS
+            return lookupz(curr_scl: 8, 2, 4)
 
-    tmp &= core#MASK_GLVL
-    tmp := (tmp | g)
-    writeReg(core#MCTL, 1, @tmp)
+    scale := ((curr_scl & core#GLVL_MASK) | scale)
+    writereg(core#MCTL, 1, @scale)
 
-PUB AccelSelfTest(enabled) | tmp
+PUB AccelSelfTest(state) | curr_state
 ' Enable self-test
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
-'   NOTE: The datasheet specifies the Z-axis should read between 32 and 83 (64 typ) when the self-test is enabled
-    tmp := $00
-    readReg(core#MCTL, 1, @tmp)
-    case ||enabled
+'   NOTE: The datasheet specifies the Z-axis should read between 32 and 83 (64 typ) when the self-test is state
+    curr_state := 0
+    readreg(core#MCTL, 1, @curr_state)
+    case ||(state)
         0, 1:
-            enabled := ||enabled << core#FLD_STON
-        OTHER:
-            tmp >>= core#FLD_STON
-            result := (tmp & %1) * TRUE
+            state := ||(state) << core#STON
+        other:
+            return (((curr_state >> core#STON) & 1) == 1)
 
-    tmp &= core#MASK_STON
-    tmp := (tmp | enabled)
-    writeReg(core#MCTL, 1, @tmp)
+    state := ((curr_state & core#STON_MASK) | state)
+    writereg(core#MCTL, 1, @state)
 
-PUB Calibrate | tmpX, tmpY, tmpZ
+PUB CalibrateAccel{} | tmpx, tmpy, tmpz
 ' Calibrate the accelerometer
 '   NOTE: The accelerometer must be oriented with the package top facing up for this method to be successful
     repeat 3
-        AccelData(@tmpX, @tmpY, @tmpZ)
-        tmpX += 2 * -tmpX
-        tmpY += 2 * -tmpY
-        tmpZ += 2 * -(tmpZ-(_aRes/1000))
+        acceldata(@tmpx, @tmpy, @tmpz)
+        tmpx += 2 * -tmpx
+        tmpy += 2 * -tmpy
+        tmpz += 2 * -(tmpz-(_ares/1000))
 
-    writeReg(core#XOFFL, 2, @tmpX)
-    writeReg(core#YOFFL, 2, @tmpY)
-    writeReg(core#ZOFFL, 2, @tmpZ)
-    time.MSleep(200)
+    writereg(core#XOFFL, 2, @tmpx)
+    writereg(core#YOFFL, 2, @tmpy)
+    writereg(core#ZOFFL, 2, @tmpz)
+    time.msleep(200)
 
-PUB DeviceID
+PUB DeviceID{}
 ' Get chip/device ID
 '   Known values: $55
-    readReg(core#WHOAMI, 1, @result)
+    readreg(core#WHOAMI, 1, @result)
 
-PUB OpMode(mode) | tmp
+PUB OpMode(mode) | curr_mode
 ' Set operating mode
 '   Valid values:
 '       STANDBY (%00): Standby
@@ -165,48 +166,44 @@ PUB OpMode(mode) | tmp
 '       LEVELDET (%10): Level detection mode
 '       PULSEDET (%11): Pulse detection mode
 '   Any other value polls the chip and returns the current setting
-    tmp := $00
-    readReg(core#MCTL, 1, @tmp)
+    curr_mode := 0
+    readreg(core#MCTL, 1, @curr_mode)
     case mode
         STANDBY, MEASURE, LEVELDET, PULSEDET:
-        OTHER:
-            result := tmp & core#BITS_MODE
-            return
+        other:
+            return curr_mode & core#MODE_BITS
 
-    tmp &= core#MASK_MODE
-    tmp := (tmp | mode)
-    writeReg(core#MCTL, 1, @tmp)
+    mode := ((curr_mode & core#MODE_MASK) | mode)
+    writereg(core#MCTL, 1, @mode)
 
-PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Read num_bytes from the slave device into the address stored in buff_addr
-    case reg                                                    'Basic register validation
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Read nr_bytes from slave device into ptr_buff
+    case reg_nr
         $00..$0B, $0D..$1E:
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg
-            i2c.start
-            i2c.wr_block (@cmd_packet, 2)
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
 
-            i2c.start
-            i2c.write (SLAVE_RD)
-            i2c.rd_block (buff_addr, nr_bytes, TRUE)
-            i2c.stop
-        OTHER:
+            i2c.start{}
+            i2c.write(SLAVE_RD)
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, TRUE)
+            i2c.stop{}
+        other:
             return
 
-PRI writeReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Write num_bytes to the slave device from the address stored in buff_addr
-    case reg                                                    'Basic register validation
-        $10..$1E:                                               ' Consult your device's datasheet!
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg
-            i2c.start
-            i2c.wr_block (@cmd_packet, 2)
-            repeat tmp from 0 to nr_bytes-1
-                i2c.write (byte[buff_addr][tmp])
-            i2c.stop
-        OTHER:
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Write nr_bytes from ptr_buff to slave device
+    case reg_nr
+        $10..$1E:
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+            i2c.stop{}
+        other:
             return
-
 
 DAT
 {

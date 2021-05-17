@@ -2,11 +2,10 @@
     --------------------------------------------
     Filename: MMA7455-Demo.spin
     Author: Jesse Burt
-    Description: Simple demo of the MMA7455 driver that
-        outputs live data from the chip.
-    Copyright (c) 2020
-    Started Nov 27, 2019
-    Updated Aug 9, 2020
+    Description: Demo of the MMA7455 driver
+    Copyright (c) 2021
+    Started Aug 28, 2020
+    Updated May 17, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,116 +15,104 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-    SCL_PIN     = 28
-    SDA_PIN     = 29
-    I2C_HZ      = 400_000
-
+' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
+
+    SCL_PIN     = 28                            ' I2C
+    SDA_PIN     = 29                            ' I2C
+    I2C_HZ      = 400_000                       ' I2C
+' --
+
+    DAT_X_COL   = 20
+    DAT_Y_COL   = DAT_X_COL + 15
+    DAT_Z_COL   = DAT_Y_COL + 15
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    io      : "io"
-    accel   : "sensor.accel.3dof.mma7455.i2c"
     int     : "string.integer"
+    accel   : "sensor.accel.3dof.mma7455.i2c"
 
-VAR
+PUB Main{}
 
-    long _overruns
-    byte _ser_cog, _accel_cog
+    setup{}
 
-PUB Main | dispmode
-
-    Setup
-
-    accel.OpMode(accel#MEASURE)
-    accel.AccelScale(8)
-    ser.HideCursor
-    dispmode := 0
+    accel.opmode(accel#MEASURE)
+    accel.accelscale(2)
 
     repeat
-        case ser.RxCheck
-            "q", "Q":
-                ser.Position(0, 5)
-                ser.str(string("Halting"))
-                accel.Stop
-                time.MSleep(5)
-                ser.Stop
-                quit
-            "c", "C":
-                Calibrate
-            "r", "R":
-                ser.Position(0, 3)
-                repeat 2
-                    ser.ClearLine{}
-                    ser.Newline
-                dispmode ^= 1
+        ser.position(0, 3)
+        accelcalc{}
 
-        ser.Position (0, 3)
-        case dispmode
-            0: AccelRaw
-            1: AccelCalc
+        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
+            calibrate{}                         ' to calibrate sensor offsets
 
-    ser.ShowCursor
-    FlashLED(LED, 100)
+PUB AccelCalc{} | ax, ay, az
 
-PUB Calibrate
+    repeat until accel.acceldataready{}         ' wait for new sensor data set
+    accel.accelg(@ax, @ay, @az)                 ' read calculated sensor data
+    ser.str(string("Accel (g):"))
+    ser.positionx(DAT_X_COL)
+    decimal(ax, 1000000)                        ' data is in micro-g's; display
+    ser.positionx(DAT_Y_COL)                    ' it as if it were a float
+    decimal(ay, 1000000)
+    ser.positionx(DAT_Z_COL)
+    decimal(az, 1000000)
+    ser.clearline{}
+    ser.newline{}
 
-    ser.Position (0, 8)
-    ser.Str(string("Calibrating..."))
-    accel.Calibrate
-    ser.Position (0, 8)
-    ser.Str(string("              "))
+PUB Calibrate{}
 
-PUB AccelCalc | ax, ay, az
+    ser.position(0, 7)
+    ser.str(string("Calibrating..."))
+    accel.calibrateaccel{}
+    ser.positionx(0)
+    ser.clearline{}
 
-    repeat until accel.AccelDataReady
-    accel.AccelG (@ax, @ay, @az)
-    if accel.AccelDataOverrun
-        _overruns++
-    ser.Str (string("Accel micro-g: "))
-    ser.Str (int.DecPadded (ax, 10))
-    ser.Str (int.DecPadded (ay, 10))
-    ser.Str (int.DecPadded (az, 10))
-    ser.Newline
-    ser.Str (string("Overruns: "))
-    ser.Dec (_overruns)
-
-PUB AccelRaw | ax, ay, az
-
-    repeat until accel.AccelDataReady
-    accel.AccelData (@ax, @ay, @az)
-    if accel.AccelDataOverrun
-        _overruns++
-    ser.Str (string("Raw Accel: "))
-    ser.Str (int.DecPadded (ax, 7))
-    ser.Str (int.DecPadded (ay, 7))
-    ser.Str (int.DecPadded (az, 7))
-    ser.Newline
-    ser.Str (string("Overruns: "))
-    ser.Dec (_overruns)
-
-PUB Setup
-
-    repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, %0000, SER_BAUD)
-    time.MSleep(20)
-    ser.Clear
-    ser.Str (string("Serial terminal started", ser#CR, ser#LF))
-    if _accel_cog := accel.Startx (SCL_PIN, SDA_PIN, I2C_HZ)
-        ser.Str (string("MMA7455 driver started", ser#CR, ser#LF))
+PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+' Display a scaled up number as a decimal
+'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
+    part := 0
+    sign := 0
+    if scaled < 0
+        sign := "-"
     else
-        ser.Str (string("MMA7455 driver failed to start - halting", ser#CR, ser#LF))
-        accel.Stop
-        time.MSleep (5)
-        ser.Stop
-        FlashLED(LED, 500)
+        sign := " "
 
-#include "lib.utility.spin"
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    scaled //= divisor
+    part := int.deczeroed(||(scaled), places)
+
+    ser.char(sign)
+    ser.dec(||(whole))
+    ser.char(".")
+    ser.str(part)
+    ser.chars(" ", 5)
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+
+    if accel.startx(SCL_PIN, SDA_PIN, I2C_HZ)
+        ser.strln(string("MMA7455 driver started (I2C)"))
+    else
+        ser.strln(string("MMA7455 driver failed to start - halting"))
+        accel.stop{}
+        time.msleep(5)
+        ser.stop{}
+        repeat
 
 DAT
 {
