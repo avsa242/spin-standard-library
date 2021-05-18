@@ -81,38 +81,41 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(RST_PIN): okay
+PUB Start(RST_PIN): status
 ' Use "standard" Propeller I2C pins, and 100kHz
 '   Specify reset pin
-    okay := startx(DEF_SCL, DEF_SDA, RST_PIN, core#I2C_MAX_FREQ, 0)
+    return startx(DEF_SCL, DEF_SDA, RST_PIN, core#I2C_MAX_FREQ, 0)
 
-PUB Startx(SCL_PIN, SDA_PIN, RST_PIN, I2C_HZ, ADDR_BIT): okay
+PUB Startx(SCL_PIN, SDA_PIN, RST_PIN, I2C_HZ, ADDR_BIT): status
 ' Start with custom settings
 '  SCL      - I2C Serial Clock pin
 '  SDA      - I2C Serial Data pin
 '  RST_PIN  - OLED display's assigned reset pin
 '  I2C_H    - I2C Bus Frequency (max 400kHz)
 '  ADDR_BIT - Flag to indicate optional alternative slave address
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-                time.msleep(1)
-                _reset := RST_PIN
-                case ADDR_BIT
-                        0:
-                            _sa0_addr := 0
-                        other:
-                            _sa0_addr := 1 << 1
-                reset{}
-                defaults4x20{}
-                if deviceid{} == core#DEVID_RESP
-                    return okay
-    return FALSE                                ' something above failed
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#T_POR)
+            _reset := RST_PIN
+            case ADDR_BIT
+                    0:
+                        _sa0_addr := 0
+                    other:
+                        _sa0_addr := 1 << 1
+            reset{}
+            defaults4x20{}
+            if deviceid{} == core#DEVID_RESP
+                return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 ' Turn the display visibility off and stop the I2C cog
     displayvisibility(OFF)
-    i2c.terminate{}
+    i2c.deinit{}
 
 PUB Defaults2x16{}
 ' Factory defaults for 2x16 displays
@@ -843,7 +846,7 @@ PRI wrdata(databyte) | cmd_pkt
     cmd_pkt.byte[2] := databyte
 
     i2c.start{}
-    i2c.wr_block(@cmd_pkt, 3)
+    i2c.wrblock_lsbf(@cmd_pkt, 3)
     i2c.stop{}
 
 PRI writeReg(trans_type, nr_bytes, cmd_set, cmd, val) | cmd_pkt[4]
@@ -915,7 +918,7 @@ PRI writeReg(trans_type, nr_bytes, cmd_set, cmd, val) | cmd_pkt[4]
             nr_bytes := 3
 
     i2c.start{}
-    i2c.wr_block(@cmd_pkt, nr_bytes)
+    i2c.wrblock_lsbf(@cmd_pkt, nr_bytes)
     i2c.stop{}
 
 DAT
