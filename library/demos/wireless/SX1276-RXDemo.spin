@@ -3,9 +3,9 @@
     Filename: SX1276-RXDemo.spin
     Author: Jesse Burt
     Description: Receive demo of the SX1276 driver (LoRa mode)
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Dec 12, 2020
-    Updated Dec 13, 2020
+    Updated May 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -82,11 +82,10 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if lora.start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.str(string("sx1276 driver started"))
+    if lora.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+        ser.str(string("SX1276 driver started"))
     else
-        ser.strln(string("sx1276 driver failed to start - halting"))
-        lora.stop{}
+        ser.strln(string("SX1276 driver failed to start - halting"))
         time.msleep(500)
         ser.stop{}
         repeat
