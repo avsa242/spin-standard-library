@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Created: Oct 11, 2018
-    Updated: Apr 4, 2021
+    Updated: May 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -81,7 +81,7 @@ PUB Stop{}
     displayvisibility(FALSE)
     oscenabled(FALSE)
     time.msleep(100)
-    i2c.terminate
+    i2c.deinit{}
 
 PUB Defaults{}
 
