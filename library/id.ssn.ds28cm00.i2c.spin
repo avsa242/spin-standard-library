@@ -6,7 +6,7 @@
      64-bit I2C Silicon Serial Number
     Copyright (c) 2021
     Started Oct 27, 2019
-    Updated Jan 2, 2021
+    Updated May 19, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This driver will start successfully if the Propeller's EEPROM is on
@@ -35,26 +35,30 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start{}: okay
+PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-            time.msleep(1)
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#T_POR)
             if i2c.present(SLAVE_WR)            ' check device bus presence
                 if deviceid{} == core#DEVID_RESP
-                    return okay
+                    return
 
-    return FALSE                                ' something above went wrong
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    i2c.terminate{}
+    i2c.deinit{}
 
-PUB CM(mode): curr_mode | cmd_pkt, tmp
+PUB CM(mode): curr_mode | cmd_pkt
 ' Set bus mode to I2C or SMBus
 '   Valid values: BUS_I2C (0) or BUS_SMBUS(1)
 '   Any other value polls the chip and returns the current setting
@@ -68,8 +72,7 @@ PUB CM(mode): curr_mode | cmd_pkt, tmp
             return
 
     i2c.start{}
-    repeat tmp from 0 to 2
-        i2c.write(cmd_pkt.byte[tmp])
+    i2c.wrblock_lsbf(@cmd_pkt, 3)
     i2c.stop{}
 
 PUB CRC{}: crcbyte
@@ -95,10 +98,10 @@ PUB SN(ptr_buff)
 ' NOTE: This buffer must be 8 bytes in length.
     readreg(core#DEV_FAMILY, 8, ptr_buff)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from the slave device into ptr_buff
     case reg_nr
-        $00..$08:
+        core#DEV_FAMILY..core#CTRL_REG:
         other:
             return
 
@@ -106,13 +109,11 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
     cmd_pkt.byte[1] := reg_nr
 
     i2c.start{}
-    repeat tmp from 0 to 1
-        i2c.write(cmd_pkt.byte[tmp])
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
 
     i2c.start{}
     i2c.write(SLAVE_RD)
-    repeat tmp from 0 to nr_bytes-1
-        byte[ptr_buff][tmp] := i2c.read(tmp == (nr_bytes-1))
+    i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
     i2c.stop{}
 
 DAT
