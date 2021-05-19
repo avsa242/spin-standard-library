@@ -3,9 +3,9 @@
     Filename: sensor.temperature.mlx90614.i2c.spin
     Author: Jesse Burt
     Description: Driver for the Melexis MLX90614 IR thermometer
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Mar 17, 2019
-    Updated Dec 7, 2020
+    Updated May 19, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,33 +34,34 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"
-    core: "core.con.mlx90614"
-    time: "time"
+    i2c : "com.i2c"                             ' PASM I2C engine
+    core: "core.con.mlx90614"                   ' HW-specific constants
+    time: "time"                                ' timekeeping methods
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start{}: okay
+PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-                time.msleep(1)
-                if i2c.present(SLAVE_WR)        ' test bus device presence
-                    if deviceid{}
-                        time.usleep(core#TPOR)
-                        return okay
-
-    return FALSE                                ' something above failed
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#T_POR)
+            if i2c.present(SLAVE_WR)            ' check bus device presence
+                if deviceid{}
+                    return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    i2c.terminate{}
+    i2c.deinit{}
 
 PUB AmbientTemp{}: temp
 ' Reads the Ambient temperature
@@ -135,10 +136,10 @@ PRI readReg(region, reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     cmd_pkt.byte[1] := region | reg_nr
 
     i2c.start{}
-    i2c.wr_block(@cmd_pkt, 2)
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
     i2c.start{}
     i2c.write(SLAVE_RD)
-    i2c.rd_block(ptr_buff, nr_bytes, TRUE)
+    i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
     i2c.stop{}
 
 PRI writeReg(region, reg_nr, nr_bytes, val) | cmd_pkt[2]
@@ -156,7 +157,7 @@ PRI writeReg(region, reg_nr, nr_bytes, val) | cmd_pkt[2]
     cmd_pkt.byte[4] := val.byte[PEC]
 
     i2c.start{}
-    i2c.wr_block(@cmd_pkt, 2 + nr_bytes)
+    i2c.wrblock_lsbf(@cmd_pkt, 2 + nr_bytes)
     i2c.stop{}
 
 DAT
