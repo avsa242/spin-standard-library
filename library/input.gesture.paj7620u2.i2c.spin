@@ -3,9 +3,9 @@
     Filename: input.gesture.paj7620u2.i2c.spin
     Author: Jesse Burt
     Description: Driver for PAJ6520U2 Gesture Sensor
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started May 21, 2020
-    Updated Dec 30, 2020
+    Updated May 19, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -44,29 +44,32 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start{}: okay
+PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-                time.msleep(10)
-                repeat 2
-                    if i2c.present(SLAVE_WR)    ' check device bus presence
-                time.msleep(1)
-                if deviceid{} == core#DEVID_RESP
-                    powered(TRUE)
-                    return okay
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#T_POR)
+            repeat 2
+                if i2c.present(SLAVE_WR)        ' check device bus presence
+            time.msleep(1)
+            if deviceid{} == core#DEVID_RESP
+                powered(TRUE)
+                return
 
-    return FALSE                                ' something above failed
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
-' Put any other housekeeping code here required/recommended by your device before shutting down
+
     powered(FALSE)
-    i2c.terminate{}
+    i2c.deinit{}
 
 PUB Defaults{}
 ' Set factory defaults
@@ -215,7 +218,7 @@ PUB Reset{} | tmp
     tmp := 1
     writereg(core#R_REGBANK_RESET, 1, @tmp)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 '' Read num_bytes from the slave device into the address stored in ptr_buff
     case reg_nr
         $000..$003, $032..$03F, $040..$052, $054..$05F, $060, $061, $063..$06C, $080..$089, $08B..$09D, $09F..$0A5, $0A9, $0AA..$0DF, $0EE, $0EF, $100..$17F:   'XXX TRIM
@@ -224,43 +227,39 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             cmd_pkt.byte[2] := (reg_nr >> 8) & 1
 
             i2c.start{}                         '
-            i2c.wr_block(@cmd_pkt, 3)           ' Bank select
+            i2c.wrblock_lsbf(@cmd_pkt, 3)       ' Bank select
             i2c.stop{}                          '
 
             cmd_pkt.byte[0] := SLAVE_WR         '
             cmd_pkt.byte[1] := reg_nr & $FF     '
             i2c.start{}                         '
-            i2c.wr_block(@cmd_pkt, 2)           ' Command/setup
+            i2c.wrblock_lsbf(@cmd_pkt, 2)       ' Command/setup
 
             i2c.start{}                         '
             i2c.write(SLAVE_RD)                 '
-            i2c.rd_block(ptr_buff, nr_bytes, TRUE)
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}                          ' Read data
-
-            return TRUE
         other:
-            return FALSE
+            return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to slave device
     case reg_nr
-        $003, $032..$03A, $03F, $040..$042, $046..$052, $05C..$05F, $061, $063..$06A, $080..$089, $08B..$09D, $09F..$0A5, $0A9, $0AA, $0AB, $0CC..$0D2, $0EE, $0EF, {}$060, $062, $06D..$075, $08A, $09E, $0A6..$0A8, $0E0..$0E9, $100..$1EF:   'XXX TRIM
+        $003, $032..$03A, $03F, $040..$042, $046..$052, $05C..$05F, $061, $063..$06A, $080..$089, $08B..$09D, $09F..$0A5, $0A9, $0AA, $0AB, $0CC..$0D2, $0EE, $0EF, $060, $062, $06D..$075, $08A, $09E, $0A6..$0A8, $0E0..$0E9, $100..$1EF:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := core#REGBANKSEL
             cmd_pkt.byte[2] := (reg_nr >> 8) & 1
 
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 3)           ' Bank select
+            i2c.wrblock_lsbf(@cmd_pkt, 3)       ' Bank select
             i2c.stop{}
 
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr & $FF
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)           ' Command/setup
-            repeat tmp from 0 to nr_bytes-1
-                i2c.write(byte[ptr_buff][tmp])
+            i2c.wrblock_lsbf(@cmd_pkt, 2)       ' Command/setup
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)
             i2c.stop{}
-            return TRUE
 
 DAT
 {

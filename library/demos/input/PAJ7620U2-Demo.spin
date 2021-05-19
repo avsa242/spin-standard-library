@@ -3,9 +3,9 @@
     Filename: PAJ7620U2-Demo.spin
     Author: Jesse Burt
     Description: Demo of the PAJ7620U2 driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started May 21, 2020
-    Updated Dec 30, 2020
+    Updated May 19, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -64,7 +64,6 @@ PUB Setup{}
         ser.strln(string("PAJ7620U2 driver started"))
     else
         ser.strln(string("PAJ7620U2 driver failed to start - halting"))
-        gesture.stop{}
         time.msleep(5)
         ser.stop{}
         repeat
