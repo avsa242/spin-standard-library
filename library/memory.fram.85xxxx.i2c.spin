@@ -3,87 +3,100 @@
     Filename: memory.fram.85xxxx.i2c.spin
     Author: Jesse Burt
     Description: Driver for 85xxxx series FRAM memories
-    Copyright (c) 2019
+    Copyright (c) 2021
     Started Oct 27, 2019
-    Updated Oct 27, 2019
+    Updated May 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    SLAVE_WR          = core#SLAVE_ADDR
-    SLAVE_RD          = core#SLAVE_ADDR|1
+    SLAVE_WR        = core#SLAVE_ADDR
+    SLAVE_RD        = core#SLAVE_ADDR|1
 
-    DEF_SCL           = 28
-    DEF_SDA           = 29
-    DEF_HZ            = 400_000
-    I2C_MAX_FREQ      = core#I2C_MAX_FREQ
+    DEF_SCL         = 28
+    DEF_SDA         = 29
+    DEF_HZ          = 100_000
+    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
+
+' Manufacturer codes
+    CYPRESS         = $004
+    FUJITSU         = $00A
 
 VAR
 
-    byte _addr_a2a1a0
+    byte _addr_bits
 
 OBJ
 
-    i2c : "com.i2c"
-    core: "core.con.85xxxx.spin"
-    time: "time"
+    i2c : "com.i2c"                             ' PASM I2C engine
+    core: "core.con.85xxxx"                     ' HW-specific constants
+    time: "time"                                ' timekeeping methods
 
-PUB Null
+PUB Null{}
 ' This is not a top-level object
 
-PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
+PUB Start{}: status
+' Start using "standard" Propeller I2C pins and 100kHz
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, %000)
 
-    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ, %000)
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
+' Start using custom settings
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   lookdown(ADDR_BITS: %000..%111) and I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#T_POR)
+            _addr_bits := ADDR_BITS << 1
+            ' check device bus presence
+            if i2c.present(SLAVE_WR | _addr_bits)
+                return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, addr_a2a1a0): okay
+PUB Stop{}
 
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
-                time.MSleep (1)
-                _addr_a2a1a0 := addr_a2a1a0 << 1
-                if i2c.present (SLAVE_WR | _addr_a2a1a0)        'Response from device?
-                    return okay
+    i2c.deinit{}
 
-    return FALSE                                                'If we got here, something went wrong
+PUB DeviceID{}: id | tmp
+' Read device identification
+'   NOTE: This may not be supported by all devices
+    i2c.start{}
+    i2c.write(core#RSVD_SLAVE_W)
+    i2c.write(SLAVE_WR | _addr_bits)
 
-PUB Stop
-' Put any other housekeeping code here required/recommended by your device before shutting down
-    i2c.Terminate
+    i2c.start{}
+    i2c.write(core#RSVD_SLAVE_R)
+    i2c.rdblock_msbf(@tmp, 3, i2c#NAK)
+    i2c.stop{}
 
-PUB Density
-' Read density from FRAM
-    result := (ID >> 8) & %1111
-
-PUB ID | tmp
-' Read manufacturer ID from FRAM
-    i2c.Start
-    i2c.Write (core#RSVD_SLAVE_W)
-    i2c.Write (SLAVE_WR | _addr_a2a1a0)
-
-    i2c.Start
-    i2c.Write (core#RSVD_SLAVE_R)
-    repeat tmp from 0 to 2
-        result.byte[2-tmp] := i2c.Read (tmp == 2)
-    i2c.Stop
-
-PUB Manufacturer
+PUB Manufacturer{}: id
 ' Read manufacturer ID
-'   Known values: $00A (Fujitsu)
-    result := (ID -> 12) & $FFF
+'   Known values:
+'       $004 (Cypress)
+'       $00A (Fujitsu)
+    return (deviceid{} >> 12) & $FFF
 
-PUB ProductID
-' Read Product ID
-'   Known values: $510 (MB85RC256)
-    result := ID & $FFF
+PUB PartSize{}: size
+' Size/density of FRAM chip, in kbits
+'   Known values:
+'       When Manufacturer() == ...:
+'           CYPRESS ($004): 256, 512, 1024
+'           FUJITSU ($00A): 256, 512, 1024
+    size := (deviceid{} >> 8) & %1111
+    case manufacturer{}
+        CYPRESS:
+            return lookup(size: 1024, 256, 512)
+        FUJITSU:
+            return lookup(size: 0, 0, 0, 0, 256, 512, 1024)
 
-PUB ReadByte(fram_addr)
+PUB ReadByte(fram_addr): f_rdbyte
 ' Read one byte from FRAM
-    readReg(fram_addr, 1, @result)
+    readreg(fram_addr, 1, @f_rdbyte)
 
-PUB ReadBytes(fram_start_addr, nr_bytes, buff_addr)
+PUB ReadBytes(fram_start_addr, nr_bytes, ptr_buff)
 ' Read multiple bytes from FRAM
 '   NOTE: If nr_bytes is greater than the number of bytes from the specified start address
 '       to the end of the FRAM memory, any reads past the end will wrap around to address $0000
@@ -93,13 +106,13 @@ PUB ReadBytes(fram_start_addr, nr_bytes, buff_addr)
 '           nr_bytes is specified as 4
 '           Locations actually read:
 '           $7FFE, $7FFF, $0000, $0001
-    readReg(fram_start_addr, nr_bytes, buff_addr)
+    readreg(fram_start_addr, nr_bytes, ptr_buff)
 
 PUB WriteByte(fram_addr, data)
 ' Write one byte to FRAM
-    writeReg(fram_addr, 1, @data)
+    writereg(fram_addr, 1, @data)
 
-PUB WriteBytes(fram_start_addr, nr_bytes, buff_addr)
+PUB WriteBytes(fram_start_addr, nr_bytes, ptr_buff)
 ' Write multiple bytes to FRAM
 '   NOTE: If nr_bytes is greater than the number of bytes from the specified start address
 '       to the end of the FRAM memory, any writes past the end will wrap around to address $0000
@@ -109,38 +122,47 @@ PUB WriteBytes(fram_start_addr, nr_bytes, buff_addr)
 '           nr_bytes is specified as 4
 '           Locations actually written:
 '           $7FFE, $7FFF, $0000, $0001
-    writeReg(fram_start_addr, nr_bytes, buff_addr)
+    writereg(fram_start_addr, nr_bytes, ptr_buff)
 
-PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet
-' Read num_bytes from the slave device into the address stored in buff_addr
-    case reg
-        $00_00..$FF_FF:
-            cmd_packet.byte[0] := SLAVE_WR | _addr_a2a1a0
-            cmd_packet.byte[1] := reg.byte[1]
-            cmd_packet.byte[2] := reg.byte[0]
-            i2c.Start
-            i2c.Wr_Block (@cmd_packet, 3)
-            i2c.Start
-            i2c.Write (SLAVE_RD)
-            i2c.Rd_Block (buff_addr, nr_bytes, TRUE)
-            i2c.Stop
-        OTHER:
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Read nr_bytes from slave device into ptr_buff
+    case reg_nr
+        $00..$FFFF:
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
+            cmd_pkt.byte[1] := reg_nr.byte[1]
+            cmd_pkt.byte[2] := reg_nr.byte[0]
+        $1_0000..$1_FFFF:                       ' upper page (for 1Mbit FRAM)
+            cmd_pkt.byte[0] := SLAVE_WR | core#PAGE_HI | _addr_bits
+            cmd_pkt.byte[1] := reg_nr.byte[1]
+            cmd_pkt.byte[2] := reg_nr.byte[0]
+        other:
             return
 
-PRI writeReg(reg, nr_bytes, buff_addr) | cmd_packet
-' Write num_bytes to the slave device from the address stored in buff_addr
-    case reg
-        $00_00..$FF_FF:
-            cmd_packet.byte[0] := SLAVE_WR | _addr_a2a1a0
-            cmd_packet.byte[1] := reg.byte[1]
-            cmd_packet.byte[2] := reg.byte[0]
-            i2c.Start
-            i2c.Wr_Block (@cmd_packet, 3)
-            i2c.Wr_Block (buff_addr, nr_bytes)
-            i2c.Stop
-        OTHER:
+    i2c.start{}
+    i2c.wrblock_lsbf(@cmd_pkt, 3)
+    i2c.start{}
+    i2c.write(SLAVE_RD)
+    i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
+    i2c.stop{}
+
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Write nr_bytes from ptr_buff to slave device
+    case reg_nr
+        $00..$FFFF:
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
+            cmd_pkt.byte[1] := reg_nr.byte[1]
+            cmd_pkt.byte[2] := reg_nr.byte[0]
+        $1_0000..$1_FFFF:
+            cmd_pkt.byte[0] := SLAVE_WR | core#PAGE_HI | _addr_bits
+            cmd_pkt.byte[1] := reg_nr.byte[1]
+            cmd_pkt.byte[2] := reg_nr.byte[0]
+        other:
             return
 
+    i2c.start{}
+    i2c.wrblock_lsbf(@cmd_pkt, 3)
+    i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+    i2c.stop{}
 
 DAT
 {
