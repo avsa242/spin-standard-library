@@ -3,9 +3,9 @@
     Filename: core.con.mma7455.spin
     Author: Jesse Burt
     Description: Low-level constants
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 27, 2019
-    Updated Jan 19, 2020
+    Updated Jan 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -29,9 +29,9 @@ CON
 
     STATUS              = $09
     STATUS_MASK         = $07
-        FLD_PERR        = 2
-        FLD_DOVR        = 1
-        FLD_DRDY        = 0
+        PERR            = 2
+        DOVR            = 1
+        DRDY            = 0
 
     DETSRC              = $0A
     TOUT                = $0B
@@ -48,18 +48,18 @@ CON
 
     MCTL                = $16
     MCTL_MASK           = $7F
-        FLD_DRPD        = 6
-        FLD_SPI3W       = 5
-        FLD_STON        = 4
-        FLD_GLVL        = 2
-        FLD_MODE        = 0
-        BITS_GLVL       = %11
-        BITS_MODE       = %11
-        MASK_DRPD       = MCTL_MASK ^ (1 << FLD_DRPD)
-        MASK_SPI3W      = MCTL_MASK ^ (1 << FLD_SPI3W)
-        MASK_STON       = MCTL_MASK ^ (1 << FLD_STON)
-        MASK_GLVL       = MCTL_MASK ^ (BITS_GLVL << FLD_GLVL)
-        MASK_MODE       = MCTL_MASK ^ (BITS_MODE << FLD_MODE)
+        DRPD            = 6
+        SPI3W           = 5
+        STON            = 4
+        GLVL            = 2
+        MODE            = 0
+        GLVL_BITS       = %11
+        MODE_BITS       = %11
+        DRPD_MASK       = (1 << DRPD) ^ MCTL_MASK
+        SPI3W_MASK      = (1 << SPI3W) ^ MCTL_MASK
+        STON_MASK       = (1 << STON) ^ MCTL_MASK
+        GLVL_MASK       = (GLVL_BITS << GLVL) ^ MCTL_MASK
+        MODE_MASK       = MODE_BITS ^ MCTL_MASK
 
     INTRST              = $17
     CTL1                = $18
