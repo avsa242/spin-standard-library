@@ -6,24 +6,24 @@
         temperature/humidity sensors
     Copyright (c) 2021
     Started Jul 20, 2019
-    Updated Jan 3, 2021
+    Updated May 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    SLAVE_WR          = core#SLAVE_ADDR
-    SLAVE_RD          = core#SLAVE_ADDR|1
+    SLAVE_WR        = core#SLAVE_ADDR
+    SLAVE_RD        = core#SLAVE_ADDR|1
 
-    DEF_SCL           = 28
-    DEF_SDA           = 29
-    DEF_HZ            = 100_000
-    I2C_MAX_FREQ      = core#I2C_MAX_FREQ
+    DEF_SCL         = 28
+    DEF_SDA         = 29
+    DEF_HZ          = 100_000
+    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
 ' Temperature scales
-    C = 0
-    F = 1
+    C               = 0
+    F               = 1
 
 VAR
 
@@ -31,34 +31,37 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"
-    core: "core.con.si70xx.spin"
-    time: "time"
-    crc : "math.crc"
+    i2c : "com.i2c"                             ' PASM I2C engine
+    core: "core.con.si70xx"                     ' HW-specific constants
+    time: "time"                                ' timekeeping methods
+    crc : "math.crc"                            ' various CRC routines
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start{}: okay
+PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    okay := startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and{
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
-        if okay := i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)
-            time.msleep(core#TPU)
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#T_POR)
             if i2c.present(SLAVE_WR)            ' check device bus presence
                 reset{}
                 if lookdown(deviceid{}: $0D, $14, $15, $00, $FF)
-                    return okay
+                    return
 
-    return FALSE                                ' something above failed
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    i2c.terminate{}
+    i2c.deinit{}
 
 PUB ADCRes(bits): curr_adcres
 ' Set resolution of readings, in bits
@@ -186,69 +189,65 @@ PUB TempScale(temp_scale): curr_scale
         other:
             return _temp_scale
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, crc_in, rt
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from the slave device into ptr_buff
     case reg_nr
         core#READ_PREV_TEMP:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.wait(SLAVE_RD)
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
         core#MEAS_RH_NOHOLD:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.wait(SLAVE_RD)
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
 ' XXX CRC check here
             i2c.stop{}
         core#MEAS_TEMP_HOLD:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.start{}
             i2c.write(SLAVE_RD)
             time.msleep(11)
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
         core#MEAS_TEMP_NOHOLD:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.wait(SLAVE_RD)
-            repeat tmp from nr_bytes-1 to 0
-                byte[ptr_buff][tmp] := i2c.read(tmp == 0)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
         core#RD_RH_T_USER1, core#RD_HEATER:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.wait(SLAVE_RD)
-            i2c.rd_block(ptr_buff, nr_bytes, TRUE)' TRUE: NAK last byte
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
         core#RD_SERIALNUM_1, core#RD_SERIALNUM_2, core#RD_FIRMWARE_REV:
             cmd_pkt.byte[0] := SLAVE_WR
             cmd_pkt.byte[1] := reg_nr.byte[1]
             cmd_pkt.byte[2] := reg_nr.byte[0]
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 3)
+            i2c.wrblock_lsbf(@cmd_pkt, 3)
             i2c.wait(SLAVE_RD)
-            i2c.rd_block(ptr_buff, nr_bytes, TRUE)
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to the slave device
     case reg_nr
         core#RESET:
@@ -261,7 +260,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             cmd_pkt.byte[1] := reg_nr
             cmd_pkt.byte[2] := byte[ptr_buff][0]
             i2c.start{}
-            i2c.wr_block(@cmd_pkt, 3)
+            i2c.wrblock_lsbf(@cmd_pkt, 3)
             i2c.stop{}
         other:
             return
