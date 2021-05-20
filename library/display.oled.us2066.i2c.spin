@@ -6,7 +6,7 @@
         alphanumeric displays
     Copyright (c) 2021
     Created Dec 30, 2017
-    Updated Jan 2, 2021
+    Updated May 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
