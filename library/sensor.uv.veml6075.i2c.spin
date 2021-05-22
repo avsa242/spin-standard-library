@@ -3,211 +3,225 @@
     Filename: sensor.uv.veml6075.i2c.spin
     Author: Jesse Burt
     Description: Driver for the Vishay VEML6075 UVA/UVB sensor
-    Copyright (c) 2019
+    Copyright (c) 2021
     Started Aug 18, 2019
-    Updated Aug 19, 2019
+    Updated May 22, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    SLAVE_WR            = core#SLAVE_ADDR
-    SLAVE_RD            = core#SLAVE_ADDR|1
+    SLAVE_WR        = core#SLAVE_ADDR
+    SLAVE_RD        = core#SLAVE_ADDR|1
 
-    DEF_SCL             = 28
-    DEF_SDA             = 29
-    DEF_HZ              = 400_000
-    I2C_MAX_FREQ        = core#I2C_MAX_FREQ
+    DEF_SCL         = 28
+    DEF_SDA         = 29
+    DEF_HZ          = 100_000
+    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
 ' Dynamic settings
-    DYNAMIC_NORM        = 0
-    DYNAMIC_HI          = 1
+    DYNAMIC_NORM    = 0
+    DYNAMIC_HI      = 1
 
 ' Measurement modes
-    CONT                = 0
-    SINGLE              = 1
+    CONT            = 0
+    SINGLE          = 1
 
-VAR
-
+' Coefficients for calculating UV Index
+    CO_A            = 2_22
+    CO_B            = 1_33
+    CO_C            = 2_95
+    CO_D            = 1_74
+    UVA_RESP        = 0_001461
+    UVB_RESP        = 0_002591
 
 OBJ
 
-    i2c : "com.i2c"                                             'PASM I2C Driver
-    core: "core.con.veml6075"
-    time: "time"                                                'Basic timing functions
+    i2c : "com.i2c"                             ' PASM I2C engine
+    core: "core.con.veml6075"                   ' HW-specific constants
+    time: "time"                                ' timekeeping methods
 
-PUB Null
-''This is not a top-level object
+PUB Null{}
+' This is not a top-level object
 
-PUB Start: okay                                                 'Default to "standard" Propeller I2C pins and 400kHz
+PUB Start{}: status
+' Start using "standard" Propeller I2C pins and 100kHz
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-    okay := Startx (DEF_SCL, DEF_SDA, DEF_HZ)
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+' Start using custom settings
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#T_POR)
+            if present{}                    ' check device bus presence
+                if deviceid{} == core#DEV_ID_RESP
+                    return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): okay | tmp
+PUB Stop{}
 
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
-        if I2C_HZ =< core#I2C_MAX_FREQ
-            if okay := i2c.setupx (SCL_PIN, SDA_PIN, I2C_HZ)    'I2C Object Started?
-                time.MSleep (100)
-                if present
-                    if DeviceID == core#DEV_ID_RESP
-                        return okay
+    powered(FALSE)
+    time.msleep(1)
+    i2c.deinit{}
 
-    return FALSE                                                'If we got here, something went wrong
+PUB Preset_Active{}
+' Enable sensor power, set to 100ms integration time, continuous measurements
+    powered(TRUE)
+    dynamic(DYNAMIC_NORM)
+    integrationtime(100)
+    opmode(CONT)
 
-PUB Stop
-
-    Powered(FALSE)
-    time.MSleep(1)
-    i2c.terminate
-
-PUB DeviceID
+PUB DeviceID{}: id
 ' Device ID of the chip
 '   Known values: $0026
-    result := $0000
-    readReg(core#DEV_ID, 2, @result)
+    id := 0
+    readreg(core#DEV_ID, 2, @id)
 
-PUB Dynamic(level) | tmp
+PUB Dynamic(level): curr_lvl
 ' Set sensor dynamic
 '   Valid values: DYNAMIC_NORM (0), DYNAMIC_HI (1)
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#UV_CONF, 2, @tmp)
+    curr_lvl := 0
+    readreg(core#UV_CONF, 2, @curr_lvl)
     case level
         DYNAMIC_NORM, DYNAMIC_HI:
-            level <<= core#FLD_HD
-        OTHER:
-            result := (tmp >> core#FLD_HD) & %1
-            return
-    tmp &= core#MASK_HD
-    tmp := (tmp | level) & core#UV_CONF_MASK
-    tmp.byte[1] := $00
-    writeReg(core#UV_CONF, 2, @tmp)
+            level <<= core#HD
+        other:
+            return (curr_lvl >> core#HD) & 1
 
-PUB IntegrationTime(ms) | tmp
+    level := ((curr_lvl & core#HD_MASK) | level) & core#UV_CONF_MASK
+    writereg(core#UV_CONF, 2, @level)
+
+PUB IntegrationTime(itime): curr_itime
 ' Set sensor ADC integration time, in ms
 '   Valid values: 50, 100, 200, 400, 800
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#UV_CONF, 2, @tmp)
-    case ms
+    curr_itime := 0
+    readreg(core#UV_CONF, 2, @curr_itime)
+    case itime
         50, 100, 200, 400, 800:
-            ms := lookdownz(ms: 50, 100, 200, 400, 800) << core#FLD_UV_IT
-        OTHER:
-            tmp := (tmp >> core#FLD_UV_IT) & core#BITS_UV_IT
-            result := lookupz(tmp: 50, 100, 200, 400, 800)
-            return
-    tmp &= core#MASK_UV_IT
-    tmp := (tmp | ms) & core#UV_CONF_MASK
-    tmp.byte[1] := $00
-    writeReg(core#UV_CONF, 2, @tmp)
+            itime := lookdownz(itime: 50, 100, 200, 400, 800) << core#UV_IT
+        other:
+            curr_itime := (curr_itime >> core#UV_IT) & core#UV_IT
+            return lookupz(curr_itime: 50, 100, 200, 400, 800)
 
-PUB Measure | tmp
+    itime := ((curr_itime & core#UV_IT_MASK) | itime) & core#UV_CONF_MASK
+    writereg(core#UV_CONF, 2, @itime)
+
+PUB IRData{}: ir
+' Read Infrared sensor data
+'   Returns: 16-bit word
+    readreg(core#UVCOMP2, 2, @ir)
+
+PUB Measure{} | tmp
 ' Trigger a single measurement
-'   NOTE: For use when MeasureMode is set to SINGLE
-    tmp := $0000
-    readReg(core#UV_CONF, 2, @tmp)
-    tmp &= core#MASK_UV_TRIG    ' Supposed to be cleared by the device automatically - just being thorough
-    tmp.byte[0] |= (1 << core#FLD_UV_TRIG)
-    tmp.byte[1] := $00
-    writeReg(core#UV_CONF, 2, @tmp)
+'   NOTE: For use when OpMode() is set to SINGLE
+    tmp := 0
+    readreg(core#UV_CONF, 2, @tmp)
+    tmp.byte[0] |= (1 << core#UV_TRIG)
+    tmp.byte[1] := 0
+    writereg(core#UV_CONF, 2, @tmp)
 
-PUB OpMode(mode) | tmp
+PUB OpMode(mode): curr_mode
 ' Set measurement mode
 '   Valid values:
 '       CONT (0): Continuous measurement mode
-'       SINGLE (1): Single-measurement mode only
+'       SINGLE (1): Single-measurement mode
 '   Any other value polls the chip and returns the current setting
-'   NOTE: In MMODE_ONE mode, measurements must be triggered manually using the Measure method
-    tmp := $0000
-    readReg(core#UV_CONF, 2, @tmp)
+'   NOTE: In SINGLE mode, measurements must be triggered manually using the
+'       Measure() method
+    curr_mode := 0
+    readreg(core#UV_CONF, 2, @curr_mode)
     case mode
         CONT, SINGLE:
-            mode <<= core#FLD_UV_AF
-        OTHER:
-            result := (tmp >> core#FLD_UV_AF) & %1
-            return
-    tmp &= core#MASK_UV_AF
-    tmp := (tmp | mode) & core#UV_CONF_MASK
-    tmp.byte[1] := $00
-    writeReg(core#UV_CONF, 2, @tmp)
+            mode <<= core#UV_AF
+        other:
+            return (curr_mode >> core#UV_AF) & 1
 
-PUB Powered(enabled) | tmp
+    mode := ((curr_mode & core#UV_AF_MASK) | mode) & core#UV_CONF_MASK
+    writereg(core#UV_CONF, 2, @mode)
+
+PUB Powered(state): curr_state
 ' Power on sensor
 '   Valid values:
 '       TRUE (-1 or 1): Power on
 '       FALSE (0): Power off
 '   Any other value polls the chip and returns the current setting
-    tmp := $0000
-    readReg(core#UV_CONF, 2, @tmp)
-    case ||enabled
+    curr_state := 0
+    readreg(core#UV_CONF, 2, @curr_state)
+    case ||(state)
         0, 1:
-            enabled := (||enabled ^ 1) & %1
-        OTHER:
-            return (tmp & %1) * TRUE
+            state := (||(state) ^ 1) & 1        ' logic on chip is inverted,
+        other:                                  ' so flip the bit
+            return ((curr_state & 1) == 1)
 
-    tmp &= core#MASK_SD
-    tmp := (tmp | enabled) & core#UV_CONF_MASK
-    tmp.byte[1] := $00
-    writeReg(core#UV_CONF, 2, @tmp)
+    state := ((curr_state & core#SD_MASK) | state) & core#UV_CONF_MASK
+    writereg(core#UV_CONF, 2, @state)
 
-PUB UVAData
+PUB UVAData{}: uva
 ' Read UV-A sensor data
 '   Returns: 16-bit word
-    readReg(core#UVA_DATA, 2, @result)
+    readreg(core#UVA_DATA, 2, @uva)
 
-PUB UVBData
+PUB UVBData{}: uvb
 ' Read UV-B sensor data
 '   Returns: 16-bit word
-    readReg(core#UVB_DATA, 2, @result)
+    readreg(core#UVB_DATA, 2, @uvb)
 
-PUB VisibleData
+PUB UVIndex{}: uvidx | uva_raw, uva_comp, uvb_raw, uvb_comp, uvcomp1, uvcomp2
+' Return UV Index, in hundredths of a point (e.g. 103 == 1.03)
+    uva_raw := uvadata{} * 100
+    uvb_raw := uvbdata{} * 100
+    uvcomp1 := visibledata{}
+    uvcomp2 := irdata{}
+
+    uva_comp := uva_raw - (CO_A * uvcomp1) - (CO_B * uvcomp2)
+    uvb_comp := uvb_raw - (CO_C * uvcomp1) - (CO_D * uvcomp2)
+    return (((uva_comp * UVA_RESP) + (uvb_comp * UVB_RESP)) / 2) / 1_000_000
+
+PUB VisibleData{}: vis
 ' Read Visible sensor data
 '   Returns: 16-bit word
-    readReg(core#UVCOMP1, 2, @result)
+    readreg(core#UVCOMP1, 2, @vis)
 
-PUB IRData
-' Read Infrared sensor data
-'   Returns: 16-bit word
-    readReg(core#UVCOMP2, 2, @result)
-
-PRI present | tmp
+PRI present{}: flag
 ' Flag indicating the device responds on the I2C bus
-'   NOTE: Differs from Present() contained in com.i2c in that it is followed by a stop condition
-    i2c.Start
-    tmp := i2c.Write (SLAVE_WR)
-    i2c.Stop
-    result := (tmp == i2c#ACK)
+    i2c.start{}
+    flag := i2c.write(SLAVE_WR)
+    i2c.stop{}                                  ' <P> needed by this device
+    return (flag == i2c#ACK)
 
-PRI readReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Read num_bytes from the slave device into the address stored in buff_addr
-    case reg                                                    'Basic register validation
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Read nr_bytes from slave device into ptr_buff
+    case reg_nr
         core#UV_CONF, core#UVA_DATA..core#DEV_ID:
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg
-            i2c.start
-            i2c.wr_block (@cmd_packet, 2)
-            i2c.Wait (SLAVE_RD)
-            i2c.rd_block (buff_addr, nr_bytes, TRUE)
-            i2c.stop
-        OTHER:
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.wait(SLAVE_RD)
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
+            i2c.stop{}
+        other:
             return
 
-PRI writeReg(reg, nr_bytes, buff_addr) | cmd_packet, tmp
-'' Write num_bytes to the slave device from the address stored in buff_addr
-    case reg                                                    'Basic register validation
+PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+' Write nr_bytes from ptr_buff to slave device
+    case reg_nr
         core#UV_CONF:
-            cmd_packet.byte[0] := SLAVE_WR
-            cmd_packet.byte[1] := reg
-            i2c.start
-            i2c.wr_block (@cmd_packet, 2)
-            repeat tmp from 0 to nr_bytes-1
-                i2c.write (byte[buff_addr][tmp])
-            i2c.stop
-        OTHER:
+            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+            i2c.stop{}
+        other:
             return
-
 
 DAT
 {
