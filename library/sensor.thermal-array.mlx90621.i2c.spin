@@ -6,7 +6,7 @@
         16x4 IR array
     Copyright (c) 2021
     Started: Jan 4, 2018
-    Updated: May 17, 2021
+    Updated: May 22, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -31,7 +31,7 @@ CON
     I2CFMODE_DIS    = 1
 
 ' Operation modes
-    CONT      = 0
+    CONT            = 0
     SINGLE          = 1
 
 ' Sensor power states
@@ -70,7 +70,6 @@ OBJ
     core    : "core.con.mlx90621"               ' HW-specific constants
     i2c     : "com.i2c"                         ' PASM I2C engine
     time    : "time"                            ' timekeeping methods
-    io      : "io"                              ' I/O pin abstraction
 
 VAR
 
@@ -82,16 +81,17 @@ PUB Null{}
 
 PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom I/O settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+    if lookdown(SCL_PIN: 0..63) and lookdown(SDA_PIN: 0..63) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
-        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+        if (status := i2c.init(SCL_PIN, SDA_PIN, core#EE_MAX_FREQ))
             time.usleep(core#T_POR)
-            if i2c.present(core#EE_SLAVE_ADDR)
-                readeeprom{}                        '   ...to read the EEPROM.
+            if i2c.present(core#EE_SLAVE_ADDR)      ' first start I2C engine
+                readeeprom{}                        '   to read the EEPROM
                 time.msleep(5)
-                i2c.setupx(SCL_PIN, SDA_PIN, I2C_HZ)' This time re-setup for the sensor
+                i2c.deinit{}
+                i2c.init(SCL_PIN, SDA_PIN, I2C_HZ)  ' This time re-setup for the sensor
                 time.msleep(5)
-                if i2c.present (SLAVE_WR)           ' check device bus presence
+                if i2c.present(SLAVE_WR)            ' check device bus presence
                     return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
@@ -323,7 +323,7 @@ PUB Powered(state): curr_state
     state := ((curr_state & core#OPMODE_MASK) | state)
     writereg(core#CONFIG, state)
 
-PUB ReadEEPROM{} | tmp
+PUB ReadEEPROM{}
 ' Read sensor EEPROM contents into RAM
     bytefill(@_ee_data, $00, EE_SIZE)           ' clear RAM copy of EEPROM
 
@@ -333,8 +333,7 @@ PUB ReadEEPROM{} | tmp
 
     i2c.start{}                                 ' Read in the EEPROM
     i2c.write(core#EE_SLAVE_ADDR|1)
-    repeat tmp from 0 to EE_SIZE-1
-        _ee_data[tmp] := i2c.read(tmp == EE_SIZE-1)
+    i2c.rdblock_lsbf(@_ee_data, EE_SIZE, i2c#NAK)
     i2c.stop{}
 
 PUB RefreshRate(rate): curr_rate
