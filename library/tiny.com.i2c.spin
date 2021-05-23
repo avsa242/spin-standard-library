@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: SPIN I2C Engine
     Started Jun 9, 2019
-    Updated Feb 14, 2021
+    Updated May 23, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c.spin, by
@@ -44,7 +44,7 @@ PUB Init(SCL, SDA): status
 '   Bus speed is approx 28-32kHz @80MHz system clock
     longmove(@_scl, @SCL, 2)                    ' Copy pins
     dira[_scl] := 0                             ' Float to pull-up
-    outa[_scl] := 0                             ' Write 0 to output reg
+    outa[_scl] := 0                             ' output low
     dira[_sda] := 0
     outa[_sda] := 0
 
@@ -53,24 +53,6 @@ PUB Init(SCL, SDA): status
 PUB DeInit
 ' Deinitialize - clear out hub vars
     longfill(@_scl, 0, 2)
-
-PUB Setup 'XXX
-' Setup I2C using Propeller EEPROM pins
-    setupx(DEF_SCL, DEF_SDA)
-
-PUB Setupx(sclpin, sdapin)  'XXX
-' Define I2C SCL (clock) and SDA (data) pins
-    longmove(@_scl, @sclpin, 2)                 ' Copy pins
-    dira[_scl] := 0                             ' Float to pull-up
-    outa[_scl] := 0                             ' Write 0 to output reg
-    dira[_sda] := 0
-    outa[_sda] := 0
-
-    repeat 9                                    ' Reset device
-        dira[_scl] := 1
-        dira[_scl] := 0
-        if (ina[_sda])
-            quit
 
 PUB Present(slave_addr): status
 ' Check for slave device presence on bus
@@ -172,19 +154,19 @@ PUB WaitClockStretch{}
     dira[_SCL] := 0                             ' let SCL float
     repeat until ina[_SCL] == HIGH              ' wait until slave releases it
 
-PUB Waitx(slaveid, ms): t0
+PUB Waitx(slaveid, ms): ackbit | tmp
 ' Wait ms milliseconds for I2C device to be ready for new command
 '   Returns:
 '       ACK(0): device responded within specified time
 '       NAK(1): device didn't respond
     ms *= clkfreq / 1000                        ' ms in Propeller system clocks
 
-    t0 := cnt                                   ' Mark
+    tmp := cnt                                  ' timestamp before wait loop
     repeat
-        if (present(slaveid))
-            quit
-        if ((cnt - t0) => ms)
-            return NAK
+        if (present(slaveid))                   ' if the device responds,
+            quit                                '   exit immediately
+        if ((cnt - tmp) => ms)                  ' if time limit elapses,
+            return NAK                          '   exit and return No-ACK
 
     return ACK
 
