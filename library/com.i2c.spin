@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: PASM I2C Engine
     Started Mar 9, 2019
-    Updated Feb 14, 2021
+    Updated May 23, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -23,8 +23,6 @@ CON
     DEF_SDA = 29                                ' Default I2C I/O pins
     DEF_SCL = 28
 
-CON
-
     #0, ACK, NAK
     #1, I2C_START, I2C_WRITE_LE, I2C_WRITE_BE, I2C_READ_LE, I2C_READ_BE,{
 }   I2C_STOP                                    ' PASM engine Commands
@@ -37,7 +35,7 @@ VAR
 
 DAT
 
-    _cog long      0                            ' Not connected
+    _cog long      0                            ' store cog # of running engine
 
 PUB Null
 ' This is not a top-level object
@@ -67,8 +65,8 @@ PUB Init(SCL, SDA, HZ): status
 
 PUB DeInit
 ' Deinitialize/stop PASM engine
-    if (_cog)
-        cogstop(_cog-1)
+    if (_cog)                                   ' check it's actually started
+        cogstop(_cog-1)                         ' first, before trying to stop
         _cog := 0
 
     longfill(@_i2c_cmd, 0, 4)
@@ -89,6 +87,8 @@ PUB RdBlock_LSBF(ptr_buff, nr_bytes, ack_last)
 '   ack_last:
 '       ACK (0): Acknowledge last byte read from bus
 '       NAK (non-zero): Don't acknowledge last byte read from bus
+'   NOTE: This method supports clock stretching;
+'       waits while SCL pin is held low
     _i2c_params.word[0] := ptr_buff
     _i2c_params.word[1] := nr_bytes
 
@@ -104,6 +104,8 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last)
 '   ack_last:
 '       ACK (0): Acknowledge last byte read from bus
 '       NAK (non-zero): Don't acknowledge last byte read from bus
+'   NOTE: This method supports clock stretching;
+'       waits while SCL pin is held low
     _i2c_params.word[0] := ptr_buff
     _i2c_params.word[1] := nr_bytes
 
@@ -137,18 +139,19 @@ PUB RdWord_MSBF(ackbit): i2c2word
 PUB Read(ackbit): i2cbyte
 ' Read byte from I2C bus
     rdblock_lsbf(@_i2c_result, 1, ackbit)
-
     return _i2c_result & $FF
 
 PUB Start
 ' Create I2C start/restart condition (S, Sr)
 '   NOTE: This method supports clock stretching;
-'       waits while SDA pin is held low
+'       waits while SCL pin is held low
     _i2c_cmd := I2C_START
     repeat while (_i2c_cmd <> 0)
 
 PUB Stop
 ' Create I2C stop condition (P)
+'   NOTE: This method supports clock stretching;
+'       waits while SCL pin is held low
     _i2c_cmd := I2C_STOP
     repeat while (_i2c_cmd <> 0)
 
@@ -162,19 +165,19 @@ PUB Wait(slave_addr)
 
     return ACK
 
-PUB Waitx(slaveid, ms): t0
+PUB Waitx(slaveid, ms): ackbit | tmp
 ' Wait ms milliseconds for I2C device to be ready for new command
 '   Returns:
 '       ACK(0): device responded within specified time
 '       NAK(1): device didn't respond
     ms *= clkfreq / 1000                        ' ms in Propeller system clocks
 
-    t0 := cnt                                   ' Mark
+    tmp := cnt                                  ' timestamp before wait loop
     repeat
-        if (present(slaveid))
-            quit
-        if ((cnt - t0) => ms)
-            return NAK
+        if (present(slaveid))                   ' if the device responds,
+            quit                                '   exit immediately
+        if ((cnt - tmp) => ms)                  ' if time limit elapses,
+            return NAK                          '   exit and return No-ACK
 
     return ACK
 
@@ -223,61 +226,6 @@ PUB WrWord_MSBF(word2i2c): ackbit
 PUB Write(b): ackbit
 ' Write byte to I2C bus
     return wrblock_lsbf(@b, 1)
-
-' -- Legacy methods below
-
-PUB Setup(hz) ' XXX
-' Start I2C cog on default Propeller I2C bus
-' -- aborts if cog already running
-' -- example: i2c.setup(400_000)
-    if (_cog)
-        return
-
-    setupx(DEF_SCL, DEF_SDA, hz)                ' Use default Propeller I2C pins
-
-PUB Setupx(sclpin, sdapin, hz) ' XXX
-' Start i2c cog on any set of pins
-' -- aborts if cog already running
-' -- example: i2c.setupx(SCL, SDA, 400_000)
-    if (_cog)
-        return
-
-    _i2c_cmd.byte[0] := sclpin                  ' Setup pins
-    _i2c_cmd.byte[1] := sdapin
-    _i2c_cmd.word[1] := clkfreq / hz            ' Ticks in full cycle
-
-    _cog := cognew(@fast_i2c, @_i2c_cmd) + 1    ' Start the cog
-
-    return _cog
-
-PUB Terminate ' XXX
-' Kill i2c cog
-    if (_cog)
-        cogstop(_cog-1)
-        _cog := 0
-
-    longfill(@_i2c_cmd, 0, 4)
-
-PUB Rd_Block(p_dest, count, ackbit) ' XXX
-' Read block of count bytes from I2C bus to p_dest
-    _i2c_params.word[0] := p_dest
-    _i2c_params.word[1] := count
-
-    if (ackbit)
-        ackbit := $80
-
-    _i2c_cmd := I2C_READ_LE | ackbit
-    repeat while (_i2c_cmd <> 0)
-
-PUB Wr_Block(p_src, count) | cmd    ' XXX
-' Write block of count bytes from p_src to I2C bus
-    _i2c_params.word[0] := p_src
-    _i2c_params.word[1] := count
-
-    _i2c_cmd := I2C_WRITE_LE
-    repeat while (_i2c_cmd <> 0)
-
-    return _i2c_result                            ' Return ACK or NAK
 
 DAT
 
@@ -341,7 +289,7 @@ cmd_exit                mov     t1, #0                          ' Clear old comm
 cmd_start               andn    dira, sdamask                   ' Float SDA (1)
                         andn    dira, sclmask                   ' Float SCL (1, input)
                         nop
-:loop                   test    sclmask, ina            wz      ' SCL -> C
+:loop                   test    sclmask, ina            wz      ' SCL -> Z
         if_z            jmp     #:loop                          ' Wait while low
                         call    #hdelay
                         or      dira, sdamask                   ' SDA low
@@ -521,7 +469,6 @@ cmd_read_le             mov     tackbit, tcmd                   ' (tackbit := tc
                         jmp     #cmd_exit
 
 
-
 cmd_stop                or      dira, sdamask                   ' SDA low
                         call    #hdelay
                         andn    dira, sclmask                   ' Float SCL
@@ -533,13 +480,11 @@ cmd_stop                or      dira, sdamask                   ' SDA low
                         jmp     #cmd_exit
 
 
-
 hdelay                  mov     t1, delaytix                    ' Delay half period
                         shr     t1, #1
                         add     t1, cnt
                         waitcnt t1, #0
 hdelay_ret              ret
-
 
 
 qdelay                  mov     t1, delaytix                    ' Delay quarter period
@@ -548,8 +493,8 @@ qdelay                  mov     t1, delaytix                    ' Delay quarter 
                         waitcnt t1, #0
 qdelay_ret              ret
 
-' --------------------------------------------------------------------------------------------------
 
+' Initialized and uninitialized data
 HX_FFFF                 long    $FFFF                           ' Low word mask
 
 sclmask                 res     1                               ' Pin masks
