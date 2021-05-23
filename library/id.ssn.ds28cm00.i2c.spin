@@ -6,7 +6,7 @@
      64-bit I2C Silicon Serial Number
     Copyright (c) 2021
     Started Oct 27, 2019
-    Updated May 19, 2021
+    Updated May 23, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This driver will start successfully if the Propeller's EEPROM is on
@@ -27,10 +27,14 @@ CON
 
 OBJ
 
-    i2c : "com.i2c"
-    core: "core.con.ds28cm00"
-    time: "time"
-    crcs: "math.crc"
+#ifdef _PASM_
+    i2c : "com.i2c"                             ' PASM I2C engine
+#else
+    i2c : "tiny.com.i2c"                        ' SPIN I2C engine
+#endif
+    core: "core.con.ds28cm00"                   ' HW-specific constants
+    time: "time"                                ' timekeeping methods
+    crcs: "math.crc"                            ' various CRC routines
 
 PUB Null{}
 ' This is not a top-level object
@@ -43,7 +47,11 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
+#ifdef _PASM_
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+#else
+        if (status := i2c.init(SCL_PIN, SDA_PIN))
+#endif
             time.usleep(core#T_POR)
             if i2c.present(SLAVE_WR)            ' check device bus presence
                 if deviceid{} == core#DEVID_RESP

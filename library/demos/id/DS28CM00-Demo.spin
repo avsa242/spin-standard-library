@@ -5,13 +5,17 @@
     Description: Demo of the DS28CM00 64-bit ROM ID chip
     Copyright (c) 2021
     Started Oct 27, 2019
-    Updated May 19, 2021
+    Updated May 23, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: If a common EEPROM (e.g. AT24Cxxxx) is on the same I2C bus as the SSN,
         the driver may return data from it instead of the SSN. Make sure the EEPROM is
         somehow disabled or test the SSN using different I/O pins.
 }
+' Uncomment the line below to use the PASM I2C engine in the driver
+'   otherwise, the SPIN (bytecode) engine will be used, which is much
+'   slower (~30kHz), but doesn't require another cog
+'#define _PASM_
 
 CON
 
