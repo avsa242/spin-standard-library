@@ -5,7 +5,7 @@
     Description: Simple demo of the INA260 driver
     Copyright (c) 2020
     Started Jan 18, 2020
-    Updated May 16, 2021
+    Updated May 30, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,7 +21,8 @@ CON
 
     I2C_SCL     = 28
     I2C_SDA     = 29
-    I2C_HZ      = 400_000
+    I2C_HZ      = 400_000                       ' max is 400_000
+    ADDR_BITS   = %0000                         ' %0000..%1111 (see driver)
 ' --
 
     VBUS_COL    = 0
@@ -97,7 +98,7 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if ina260.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+    if ina260.startx(I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS)
         ser.strln(string("INA260 driver started"))
     else
         ser.strln(string("INA260 driver failed to start - halting"))

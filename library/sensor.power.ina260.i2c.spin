@@ -18,7 +18,27 @@ CON
     DEF_SCL         = 28
     DEF_SDA         = 29
     DEF_HZ          = 100_000
+    DEF_ADDR        = %0000
     I2C_MAX_FREQ    = core#I2C_MAX_FREQ
+
+'   Address pins vs slave addresses
+'   A1  A0  SLAVE ADDRESS
+'   GND GND 100_0000
+'   GND VS+ 100_0001
+'   GND SDA 100_0010
+'   GND SCL 100_0011
+'   VS+ GND 100_0100
+'   VS+ VS+ 100_0101
+'   VS+ SDA 100_0110
+'   VS+ SCL 100_0111
+'   SDA GND 100_1000
+'   SDA VS+ 100_1001
+'   SDA SDA 100_1010
+'   SDA SCL 100_1011
+'   SCL GND 100_1100
+'   SCL VS+ 100_1101
+'   SCL SDA 100_1110
+'   SCL SCL 100_1111
 
 ' Operating modes
     POWERDN         = %000
@@ -44,6 +64,7 @@ CON
 
 VAR
 
+    long _addr_bits
 
 OBJ
 
@@ -56,15 +77,17 @@ PUB Null{}
 
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+'   Default slave address
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
+}   I2C_HZ =< core#I2C_MAX_FREQ and lookdown(ADDR_BITS: %0000..%1111)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#T_POR)
-            if i2c.present(SLAVE_WR)        ' test device bus presence
+            _addr_bits := ADDR_BITS << 1
+            if i2c.present(SLAVE_WR | _addr_bits)' test device bus presence
                 reset{}
                 if deviceid{} == core#DEVID_RESP
                 return
@@ -290,13 +313,13 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from the slave device into ptr_buff
     case reg_nr
         $00..$03, $06, $07, $fe, $ff:
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
 
             i2c.start{}
-            i2c.write(SLAVE_RD)
+            i2c.write(SLAVE_RD | _addr_bits)
             i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
         other:
@@ -311,7 +334,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return
 
-    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
     cmd_pkt.byte[1] := reg_nr
     i2c.start{}
     i2c.wrblock_lsbf(@cmd_pkt, 2)
