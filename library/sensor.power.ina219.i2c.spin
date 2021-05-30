@@ -3,22 +3,42 @@
     Filename: sensor.power.ina219.i2c.spin
     Author: Jesse Burt
     Description: Driver of the TI INA219 current/power monitor IC
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Sep 18, 2019
-    Updated Dec 5, 2020
+    Updated May 30, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    SLAVE_WR          = core#SLAVE_ADDR
-    SLAVE_RD          = core#SLAVE_ADDR|1
+    SLAVE_WR        = core#SLAVE_ADDR
+    SLAVE_RD        = core#SLAVE_ADDR|1
 
-    DEF_SCL           = 28
-    DEF_SDA           = 29
-    DEF_HZ            = 100_000
-    I2C_MAX_FREQ      = core#I2C_MAX_FREQ
+    DEF_SCL         = 28
+    DEF_SDA         = 29
+    DEF_HZ          = 100_000
+    DEF_ADDR        = %0000
+    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
+
+'   Address pins vs slave addresses
+'   A1  A0  SLAVE ADDRESS
+'   GND GND 100_0000
+'   GND VS+ 100_0001
+'   GND SDA 100_0010
+'   GND SCL 100_0011
+'   VS+ GND 100_0100
+'   VS+ VS+ 100_0101
+'   VS+ SDA 100_0110
+'   VS+ SCL 100_0111
+'   SDA GND 100_1000
+'   SDA VS+ 100_1001
+'   SDA SDA 100_1010
+'   SDA SCL 100_1011
+'   SCL GND 100_1100
+'   SCL VS+ 100_1101
+'   SCL SDA 100_1110
+'   SCL SCL 100_1111
 
 OBJ
 
@@ -32,21 +52,24 @@ VAR
     long _i_max
     long _i_lsb, _p_lsb
     long _vmax_shunt
+    long _addr_bits
 
 PUB Null{}
 ' This is not a top-level object
 
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+'   Default slave address
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
+}   I2C_HZ =< core#I2C_MAX_FREQ and lookdown(ADDR_BITS: %0000..%1111)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.msleep(1)
-            if i2c.present (SLAVE_WR)           ' check device bus presence
+            _addr_bits := ADDR_BITS << 1
+            if i2c.present(SLAVE_WR | _addr_bits) ' check device bus presence
                 if deviceid{} == core#CONFIG_POR
                     return
     ' if this point is reached, something above failed
@@ -112,7 +135,7 @@ PUB BusVoltageRange(range): curr_rng
         16, 32:
             range := lookdownz(range: 16, 32) << core#BRNG
         other:
-            curr_rng := (curr_rng >> core#BRNG) & %1
+            curr_rng := (curr_rng >> core#BRNG) & 1
             return lookupz(curr_rng: 16, 32)
 
     range := ((curr_rng & core#BRNG_MASK) | range) & core#CONFIG_MASK
@@ -239,12 +262,12 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' read nr_bytes from device into ptr_buff
     case reg_nr                                    ' validate register
         core#CONFIG..core#CALIBRATION:
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.start{}
-            i2c.write(SLAVE_RD)
+            i2c.write(SLAVE_RD | _addr_bits)
             i2c.rdblock_msbf(ptr_buff, 2, i2c#NAK)
             i2c.stop{}
         other:
@@ -254,7 +277,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' write nr_bytes to device from ptr_buff
     case reg_nr
         core#CONFIG, core#CALIBRATION:
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
             cmd_pkt.byte[1] := reg_nr
             cmd_pkt.byte[2] := byte[ptr_buff][1]
             cmd_pkt.byte[3] := byte[ptr_buff][0]
