@@ -5,7 +5,7 @@
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
     Copyright (c) 2021
     Started Aug 12, 2017
-    Updated Jan 25, 2021
+    Updated May 31, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,6 +19,14 @@ CON
     MAG_DOF                 = 3
     BARO_DOF                = 0
     DOF                     = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
+
+' Scales and data rates used during calibration/bias/offset process
+    CAL_XL_SCL              = 2
+    CAL_G_SCL               = 245
+    CAL_M_SCL               = 4
+    CAL_XL_DR               = 238
+    CAL_G_DR                = 238
+    CAL_M_DR                = 80
 
 ' Constants used in low-level SPI read/write
     READ                    = 1 << 7
@@ -258,74 +266,94 @@ PUB AccelScale(scale): curr_scl
     scale := ((curr_scl & core#FS_XL_MASK) | scale)
     writereg(XLG, core#CTRL_REG6_XL, 1, @scale)
 
-PUB CalibrateMag{} | magmin[3], magmax[3], magtmp[3], axis, samples, orig_opmode, orig_odr
+PUB CalibrateAccel{} | axis, orig_res, orig_scl, orig_dr, tmp[ACCEL_DOF], tmpx, tmpy, tmpz, samples
+' Calibrate the accelerometer
+'   NOTE: The accelerometer must be oriented with the package top facing up
+'       for this method to be successful
+    longfill(@axis, 0, 11)                      ' initialize vars to 0
+    orig_scl := accelscale(-2)                  ' save user's current settings
+    orig_dr := acceldatarate(-2)
+    accelbias(0, 0, 0, W)                       ' clear existing bias
+
+    ' set sensor to CAL_XL_SCL range, CAL_XL_DR Hz data rate
+    accelscale(CAL_XL_SCL)
+    acceldatarate(CAL_XL_DR)
+    samples := CAL_XL_DR                        ' samples = DR, for 1 sec time
+
+    ' accumulate and average approx. 1sec worth of samples
+    repeat samples
+        repeat until acceldataready{}
+        acceldata(@tmpx, @tmpy, @tmpz)
+        tmp[X_AXIS] += tmpx
+        tmp[Y_AXIS] += tmpy
+        tmp[Z_AXIS] += (tmpz-(1_000_000 / _ares))' cancel out 1g on Z-axis
+
+    repeat axis from X_AXIS to Z_AXIS           ' calc avg
+        tmp[axis] /= samples
+
+    ' update offsets
+    accelbias(tmp[X_AXIS], tmp[Y_AXIS], tmp[Z_AXIS], W)
+
+    accelscale(orig_scl)                        ' restore user's settings
+    acceldatarate(orig_dr)
+
+PUB CalibrateGyro{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[GYRO_DOF], samples
+' Calibrate the gyroscope
+    longfill(@axis, 0, 10)                      ' initialize vars to 0
+    orig_scl := gyroscale(-2)                   ' save user's current settings
+    orig_dr := gyrodatarate(-2)
+    gyrobias(0, 0, 0, W)                        ' clear existing bias
+
+    ' set sensor to CAL_G_SCL range, CAL_G_DR Hz data rate
+    gyroscale(CAL_G_SCL)
+    gyrodatarate(CAL_G_DR)
+    samples := CAL_G_DR                         ' samples = DR, for 1 sec time
+
+    ' accumulate and average approx. 1sec worth of samples
+    repeat samples
+        repeat until gyrodataready{}
+        gyrodata(@tmpx, @tmpy, @tmpz)
+        tmp[X_AXIS] += tmpx
+        tmp[Y_AXIS] += tmpy
+        tmp[Z_AXIS] += tmpz
+
+    repeat axis from X_AXIS to Z_AXIS           ' calc avg
+        tmp[axis] /= samples
+
+    ' update offsets
+    gyrobias(tmp[X_AXIS], tmp[Y_AXIS], tmp[Z_AXIS], W)
+
+    gyroscale(orig_scl)                         ' restore user's settings
+    gyrodatarate(orig_dr)
+
+PUB CalibrateMag{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[MAG_DOF], samples
 ' Calibrate the magnetometer
-    longfill(@magmin, 0, 11)                    ' Initialize variables to 0
-    orig_opmode := magopmode(-2)                ' Store the user-set operating mode
-    orig_odr := magdatarate(-2)                 '   and data rate
+    longfill(@axis, 0, 11)                      ' initialize vars to 0
+    orig_scl := magscale(-2)                    ' save user's current settings
+    orig_dr := magdatarate(-2)
+    magbias(0, 0, 0, W)                         ' clear existing bias
 
-    magopmode(MAG_OPMODE_CONT)                  ' Change to continuous measurement mode
-    magdatarate(80_000)                         '   and fastest data rate
-    magbias(0, 0, 0, W)                         ' Start with offsets cleared
+    ' set sensor to CAL_M_SCL range, CAL_M_DR Hz data rate
+    magscale(CAL_M_SCL)
+    magdatarate(CAL_M_DR)
+    samples := CAL_M_DR                         ' samples = DR, for 1 sec time
 
-    repeat 5
-        repeat until magdataready{}
-        magdata(@magtmp[X_AXIS], @magtmp[Y_AXIS], @magtmp[Z_AXIS])
-        ' Establish initial minimum and maximum values for averaging:
-        ' Start both with the same value to avoid skewing the
-        '   calcs (because vars were initialized with 0)
-        magmax[X_AXIS] := magmin[X_AXIS] := magtmp[X_AXIS]
-        magmax[Y_AXIS] := magmin[Y_AXIS] := magtmp[Y_AXIS]
-        magmax[Z_AXIS] := magmin[Z_AXIS] := magtmp[Z_AXIS]
-
-    samples := 100                              ' XXX arbitrary
+    ' accumulate and average approx. 1sec worth of samples
     repeat samples
         repeat until magdataready{}
-        magdata(@magtmp[X_AXIS], @magtmp[Y_AXIS], @magtmp[Z_AXIS])
-        repeat axis from X_AXIS to Z_AXIS
-            magmin[axis] := magtmp[axis] <# magmin[axis]
-            magmax[axis] := magtmp[axis] #> magmax[axis]
+        magdata(@tmpx, @tmpy, @tmpz)
+        tmp[X_AXIS] += tmpx
+        tmp[Y_AXIS] += tmpy
+        tmp[Z_AXIS] += tmpz
 
-    magbias((magmax[X_AXIS] + magmin[X_AXIS]) / 2,{
-}   (magmax[Y_AXIS] + magmin[Y_AXIS]) / 2, {
-}   (magmax[Z_AXIS] + magmin[Z_AXIS]) / 2, W)
+    repeat axis from X_AXIS to Z_AXIS           ' calc avg
+        tmp[axis] /= samples
 
-    magopmode(orig_opmode)                      ' Restore the user settings
-    magdatarate(orig_odr)
+    ' update offsets
+    magbias(tmp[X_AXIS], tmp[Y_AXIS], tmp[Z_AXIS], W)
 
-PUB CalibrateXLG{} | abiasrawtmp[3], gbiasrawtmp[3], axis, ax, ay, az, gx, gy, gz, samples ' XXX break this up into CalibrateAccel() and CalibrateGyro(), then this calls both
-' Calibrates the Accelerometer and Gyroscope
-' Turn on FIFO and set threshold to 32 samples
-    fifoenabled(TRUE)
-    fifomode(FIFO_THS)
-    fifothreshold(31)
-    samples := fifothreshold(-2)
-    repeat until fifofull{}
-    repeat axis from 0 to 2
-        gbiasrawtmp[axis] := 0
-        abiasrawtmp[axis] := 0
-
-    gyrobias(0, 0, 0, W)                        ' Clear out existing bias offsets
-    accelbias(0, 0, 0, W)                       '
-    repeat samples
-        gyrodata(@gx, @gy, @gz)                 ' read gyro and accel data
-        gbiasrawtmp[X_AXIS] += gx               ' from FIFO
-        gbiasrawtmp[Y_AXIS] += gy
-        gbiasrawtmp[Z_AXIS] += gz
-
-        acceldata(@ax, @ay, @az)
-        abiasrawtmp[X_AXIS] += ax
-        abiasrawtmp[Y_AXIS] += ay
-        ' compensate on z-axis for chip 'facing up' orientation:
-        abiasrawtmp[Z_AXIS] += az - (1_000_000 / _ares)
-
-    gyrobias(gbiasrawtmp[X_AXIS]/samples, gbiasrawtmp[Y_AXIS]/samples,{
-}   gbiasrawtmp[Z_AXIS]/samples, W)
-    accelbias(abiasrawtmp[X_AXIS]/samples, abiasrawtmp[Y_AXIS]/samples,{
-}   abiasrawtmp[Z_AXIS]/samples, W)
-
-    fifoenabled(FALSE)
-    fifomode(FIFO_OFF)
+    magscale(orig_scl)                          ' restore user's settings
+    magdatarate(orig_dr)
 
 PUB DeviceID{}: id
 ' Read device identification
@@ -403,8 +431,8 @@ PUB FIFOUnreadSamples{}: nr_samples
     return nr_samples & core#FSS_BITS
 
 PUB GyroAxisEnabled(mask): curr_mask
-' Enable data output for Gyroscope - per axis
-'   Valid values: FALSE (0) or TRUE (1 or -1), for each axis
+' Enable Gyroscope data output, per axis mask
+'   Valid values: 0 or 1, for each axis
 '   Any other value polls the chip and returns the current setting
     readreg(XLG, core#CTRL_REG4, 1, @curr_mask)
     case mask
@@ -485,14 +513,53 @@ PUB GyroDPS(gx, gy, gz) | tmp[3]
 
 PUB GyroHighPass(freq): curr_freq
 ' Set Gyroscope high-pass filter cutoff frequency
-'   Valid values: 0..9
+'   Valid values: dependent on GyroDataRate(), see table below
 '   Any other value polls the chip and returns the current setting
+    curr_freq := 0
     readreg(XLG, core#CTRL_REG3_G, 1, @curr_freq)
-    case freq
-        0..9:
-            freq := freq << core#HPCF_G
-        other:
-            return (curr_freq >> core#HPCF_G) & core#HPCF_G_BITS
+    case gyrodatarate(-2)
+        15:
+            case freq
+                0_001, 0_002, 0_005, 0_010, 0_020, 0_050, 0_100, 0_200, 0_500, 1_000:
+                    freq := lookdownz(freq: 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010, 0_005, 0_002, 0_001) << core#HPCF_G
+                other:
+                    curr_freq := (curr_freq >> core#HPCF_G) & core#HPCF_G_BITS
+                    return lookupz(curr_freq: 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010, 0_005, 0_002, 0_001)
+        60:
+            case freq
+                0_005, 0_010, 0_020, 0_050, 0_100, 0_200, 0_500, 1_000, 2_000, 4_000:
+                    freq := lookdownz(freq: 4_000, 2_000, 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010, 0_005) << core#HPCF_G
+                other:
+                    curr_freq := (curr_freq >> core#HPCF_G) & core#HPCF_G_BITS
+                    return lookupz(curr_freq: 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010, 0_005, 0_002, 0_001)
+        119:
+            case freq
+                0_010, 0_020, 0_050, 0_100, 0_200, 0_500, 1_000, 2_000, 4_000, 8_000:
+                    freq := lookdownz(freq: 8_000, 4_000, 2_000, 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010) << core#HPCF_G
+                other:
+                    curr_freq := (curr_freq >> core#HPCF_G) & core#HPCF_G_BITS
+                    return lookupz(curr_freq: 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010, 0_005, 0_002, 0_001)
+        238:
+            case freq
+                0_020, 0_050, 0_100, 0_200, 0_500, 1_000, 2_000, 4_000, 8_000, 15_000:
+                    freq := lookdownz(freq: 15_000, 8_000, 4_000, 2_000, 1_000, 0_500, 0_200, 0_100, 0_050, 0_020) << core#HPCF_G
+                other:
+                    curr_freq := (curr_freq >> core#HPCF_G) & core#HPCF_G_BITS
+                    return lookupz(curr_freq: 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010, 0_005, 0_002, 0_001)
+        476:
+            case freq
+                0_050, 0_100, 0_200, 0_500, 1_000, 2_000, 4_000, 8_000, 15_000, 30_000:
+                    freq := lookdownz(freq: 30_000, 15_000, 8_000, 4_000, 2_000, 1_000, 0_500, 0_200, 0_100, 0_050) << core#HPCF_G
+                other:
+                    curr_freq := (curr_freq >> core#HPCF_G) & core#HPCF_G_BITS
+                    return lookupz(curr_freq: 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010, 0_005, 0_002, 0_001)
+        952:
+            case freq
+                0_100, 0_200, 0_500, 1_000, 2_000, 4_000, 8_000, 15_000, 30_000, 57_000:
+                    freq := lookdownz(freq: 57_000, 30_000, 15_000, 8_000, 4_000, 2_000, 1_000, 0_500, 0_200, 0_100) << core#HPCF_G
+                other:
+                    curr_freq := (curr_freq >> core#HPCF_G) & core#HPCF_G_BITS
+                    return lookupz(curr_freq: 1_000, 0_500, 0_200, 0_100, 0_050, 0_020, 0_010, 0_005, 0_002, 0_001)
 
     freq := ((curr_freq & core#HPCF_G_MASK) | freq)
     writereg(XLG, core#CTRL_REG3_G, 1, @freq)
@@ -680,19 +747,17 @@ PUB MagDataOverrun{}: status
     return ((status >> core#OVERRN) & core#OVERRN_BITS)
 
 PUB MagDataRate(rate): curr_rate
-' Set Magnetometer Output Data Rate, in milli-Hz
-'   Valid values: 625, 1250, 2500, 5000, *10_000, 20_000, 40_000, 80_000
+' Set Magnetometer Output Data Rate, in Hz
+'   Valid values: 0 (0.625Hz), 1 (1.250), 2 (2.5), 5, *10, 20, 40, 80
 '   Any other value polls the chip and returns the current setting
     curr_rate := 0
     readreg(MAG, core#CTRL_REG1_M, 1, @curr_rate)
     case rate
-        625, 1250, 2500, 5000, 10_000, 20_000, 40_000, 80_000:
-            rate := lookdownz(rate: 625, 1250, 2500, 5000, 10_000, 20_000, {
-}           40_000, 80_000) << core#DO
+        0, 1, 2, 5, 10, 20, 40, 80:
+            rate := lookdownz(rate: 0, 1, 2, 5, 10, 20, 40, 80) << core#DO
         other:
             curr_rate := ((curr_rate >> core#DO) & core#DO_BITS)
-            return lookupz(curr_rate: 625, 1250, 2500, 5000, 10_000, 20_000, {
-}           40_000, 80_000)
+            return lookupz(curr_rate: 0, 1, 2, 5, 10, 20, 40, 80)
 
     rate := ((curr_rate & core#DO_MASK) | rate)
     writereg(MAG, core#CTRL_REG1_M, 1, @rate)
@@ -812,17 +877,13 @@ PUB MagIntThresh(thresh): curr_thr 'XXX rewrite to take gauss as a param
 '   Any other value polls the chip and returns the current setting
 '   NOTE: The set thresh is an absolute value and is compared to positive and
 '       negative measurements alike
-    curr_thr := 0
-    readreg(MAG, core#INT_THS_L_M, 2, @curr_thr)
     case thresh
         0..32767:
-            swap(@thresh)
+            writereg(MAG, core#INT_THS_L_M, 2, @thresh)
         other:
-            swap(@curr_thr)
-            return curr_thr
-
-    curr_thr := thresh & $7FFF
-    writereg(MAG, core#INT_THS_L_M, 2, @curr_thr)
+            curr_thr := 0
+            readreg(MAG, core#INT_THS_L_M, 2, @curr_thr)
+            return
 
 PUB MagLowPower(state): curr_state
 ' Enable magnetometer low-power mode
@@ -1141,13 +1202,6 @@ PRI setSPI3WireMode{} | tmp
     writereg(XLG, core#CTRL_REG8, 1, @tmp)
     tmp := core#M_3WSPI
     writereg(MAG, core#CTRL_REG3_M, 1, @tmp)
-
-PRI swap(word_addr)
-
-    byte[word_addr][3] := byte[word_addr][0]
-    byte[word_addr][0] := byte[word_addr][1]
-    byte[word_addr][1] := byte[word_addr][3]
-    byte[word_addr][3] := 0
 
 PRI booleanChoice(device, reg_nr, field, fieldmask, regmask, choice, invertchoice): bool
 ' Reusable method for writing a field that is of a boolean or on-off type
