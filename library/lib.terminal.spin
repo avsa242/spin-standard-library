@@ -7,7 +7,7 @@
         standard terminal routines (Bin, Dec, Hex, PrintF, Str)
     Copyright (c) 2021
     Started Dec 14, 2019
-    Updated May 13, 2021
+    Updated Jun 22, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is a derivative of std_text_routines.spinh, by Eric Smith.
@@ -38,6 +38,7 @@ CON
     CR  = 13    ' Carriage Return
     PX  = 14    ' Position cursor in X (PST-compatible only)
     PY  = 15    ' Position cursor in Y (PST-compatible only)
+    DEL = 127
 
 VAR
 
