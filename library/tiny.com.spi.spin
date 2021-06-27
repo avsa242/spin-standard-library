@@ -6,7 +6,7 @@
         (based on SPI_Spin.spin, originally by
         Beau Schwabe)
     Started 2009
-    Updated Jan 25, 2021
+    Updated Jun 27, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -85,7 +85,10 @@ PUB Init(SCK, MOSI, MISO, SPI_MODE): status
 PUB DeInit
 ' Deinitialize
 '   Float I/O pins and clear out hub vars
-    longfill(@_SCK, 0, 5)
+    dira[_SCK] := 0
+    dira[_MOSI] := 0
+    dira[_MISO] := 0
+    longfill(@_SCK, 0, 6)
 
 PUB Mode(mode_nr): curr_mode
 ' Set SPI mode
