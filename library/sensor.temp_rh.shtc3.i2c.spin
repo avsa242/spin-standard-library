@@ -6,7 +6,7 @@
         Temperature/RH sensor
     Copyright (c) 2021
     Started Jul 27, 2020
-    Updated Feb 15, 2021
+    Updated Jun 30, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,7 +36,7 @@ VAR
 OBJ
 
     i2c : "com.i2c"                             ' PASM I2C engine
-    core: "core.con.shtc3.spin"                 ' hw-specific constants
+    core: "core.con.shtc3"                      ' hw-specific constants
     time: "time"                                ' timekeeping methods
     crc : "math.crc"                            ' crc algorithms
 
