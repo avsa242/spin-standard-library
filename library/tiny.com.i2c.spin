@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: SPIN I2C Engine
     Started Jun 9, 2019
-    Updated May 23, 2021
+    Updated Jul 18, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c.spin, by
@@ -108,7 +108,6 @@ PUB Read(ackbit): i2cbyte
     dira[_sda] := !ackbit                       ' Output ack bit
     dira[_scl] := 0                             ' Clock it
     dira[_scl] := 1
-
     return (i2cbyte & $FF)
 
 PUB Reset
@@ -213,10 +212,9 @@ PUB Write(i2cbyte): ackbit
         dira[_scl] := 1                         ' SCL low
 
     dira[_sda] := 0                             ' float SDA
-    dira[_scl] := 0                             ' float SCL
-    ackbit := ina[_sda]                         ' Read ack bit
+    waitclockstretch{}
+    ackbit := ina[_sda]
     dira[_scl] := 1                             ' SCL low
-
     return ackbit
 
 {

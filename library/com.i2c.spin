@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: PASM I2C Engine
     Started Mar 9, 2019
-    Updated May 23, 2021
+    Updated Jul 18, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -326,10 +326,14 @@ cmd_write_le            mov     t1, par                         ' Address of com
                         andn    dira, sdamask                   ' Make SDA input
                         call    #hdelay
                         andn    dira, sclmask                   ' SCL high
+:wrle_waitack           test    sclmask, ina            wz      ' wait: clock stretch
+        if_z            jmp     #:wrle_waitack
                         call    #hdelay
                         test    sdamask, ina            wc      ' Test ackbit
         if_c            mov     tackbit, #NAK                   ' Mark if NAK
                         or      dira, sclmask                   ' SCL low
+                        call    #hdelay
+                        call    #hdelay
                         djnz    tcount, #:byteloop
 
                         mov     thubdest, par
@@ -365,6 +369,8 @@ cmd_write_be            mov     t1, par                         ' Address of com
                         andn    dira, sdamask                   ' Make SDA input
                         call    #hdelay
                         andn    dira, sclmask                   ' SCL high
+:wrbe_waitack           test    sclmask, ina            wz      ' wait: clock stretch
+        if_z            jmp     #:wrbe_waitack
                         call    #hdelay
                         test    sdamask, ina            wc      ' Test ackbit
         if_c            mov     tackbit, #NAK                   ' Mark if NAK
@@ -390,8 +396,8 @@ cmd_read_be             mov     tackbit, tcmd                   ' (tackbit := tc
 
 :byteloop               andn    dira, sdamask                   ' Make SDA input
                         andn    dira, sclmask                   ' let SCL float
-                        test    sclmask, ina            wc      ' wait for slave
-        if_nc           jmp     #:byteloop                      '   to release it
+:rdbe_pre_waitcs        test    sclmask, ina            wz      ' wait for slave
+        if_z            jmp     #:rdbe_pre_waitcs               '   to release it
                         mov     t2, #0                          ' Clear result
                         mov     tbits, #8                       ' Prep for 8 bits
 
@@ -418,8 +424,10 @@ cmd_read_be             mov     tackbit, tcmd                   ' (tackbit := tc
                         or      dira, sclmask                   ' SCL low
                         call    #qdelay
 
+                        andn    dira, sdamask                   ' float SDA
                         wrbyte  t2, thubdest                    ' Write result to p_dest
                         sub     thubdest, #1                    ' Increment p_dest pointer
+                        call    #qdelay
                         djnz    tcount, #:byteloop
                         jmp     #cmd_exit
 
@@ -435,8 +443,8 @@ cmd_read_le             mov     tackbit, tcmd                   ' (tackbit := tc
 
 :byteloop               andn    dira, sdamask                   ' Make SDA input
                         andn    dira, sclmask                   ' let SCL float
-                        test    sclmask, ina            wc      ' wait for slave
-        if_nc           jmp     #:byteloop                      '   to release it
+:rdle_pre_waitcs        test    sclmask, ina            wz      ' wait for slave
+        if_z            jmp     #:rdle_pre_waitcs               '   to release it
                         mov     t2, #0                          ' Clear result
                         mov     tbits, #8                       ' Prep for 8 bits
 
@@ -462,9 +470,10 @@ cmd_read_le             mov     tackbit, tcmd                   ' (tackbit := tc
                         call    #hdelay
                         or      dira, sclmask                   ' SCL low
                         call    #qdelay
-
+                        andn    dira, sdamask                   ' float SDA
                         wrbyte  t2, thubdest                    ' Write result to p_dest
                         add     thubdest, #1                    ' Increment p_dest pointer
+                        call    #qdelay
                         djnz    tcount, #:byteloop
                         jmp     #cmd_exit
 
