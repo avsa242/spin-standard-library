@@ -6,7 +6,7 @@
         Indoor Air Quality sensor
     Copyright (c) 2021
     Started Nov 20, 2020
-    Updated Jan 30, 2021
+    Updated Jul 19, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -27,7 +27,7 @@ VAR
 OBJ
 
     i2c : "com.i2c"                             ' PASM I2C engine
-    core: "core.con.sgp30.spin"
+    core: "core.con.sgp30"
     time: "time"                                ' basic timing functions
 
 PUB Null{}

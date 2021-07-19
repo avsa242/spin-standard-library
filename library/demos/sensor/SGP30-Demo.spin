@@ -19,8 +19,8 @@ CON
     SER_BAUD    = 115_200
     LED         = cfg#LED1
 
-    I2C_SCL     = 24
-    I2C_SDA     = 25
+    I2C_SCL     = 28
+    I2C_SDA     = 29
     I2C_HZ      = 400_000                       ' 400_000 max
 ' --
 
