@@ -5,7 +5,7 @@
     Description: Driver for the PCF8563 Real Time Clock
     Copyright (c) 2021
     Started Sep 6, 2020
-    Updated Mar 20, 2021
+    Updated Jul 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,7 +34,7 @@ VAR
 OBJ
 
     i2c : "com.i2c"                             ' PASM I2C engine
-    core: "core.con.pcf8563.spin"               ' HW-specific constants
+    core: "core.con.pcf8563"                    ' HW-specific constants
     time: "time"                                ' timekeeping functions
 
 PUB Null{}

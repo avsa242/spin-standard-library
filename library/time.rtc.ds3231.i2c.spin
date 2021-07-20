@@ -5,7 +5,7 @@
     Description: Driver for the DS3231 Real-Time Clock
     Copyright (c) 2021
     Started Nov 17, 2020
-    Updated Mar 20, 2021
+    Updated Jul 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -42,7 +42,7 @@ VAR
 OBJ
 
     i2c : "com.i2c"
-    core: "core.con.ds3231.spin"
+    core: "core.con.ds3231"
     time: "time"
 
 PUB Null{}
