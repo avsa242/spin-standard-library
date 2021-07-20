@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: sensor.gyroscope.3dof.l3g4200d.spi.spin
+    Filename: sensor.gyroscope.3dof.l3g4200d.i2cspi.spin
     Author: Jesse Burt
     Description: Driver for the ST L3G4200D 3-axis gyroscope
     Copyright (c) 2021
     Started Nov 27, 2019
-    Updated Apr 28, 2021
+    Updated Jul 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,9 +20,23 @@ CON
     BARO_DOF            = 0
     DOF                 = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
 
+' I2C settings
+    SLAVE_WR            = core#SLAVE_ADDR
+    SLAVE_RD            = core#SLAVE_ADDR|1
+
+    DEF_SCL             = 28
+    DEF_SDA             = 29
+    DEF_HZ              = 100_000
+    I2C_MAX_FREQ        = core#I2C_MAX_FREQ
+
 ' SPI transaction bits
     SPI_R               = 1 << 7                ' read transaction
-    SPI_MS              = 1 << 6                ' auto address increment
+
+#ifdef L3G4200D_SPI
+    MS                  = 1 << 6                ' auto address increment
+#elseifdef L3G4200D_I2C
+    MS                  = 1 << 7                ' auto address increment
+#endif
 
 ' High-pass filter modes
     #0, HPF_NORMAL_RES, HPF_REF, HPF_NORMAL, HPF_AUTO_RES
@@ -31,7 +45,7 @@ CON
     #0, POWERDOWN, SLEEP, NORMAL
 
 ' Interrupt pin active states
-    #0, INTLVL_LOW, INTLVL_HIGH
+    #0, INTLVL_HIGH, INTLVL_LOW
 
 ' Interrupt pin output type
     #0, INT_PP, INT_OD
@@ -47,13 +61,20 @@ CON
 
 VAR
 
-    long _gyro_cnts_per_lsb
+    long _gres
     long _CS, _SCK, _MOSI, _MISO
     long _gyro_bias[GYRO_DOF]
 
 OBJ
 
+#ifdef L3G4200D_SPI
     spi : "com.spi.4w"                          ' PASM SPI engine (1MHz)
+#elseifdef L3G4200D_I2C
+    i2c : "com.i2c"
+'    i2c : "tiny.com.i2c"
+#else
+#error "One of L3G4200D_SPI or L3G4200D_I2C must be defined"
+#endif
     core: "core.con.l3g4200d"                   ' HW-specific constants
     time: "time"                                ' timekeeping methods
     io  : "io"                                  ' I/O abstraction
@@ -61,8 +82,9 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
-
+#ifdef L3G4200D_SPI
+PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
+' Start using custom I/O settings
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
         if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
@@ -77,13 +99,38 @@ PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
+#elseifdef L3G4200D_I2C
+PUB Start{}: status
+' Start using "standard" Propeller I2C pins, and 100kHz bus speed
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+' Start using custom I/O settings and bus speed
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   (I2C_HZ =< core#I2C_MAX_FREQ)
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+'        if (status := i2c.init(SCL_PIN, SDA_PIN))
+            time.usleep(core#T_POR)             ' wait for device startup
+
+            if deviceid{} == core#DEVID_RESP    ' validate device
+                return
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
+#endif
 
 PUB Stop{}
 
+#ifdef L3G4200D_SPI
     spi.deinit{}
+#elseifdef L3G4200D_I2C
+    i2c.deinit{}
+#endif
 
-PUB Defaults{}
+PUB Defaults{} | tmp
 ' Factory default settings
+
     blockupdateenabled(FALSE)
     databyteorder(LSBFIRST)
     fifoenabled(FALSE)
@@ -99,10 +146,12 @@ PUB Defaults{}
     intactivestate(INTLVL_LOW)
     intoutputtype(INT_PP)
 
-PUB Defaults_Active{}
+PUB Preset_Active{}
 ' Like Defaults(), but place the sensor in active/normal mode
     defaults{}
     gyroopmode(NORMAL)
+    blockupdateenabled(TRUE)
+    int2mask(%1000)
 
 PUB BlockUpdateEnabled(state): curr_state
 ' Enable block updates
@@ -120,6 +169,37 @@ PUB BlockUpdateEnabled(state): curr_state
 
     state := ((curr_state & core#BDU_MASK) | state)
     writereg(core#CTRL_REG4, 1, @state)
+
+PUB CalibrateGyro{} | tmp[GYRO_DOF], biastmp[GYRO_DOF], nr_samples, orig_scale, orig_datarate, orig_lpf
+' Calibrate the gyroscope
+    longfill(@tmp, 0, 10)                       ' Initialize variables to 0
+    orig_scale := gyroscale(-2)                 ' Preserve the user's original settings
+    orig_datarate := gyrodatarate(-2)
+    orig_lpf := gyrolowpassfilter(-2)
+
+    gyroscale(250)                              ' set to most sensitive scale,
+    gyrodatarate(800)                           '   fastest sample rate,
+    gyrolowpassfilter(30)                       '   and an LPF of 30Hz
+    gyrobias(0, 0, 0, W)                        ' reset gyroscope bias offsets
+    nr_samples := 800                           ' # samples to use for average
+
+    repeat nr_samples                           ' throw away first sample set
+        repeat until gyrodataready{}            '   to give time to settle
+        gyrodata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
+
+    repeat nr_samples                           ' accumulate, for each axis
+        repeat until gyrodataready{}
+        gyrodata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
+        biastmp[X_AXIS] -= tmp[X_AXIS]
+        biastmp[Y_AXIS] -= tmp[Y_AXIS]
+        biastmp[Z_AXIS] -= tmp[Z_AXIS]
+
+    gyrobias((biastmp[X_AXIS]/nr_samples), (biastmp[Y_AXIS]/nr_samples), {
+}   (biastmp[Z_AXIS]/nr_samples), W)
+
+    gyroscale(orig_scale)                       ' Restore user settings
+    gyrodatarate(orig_datarate)
+    gyrolowpassfilter(orig_lpf)
 
 PUB DataByteOrder(order): curr_ord
 ' Set byte order of gyro data
@@ -213,8 +293,8 @@ PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
     readreg(core#OUT_X_L, 6, @tmp)
 
     long[ptr_x] := ~~tmp.word[X_AXIS] + _gyro_bias[X_AXIS]
-    long[ptr_y] := ~~tmp.word[Y_AXIS] + _gyro_bias[X_AXIS]
-    long[ptr_z] := ~~tmp.word[Z_AXIS] + _gyro_bias[X_AXIS]
+    long[ptr_y] := ~~tmp.word[Y_AXIS] + _gyro_bias[Y_AXIS]
+    long[ptr_z] := ~~tmp.word[Z_AXIS] + _gyro_bias[Z_AXIS]
 
 PUB GyroDataOverrun{}: flag
 ' Flag indicating previously acquired data has been overwritten
@@ -251,9 +331,9 @@ PUB GyroDPS(ptr_x, ptr_y, ptr_z) | tmp[2]
 '   Returns: Angular rate in micro-degrees per second
     longfill(@tmp, 0, 2)
     readreg(core#OUT_X_L, 6, @tmp)
-    long[ptr_x] := ((~~tmp.word[X_AXIS] + _gyro_bias[X_AXIS]) * _gyro_cnts_per_lsb)
-    long[ptr_y] := ((~~tmp.word[Y_AXIS] + _gyro_bias[Y_AXIS]) * _gyro_cnts_per_lsb)
-    long[ptr_z] := ((~~tmp.word[Z_AXIS] + _gyro_bias[Z_AXIS]) * _gyro_cnts_per_lsb)
+    long[ptr_x] := ((~~tmp.word[X_AXIS] + _gyro_bias[X_AXIS]) * _gres)
+    long[ptr_y] := ((~~tmp.word[Y_AXIS] + _gyro_bias[Y_AXIS]) * _gres)
+    long[ptr_z] := ((~~tmp.word[Z_AXIS] + _gyro_bias[Z_AXIS]) * _gres)
 
 PUB GyroLowPassFilter(freq): curr_freq
 ' Set gyroscope low-pass filter frequency, in Hz
@@ -330,7 +410,7 @@ PUB GyroScale(dps): curr_dps
     case dps
         250, 500, 2000:
             dps := lookdownz(dps: 250, 500, 2000) << core#FS
-            _gyro_cnts_per_lsb := lookupz(dps >> core#FS: 8_750, 17_500, 70_000)
+            _gres := lookupz(dps >> core#FS: 8_750, 17_500, 70_000)
         other:
             curr_dps := (curr_dps >> core#FS) & core#FS_BITS
             return lookupz(curr_dps: 250, 500, 2000)
@@ -462,15 +542,15 @@ PUB Int2Mask(mask): curr_mask
 
 PUB IntActiveState(state): curr_state
 ' Set active state for interrupts
-'   Valid values: *INTLVL_LOW (0), INTLVL_HIGH (1)
+'   Valid values: *INTLVL_HIGH (0), INTLVL_LOW (1)
 '   Any other value polls the chip and returns the current setting
     curr_state := 0
     readreg(core#CTRL_REG3, 1, @curr_state)
     case state
-        INTLVL_LOW, INTLVL_HIGH:
-            state := ((state ^ 1) & 1) << core#H_LACTIVE
+        INTLVL_HIGH, INTLVL_LOW:
+            state <<= core#H_LACTIVE
         other:
-            return (((curr_state >> core#H_LACTIVE) ^ 1) & 1)
+            return ((curr_state >> core#H_LACTIVE) & 1)
 
     state := ((curr_state & core#H_LACTIVE_MASK) | state)
     writereg(core#CTRL_REG3, 1, @state)
@@ -502,32 +582,54 @@ PUB TempData{}: temp
     readreg(core#OUT_TEMP, 1, @temp)
     return ~temp
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff)
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from device into ptr_buff
     case reg_nr
         $28..$2D:                               ' prioritize output data regs
-            reg_nr |= SPI_MS                    ' indicate multi-byte xfer
+            reg_nr |= MS                        ' indicate multi-byte xfer
         $0F, $20..$27, $2E..$38:
         other:
             return
 
+#ifdef L3G4200D_SPI
     reg_nr |= SPI_R                             ' indicate read xfer
     io.low(_CS)
     spi.wr_byte(reg_nr)
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
     io.high(_CS)
+#elseifdef L3G4200D_I2C
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := reg_nr
+    i2c.start{}
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
+    i2c.stop{}
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff)
+    i2c.start{}
+    i2c.write(SLAVE_RD)
+    i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
+    i2c.stop{}
+#endif
+
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes to device from ptr_buff
     case reg_nr
         $20..$25, $2E, $30, $32..$38:
         other:
             return
 
+#ifdef L3G4200D_SPI
     io.low(_CS)
     spi.wr_byte(reg_nr)
     spi.wrblock_lsbf(ptr_buff, nr_bytes)
     io.high(_CS)
+#elseifdef L3G4200D_I2C
+    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[1] := reg_nr
+    i2c.start{}
+    i2c.wrblock_lsbf(@cmd_pkt, 2)
+    i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+    i2c.stop{}
+#endif
 
 DAT
 {

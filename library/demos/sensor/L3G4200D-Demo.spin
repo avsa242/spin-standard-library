@@ -3,12 +3,15 @@
     Filename: L3G4200D-Demo.spin
     Author: Jesse Burt
     Description: Simple demo of the L3G4200D driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Nov 27, 2019
-    Updated Dec 26, 2020
+    Updated May 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
+' Uncomment one of the below to choose I2C or SPI interface
+#define L3G4200D_I2C
+'#define L3G4200D_SPI
 
 CON
 
@@ -19,10 +22,12 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 16
-    SCL_PIN     = 17
-    SDA_PIN     = 18
-    SDO_PIN     = 19
+    CS_PIN      = 0                             ' SPI
+    SCL_PIN     = 1                             ' SPI, I2C
+    SDA_PIN     = 2                             ' SPI, I2C
+    SDO_PIN     = 3                             ' SPI
+
+    I2C_HZ      = 400_000                       ' max is 400_000
 ' --
 
     DAT_X_COL   = 15
@@ -31,37 +36,48 @@ CON
 
 OBJ
 
-    cfg         : "core.con.boardcfg.flip"
-    ser         : "com.serial.terminal.ansi"
-    time        : "time"
-    l3g4200d    : "sensor.gyroscope.3dof.l3g4200d.spi"
-    int         : "string.integer"
+    cfg     : "core.con.boardcfg.flip"
+    ser     : "com.serial.terminal.ansi"
+    time    : "time"
+    gyro    : "sensor.gyroscope.3dof.l3g4200d.i2cspi"
+    int     : "string.integer"
 
-PUB Main{} | gx, gy, gz
+PUB Main{}
 
     setup{}
-
-    l3g4200d.defaults_active{}
-    ser.hidecursor{}
-    ser.position(DAT_X_COL, 3)
-    ser.char("X")
-    ser.position(DAT_Y_COL, 3)
-    ser.char("Y")
-    ser.position(DAT_Z_COL, 3)
-    ser.char("Z")
+    gyro.preset_active{}                        ' default settings, but enable
+                                                ' measurements, and set scale
+                                                ' factor
     repeat
-        repeat until l3g4200d.gyrodataready{}
-        l3g4200d.gyrodps(@gx, @gy, @gz)
-        ser.position(0, 4)
-        ser.str(string("Gyro DPS:  "))
-        ser.positionx(DAT_X_COL)
-        decimal(gx, 1_000_000)
-        ser.positionx(DAT_Y_COL)
-        decimal(gy, 1_000_000)
-        ser.positionx(DAT_Z_COL)
-        decimal(gz, 1_000_000)
+        ser.position(0, 3)
+        gyrocalc{}
 
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
+        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
+            calibrate{}                         ' to calibrate sensor offsets
+
+PUB GyroCalc{} | gx, gy, gz
+
+    repeat until gyro.gyrodataready{}           ' wait for new sensor data set
+    gyro.gyrodps(@gx, @gy, @gz)                 ' read calculated sensor data
+    ser.str(string("Gyro (dps):"))
+    ser.positionx(DAT_X_COL)
+    decimal(gx, 1000000)                        ' data is in micro-dps; display
+    ser.positionx(DAT_Y_COL)                    ' it as if it were a float
+    decimal(gy, 1000000)
+    ser.positionx(DAT_Z_COL)
+    decimal(gz, 1000000)
+    ser.clearline{}
+    ser.newline{}
+
+PUB Calibrate{}
+
+    ser.position(0, 7)
+    ser.str(string("Calibrating..."))
+    gyro.calibrategyro{}
+    ser.positionx(0)
+    ser.clearline{}
+
+PRI Decimal(scaled, divisor) | whole, part, places, tmp, sign
 ' Display a scaled up number as a decimal
 '   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
     whole := scaled / divisor                   ' separate the whole part
@@ -93,11 +109,16 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if l3g4200d.start(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
-        ser.strln(string("L3G4200D driver started"))
+#ifdef L3G4200D_SPI
+    if gyro.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+        ser.strln(string("L3G4200D driver started (SPI)"))
+#elseifdef L3G4200D_I2C
+    if gyro.startx(SCL_PIN, SDA_PIN, I2C_HZ)
+        ser.strln(string("L3G4200D driver started (I2C)"))
+#endif
     else
         ser.strln(string("L3G4200D driver failed to start - halting"))
-        l3g4200d.stop{}
+        gyro.stop{}
         time.msleep(5)
         ser.stop{}
         repeat

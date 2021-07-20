@@ -5,7 +5,7 @@
     Description: Low-level constants
     Copyright (c) 2021
     Started Nov 27, 2019
-    Updated Apr 28, 2021
+    Updated May 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,6 +17,10 @@ CON
     SPI_MODE                    = 3
     T_POR                       = 10_000        ' usec
     DEVID_RESP                  = $D3
+
+' I2C Configuration
+    I2C_MAX_FREQ                = 400_000
+    SLAVE_ADDR                  = $68 << 1
 
 ' Register definitions
     WHO_AM_I                    = $0F
