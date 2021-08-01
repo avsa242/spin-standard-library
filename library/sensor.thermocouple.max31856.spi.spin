@@ -5,7 +5,7 @@
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
     Copyright (c) 2021
     Created: Sep 30, 2018
-    Updated: May 16, 2021
+    Updated: Aug 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -116,6 +116,15 @@ PUB CJSensorEnabled(state): curr_state
     state := ((curr_state & core#CJ_MASK) | state) & core#CR0_MASK
     writereg(core#CR0, 1, @state)
 
+PUB CJWord2Temp(cj_word): temp
+' Convert cold-junction ADC word to temperature, in hundredths of a degree
+'   in chosen scale
+    temp := (cj_word * CJ_RES) / 10_000
+    case _temp_scale
+        C:
+        F:
+            temp := ((temp * 90) / 50) + 32_00
+
 PUB ColdJuncBias(offset): curr_offs 'XXX Make param units degrees
 ' Set Cold-Junction temperature sensor offset (default: 0)
     case offset
@@ -125,15 +134,19 @@ PUB ColdJuncBias(offset): curr_offs 'XXX Make param units degrees
             readreg(core#CJTO, 1, @curr_offs)
             return ~~curr_offs
 
+PUB ColdJuncData{}: cj_word
+' Read cold-junction data
+'   Returns: s16
+    cj_word := 0
+    readreg(core#CJTH, 2, @cj_word)
+    ~~cj_word                                   ' extend sign from bit 15
+    cj_word ~>= 2                               ' right-justify, keeping sign
+                                                ' (ADC word is left-justified)
+
 PUB ColdJuncTemp{}: cjtemp
 ' Current cold-junction temperature
-    readreg(core#CJTH, 2, @cjtemp)
-    cjtemp ~>= 2                                ' shift right but keep sign bit
-    cjtemp := (cjtemp * CJ_RES) / 10_000
-    case _temp_scale
-        C:
-        F:
-            cjtemp := ((cjtemp * 90) / 50) + 32_00
+'   Returns: temperature, in hundredths of a degree
+    return cjword2temp(coldjuncdata{})
 
 PUB IntClear{} | tmp
 ' Clear fault status
@@ -301,6 +314,15 @@ PUB TCIntLowThresh(thresh): curr_thr
             readreg(core#LTLFTH, 2, @curr_thr)
             return ~~curr_thr
 
+PUB TCWord2Temp(tc_word): temp
+' Convert thermocouple ADC word to temperature, in hundredths of a degree
+'   in chosen scale
+    temp := (tc_word * TC_RES) / 1000
+    case _temp_scale
+        C:
+        F:
+            temp := ((temp * 90) / 50) + 32_00
+
 PUB TempScale(scale): curr_scl
 ' Set temperature scale used by Temperature method
 '   Valid values:
@@ -328,16 +350,18 @@ PUB ThermoCoupleAvg(samples): curr_smp
     samples := ((curr_smp & core#AVGSEL_MASK) | samples) & core#CR1_MASK
     writereg(core#CR1, 1, @samples)
 
-PUB ThermocoupleTemp{}: temp | sign
+PUB ThermocoupleData{}: temp_word
+' Read thermocouple data
+'   Returns: s19
+    temp_word := 0
+    readreg(core#LTCBH, 3, @temp_word)
+    temp_word <<= 13                            ' extend sign from bit 18
+    temp_word ~>= 18                            ' right-justify, keeping sign
+                                                ' (ADC word is left-justified)
+
+PUB ThermocoupleTemp{}: temp
 ' Read the Thermocouple temperature
-    temp := 0
-    readreg(core#LTCBH, 3, @temp)
-    temp ~>= 5                                  ' shift right, but keep
-    temp := (temp * TC_RES) / 1000              ' sign bit
-    case _temp_scale
-        C:
-        F:
-            temp := ((temp * 90) / 50) + 32_00
+    return tcword2temp(thermocoupledata{})
 
 PUB ThermoCoupleType(type): curr_type
 ' Set type of thermocouple
