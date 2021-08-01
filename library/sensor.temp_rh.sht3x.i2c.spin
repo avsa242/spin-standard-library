@@ -6,7 +6,7 @@
         Temperature/Relative Humidity sensors
     Copyright (c) 2021
     Started Nov 19, 2017
-    Updated Feb 15, 2021
+    Updated Aug 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -162,7 +162,7 @@ PUB Humidity{}: rh
 ' Current Relative Humidity, in hundredths of a percent
 '   Returns: Integer
 '   (e.g., 4762 is equivalent to 47.62%)
-    return calcrh(humdata{})
+    return rhword2percent(humdata{})
 
 PUB IntRHHiClear(level): curr_lvl
 ' High RH interrupt: clear level, in percent
@@ -302,13 +302,13 @@ PUB LastHumidity{}: rh
 ' Previous Relative Humidity measurement, in hundredths of a percent
 '   Returns: Integer
 '   (e.g., 4762 is equivalent to 47.62%)
-    return calcrh(_lastrh)
+    return rhword2percent(_lastrh)
 
 PUB LastTemperature{}: temp
 ' Previous Temperature measurement, in hundredths of a degree
 '   Returns: Integer
 '   (e.g., 2105 is equivalent to 21.05 deg C)
-    return calctemp(_lasttemp)
+    return tempword2deg(_lasttemp)
 
 PUB OpMode(mode): curr_mode
 ' Set device operating mode
@@ -340,7 +340,7 @@ PUB Repeatability(level): curr_lvl
 PUB Reset{}
 ' Perform Soft Reset
     case _reset_pin
-        0..31:
+        0..63:
             outa[_reset_pin] := 1
             dira[_reset_pin] := 1
             outa[_reset_pin] := 0
@@ -349,6 +349,11 @@ PUB Reset{}
         other:
             writereg(core#SOFTRESET, 0, 0)
     time.usleep(core#T_POR)
+
+PUB RHWord2Percent(rh_word): rh
+' Convert RH ADC word to percent
+'   Returns: relative humidity, in hundredths of a percent
+    return (100 * (rh_word * 100)) / core#ADC_MAX
 
 PUB SerialNum{}: sn
 ' Return device Serial Number
@@ -371,7 +376,7 @@ PUB Temperature{}: temp
 ' Current Temperature, in hundredths of a degree
 '   Returns: Integer
 '   (e.g., 2105 is equivalent to 21.05 deg C)
-    return calctemp(tempdata{})
+    return tempword2deg(tempdata{})
 
 PUB TempScale(scale): curr_scale
 ' Set temperature scale used by Temperature method
@@ -385,13 +390,8 @@ PUB TempScale(scale): curr_scale
         other:
             return _temp_scale
 
-PRI calcRH(rh_word): rh_cal
-' Calculate relative humidity, using RH word
-'   Returns: relative humidity, in hundredths of a percent
-    return (100 * (rh_word * 100)) / core#ADC_MAX
-
-PRI calcTemp(temp_word): temp_cal
-' Calculate temperature, using temperature word
+PUB TempWord2Deg(temp_word): temp
+' Convert thermocouple ADC word to temperature
 '   Returns: temperature, in hundredths of a degree, in chosen scale
     case _temp_scale
         C:
