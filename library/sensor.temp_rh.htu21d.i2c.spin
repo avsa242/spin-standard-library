@@ -5,7 +5,7 @@
     Description: Driver for the HTU21D Temp/RH sensor
     Copyright (c) 2021
     Started Jun 16, 2021
-    Updated Jun 16, 2021
+    Updated Aug 2, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -31,7 +31,6 @@ VAR
 
 OBJ
 
-' choose an I2C engine below
     i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
     core: "core.con.htu21d"                     ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
@@ -122,7 +121,8 @@ PUB Humidity{}: rh
 ' Current Relative Humidity, in hundredths of a percent
 '   Returns: Integer
 '   (e.g., 4762 is equivalent to 47.62%)
-    rh := 0 #> calcrh(humdata{}) <# 100_00      ' clamp data to sensible range
+    ' clamp data to sensible range
+    rh := 0 #> rhword2percent(humdata{}) <# 100_00
 
 PUB LastRHValid{}: isvalid
 ' Flag indicating CRC check of last RH measurement was good
@@ -162,6 +162,11 @@ PUB RHADCRes(r_res): curr_res | adc_bits
 
     r_res := ((curr_res & core#ADCRES_MASK) | adc_bits)
     writereg(core#WR_USR_REG, 1, @r_res)
+
+PUB RHWord2Percent(rh_word): rh
+' Convert RH ADC word to percent
+'   Returns: relative humidity, in hundredths of a percent
+    return ((rh_word * 125_00) / 65536) - 6_00
 
 PUB TempADCRes(t_res): curr_res | adc_bits
 ' Set temperature ADC resolution, in bits
@@ -210,7 +215,7 @@ PUB Temperature{}: deg
 ' Current Temperature, in hundredths of a degree
 '   Returns: Integer
 '   (e.g., 2105 is equivalent to 21.05 deg C)
-    return calctemp(tempdata{})
+    return tempword2deg(tempdata{})
 
 PUB TempScale(scale): curr_scale
 ' Set temperature scale used by Temperature method
@@ -224,18 +229,15 @@ PUB TempScale(scale): curr_scale
         other:
             return _temp_scale
 
-PRI calcRH(rh_word): rh_cal
-' RH = -6 + 125 * S_RH / 2^16
-    return ((rh_word * 125_00) / 65536) - 6_00
-
-PRI calcTemp(temp_word): temp_cal
-' Temp = -46.85+175.72 * S_TEMP / 2^16
-    temp_cal := ((temp_word * 175_72) / 65536) - 46_85
+PUB TempWord2Deg(temp_word): temp
+' Convert temperature ADC word to temperature
+'   Returns: temperature, in hundredths of a degree, in chosen scale
+    temp := ((temp_word * 175_72) / 65536) - 46_85
     case _temp_scale
         C:
             return
         F:
-            return (temp_cal * 9_00 / 5_00) + 32_00
+            return (temp * 9_00 / 5_00) + 32_00
         other:
             return FALSE
 
