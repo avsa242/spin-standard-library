@@ -6,7 +6,7 @@
         Digital Temperature Sensor
     Copyright (c) 2021
     Started May 19, 2019
-    Updated May 8, 2021
+    Updated Aug 2, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -110,7 +110,7 @@ PUB IntClearThresh(thr): curr_thr
                 other:
                     curr_thr := 0
                     readreg(core#T_HYST, 2, @curr_thr)
-                    return adc2temp(curr_thr)
+                    return tempword2deg(curr_thr)
         F:
             case thr
                 -67_00..257_00:
@@ -119,7 +119,7 @@ PUB IntClearThresh(thr): curr_thr
                 other:
                     curr_thr := 0
                     readreg(core#T_HYST, 2, @curr_thr)
-                    return adc2temp(curr_thr)
+                    return tempword2deg(curr_thr)
 
 PUB IntMode(mode): curr_mode
 ' Interrupt output mode
@@ -169,7 +169,7 @@ PUB IntThresh(thr): curr_thr
                 other:
                     curr_thr := 0
                     readreg(core#T_OS, 2, @curr_thr)
-                    return adc2temp(curr_thr)
+                    return tempword2deg(curr_thr)
         F:
             case thr
                 -67_00..257_00:
@@ -178,7 +178,7 @@ PUB IntThresh(thr): curr_thr
                 other:
                     curr_thr := 0
                     readreg(core#T_OS, 2, @curr_thr)
-                    return adc2temp(curr_thr)
+                    return tempword2deg(curr_thr)
 
 PUB Powered(state): curr_state
 ' Enable sensor power
@@ -204,7 +204,7 @@ PUB TempData{}: temp_raw
 
 PUB Temperature{}: temp_cal
 ' Temperature, in hundredths of a degree, in chosen scale
-    return adc2temp(tempdata{})
+    return tempword2deg(tempdata{})
 
 PUB TempScale(scale): curr_scl
 ' Set temperature scale used by Temperature method
@@ -218,16 +218,16 @@ PUB TempScale(scale): curr_scl
         other:
             return _temp_scale
 
-PRI adc2temp(temp_word): temp_cal | tmp
-' Calculate temperature, using temperature word
+PUB TempWord2Deg(temp_word): temp
+' Convert temperature ADC word to temperature
 '   Returns: temperature, in hundredths of a degree, in chosen scale
-    temp_cal := (temp_word << 16 ~> 23)         ' Extend sign, then scale down
-    temp_cal := temp_cal * 50                   ' LSB = 0.5deg C
+    temp := (temp_word << 16 ~> 23)             ' Extend sign, then scale down
+    temp *= 50                                  ' LSB = 0.5deg C
     case _temp_scale
         C:
             return
         F:
-            return ((temp_cal * 90) / 50) + 32_00
+            return ((temp * 90) / 50) + 32_00
         other:
             return FALSE
 
