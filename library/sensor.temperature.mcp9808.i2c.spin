@@ -5,7 +5,7 @@
     Description: Driver for Microchip MCP9808 temperature sensors
     Copyright (c) 2021
     Started Jul 26, 2020
-    Updated May 19, 2021
+    Updated Aug 3, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -194,7 +194,7 @@ PUB IntTempCritThresh(level): curr_lvl
             writereg(core#ALERT_CRIT, 2, @level)
         other:
             readreg(core#ALERT_CRIT, 2, @curr_lvl)
-            return calctemp(curr_lvl)
+            return tempword2deg(curr_lvl)
 
 PUB IntTempHiThresh(level): curr_lvl
 ' Set high temperature interrupt threshold, in hundredths of a degree Celsius
@@ -206,7 +206,7 @@ PUB IntTempHiThresh(level): curr_lvl
             writereg(core#ALERT_UPPER, 2, @level)
         other:
             readreg(core#ALERT_UPPER, 2, @curr_lvl)
-            return calctemp(curr_lvl)
+            return tempword2deg(curr_lvl)
 
 PUB IntTempLoThresh(level): curr_lvl
 ' Set low temperature interrupt threshold, in hundredths of a degree Celsius
@@ -218,7 +218,7 @@ PUB IntTempLoThresh(level): curr_lvl
             writereg(core#ALERT_LOWER, 2, @level)
         other:
             readreg(core#ALERT_LOWER, 2, @curr_lvl)
-            return calctemp(curr_lvl)
+            return tempword2deg(curr_lvl)
 
 PUB Powered(state): curr_state
 ' Enable sensor power
@@ -235,18 +235,17 @@ PUB Powered(state): curr_state
     state := ((curr_state & core#SHDN_MASK) | state)
     writereg(core#CONFIG, 2, @state)
 
+PUB TempData{}: temp_adc
+' Read temperature ADC data
+'   Returns: s13
+    temp_adc := 0
+    readreg(core#TEMP, 2, @temp_adc)
+
 PUB Temperature{}: temp
 ' Current Temperature, in hundredths of a degree
 '   Returns: Integer
 '   (e.g., 2105 is equivalent to 21.05 deg C)
-    temp := 0
-    readreg(core#TEMP, 2, @temp)
-    temp := calctemp(temp)
-
-    if _temp_scale == F
-        return ((temp * 9_00) / 5_00) + 32_00
-    else
-        return temp
+    return tempword2deg(tempdata{})
 
 PUB TempRes(deg_c): curr_res
 ' Set temperature resolution, in degrees Celsius (fractional)
@@ -278,12 +277,20 @@ PUB TempScale(scale): curr_scale
         other:
             return _temp_scale
 
-PRI calcTemp(temp_word): temp_c | whole, part
-' Calculate temperature in degrees Celsius, given ADC word
-    temp_word := (temp_word << 19) ~> 19        ' Extend sign bit (#13)
+PUB TempWord2Deg(temp_word): temp | whole, part
+' Convert temperature ADC word to temperature
+'   Returns: temperature, in hundredths of a degree, in chosen scale
+    temp_word := (temp_word << 19) ~> 19        ' Extend sign bit (#12)
     whole := (temp_word / 16) * 100             ' Scale up to hundredths
     part := ((temp_word // 16) * 0_0625) / 100
-    return whole+part
+    temp := (whole + part)
+    case _temp_scale
+        C:
+            return temp
+        F:
+            return ((temp * 9_00) / 5_00) + 32_00
+        other:
+            return FALSE
 
 PRI calcTempWord(temp_c): temp_word
 ' Calculate word, given temperature in degrees Celsius
