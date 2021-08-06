@@ -5,7 +5,7 @@
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
     Copyright (c) 2021
     Created: Sep 30, 2018
-    Updated: Aug 1, 2021
+    Updated: Aug 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -355,8 +355,8 @@ PUB ThermocoupleData{}: temp_word
 '   Returns: s19
     temp_word := 0
     readreg(core#LTCBH, 3, @temp_word)
-    temp_word <<= 13                            ' extend sign from bit 18
-    temp_word ~>= 18                            ' right-justify, keeping sign
+    temp_word <<= 8                             ' extend sign from bit 23
+    temp_word ~>= 13                            ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
 
 PUB ThermocoupleTemp{}: temp
