@@ -5,7 +5,7 @@
     Description: Driver for the ST L3G4200D 3-axis gyroscope
     Copyright (c) 2021
     Started Nov 27, 2019
-    Updated Jul 20, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,7 +34,11 @@ CON
 
 #ifdef L3G4200D_SPI
     MS                  = 1 << 6                ' auto address increment
-#elseifdef L3G4200D_I2C
+#elseifdef L3G4200D_I2C_PASM
+#define L3G4200D_I2C
+    MS                  = 1 << 7                ' auto address increment
+#elseifdef L3G4200D_I2C_SPIN
+#define L3G4200D_I2C
     MS                  = 1 << 7                ' auto address increment
 #endif
 
@@ -69,11 +73,12 @@ OBJ
 
 #ifdef L3G4200D_SPI
     spi : "com.spi.4w"                          ' PASM SPI engine (1MHz)
-#elseifdef L3G4200D_I2C
-    i2c : "com.i2c"
-'    i2c : "tiny.com.i2c"
+#elseifdef L3G4200D_I2C_PASM
+    i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
+#elseifdef L3G4200D_I2C_SPIN
+    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
 #else
-#error "One of L3G4200D_SPI or L3G4200D_I2C must be defined"
+#error "One of L3G4200D_SPI, L3G4200D_I2C_PASM or L3G4200D_I2C_SPIN must be defined"
 #endif
     core: "core.con.l3g4200d"                   ' HW-specific constants
     time: "time"                                ' timekeeping methods
@@ -99,6 +104,7 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
+
 #elseifdef L3G4200D_I2C
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins, and 100kHz bus speed
@@ -109,9 +115,7 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   (I2C_HZ =< core#I2C_MAX_FREQ)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
-'        if (status := i2c.init(SCL_PIN, SDA_PIN))
             time.usleep(core#T_POR)             ' wait for device startup
-
             if deviceid{} == core#DEVID_RESP    ' validate device
                 return
     ' if this point is reached, something above failed
