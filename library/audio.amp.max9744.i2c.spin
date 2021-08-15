@@ -5,7 +5,7 @@
     Description: Driver for the MAX9744 20W audio amplifier IC
     Copyright (c) 2021
     Started Jul 7, 2018
-    Updated May 1, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -31,12 +31,12 @@ VAR
 
 OBJ
 
-#ifdef PASM
-    i2c     : "com.i2c"                         ' PASM I2C engine
-#elseifdef SPIN
-    i2c     : "tiny.com.i2c"
+#ifdef MAX9744_PASM
+    i2c     : "com.i2c"                         ' MAX9744_PASM I2C engine (~400kHz)
+#elseifdef MAX9744_SPIN
+    i2c     : "tiny.com.i2c"                    ' MAX9744_SPIN I2C engine (~30kHz)
 #else
-#error "One of PASM or SPIN must be defined"
+#error "One of MAX9744_PASM or MAX9744_SPIN must be defined"
 #endif
     core    : "core.con.max9744"                ' HW-specific constants
     io      : "io"                              ' I/O abstraction
@@ -45,7 +45,6 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-#ifdef PASM
 PUB Start(SHDN_PIN): status
 ' Start using "standard" Propeller I2C pins and 100kHz
 '   Still requires SHDN_PIN
@@ -66,28 +65,6 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, SHDN_PIN): status
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
-#elseifdef SPIN
-PUB Start(SHDN_PIN): status
-' Start using "standard" Propeller I2C pins
-'   Still requires SHDN_PIN
-    return startx(DEF_SCL, DEF_SDA, SHDN_PIN)
-
-PUB Startx(SCL_PIN, SDA_PIN, SHDN_PIN): status
-' Start using custom I/O settings
-'   Returns: Core/cog number+1 of current cog (doesn't use an additional cog)
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   lookdown(SHDN_PIN: 0..31)
-        i2c.init(SCL_PIN, SDA_PIN)
-        time.msleep(1)
-        if i2c.present(SLAVE_WR)                ' test device bus presence
-            _shdn := SHDN_PIN
-            powered(TRUE)                       ' SHDN pin high
-            return (cogid + 1)
-    ' if this point is reached, something above failed
-    ' Double check I/O pin assignments, connections, power
-    ' Lastly - make sure you have at least one free core/cog
-    return FALSE
-#endif
 
 PUB Stop{}
 

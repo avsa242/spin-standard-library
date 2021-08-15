@@ -6,14 +6,14 @@
         audio amp driver.
     Copyright (c) 2021
     Started Jul 7, 2018
-    Updated May 1, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 ' Uncomment one of the below lines to start the driver with the
 '   PASM I2C engine (1 additional cog) or SPIN I2C engine (no additional cog)
-#define PASM
-'#define SPIN
+#define MAX9744_PASM
+'#define MAX9744_SPIN
 
 CON
 
@@ -83,17 +83,14 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-#ifdef PASM
     if amp.startx(SCL_PIN, SDA_PIN, I2C_HZ, SHDN_PIN)
-#elseifdef SPIN
-    if amp.startx(SCL_PIN, SDA_PIN, SHDN_PIN)
+#ifdef MAX9744_PASM
+        ser.strln(string("MAX9744 driver started (I2C-PASM)"))
+#elseifdef MAX9744_SPIN
+        ser.strln(string("MAX9744 driver started (I2C-SPIN)"))
 #endif
-        ser.strln(string("MAX9744 driver started"))
     else
         ser.strln(string("MAX9744 driver failed to start - halting"))
-        amp.stop{}
-        time.msleep(500)
-        ser.stop{}
         repeat
 
 DAT
