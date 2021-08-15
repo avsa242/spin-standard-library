@@ -5,7 +5,7 @@
     Description: Driver for the Sensirion SCD30 CO2 sensor
     Copyright (c) 2021
     Started Jul 10, 2021
-    Updated Jul 20, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -65,11 +65,7 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom IO pins and I2C bus frequency
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ                 ' validate pins and bus freq
-#ifdef SCD30_PASM
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
-#elseifdef SCD30_SPIN
-        if (status := i2c.init(SCL_PIN, SDA_PIN))
-#endif
             time.usleep(core#T_POR)             ' wait for device startup
             if present{}
                 return

@@ -5,7 +5,7 @@
     Description: Demo of the SCD30 driver
     Copyright (c) 2021
     Started Jul 10, 2021
-    Updated Jul 19, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -100,7 +100,11 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
 
     if env.startx(I2C_SCL, I2C_SDA, I2C_HZ)
-        ser.strln(string("SCD30 driver started"))
+#ifdef SCD30_PASM
+        ser.strln(string("SCD30 driver started (I2C-PASM)"))
+#elseifdef SCD30_SPIN
+        ser.strln(string("SCD30 driver started (I2C-SPIN)"))
+#endif
     else
         ser.strln(string("SCD30 driver failed to start - halting"))
         repeat
