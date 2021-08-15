@@ -5,17 +5,16 @@
     Description: Demo of the DS28CM00 64-bit ROM ID chip
     Copyright (c) 2021
     Started Oct 27, 2019
-    Updated May 23, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: If a common EEPROM (e.g. AT24Cxxxx) is on the same I2C bus as the SSN,
         the driver may return data from it instead of the SSN. Make sure the EEPROM is
         somehow disabled or test the SSN using different I/O pins.
 }
-' Uncomment the line below to use the PASM I2C engine in the driver
-'   otherwise, the SPIN (bytecode) engine will be used, which is much
-'   slower (~30kHz), but doesn't require another cog
-'#define _PASM_
+' Uncomment one of the below lines to choose the SPIN or PASM-based I2C engine
+#define DS28CM00_PASM
+'#define DS28CM00_SPIN
 
 CON
 
@@ -68,12 +67,15 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
+
     if ssn.startx(I2C_SCL, I2C_SDA, I2C_HZ)
-        ser.strln(string("DS28CM00 driver started"))
+#ifdef DS28CM00_PASM
+        ser.strln(string("DS28CM00 driver started (I2C-PASM)"))
+#elseifdef DS28CM00_SPIN
+        ser.strln(string("DS28CM00 driver started (I2C-SPIN)"))
+#endif
     else
         ser.strln(string("DS28CM00 driver failed to start - halting"))
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT
