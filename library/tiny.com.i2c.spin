@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: SPIN I2C Engine
     Started Jun 9, 2019
-    Updated Jul 18, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c.spin, by
@@ -19,6 +19,7 @@ CON
 
     DEF_SDA = 29                                ' Default I2C I/O pins
     DEF_SCL = 28
+    DEF_HZ  = 100_000
 
     HIGH    = 1
 
@@ -28,31 +29,33 @@ CON
 
 VAR
 
-    long _scl                                   ' Bus pins
-    long _sda
+    long _SCL                                   ' Bus pins
+    long _SDA
 
 PUB Null
 ' This is not a top-level object
 
 PUB InitDef: status
 ' Initialize I2C engine using default Propeller I2C pins
-    return init(DEF_SCL, DEF_SDA)
+    return init(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Init(SCL, SDA): status
+PUB Init(SCL, SDA, I2C_HZ): status
 ' Initialize I2C engine using custom I2C pins
 '   SCL, SDA: 0..31 (each unique)
 '   Bus speed is approx 28-32kHz @80MHz system clock
-    longmove(@_scl, @SCL, 2)                    ' Copy pins
-    dira[_scl] := 0                             ' Float to pull-up
-    outa[_scl] := 0                             ' output low
-    dira[_sda] := 0
-    outa[_sda] := 0
+'   NOTE: I2C_HZ is for compatibility with PASM I2C engine only,
+'       and is ignored
+    longmove(@_SCL, @SCL, 2)                    ' Copy pins
+    dira[_SCL] := 0                             ' Float to pull-up
+    outa[_SCL] := 0                             ' output low
+    dira[_SDA] := 0
+    outa[_SDA] := 0
 
     return cogid{}+1                            ' return current cog id
 
 PUB DeInit
 ' Deinitialize - clear out hub vars
-    longfill(@_scl, 0, 2)
+    longfill(@_SCL, 0, 2)
 
 PUB Present(slave_addr): status
 ' Check for slave device presence on bus
@@ -97,47 +100,47 @@ PUB Read(ackbit): i2cbyte
 '   Valid values (ackbit):
 '       NAK (1): Send NAK to slave device after reading
 '       ACK (0): Send ACK to slave device after reading
-    dira[_sda] := 0                             ' Make SDA input
+    dira[_SDA] := 0                             ' Make SDA input
     waitclockstretch{}
 
     repeat 8
-        dira[_scl] := 0                         ' SCL high (float to p/u)
-        i2cbyte := (i2cbyte << 1) | ina[_sda]   ' Read the bit
-        dira[_scl] := 1                         ' SCL low
+        dira[_SCL] := 0                         ' SCL high (float to p/u)
+        i2cbyte := (i2cbyte << 1) | ina[_SDA]   ' Read the bit
+        dira[_SCL] := 1                         ' SCL low
 
-    dira[_sda] := !ackbit                       ' Output ack bit
-    dira[_scl] := 0                             ' Clock it
-    dira[_scl] := 1
+    dira[_SDA] := !ackbit                       ' Output ack bit
+    dira[_SCL] := 0                             ' Clock it
+    dira[_SCL] := 1
     return (i2cbyte & $FF)
 
 PUB Reset
 ' Reset I2C bus
     repeat 9                                    ' send up to 9 clock pulses
-        dira[_scl] := 1
-        dira[_scl] := 0
-        if (ina[_sda])                          ' if SDA is released,
+        dira[_SCL] := 1
+        dira[_SCL] := 0
+        if (ina[_SDA])                          ' if SDA is released,
             quit                                '   our work is done - return
 
 PUB Start
 ' Create start or re-start condition (S, Sr)
 '   NOTE: This method supports clock stretching;
 '       waits while SDA pin is held low
-    dira[_sda] := 0                             ' Float SDA (1)
-    dira[_scl] := 0                             ' Float SCL (1)
-    repeat while (ina[_scl] == 0)               ' Wait: clock stretch
+    dira[_SDA] := 0                             ' Float SDA (1)
+    dira[_SCL] := 0                             ' Float SCL (1)
+    repeat while (ina[_SCL] == 0)               ' Wait: clock stretch
 
-    dira[_sda] := 1                             ' SDA low (0)
-    dira[_scl] := 1                             ' SCL low (0)
+    dira[_SDA] := 1                             ' SDA low (0)
+    dira[_SCL] := 1                             ' SCL low (0)
 
 PUB Stop
 ' Create I2C Stop condition (P)
 '   NOTE: This method supports clock stretching;
 '       waits while SDA pin is held low
-    dira[_sda] := 1                             ' SDA low
-    dira[_scl] := 0                             ' Float SCL
-    repeat until (ina[_scl] == 1)               ' Wait: clock stretch
+    dira[_SDA] := 1                             ' SDA low
+    dira[_SCL] := 0                             ' Float SCL
+    repeat until (ina[_SCL] == 1)               ' Wait: clock stretch
 
-    dira[_sda] := 0                             ' Float SDA
+    dira[_SDA] := 0                             ' Float SDA
 
 PUB Wait(slave_addr) | ackbit
 ' Waits for I2C device to be ready for new command
@@ -207,14 +210,14 @@ PUB Write(i2cbyte): ackbit
 '   NOTE: This method leaves SCL low, when returning
     i2cbyte := (i2cbyte ^ $FF) << 24            ' MSB (bit7) to bit31
     repeat 8                                    ' Output eight bits
-        dira[_sda] := i2cbyte <-= 1             ' Send msb first
-        dira[_scl] := 0                         ' float SCL to p/u
-        dira[_scl] := 1                         ' SCL low
+        dira[_SDA] := i2cbyte <-= 1             ' Send msb first
+        dira[_SCL] := 0                         ' float SCL to p/u
+        dira[_SCL] := 1                         ' SCL low
 
-    dira[_sda] := 0                             ' float SDA
+    dira[_SDA] := 0                             ' float SDA
     waitclockstretch{}
-    ackbit := ina[_sda]
-    dira[_scl] := 1                             ' SCL low
+    ackbit := ina[_SDA]
+    dira[_SCL] := 1                             ' SCL low
     return ackbit
 
 {
