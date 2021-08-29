@@ -13,7 +13,7 @@ VAR
   long          Pos             'Address of position buffer
 
 
-PUB Start(StartPin, NumEnc, NumDelta, PosAddr): Pass
+PUB Start(StartPin, NumEnc, NumDelta, PosAddr): status
 ''Record configuration, clear all encoder positions and launch a continuous encoder-reading cog.
 ''PARAMETERS: StartPin = (0..63) 1st pin of encoder 1.  2nd pin of encoder 1 is StartPin+1.
 ''                       Additional pins for other encoders are contiguous starting with StartPin+2 but MUST NOT cross port boundry (31).
@@ -28,7 +28,7 @@ PUB Start(StartPin, NumEnc, NumDelta, PosAddr): Pass
   Pos := PosAddr
   Stop
   longfill(Pos, 0, TotEnc+TotDelta)
-  Pass := (Cog := cognew(@Update, Pos) + 1) > 0
+  status := (Cog := cognew(@Update, Pos) + 1)
 
 
 PUB Stop
