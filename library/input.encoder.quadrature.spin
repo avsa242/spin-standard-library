@@ -1,135 +1,129 @@
-{{
+{
 *************************************
 * Quadrature Encoder v1.0           *
 * Author: Jeff Martin               *
 * Copyright (c) 2005 Parallax, Inc. *
 * See end of file for terms of use. *
 *************************************
-}}
+}
 
 VAR
-  byte          Cog             'Cog (ID+1) that is running Update
-  byte          TotDelta        'Number of encoders needing deta value support.
-  long          Pos             'Address of position buffer
 
+    long _ptr_posbuff                           ' pointer to pos buffer
+    byte _cog                                   ' cog ID of encoder engine
+    byte _nr_delta                              ' # enc. requiring delta vals
 
-PUB Start(StartPin, NumEnc, NumDelta, PosAddr): status
-''Record configuration, clear all encoder positions and launch a continuous encoder-reading cog.
-''PARAMETERS: StartPin = (0..63) 1st pin of encoder 1.  2nd pin of encoder 1 is StartPin+1.
-''                       Additional pins for other encoders are contiguous starting with StartPin+2 but MUST NOT cross port boundry (31).
-''            NumEnc   = Number of encoders (1..16) to monitor.
-''            NumDelta = Number of encoders (0..16) needing delta value support (can be less than NumEnc).
-''            PosAddr  = Address of a buffer of longs where each encoder's position (and deta position, if any) is to be stored.
-''RETURNS:    True if successful, False otherwise.
+PUB Start(ENC_BASEPIN, nr_enc, nr_delta, ptr_posbuff): status
+' Start using custom I/O basepin and parameters
+'   ENC_BASEPIN: 0..31
+'       1st pin of encoder 1 (2nd pin of encoder 1 is ENC_BASEPIN+1)
+'       Additional pins for other encoders are contiguous starting with
+'           ENC_BASEPIN+2
+'   nr_enc: Number of encoders (1..16) to monitor.
+'   nr_delta: Number of encoders (0..16) needing delta value support
+'       (can be less than nr_enc).
+'   ptr_posbuff: pointer to buffer of longs where each encoder's position
+'       (and deta position, if any) is to be stored.
+'   Returns: cog ID+1 if started, FALSE otherwise
+    _pin := ENC_BASEPIN
+    _nr_enc := nr_enc
+    _nr_delta := nr_delta
+    _ptr_posbuff := ptr_posbuff
+    stop{}
+    longfill(_ptr_posbuff, 0, _nr_enc+_nr_delta)
+    status := (_cog := cognew(@entry, _ptr_posbuff) + 1)
 
-  Pin := StartPin
-  TotEnc := NumEnc
-  TotDelta := NumDelta
-  Pos := PosAddr
-  Stop
-  longfill(Pos, 0, TotEnc+TotDelta)
-  status := (Cog := cognew(@Update, Pos) + 1)
+PUB Stop{}
+' Stop the encoder-reading cog, if there is one.
+    if (_cog > 0)
+        cogstop(_cog-1)
 
-
-PUB Stop
-''Stop the encoder-reading cog, if there is one.
-
-  if Cog > 0
-    cogstop(Cog-1)
-
-
-PUB ReadDelta(EncID): DeltaPos
-''Read delta position (relative position value since last time read) of EncID.
-
-  DeltaPos := 0 + -(EncID < TotDelta) * -long[Pos][TotEnc+EncID] + (long[Pos][TotEnc+EncID] := long[Pos][EncID])
-
-
-
-'************************************
-'* Encoder Reading Assembly Routine *
-'************************************
+PUB ReadDelta(enc_id): deltapos
+' Read delta position (relative position value since last time read) of enc_id.
+    deltapos := 0 + -(enc_id < _nr_delta) * -long[_ptr_posbuff][_nr_enc+enc_id] {
+}   + (long[_ptr_posbuff][_nr_enc+enc_id] := long[_ptr_posbuff][enc_id])
 
 DAT
 'Read all encoders and update encoder positions in main memory.
 'See "Theory of Operation," below, for operational explanation.
 'Cycle Calculation Equation:
-'  Terms:     SU = :Sample to :Update.  UTI = :UpdatePos through :IPos.  MMW = Main Memory Write.
-'             AMMN = After MMW to :Next.  NU = :Next to :UpdatePos.  SH = Resync to Hub.  NS = :Next to :Sample.
-'  Equation:  SU + UTI + MMW + (AMMN + NU + UTI + SH + MMW) * (TotEnc-1) + AMMN + NS
-'             = 92 + 16  +  8  + ( 16  + 4  + 16  + 6  +  8 ) * (TotEnc-1) +  16  + 12
-'             = 144 + 50*(TotEnc-1)
+'  Terms:     SU = :Sample to :Update.  UTI = :Update_ptr_posbuff through :ipos.  MMW = Main Memory Write.
+'             AMMN = After MMW to :Next.  NU = :Next to :Update_ptr_posbuff.  SH = Resync to Hub.  NS = :Next to :Sample.
+'  Equation:  SU + UTI + MMW + (AMMN + NU + UTI + SH + MMW) * (_nr_enc-1) + AMMN + NS
+'             = 92 + 16  +  8  + ( 16  + 4  + 16  + 6  +  8 ) * (_nr_enc-1) +  16  + 12
+'             = 144 + 50*(_nr_enc-1)
 
                         org     0
 
-Update                  test    Pin, #$20               wc      'Test for upper or lower port
-                        muxc    :PinSrc, #%1                    'Adjust :PinSrc instruction for proper port
-                        mov     IPosAddr, #IntPos               'Clear all internal encoder position values
-                        movd    :IClear, IPosAddr               '  set starting internal pointer
-                        mov     Idx, TotEnc                     '  for all encoders...
-        :IClear         mov     0, #0                           '  clear internal memory
-                        add     IPosAddr, #1                    '  increment pointer
-                        movd    :IClear, IPosAddr
-                        djnz    Idx, #:IClear                   '  loop for each encoder
+entry                   test    _pin, #$20               wc      'Test for upper or lower port
+                        muxc    :pinsrc, #%1                    'Adjust :pinsrc instruction for proper port
+                        mov     iposaddr, #intpos               'Clear all internal encoder position values
+                        movd    :iclear, iposaddr               '  set starting internal pointer
+                        mov     idx, _nr_enc                     '  for all encoders...
+:iclear                 mov     0, #0                           '  clear internal memory
+                        add     iposaddr, #1                    '  increment pointer
+                        movd    :iclear, iposaddr
+                        djnz    idx, #:iclear                   '  loop for each encoder
 
-                        mov     St2, ina                        'Take first sample of encoder pins
-                        shr     St2, Pin
-:Sample                 mov     IPosAddr, #IntPos               'Reset encoder position buffer addresses
-                        movd    :IPos+0, IPosAddr
-                        movd    :IPos+1, IPosAddr
-                        mov     MPosAddr, PAR
-                        mov     St1, St2                        'Calc 2-bit signed offsets (St1 = B1:A1)
-                        mov     T1,  St2                        '                           T1  = B1:A1
-                        shl     T1, #1                          '                           T1  = A1:x
-        :PinSrc         mov     St2, inb                        '  Sample encoders         (St2 = B2:A2 left shifted by first encoder offset)
-                        shr     St2, Pin                        '  Adj for first encoder   (St2 = B2:A2)
-                        xor     St1, St2                        '          St1  =              B1^B2:A1^A2
-                        xor     T1, St2                         '          T1   =              A1^B2:x
-                        and     T1, BMask                       '          T1   =              A1^B2:0
-                        or      T1, AMask                       '          T1   =              A1^B2:1
-                        mov     T2, St1                         '          T2   =              B1^B2:A1^A2
-                        and     T2, AMask                       '          T2   =                  0:A1^A2
-                        and     St1, BMask                      '          St1  =              B1^B2:0
-                        shr     St1, #1                         '          St1  =                  0:B1^B2
-                        xor     T2, St1                         '          T2   =                  0:A1^A2^B1^B2
-                        mov     St1, T2                         '          St1  =                  0:A1^B2^B1^A2
-                        shl     St1, #1                         '          St1  =        A1^B2^B1^A2:0
-                        or      St1, T2                         '          St1  =        A1^B2^B1^A2:A1^B2^B1^A2
-                        and     St1, T1                         '          St1  =  A1^B2^B1^A2&A1^B2:A1^B2^B1^A2
-                        mov     Idx, TotEnc                     'For all encoders...
-:UpdatePos              ror     St1, #2                         'Rotate current bit pair into 31:30
-                        mov     Diff, St1                       'Convert 2-bit signed to 32-bit signed Diff
-                        sar     Diff, #30
-        :IPos           add     0, Diff                         'Add to encoder position value
-                        wrlong  0, MPosAddr                     'Write new position to main memory
-                        add     IPosAddr, #1                    'Increment encoder position addresses
-                        movd    :IPos+0, IPosAddr
-                        movd    :IPos+1, IPosAddr
-                        add     MPosAddr, #4
-:Next                   djnz    Idx, #:UpdatePos                'Loop for each encoder
+                        mov     st2, ina                        'Take first sample of encoder pins
+                        shr     st2, _pin
+:sample                 mov     iposaddr, #intpos               'Reset encoder position buffer addresses
+                        movd    :ipos+0, iposaddr
+                        movd    :ipos+1, iposaddr
+                        mov     mposaddr, PAR
+                        mov     st1, st2                        'Calc 2-bit signed offsets (st1 = B1:A1)
+                        mov     t1,  st2                        '                           t1  = B1:A1
+                        shl     t1, #1                          '                           t1  = A1:x
+:pinsrc                 mov     st2, inb                        '  Sample encoders         (st2 = B2:A2 left shifted by first encoder offset)
+                        shr     st2, _pin                        '  Adj for first encoder   (st2 = B2:A2)
+                        xor     st1, st2                        '          st1  =              B1^B2:A1^A2
+                        xor     t1, st2                         '          t1   =              A1^B2:x
+                        and     t1, bmask                       '          t1   =              A1^B2:0
+                        or      t1, amask                       '          t1   =              A1^B2:1
+                        mov     t2, st1                         '          t2   =              B1^B2:A1^A2
+                        and     t2, amask                       '          t2   =                  0:A1^A2
+                        and     st1, bmask                      '          st1  =              B1^B2:0
+                        shr     st1, #1                         '          st1  =                  0:B1^B2
+                        xor     t2, st1                         '          t2   =                  0:A1^A2^B1^B2
+                        mov     st1, t2                         '          st1  =                  0:A1^B2^B1^A2
+                        shl     st1, #1                         '          st1  =        A1^B2^B1^A2:0
+                        or      st1, t2                         '          st1  =        A1^B2^B1^A2:A1^B2^B1^A2
+                        and     st1, t1                         '          st1  =  A1^B2^B1^A2&A1^B2:A1^B2^B1^A2
+                        mov     idx, _nr_enc                     'For all encoders...
+:updatepos              ror     st1, #2                         'Rotate current bit pair into 31:30
+                        mov     diff, st1                       'Convert 2-bit signed to 32-bit signed diff
+                        sar     diff, #30
+:ipos                   add     0, diff                         'Add to encoder position value
+                        wrlong  0, mposaddr                     'Write new position to main memory
+                        add     iposaddr, #1                    'Increment encoder position addresses
+                        movd    :ipos+0, iposaddr
+                        movd    :ipos+1, iposaddr
+                        add     mposaddr, #4
+:next_enc               djnz    idx, #:updatepos                'Loop for each encoder
                         jmp     #:Sample                        'Loop forever
 
 'Define Encoder Reading Cog's constants/variables
 
-AMask                   long    $55555555                       'A bit mask
-BMask                   long    $AAAAAAAA                       'B bit mask
+amask                   long    $55555555                       'A bit mask
+bmask                   long    $AAAAAAAA                       'B bit mask
 MSB                     long    $80000000                       'MSB mask for current bit pair
 
-Pin                     long    0                               'First pin connected to first encoder
-TotEnc                  long    0                               'Total number of encoders
+_pin                    long    0                               'First pin connected to first encoder
+_nr_enc                 long    0                               'Total number of encoders
 
-Idx                     res     1                               'Encoder index
-St1                     res     1                               'Previous state
-St2                     res     1                               'Current state
-T1                      res     1                               'Temp 1
-T2                      res     1                               'Temp 2
-Diff                    res     1                               'Difference, ie: -1, 0 or +1
-IPosAddr                res     1                               'Address of current encoder position counter (Internal Memory)
-MPosAddr                res     1                               'Address of current encoder position counter (Main Memory)
-IntPos                  res     16                              'Internal encoder position counter buffer
+idx                     res     1                               'Encoder index
+st1                     res     1                               'Previous state
+st2                     res     1                               'Current state
+t1                      res     1                               'Temp 1
+t2                      res     1                               'Temp 2
+diff                    res     1                               'difference, ie: -1, 0 or +1
+iposaddr                res     1                               'Address of current encoder position counter (Internal Memory)
+mposaddr                res     1                               'Address of current encoder position counter (Main Memory)
+intpos                  res     16                              'Internal encoder position counter buffer
 
 
 
-{{
+{
 **************************
 * FUNCTIONAL DESCRIPTION *
 **************************
@@ -141,12 +135,12 @@ Connect each encoder to two contiguous I/O pins (multiple encoders must be conne
 required, those encoders must be at the start of the group, followed by any encoders not requiring delta position support.
 
 To use this object:
-  1) Create a position buffer (array of longs).  The position buffer MUST contain NumEnc + NumDelta longs.  The first NumEnc longs of the position buffer
-     will always contain read-only, absolute positions for the respective encoders.  The remaining NumDelta longs of the position buffer will be "last
+  1) Create a position buffer (array of longs).  The position buffer MUST contain nr_enc + nr_delta longs.  The first nr_enc longs of the position buffer
+     will always contain read-only, absolute positions for the respective encoders.  The remaining nr_delta longs of the position buffer will be "last
      absolute read" storage for providing delta position support (if used) and should be ignored (use ReadDelta() method instead).
   2) Call Start() passing in the starting pin number, number of encoders, number needing delta support and the address of the position buffer.  Start() will
      configure and start an encoder reader in a separate cog; which runs continuously until Stop is called.
-  3) Read position buffer (first NumEnc values) to obtain an absolute 32-bit position value for each encoder.  Each long (32-bit position counter) within
+  3) Read position buffer (first nr_enc values) to obtain an absolute 32-bit position value for each encoder.  Each long (32-bit position counter) within
      the position buffer is updated automatically by the encoder reader cog.
   4) For any encoders requiring delta position support, call ReadDelta(); you must have first sized the position buffer and configured Start() appropriately
      for this feature.
@@ -157,20 +151,20 @@ OBJ
   Encoder : "input.encoder.quadrature"
 
 VAR
-  long Pos[3]                            'Create buffer for two encoders (plus room for delta position support of 1st encoder)
+  long _ptr_posbuff[3]                            'Create buffer for two encoders (plus room for delta position support of 1st encoder)
 
 PUB Init
-  Encoder.Start(8, 2, 1, @Pos)           'Start continuous two-encoder reader (encoders connected to pins 8 - 11)
+  Encoder.Start(8, 2, 1, @_ptr_posbuff)           'Start continuous two-encoder reader (encoders connected to pins 8 - 11)
 
 PUB Main
   repeat
-    <read Pos[0] or Pos[1] here>         'Read each encoder's absolute position
+    <read _ptr_posbuff[0] or Pos[1] here>         'Read each encoder's absolute position
     <variable> := Encoder.ReadDelta(0)   'Read 1st encoder's delta position (value since last read)
 
 ________________________________
 REQUIRED CYCLES AND MAXIMUM RPM:
 
-Encoder Reading Cog requires 144 + 50*(TotEnc-1) cycles per sample.  That is: 144 for 1 encoder, 194 for 2 encoders, 894 for 16 encoders.
+Encoder Reading Cog requires 144 + 50*(_nr_enc-1) cycles per sample.  That is: 144 for 1 encoder, 194 for 2 encoders, 894 for 16 encoders.
 
 Conservative Maximum RPM of Highest Resolution Encoder = XINFreq * PLLMultiplier / EncReaderCogCycles / 2 / MaxEncPulsesPerRevolution * 60
 
@@ -179,7 +173,7 @@ Example 1: Using a 4 MHz crystal, 8x internal multiplier, 16 encoders where the 
 
 Example 2: Using same example above, but with only 2 encoders of 128 pulses per revolution:
            Max RPM = 4,000,000 * 8 / 194 / 2 / 128 * 60 = 38,659 RPM
-}}
+}
 
 
 {
