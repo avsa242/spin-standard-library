@@ -55,9 +55,7 @@ DAT
 
                         org     0
 
-entry                   test    _pin, #$20               wc      'Test for upper or lower port
-                        muxc    :pinsrc, #%1                    'Adjust :pinsrc instruction for proper port
-                        mov     iposaddr, #intpos               'Clear all internal encoder position values
+entry                   mov     iposaddr, #intpos               'Clear all internal encoder position values
                         movd    :iclear, iposaddr               '  set starting internal pointer
                         mov     idx, _nr_enc                     '  for all encoders...
 :iclear                 mov     0, #0                           '  clear internal memory
@@ -70,11 +68,11 @@ entry                   test    _pin, #$20               wc      'Test for upper
 :sample                 mov     iposaddr, #intpos               'Reset encoder position buffer addresses
                         movd    :ipos+0, iposaddr
                         movd    :ipos+1, iposaddr
-                        mov     mposaddr, PAR
+                        mov     mposaddr, par
                         mov     st1, st2                        'Calc 2-bit signed offsets (st1 = B1:A1)
                         mov     t1,  st2                        '                           t1  = B1:A1
                         shl     t1, #1                          '                           t1  = A1:x
-:pinsrc                 mov     st2, inb                        '  Sample encoders         (st2 = B2:A2 left shifted by first encoder offset)
+:pinsrc                 mov     st2, ina                        '  Sample encoders         (st2 = B2:A2 left shifted by first encoder offset)
                         shr     st2, _pin                        '  Adj for first encoder   (st2 = B2:A2)
                         xor     st1, st2                        '          st1  =              B1^B2:A1^A2
                         xor     t1, st2                         '          t1   =              A1^B2:x
@@ -106,7 +104,6 @@ entry                   test    _pin, #$20               wc      'Test for upper
 
 amask                   long    $55555555                       'A bit mask
 bmask                   long    $AAAAAAAA                       'B bit mask
-MSB                     long    $80000000                       'MSB mask for current bit pair
 
 _pin                    long    0                               'First pin connected to first encoder
 _nr_enc                 long    0                               'Total number of encoders
