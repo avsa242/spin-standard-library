@@ -5,7 +5,7 @@
     Description: Driver for the TI INA260 Precision Current and Power Monitor IC
     Copyright (c) 2021
     Started Nov 13, 2019
-    Updated Jan 9, 2021
+    Updated Aug 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -108,12 +108,6 @@ PUB BusVoltage{}: v
     readreg(core#BUS_VOLTAGE, 2, @v)
     return (v & $7fff) * 1_250
 
-PUB ConversionReady{}: flag
-' Flag indicating data from the last conversion is available for reading
-'   Returns: TRUE (-1) if data available, FALSE (0) otherwise
-    readreg(core#ENABLE, 2, @flag)
-    return (((flag >> core#CVRF) & 1) == 1)
-
 PUB Current{}: a
 ' Read the measured current, in microamperes
 '   NOTE: If averaging is enabled, this will return the averaged value
@@ -129,7 +123,8 @@ PUB CurrentConvTime(ctime): curr_set
     readreg(core#CONFIG, 2, @curr_set)
     case ctime
         140, 204, 332, 588, 1100, 2116, 4156, 8244:
-            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156, 8244) << core#ISHCT
+            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156, {
+}           8244) << core#ISHCT
         other:
             curr_set := (curr_set >> core#ISHCT) & core#ISHCT_BITS
             return lookupz(curr_set: 140, 204, 332, 588, 1100, 2116, 4156, 8244)
@@ -150,23 +145,23 @@ PUB DieID{}: id
     id := 0
     readreg(core#DIE_ID, 2, @id)
 
-PUB IntLevel(level): curr_lvl
+PUB IntActiveState(state): curr_state
 ' Set interrupt active level/polarity
 '   Valid values:
 '      *INTLVL_LO   (0) Active low
 '       INTLVL_HI   (1) Active high
 '   Any other value polls the chip and returns the current setting
 '   NOTE: The ALERT pin is open collector
-    curr_lvl := 0
-    readreg(core#ENABLE, 2, @curr_lvl)
-    case level
+    curr_state := 0
+    readreg(core#ENABLE, 2, @curr_state)
+    case state
         INTLVL_LO, INTLVL_HI:
-            level <<= core#APOL
+            state <<= core#APOL
         other:
-            return ((curr_lvl >> core#APOL) & 1)
+            return ((curr_state >> core#APOL) & 1)
 
-    level := ((curr_lvl & core#APOL_MASK) | level) & core#ENABLE_MASK
-    writereg(core#ENABLE, 2, @level)
+    state := ((curr_state & core#APOL_MASK) | state) & core#ENABLE_MASK
+    writereg(core#ENABLE, 2, @state)
 
 PUB IntsLatched(state): curr_state
 ' Enable latching of interrupts
@@ -262,6 +257,12 @@ PUB Power{}: p
     readreg(core#POWER, 2, @p)
     return (p * 10_000)
 
+PUB PowerDataReady{}: flag
+' Flag indicating data from the last conversion is available for reading
+'   Returns: TRUE (-1) if data available, FALSE (0) otherwise
+    readreg(core#ENABLE, 2, @flag)
+    return (((flag >> core#CVRF) & 1) == 1)
+
 PUB PowerOverflowed{}: flag
 ' Flag indicating power data exceeded the maximum measurable value
 '   (419_430_000uW/419.43W)
@@ -282,8 +283,8 @@ PUB SamplesAveraged(samples): curr_smp
     readreg(core#CONFIG, 2, @curr_smp)
     case samples
         1, 4, 16, 64, 128, 256, 512, 1024:
-            samples := lookdownz(samples: 1, 4, 16, 64, 128, 256, 512,{
-}                                           1024) << core#AVG
+            samples := lookdownz(samples: 1, 4, 16, 64, 128, 256, 512, {
+}           1024) << core#AVG
         other:
             curr_smp := (curr_smp >> core#AVG) & core#AVG_BITS
             return lookupz(curr_smp: 1, 4, 16, 64, 128, 256, 512, 1024)
@@ -299,12 +300,12 @@ PUB VoltageConvTime(ctime): curr_time
     readreg(core#CONFIG, 2, @curr_time)
     case ctime
         140, 204, 332, 588, 1100, 2116, 4156, 8244:
-            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156,{
-}                                       8244) << core#VBUSCT
+            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156, {
+}           8244) << core#VBUSCT
         other:
             curr_time := (curr_time >> core#VBUSCT) & core#VBUSCT_BITS
-            return lookupz(curr_time: 140, 204, 332, 588, 1100, 2116, 4156,{
-}                                       8244)
+            return lookupz(curr_time: 140, 204, 332, 588, 1100, 2116, 4156, {
+}           8244)
 
     ctime := ((curr_time & core#VBUSCT_MASK) | ctime) & core#CONFIG_MASK
     writereg(core#CONFIG, 2, @ctime)

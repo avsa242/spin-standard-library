@@ -5,7 +5,7 @@
     Description: Simple demo of the INA260 driver
     Copyright (c) 2020
     Started Jan 18, 2020
-    Updated May 30, 2021
+    Updated Aug 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -49,7 +49,7 @@ PUB Main{} | vbus, i, p
     ser.str(string("Power"))
 
     repeat
-        repeat until ina260.conversionready{}
+        repeat until ina260.powerdataready{}
         vbus := ina260.busvoltage{}
         i := ina260.current{}
         p := ina260.power{}
