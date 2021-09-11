@@ -2,10 +2,10 @@
     --------------------------------------------
     Filename: SX1231-TXDemo.spin
     Author: Jesse Burt
-    Description: Simple transmit demo of the sx1231 driver
-    Copyright (c) 2020
+    Description: Simple transmit demo of the SX1231 driver
+    Copyright (c) 2021
     Started Dec 15, 2020
-    Updated Dec 19, 2020
+    Updated Aug 22, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,6 +22,8 @@ CON
     SCK_PIN         = 1
     MOSI_PIN        = 2
     MISO_PIN        = 3
+    RESET_PIN       = 12                        ' use is recommended
+                                                '   (-1 to disable)
 ' --
 
 OBJ
@@ -37,44 +39,44 @@ VAR
 
     byte _buffer[256]
 
-PUB Main{} | count
+PUB Main{} | sw[2], count
 
     setup{}
-
     ser.position(0, 3)
     ser.strln(string("Transmit mode"))
+    sx1231.preset_tx4k8{}                       ' 4800bps, use Automodes to
+                                                ' handle transition between
+                                                ' sleep-TX-sleep opmodes
 
 ' -- TX/RX settings
-    sx1231.idle{}
     sx1231.carrierfreq(902_300_000)             ' US 902.3MHz
-    sx1231.payloadlen(8)                        ' the test packets are
-' --                                            '   8 bytes
+    sx1231.payloadlen(8)                        ' test packet size
+    sx1231.fifothreshold(sx1231.payloadlen(-2)-1)' trigger int at payld len-1
+    sw[0] := $E7E7E7E7
+    sw[1] := $E7E7E7E7
+    sx1231.syncwordlength(8)                    ' 1..8
+    sx1231.syncword(1, @sw)
+' --
 
 ' -- TX-specific settings
+    ' transmit power
+    ' (-18..13 is routed to RFO pin, higher is routed to PABOOST pin)
     sx1231.txpower(13)                          ' -18..20dBm
 ' --
 
     count := 0
     repeat
-        bytefill(@_buffer, 0, 256)              ' clear temp TX buffer
+        bytefill(@_buffer, 0, 256)              ' clear local TX buffer
 
         ' payload is the string 'TEST' with hexadecimal counter after
         sf.sprintf1(@_buffer, string("TEST%s"), int.hex(count, 4))
-
-        sx1231.idle{}                           ' start in idle/standby
         sx1231.txpayload(8, @_buffer)           ' queue the data
-        sx1231.txmode{}                         ' transmit
-
-        repeat until sx1231.payloadsent{}       ' wait until TX complete
-
-        ' sleep after transmit to avoid continuously transmitting a carrier
-        sx1231.sleep{}                          ' *** important
 
         count++
         ser.position(0, 5)
         ser.str(string("Sending: "))
         ser.str(@_buffer)
-        time.msleep(5000)                       ' wait in between packets
+        time.msleep(1000)                       ' wait in between packets
                                                 ' (don't abuse the airwaves)
 
 PUB Setup{}
@@ -84,14 +86,10 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if sx1231.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        sx1231.defaults{}
+    if sx1231.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, RESET_PIN)
         ser.strln(string("SX1231 driver started"))
     else
         ser.strln(string("SX1231 driver failed to start - halting"))
-        sx1231.stop{}
-        time.msleep(500)
-        ser.stop{}
         repeat
 
 DAT
