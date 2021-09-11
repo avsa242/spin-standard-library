@@ -6,7 +6,7 @@
         Digital Temperature Sensor
     Copyright (c) 2021
     Started May 19, 2019
-    Updated Aug 2, 2021
+    Updated Aug 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,10 +21,6 @@ CON
     DEF_HZ              = 100_000
     DEF_ADDR            = %000
     I2C_MAX_FREQ        = core#I2C_MAX_FREQ
-
-' Overtemperature alarm (OS) output modes
-    COMP                = 0
-    INT                 = 1
 
 ' Overtemperature alarm (OS) output pin active state
     ACTIVE_LO           = 0
@@ -41,7 +37,13 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"                             ' PASM I2C engine
+#ifdef LM75_SPIN
+    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+#elseifdef LM75_PASM
+    i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
+#else
+#error "One of LM75_SPIN or LM75_PASM must be defined"
+#endif
     core: "core.con.lm75"                       ' HW-specific constants
     time: "time"                                ' timekeeping methods
 
@@ -72,7 +74,7 @@ PUB Stop{}
 
 PUB Defaults{}
 ' Factory default settings
-    intmode(COMP)
+    intslatched(FALSE)
     intthresh(80_00)
     intclearthresh(75_00)
     intactivestate(ACTIVE_LO)
@@ -121,21 +123,21 @@ PUB IntClearThresh(thr): curr_thr
                     readreg(core#T_HYST, 2, @curr_thr)
                     return tempword2deg(curr_thr)
 
-PUB IntMode(mode): curr_mode
-' Interrupt output mode
+PUB IntsLatched(state): curr_state
+' Latch interrupts asserted by the sensor
 '   Valid values:
-'       INT (1): Interrupt cleared only after reading temperature
-'       COMP (0): Interrupt cleared when temp drops below threshold
+'       FALSE (0): Interrupt cleared when temp drops below threshold
+'       TRUE (-1 or 1): Interrupt cleared only after reading temperature
 '   Any other value polls the chip and returns the current setting
-    readreg(core#CONFIG, 1, @curr_mode)
-    case mode
-        COMP, INT:
-            mode := mode << core#COMP_INT
+    readreg(core#CONFIG, 1, @curr_state)
+    case ||(state)
+        0, 1:
+            state := ||(state) << core#COMP_INT
         other:
-            return ((curr_mode >> core#COMP_INT) & 1)
+            return ((curr_state >> core#COMP_INT) & 1)
 
-    mode := ((curr_mode & core#COMP_INT_MASK) | mode) & core#CONFIG_MASK
-    writereg(core#CONFIG, 1, @mode)
+    state := ((curr_state & core#COMP_INT_MASK) | state) & core#CONFIG_MASK
+    writereg(core#CONFIG, 1, @state)
 
 PUB IntPersistence(thr): curr_thr
 ' Number of faults necessary to assert alarm

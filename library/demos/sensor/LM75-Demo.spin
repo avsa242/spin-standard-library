@@ -5,10 +5,13 @@
     Description: Demo of the LM75 driver
     Copyright (c) 2021
     Started Nov 19, 2020
-    Updated May 8, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
+' Uncomment one of the below to choose the SPIN or PASM I2C engine
+#define LM75_SPIN
+'#define LM75_PASM
 
 CON
 
@@ -82,13 +85,16 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
+
     if temp.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
         temp.defaults{}
-        ser.strln(string("LM75 driver started (I2C)"))
+#ifdef LM75_SPIN
+        ser.strln(string("LM75 driver started (I2C-SPIN)"))
+#elseifdef LM75_PASM
+        ser.strln(string("LM75 driver started (I2C-PASM)"))
+#endif
     else
         ser.strln(string("LM75 driver failed to start - halting"))
-        temp.stop{}
-        time.msleep(5)
         repeat
 
 DAT
