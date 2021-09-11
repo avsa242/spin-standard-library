@@ -5,7 +5,7 @@
     Description: Driver for Nordic Semi. nRF24L01+
     Copyright (c) 2021
     Started Jan 6, 2019
-    Updated Apr 22, 2021
+    Updated Jun 27, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -41,12 +41,13 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay | tmp[2], i
-
-    if lookdown(CE_PIN: 0..31) and lookdown(CS_PIN: 0..31) and{
-}   lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and{
+PUB Startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status | tmp[2], i
+' Start using custom I/O settings
+    if lookdown(CE_PIN: 0..31) and lookdown(CS_PIN: 0..31) and {
+}   lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and {
 }   lookdown(MISO_PIN: 0..31)
-        if okay := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE)
+        if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, {
+}       core#SPI_MODE))
             longmove(@_CE, @CE_PIN, 5)
             time.usleep(core#TPOR)
             time.usleep(core#TPD2STBY)
@@ -59,7 +60,7 @@ PUB Startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay | tmp[2], i
             repeat i from 0 to 4                '   read pipe #0's address
                 if tmp.byte[i] <> $E7           ' doesn't match default?
                     return FALSE                ' connection prob, or no nRF24
-            return okay                         ' nRF24 found
+            return                              ' nRF24 found
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -463,6 +464,15 @@ PUB FlushTX{}
 ' Flush transmit FIFO buffer
     writereg(core#CMD_FLUSH_TX, 0, 0)
 
+PUB FreqDeviation(freq): curr_freq
+' Set frequency deviation, in Hz
+'   NOTE: Read-only, for compatibility only
+    case datarate(-2)
+        250, 1000:
+            return 160_000
+        2000:
+            return 320_000
+
 PUB Idle{}
 ' Set to idle state
     ce(0)
@@ -673,6 +683,15 @@ PUB RXAddr(ptr_buff, pipe, rw)
         other:                                  ' Invalid pipe
             return
 
+PUB RXBandwidth(bw): curr_bw
+' Set transceiver bandwidth, in Hz
+'   NOTE: Read-only, for compatibility only
+    case datarate(-2)
+        250, 1000:
+            return 1_000_000
+        2000:
+            return 2_000_000
+
 PUB RXFIFOEmpty{}: flag
 ' Flag indicating RX FIFO empty
 '   Returns:
@@ -709,7 +728,7 @@ PUB RXPayload(nr_bytes, ptr_buff)
 PUB RXPipePending{}: pipe_nr
 ' Returns pipe number of pending data available in FIFO
 '   Returns: Pipe number 0..5, or 7 if FIFO is empty
-    return (status{} >> core#RX_P_NO) & core#RX_P_NO_BITS
+    return (nrfstatus{} >> core#RX_P_NO) & core#RX_P_NO_BITS
 
 PUB RXTX(role): curr_role
 ' Set to Primary RX or TX
@@ -729,6 +748,10 @@ PUB RXTX(role): curr_role
 PUB Sleep{}
 ' Power down chip
     powered(FALSE)
+
+PUB Syncword(ptr_syncwd): curr_syncwd
+' Set syncword
+    nodeaddress(ptr_syncwd)
 
 PUB TESTCW(state): curr_state
 ' Enable continuous carrier transmit (intended for testing only)
@@ -772,7 +795,7 @@ PUB TXFIFOEmpty{}: flag
 PUB TXFIFOFull{}: flag
 ' Flag indicating TX FIFO full
 '   Returns: TRUE if full, FALSE if locations available in TX FIFO
-    return (status{} & 1) == 1
+    return (nrfstatus{} & 1) == 1
 
 PUB TXMode{}
 ' Change chip state to TX (transmit)
@@ -815,7 +838,7 @@ PUB TXReuse{}: flag
     readreg(core#FIFO_STATUS, 1, @flag)
     return ((flag >> core#TXFIFO_REUSE) & 1) == 1
 
-PRI Status{}: nrf_status
+PRI nrfStatus{}: nrf_status
 ' Interrupt and data available status
     readreg(core#STATUS, 1, @nrf_status)
 
