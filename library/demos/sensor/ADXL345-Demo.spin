@@ -5,7 +5,7 @@
     Description: Demo of the ADXL345 driver
     Copyright (c) 2021
     Started Mar 14, 2020
-    Updated May 30, 2021
+    Updated Aug 9, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,10 +21,10 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 0                             ' SPI
-    SCL_PIN     = 1                             ' SPI, I2C
-    SDA_PIN     = 2                             ' SPI, I2C
-    SDO_PIN     = 3                             ' SPI
+    CS_PIN      = 1                             ' SPI
+    SCL_PIN     = 2                             ' SPI, I2C
+    SDA_PIN     = 3                             ' SPI, I2C
+    SDO_PIN     = 4                             ' SPI
     I2C_HZ      = 400_000                       ' I2C (max: 400_000)
     ADDR_BITS   = 0                             ' I2C
 ' --
@@ -44,40 +44,36 @@ OBJ
 PUB Main{}
 
     setup{}
-    accel.preset_active{}
-    calibrate{}
-    ser.hidecursor{}
+    accel.preset_active{}                       ' default settings, but enable
+                                                ' sensor data acquisition and
+                                                ' set scale factor
 
     repeat
         ser.position(0, 3)
         accelcalc{}
-        if ser.rxcheck{} == "c"
-            calibrate{}
-    until ser.rxcheck{} == "q"
-
-    ser.showcursor{}
-    repeat
+        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
+            calibrate{}                         ' to calibrate sensor offsets
 
 PUB AccelCalc{} | ax, ay, az
 
     repeat until accel.acceldataready{}
     accel.accelg(@ax, @ay, @az)
-    ser.str(string("Accel micro-g: "))
-    ser.position(DAT_X_COL, 3)
+    ser.str(string("Accel (g): "))
+    ser.positionx(DAT_X_COL)
     decimal(ax, 1_000_000)
-    ser.position(DAT_Y_COL, 3)
+    ser.positionx(DAT_Y_COL)
     decimal(ay, 1_000_000)
-    ser.position(DAT_Z_COL, 3)
+    ser.positionx(DAT_Z_COL)
     decimal(az, 1_000_000)
     ser.clearline{}
     ser.newline{}
 
 PUB Calibrate{}
 
-    ser.position(0, 3)
+    ser.position(0, 5)
     ser.str(string("Calibrating..."))
     accel.calibrateaccel{}
-    ser.position(0, 3)
+    ser.position(0, 5)
     ser.clearline{}
 
 PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
