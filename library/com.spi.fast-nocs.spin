@@ -5,7 +5,7 @@
     Description: Fast PASM SPI driver (20MHz W, 10MHz R)
         (_no builtin-Chip Select support_)
     Started Jun 30, 2021
-    Updated Jun 30, 2021
+    Updated Oct 3, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -19,6 +19,9 @@ CON
     CMD_IDLE        = 0                         ' waiting for command
     CMD_READ        = 1 << 16                   ' read byte(s)
     CMD_WRITE       = 2 << 16                   ' write byte(s)
+    CMD_WR8_X       = 3 << 16
+    CMD_WR16_X_MSBF = 4 << 16
+    CMD_WR16_X_LSBF = 5 << 16
     CMD_LAST        = 17 << 16                  ' Placeholder for last command
 
 VAR
@@ -151,6 +154,11 @@ PUB Wr_Byte(byte2spi)
 ' Write byte to SPI bus
     wrblock_lsbf(@byte2spi, 1)
 
+PUB WrByteX(byte2spi, nr_bytes)
+' Write byte2spi repeatedly to SPI bus, nr_bytes times
+    _command := CMD_WR8_X + @byte2spi
+    repeat while _command
+
 PUB WrLong_LSBF(long2spi)
 ' Write long to SPI bus, least-significant byte first
     wrblock_lsbf(@long2spi, 4)
@@ -162,6 +170,11 @@ PUB WrLong_MSBF(long2spi)   'XXX non-functional, for now
 PUB WrWord_LSBF(word2spi)
 ' Write word to SPI bus, least-significant byte first
     wrblock_lsbf(@word2spi, 2)
+
+PUB WrWordX_MSBF(word2spi, nr_words)
+' Repeatedly write word2spi to SPI bus, nr_words times
+    _command := CMD_WR16_X_MSBF + @word2spi
+    repeat while _command
 
 PUB WrWord_MSBF(word2spi)   'XXX non-functional, for now
 ' Write word to SPI bus, most-significant byte first
@@ -180,27 +193,31 @@ entry
 
 CmdWait
 ' Wait for command issued to engine
-                rdlong    params, par wz        ' command passed to engine?
+                rdlong    ptr_params, par wz    ' command passed to engine?
     if_z        jmp       #cmdwait              ' if not, loop until there is
 
-                mov       t1, params            ' get command/address
-                rdlong    param_a, t1           ' get parameters
-                add       t1, #4                '
-                rdlong    param_b, t1           '
+                mov       t0, ptr_params        ' get command/address
+                rdlong    param_a, t0           ' get parameters
+                add       t0, #4                '
+                rdlong    param_b, t0           '
 
-                mov       t0, params            ' get command/address
-                shr       t0, #16 wz            ' command
-                cmp       t0, #(CMD_LAST>>16)+1 wc' command valid?
+                mov       cmd, ptr_params       ' get command/address
+                shr       cmd, #16 wz           ' command
+                cmp       cmd, #(CMD_LAST>>16)+1 wc' command valid?
     if_z_or_nc  jmp       #:cmdexit             ' no; exit loop
-                shl       t0, #1                '
-                add       t0, #:cmdtable-2      ' add in the "call" address
-                jmp       t0                    ' Jump to the command
+                shl       cmd, #1               '(1: 2), (2: 4), (3: 8), (4: 16)
+                add       cmd, #:cmdtable-2     ' add in the "call" address
+                jmp       cmd                   ' Jump to the command
 
 :CmdTable
 ' Command table
                 call      #readspi              ' read a byte
                 jmp       #:cmdexit
                 call      #writespi             ' write a byte
+                jmp       #:cmdexit
+                call      #wr8_x                ' write a byte repeatedly
+                jmp       #:cmdexit
+                call      #wr16_x_msbf          ' write a word repeatedly
                 jmp       #:cmdexit
                 call      #lastcmd              ' placeholder for last command
                 jmp       #:cmdexit
@@ -233,31 +250,63 @@ writeSPI_ret    ret                             ' complete
 LastCMD
 LastCMD_ret     ret                             ' complete
 
+wr8_x
+' Write the same byte to the SPI bus many times
+                mov       data, param_a         ' get byte and how many to
+                mov       ctr, param_b          '   write from hubram
+:byteloop       call      #write8_spi           ' write it
+                djnz      ctr, #:byteloop       ' loop if more bytes to write
+wr8_x_ret       ret
+
+wr16_x_lsbf
+' Write the same word (LSByte first) to the SPI bus many times
+'   param_a: pointer to word to write
+'   param_b: number of times to write
+                mov       data, param_a         ' get word and how many to
+                mov       ctr, param_b          '   write from hubram
+:wordloop       call      #write8_spi           ' write LSB
+                ror       data, #8              ' put the MSB into position,
+                call      #write8_spi           '   and write
+                djnz      ctr, #:wordloop       ' loop if more words to write
+wr16_x_lsbf_ret ret
+
+wr16_x_msbf
+' Write the same word (MSByte first) to the SPI bus many times
+'   param_a: pointer to word to write
+'   param_b: number of times to write
+                mov       data, param_a         ' get word and how many to
+                mov       ctr, param_b          '   write from hubram
+:wordloop       ror       data, #8              ' put the MSByte into position
+                call      #write8_spi           '   and write it
+                rol       data, #8              ' put things back, so the LSB
+                call      #write8_spi           '   is in position, and write
+                djnz      ctr, #:wordloop       ' loop if more words to write
+wr16_x_msbf_ret ret
 
 WriteMulti
 ' Write multiple bytes
-:bytes
+:byteloop
                 rdbyte    data, ptr_hub         ' read the byte from hubram
-                call      #wspi_data            ' write one byte
+                call      #write8_spi            ' write one byte
 
                 add       ptr_hub, #1           ' next (byte) hubram address
-                djnz      ctr, #:bytes          ' loop if more bytes to write
+                djnz      ctr, #:byteloop          ' loop if more bytes to write
 WriteMulti_ret  ret                             ' complete
 
 
 ReadMulti
 ' Read multiple bytes
-:bytes
+:byteloop
                 call      #rspi_data            ' Read one data byte
                 and       data, _bytemask       ' Ensure there is only a byte
                 wrbyte    data, ptr_hub         ' Write the byte to hubram
 
                 add       ptr_hub, #1           ' next (byte) hubram address
-                djnz      ctr, #:bytes          ' loop if more bytes to read
+                djnz      ctr, #:byteloop          ' loop if more bytes to read
 ReadMulti_ret   ret                             ' complete
 
 
-wSPI_Data
+write8_spi
 ' Low-level write routine
 '   Shift out PHSB bit 31 to MOSI
 ' Counter A: SCK
@@ -278,7 +327,7 @@ wSPI_Data
                 rol       phsb, #1
                 rol       phsb, #1
                 mov       ctra, #0              ' turn off clocking
-wSPI_Data_ret   ret                             ' complete
+write8_spi_ret  ret                             ' complete
 
 
 rSPI_Data
@@ -333,20 +382,20 @@ phs20           long      $5000_0000            ' counter A & B: phsa (write)
 frq10           long      $2000_0000            ' counter A: frqa (read)
 phs10           long      $6000_0000            ' counter A: phsa (read)
 
+ctr             long      0                     ' R/W byte loop counter
 ' Data defined in constant section, but needed in the ASM for program operation
 
 ' Uninitialized data - temporary variables
+cmd             res 1
 t0              res 1
-t1              res 1
 
 ' Parameters read from commands passed into the ASM routine
-params          res 1                           ' address, cmd, data length
+ptr_params      res 1                           ' address, cmd, data length
 param_a         res 1                           ' parameter A
 param_b         res 1                           ' parameter B
 
 data            res 1                           ' byte read from/written to SPI
 ptr_hub         res 1                           ' pointer to read/write buffer
-ctr             res 1                           ' read/write byte loop counter
 
                 fit 496                         ' compiler: PASM and variables
                                                 '   fit in a single cog?
