@@ -6,7 +6,7 @@
     Bitmap font author unknown, reference Thomas P. Sullivan's
         SSD1331 OLED driver
     Created: Apr 26, 2018
-    Updated: May 19, 2019
+    Updated: Oct 3, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,7 +15,7 @@
 CON
 '' Font definition: width, height in pixels, ASCII code of highest character
     WIDTH       = 5
-    HEIGHT      = 7
+    HEIGHT      = 8
     LASTCHAR    = 127
 
 PUB Null
