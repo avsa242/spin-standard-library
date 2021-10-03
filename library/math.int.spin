@@ -5,7 +5,7 @@
     Description: Basic integer math functions
     Copyright (c) 2021
     Started Apr 11, 2021
-    Updated Apr 11, 2021
+    Updated Oct 3, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -37,6 +37,10 @@ PUB Pow(base, exp): r
     repeat exp
         r *= base
     return
+
+PUB RNDSeed(val)
+' Set seed for random number generator
+    _rndseed := val
 
 PUB RND(maxval): r
 ' Return random unsigned number up to maxval
