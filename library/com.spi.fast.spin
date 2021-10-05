@@ -43,7 +43,7 @@ PUB Null{}
 
 PUB Init(CS, SCK, MOSI, MISO, SPI_MODE): status
 ' Initialize SPI engine using custom pins
-'   SCK, MOSI, MISO: 0..31 (each unique)
+'   CS, SCK, MOSI, MISO: 0..31 (each unique)
 '   SPI_MODE: 0..3
 '       0: CPOL 0, CPHA 0
 '           SCK idles low
@@ -146,7 +146,7 @@ PUB WrBlock_LSBF(ptr_buff, nr_bytes) | dsel_after
 '           0: Return immediately after writing
 '       ptr_buff: Pointer to byte(s) of data to be written
 '       nr_bytes: Number of bytes to write
-    dsel_after := (||_dsel_after)
+    dsel_after := ||(_dsel_after)
     _command := CMD_WRITE + @ptr_buff
 
     repeat while _command
