@@ -5,7 +5,7 @@
     Description: Fast PASM SPI driver (20MHz W, 10MHz R)
         (_no builtin-Chip Select support_)
     Started Jun 30, 2021
-    Updated Oct 3, 2021
+    Updated Oct 5, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -83,6 +83,7 @@ PUB DeInit{}
 '   Float I/O pins, clear out hub vars, and stop the PASM engine
     if _cog
         cogstop(_cog - 1)
+        longfill(@_sck_mask, 0, 3)              ' Clear all masks
         _cog := 0
     _command := 0
 
@@ -183,221 +184,221 @@ PUB WrWord_MSBF(word2spi)   'XXX non-functional, for now
 DAT
                 org
 entry
-                ' Set the initial state of the I/O
-                ' (unless listed here, the output is initialized as off/low)
-                or        dira, _sck_mask       ' set as outputs
-                or        dira, _mosi_mask      '
+' Set the initial state of the I/O
+' (unless listed here, the output is initialized as off/low)
+                or      dira, _sck_mask         ' set as outputs
+                or      dira, _mosi_mask        '
 
-                mov       frqb, #0              ' init ctrb
-                mov       ctrb, ctrbmode        '   (used by MOSI)
+                mov     frqb, #0                ' init ctrb
+                mov     ctrb, ctrbmode          '   (used by MOSI)
 
 CmdWait
 ' Wait for command issued to engine
-                rdlong    ptr_params, par wz    ' command passed to engine?
-    if_z        jmp       #cmdwait              ' if not, loop until there is
+                rdlong  ptr_params, par wz      ' command passed to engine?
+    if_z        jmp     #cmdwait                ' if not, loop until there is
 
-                mov       t0, ptr_params        ' get command/address
-                rdlong    param_a, t0           ' get parameters
-                add       t0, #4                '
-                rdlong    param_b, t0           '
+                mov     t0, ptr_params          ' get command/address
+                rdlong  param_a, t0             ' get parameters
+                add     t0, #4                  '
+                rdlong  param_b, t0             '
 
-                mov       cmd, ptr_params       ' get command/address
-                shr       cmd, #16 wz           ' command
-                cmp       cmd, #(CMD_LAST>>16)+1 wc' command valid?
-    if_z_or_nc  jmp       #:cmdexit             ' no; exit loop
-                shl       cmd, #1               '(1: 2), (2: 4), (3: 8), (4: 16)
-                add       cmd, #:cmdtable-2     ' add in the "call" address
-                jmp       cmd                   ' Jump to the command
+                mov     cmd, ptr_params         ' get command/address
+                shr     cmd, #16 wz             ' command
+                cmp     cmd, #(CMD_LAST>>16)+1 wc' command valid?
+    if_z_or_nc  jmp     #:cmdexit               ' no; exit loop
+                shl     cmd, #1
+                add     cmd, #:cmdtable-2       ' add in the "call" address
+                jmp     cmd                     ' Jump to the command
 
 :CmdTable
 ' Command table
-                call      #readspi              ' read a byte
-                jmp       #:cmdexit
-                call      #writespi             ' write a byte
-                jmp       #:cmdexit
-                call      #wr8_x                ' write a byte repeatedly
-                jmp       #:cmdexit
-                call      #wr16_x_msbf          ' write a word repeatedly
-                jmp       #:cmdexit
-                call      #lastcmd              ' placeholder for last command
-                jmp       #:cmdexit
+                call    #readspi                ' read a byte
+                jmp     #:cmdexit
+                call    #writespi               ' write a byte
+                jmp     #:cmdexit
+                call    #wr8_x                  ' write a byte repeatedly
+                jmp     #:cmdexit
+                call    #wr16_x_msbf            ' write a word repeatedly
+                jmp     #:cmdexit
+                call    #lastcmd                ' placeholder for last command
+                jmp     #:cmdexit
 :CmdTableEnd
 
 :CmdExit
 ' Clear command status and wait for new command
-                wrlong    _zero, par            ' clear the command status
-                jmp       #cmdwait              ' wait for next command
+                wrlong  _zero, par              ' clear the command status
+                jmp     #cmdwait                ' wait for next command
 
 
-readSPI
+ReadSPI
 ' Read/shift in data from SPI bus
-                mov       ptr_hub, param_a      ' get hub read buff. pointer
-                mov       ctr, param_b          ' get nr. bytes to read
-                call      #readmulti            ' read byte(s)
+                mov     ptr_hub, param_a        ' get hub read buff. pointer
+                mov     ctr, param_b            ' get nr. bytes to read
+                call    #readmulti              ' read byte(s)
 
-readSPI_ret     ret                             ' complete
+ReadSPI_ret     ret                             ' complete
 
 
-writeSPI
+WriteSPI
 ' Write/shift out data to SPI bus
-                mov       ptr_hub, param_a      ' Move the data byte into a variable for processing
-                mov       ctr, param_b          ' number of bytes
-                call      #writemulti           ' write byte(s)
+                mov     ptr_hub, param_a        ' Move the data byte into a variable for processing
+                mov     ctr, param_b            ' number of bytes
+                call    #writemulti             ' write byte(s)
 
-writeSPI_ret    ret                             ' complete
+WriteSPI_ret    ret                             ' complete
 
 
 LastCMD
 LastCMD_ret     ret                             ' complete
 
-wr8_x
+Wr8_x
 ' Write the same byte to the SPI bus many times
-                mov       data, param_a         ' get byte and how many to
-                mov       ctr, param_b          '   write from hubram
-:byteloop       call      #write8_spi           ' write it
-                djnz      ctr, #:byteloop       ' loop if more bytes to write
-wr8_x_ret       ret
+                mov     data, param_a           ' get byte and how many to
+                mov     ctr, param_b            '   write from hubram
+:byteloop       call    #write8_spi             ' write it
+                djnz    ctr, #:byteloop         ' loop if more bytes to write
+Wr8_x_ret       ret
 
-wr16_x_lsbf
+Wr16_x_LSBF
 ' Write the same word (LSByte first) to the SPI bus many times
 '   param_a: pointer to word to write
 '   param_b: number of times to write
-                mov       data, param_a         ' get word and how many to
-                mov       ctr, param_b          '   write from hubram
-:wordloop       call      #write8_spi           ' write LSB
-                ror       data, #8              ' put the MSB into position,
-                call      #write8_spi           '   and write
-                djnz      ctr, #:wordloop       ' loop if more words to write
-wr16_x_lsbf_ret ret
+                mov     data, param_a           ' get word and how many to
+                mov     ctr, param_b            '   write from hubram
+:wordloop       call    #write8_spi             ' write LSB
+                ror     data, #8                ' put the MSB into position,
+                call    #write8_spi             '   and write
+                djnz    ctr, #:wordloop         ' loop if more words to write
+Wr16_x_LSBF_ret ret
 
-wr16_x_msbf
+Wr16_x_MSBF
 ' Write the same word (MSByte first) to the SPI bus many times
 '   param_a: pointer to word to write
 '   param_b: number of times to write
-                mov       data, param_a         ' get word and how many to
-                mov       ctr, param_b          '   write from hubram
-:wordloop       ror       data, #8              ' put the MSByte into position
-                call      #write8_spi           '   and write it
-                rol       data, #8              ' put things back, so the LSB
-                call      #write8_spi           '   is in position, and write
-                djnz      ctr, #:wordloop       ' loop if more words to write
-wr16_x_msbf_ret ret
+                mov     data, param_a           ' get word and how many to
+                mov     ctr, param_b            '   write from hubram
+:wordloop       ror     data, #8                ' put the MSByte into position
+                call    #write8_spi             '   and write it
+                rol     data, #8                ' put things back, so the LSB
+                call    #write8_spi             '   is in position, and write
+                djnz    ctr, #:wordloop         ' loop if more words to write
+Wr16_x_MSBF_ret ret
 
 WriteMulti
 ' Write multiple bytes
 :byteloop
-                rdbyte    data, ptr_hub         ' read the byte from hubram
-                call      #write8_spi            ' write one byte
+                rdbyte  data, ptr_hub           ' read the byte from hubram
+                call    #write8_spi             ' write one byte
 
-                add       ptr_hub, #1           ' next (byte) hubram address
-                djnz      ctr, #:byteloop          ' loop if more bytes to write
+                add     ptr_hub, #1             ' next (byte) hubram address
+                djnz    ctr, #:byteloop         ' loop if more bytes to write
 WriteMulti_ret  ret                             ' complete
 
 
 ReadMulti
 ' Read multiple bytes
 :byteloop
-                call      #rspi_data            ' Read one data byte
-                and       data, _bytemask       ' Ensure there is only a byte
-                wrbyte    data, ptr_hub         ' Write the byte to hubram
+                call    #read8_spi              ' Read one data byte
+                and     data, _bytemask         ' Ensure there is only a byte
+                wrbyte  data, ptr_hub           ' Write the byte to hubram
 
-                add       ptr_hub, #1           ' next (byte) hubram address
-                djnz      ctr, #:byteloop          ' loop if more bytes to read
+                add     ptr_hub, #1             ' next (byte) hubram address
+                djnz    ctr, #:byteloop         ' loop if more bytes to read
 ReadMulti_ret   ret                             ' complete
 
 
-write8_spi
+Write8_SPI
 ' Low-level write routine
 '   Shift out PHSB bit 31 to MOSI
 ' Counter A: SCK
 ' Counter B: MOSI
-                andn      outa, _sck_mask       ' clock off, SCK low
-                mov       phsb, #0
-                mov       phsb, data            ' load PHSB with data
+                andn    outa, _sck_mask         ' clock off, SCK low
+                mov     phsb, #0
+                mov     phsb, data              ' load PHSB with data
 
-                shl       phsb, #24             ' left-justify it
-                mov       frqa, frq20           ' set write frequency
-                mov       phsa, phs20           ' phase of data/clock
-                mov       ctra, ctramode        ' start clocking
-                rol       phsb, #1              ' rotate each bit into
-                rol       phsb, #1              '   position...
-                rol       phsb, #1
-                rol       phsb, #1
-                rol       phsb, #1
-                rol       phsb, #1
-                rol       phsb, #1
-                mov       ctra, #0              ' turn off clocking
-write8_spi_ret  ret                             ' complete
+                shl     phsb, #24               ' left-justify it
+                mov     frqa, frq20             ' set write frequency
+                mov     phsa, phs20             ' phase of data/clock
+                mov     ctra, ctramode          ' start clocking
+                rol     phsb, #1                ' rotate each bit into
+                rol     phsb, #1                '   position...
+                rol     phsb, #1
+                rol     phsb, #1
+                rol     phsb, #1
+                rol     phsb, #1
+                rol     phsb, #1
+                mov     ctra, #0                ' turn off clocking
+Write8_SPI_ret  ret                             ' complete
 
 
-rSPI_Data
+Read8_SPI
 ' Low-level read routine
 '   Shift in bits from MISO (unrolled loop)
 ' Counter A: SCK
-                mov       frqa, frq10           ' set read frequency
-                mov       phsa, phs10           ' phase of data/clock
+                mov     frqa, frq10             ' set read frequency
+                mov     phsa, phs10             ' phase of data/clock
                 nop
-                mov       ctra, ctramode        ' start clocking
-                test      _MISO_mask, ina wc    ' shift in each bit
-                rcl       data, #1
-                test      _MISO_mask, ina wc
-                rcl       data, #1
-                test      _MISO_mask, ina wc
-                rcl       data, #1
-                test      _MISO_mask, ina wc
-                rcl       data, #1
-                test      _MISO_mask, ina wc
-                rcl       data, #1
-                test      _MISO_mask, ina wc
-                rcl       data, #1
-                test      _MISO_mask, ina wc
-                rcl       data, #1
-                test      _MISO_mask, ina wc
-                mov       ctra, #0              ' disable clocking to avoid
-                rcl       data, #1              '   odd behavior
-rSPI_Data_ret   ret                             ' complete
+                mov     ctra, ctramode          ' start clocking
+                test    _MISO_mask, ina wc      ' shift in each bit
+                rcl     data, #1
+                test    _MISO_mask, ina wc
+                rcl     data, #1
+                test    _MISO_mask, ina wc
+                rcl     data, #1
+                test    _MISO_mask, ina wc
+                rcl     data, #1
+                test    _MISO_mask, ina wc
+                rcl     data, #1
+                test    _MISO_mask, ina wc
+                rcl     data, #1
+                test    _MISO_mask, ina wc
+                rcl     data, #1
+                test    _MISO_mask, ina wc
+                mov     ctra, #0                ' disable clocking to avoid
+                rcl     data, #1                '   odd behavior
+Read8_SPI_ret   ret                             ' complete
 
 
 ' Initialized data
-_zero           long      0                     ' zero
-_bytemask       long      $FF                   ' byte mask
+_zero           long    0                       ' zero
+_bytemask       long    $FF                     ' byte mask
 
 ' Pin/mask definitions are initianlized in SPIN and program/memory modified
 '   here before the COG is started
-_sck_mask       long      0-0                   ' Serial Clock
-_mosi_mask      long      0-0                   ' Master out slave in - output
-_miso_mask      long      0-0                   ' Master in slave out - input
+_sck_mask       long    0-0                     ' Serial Clock
+_mosi_mask      long    0-0                     ' Master out slave in - output
+_miso_mask      long    0-0                     ' Master in slave out - input
 
 ' NOTE: Data that is initialized in SPIN and program/memory modified here
 '   before COG is started
-ctramode        long      0-0                   ' counter A: SCK
-ctrbmode        long      0-0                   ' counter B: MOSI
+ctramode        long    0-0                     ' counter A: SCK
+ctrbmode        long    0-0                     ' counter B: MOSI
 
-frq20           long      $4000_0000            ' counter A & B: frqa (write)
+frq20           long    $4000_0000              ' counter A & B: frqa (write)
                                                 '   (CLKFREQ / 4)
-phs20           long      $5000_0000            ' counter A & B: phsa (write)
+phs20           long    $5000_0000              ' counter A & B: phsa (write)
                                                 '  (set relationship of MOSI
                                                 '   to SCK)
 
-frq10           long      $2000_0000            ' counter A: frqa (read)
-phs10           long      $6000_0000            ' counter A: phsa (read)
+frq10           long    $2000_0000              ' counter A: frqa (read)
+phs10           long    $6000_0000              ' counter A: phsa (read)
 
-ctr             long      0                     ' R/W byte loop counter
+ctr             long    0                       ' R/W byte loop counter
 ' Data defined in constant section, but needed in the ASM for program operation
 
 ' Uninitialized data - temporary variables
-cmd             res 1
-t0              res 1
+cmd             res     1
+t0              res     1
 
 ' Parameters read from commands passed into the ASM routine
-ptr_params      res 1                           ' address, cmd, data length
-param_a         res 1                           ' parameter A
-param_b         res 1                           ' parameter B
+ptr_params      res     1                       ' address, cmd, data length
+param_a         res     1                       ' parameter A
+param_b         res     1                       ' parameter B
 
-data            res 1                           ' byte read from/written to SPI
-ptr_hub         res 1                           ' pointer to read/write buffer
+data            res     1                       ' byte read from/written to SPI
+ptr_hub         res     1                       ' pointer to read/write buffer
 
-                fit 496                         ' compiler: PASM and variables
+                fit     496                     ' compiler: PASM and variables
                                                 '   fit in a single cog?
 
 DAT
