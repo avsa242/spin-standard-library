@@ -7,7 +7,7 @@
         driver, 1..16
     Copyright (c) 2005
     Started 2005
-    Updated Aug 30, 2021
+    Updated Oct 6, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -60,49 +60,49 @@ DAT
 ' See "Theory of Operation," below, for operational explanation.
                 org     0
 
-entry           mov     ptr_ipos, #intpos       ' Clear encoder position values
-                movd    :iclear, ptr_ipos       '  set starting internal pointer
-                mov     idx, _nr_enc            '  for all encoders...
-:iclear         mov     SELFMOD, #0             '  clear internal memory
-                add     ptr_ipos, #1            '  increment pointer
-                movd    :iclear, ptr_ipos
-                djnz    idx, #:iclear           '  loop for each encoder
+entry           mov     ptr_ipos,   #intpos     ' Clear encoder position values
+                movd    :iclear,    ptr_ipos    '  set starting internal pointer
+                mov     idx,        _nr_enc     '  for all encoders...
+:iclear         mov     SELFMOD,    #0          '  clear internal memory
+                add     ptr_ipos,   #1          '  increment pointer
+                movd    :iclear,    ptr_ipos
+                djnz    idx,        #:iclear    '  loop for each encoder
 
-                mov     st2, ina                ' sample encoder pins (initial)
-                shr     st2, _pin
-:sample         mov     ptr_ipos, #intpos       ' Reset encoder pos. pointer
-                movd    :ipos+0, ptr_ipos
-                movd    :ipos+1, ptr_ipos
-                mov     mposaddr, par
-                mov     st1, st2                ' Calc 2-bit signed offsets (st1 = B1:A1)
-                mov     t1,  st2                '                           t1  = B1:A1
-                shl     t1, #1                  '                           t1  = A1:x
-:pinsrc         mov     st2, ina                ' Sample encoders         (st2 = B2:A2 left shifted by first encoder offset)
-                shr     st2, _pin               ' Adj for first encoder   (st2 = B2:A2)
-                xor     st1, st2                '          st1  =              B1^B2:A1^A2
-                xor     t1, st2                 '          t1   =              A1^B2:x
-                and     t1, bmask               '          t1   =              A1^B2:0
-                or      t1, amask               '          t1   =              A1^B2:1
-                mov     t2, st1                 '          t2   =              B1^B2:A1^A2
-                and     t2, amask               '          t2   =                  0:A1^A2
-                and     st1, bmask              '          st1  =              B1^B2:0
-                shr     st1, #1                 '          st1  =                  0:B1^B2
-                xor     t2, st1                 '          t2   =                  0:A1^A2^B1^B2
-                mov     st1, t2                 '          st1  =                  0:A1^B2^B1^A2
-                shl     st1, #1                 '          st1  =        A1^B2^B1^A2:0
-                or      st1, t2                 '          st1  =        A1^B2^B1^A2:A1^B2^B1^A2
-                and     st1, t1                 '          st1  =  A1^B2^B1^A2&A1^B2:A1^B2^B1^A2
-                mov     idx, _nr_enc            ' For all encoders...
-:updatepos      ror     st1, #2                 ' Rotate current bit pair into 31:30
-                mov     diff, st1               ' Convert 2-bit signed to 32-bit signed diff
-                sar     diff, #30
-:ipos           add     SELFMOD, diff           ' Add to encoder position value
-                wrlong  SELFMOD, mposaddr       ' Write new pos. to memory
-                add     ptr_ipos, #1            ' Increment encoder pos. ptr
-                movd    :ipos+0, ptr_ipos
-                movd    :ipos+1, ptr_ipos
-                add     mposaddr, #4
-:next_enc       djnz    idx, #:updatepos        ' Loop for each encoder
+                mov     st2,        ina         ' sample encoder pins (initial)
+                shr     st2,        _pin
+:sample         mov     ptr_ipos,   #intpos     ' Reset encoder pos. pointer
+                movd    :ipos+0,    ptr_ipos
+                movd    :ipos+1,    ptr_ipos
+                mov     mposaddr,   par
+                mov     st1,        st2         ' Calc 2-bit signed offsets (st1 = B1:A1)
+                mov     t1,         st2         '                           t1  = B1:A1
+                shl     t1,         #1          '                           t1  = A1:x
+:pinsrc         mov     st2,        ina         ' Sample encoders         (st2 = B2:A2 left shifted by first encoder offset)
+                shr     st2,        _pin        ' Adj for first encoder   (st2 = B2:A2)
+                xor     st1,        st2         '          st1  =              B1^B2:A1^A2
+                xor     t1,         st2         '          t1   =              A1^B2:x
+                and     t1,         bmask       '          t1   =              A1^B2:0
+                or      t1,         amask       '          t1   =              A1^B2:1
+                mov     t2,         st1         '          t2   =              B1^B2:A1^A2
+                and     t2,         amask       '          t2   =                  0:A1^A2
+                and     st1,        bmask       '          st1  =              B1^B2:0
+                shr     st1,        #1          '          st1  =                  0:B1^B2
+                xor     t2,         st1         '          t2   =                  0:A1^A2^B1^B2
+                mov     st1,        t2          '          st1  =                  0:A1^B2^B1^A2
+                shl     st1,        #1          '          st1  =        A1^B2^B1^A2:0
+                or      st1,        t2          '          st1  =        A1^B2^B1^A2:A1^B2^B1^A2
+                and     st1,        t1          '          st1  =  A1^B2^B1^A2&A1^B2:A1^B2^B1^A2
+                mov     idx,        _nr_enc     ' For all encoders...
+:updatepos      ror     st1,        #2          ' Rotate current bit pair into 31:30
+                mov     diff,       st1         ' Convert 2-bit signed to 32-bit signed diff
+                sar     diff,       #30
+:ipos           add     SELFMOD,    diff        ' Add to encoder position value
+                wrlong  SELFMOD,    mposaddr    ' Write new pos. to memory
+                add     ptr_ipos,   #1          ' Increment encoder pos. ptr
+                movd    :ipos+0,    ptr_ipos
+                movd    :ipos+1,    ptr_ipos
+                add     mposaddr,   #4
+:next_enc       djnz    idx,        #:updatepos ' Loop for each encoder
                 jmp     #:sample                ' Loop forever
 
 'Define Encoder Reading Cog's constants/variables
