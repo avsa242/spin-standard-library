@@ -69,12 +69,12 @@ PUB Rd_Byte(ackbit): i2cbyte
 ' Read byte from I2C bus
     rdblock_lsbf(@i2cbyte, 1, ackbit)
 
-PUB RdBlock_LSBF(ptr_buff, nr_bytes, ack_last) | bytenum, i2cbyte
+PUB RdBlock_LSBF(ptr_buff, nr_bytes, ack_last) | bytenum
 ' Read nr_bytes from I2C bus into ptr_buff, LSByte-first
     repeat bytenum from 0 to nr_bytes-1
         byte[ptr_buff][bytenum] := read(((bytenum == nr_bytes-1) & ack_last))
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last) | bytenum, i2cbyte
+PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last) | bytenum
 ' Read nr_bytes from I2C bus into ptr_buff, MSByte-first
     repeat bytenum from nr_bytes-1 to 0
         byte[ptr_buff][bytenum] := read(((bytenum == 0) & ack_last))
@@ -174,12 +174,12 @@ PUB Wr_Byte(b): ackbit
 ' Write byte to I2C bus
     return wrblock_lsbf(@b, 1)
 
-PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit | bytenum, i2cbyte
+PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit | bytenum
 ' Write nr_bytes to I2C bus from ptr_buff, LSByte-first
     repeat bytenum from 0 to nr_bytes-1
         ackbit := write(byte[ptr_buff][bytenum])
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit | bytenum, i2cbyte
+PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit | bytenum
 ' Write nr_bytes to I2C bus from ptr_buff, MSByte-first
     repeat bytenum from nr_bytes-1 to 0
         ackbit := write(byte[ptr_buff][bytenum])
