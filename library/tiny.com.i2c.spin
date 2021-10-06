@@ -4,12 +4,12 @@
     Author: Jesse Burt
     Description: SPIN I2C Engine
     Started Jun 9, 2019
-    Updated Aug 15, 2021
+    Updated Oct 6, 2021
     See end of file for terms of use.
-
-    NOTE: This is based on jm_i2c.spin, by
-        Jon McPhalen
     --------------------------------------------
+
+    NOTE: This is based on jm_i2c.spin,
+        originally by Jon McPhalen
 }
 
 ' NOTE: Pull-up resistors are required on SDA _and_ SCL lines
@@ -32,10 +32,10 @@ VAR
     long _SCL                                   ' Bus pins
     long _SDA
 
-PUB Null
+PUB Null{}
 ' This is not a top-level object
 
-PUB InitDef: status
+PUB InitDef{}: status
 ' Initialize I2C engine using default Propeller I2C pins
     return init(DEF_SCL, DEF_SDA, DEF_HZ)
 
@@ -53,7 +53,7 @@ PUB Init(SCL, SDA, I2C_HZ): status
 
     return cogid{}+1                            ' return current cog id
 
-PUB DeInit
+PUB DeInit{}
 ' Deinitialize - clear out hub vars
     longfill(@_SCL, 0, 2)
 
@@ -113,7 +113,7 @@ PUB Read(ackbit): i2cbyte
     dira[_SCL] := 1
     return (i2cbyte & $FF)
 
-PUB Reset
+PUB Reset{}
 ' Reset I2C bus
     repeat 9                                    ' send up to 9 clock pulses
         dira[_SCL] := 1
@@ -121,24 +121,22 @@ PUB Reset
         if (ina[_SDA])                          ' if SDA is released,
             quit                                '   our work is done - return
 
-PUB Start
+PUB Start{}
 ' Create start or re-start condition (S, Sr)
 '   NOTE: This method supports clock stretching;
 '       waits while SDA pin is held low
     dira[_SDA] := 0                             ' Float SDA (1)
-    dira[_SCL] := 0                             ' Float SCL (1)
-    repeat while (ina[_SCL] == 0)               ' Wait: clock stretch
+    waitclockstretch{}                          ' wait: clock stretching
 
     dira[_SDA] := 1                             ' SDA low (0)
     dira[_SCL] := 1                             ' SCL low (0)
 
-PUB Stop
+PUB Stop{}
 ' Create I2C Stop condition (P)
 '   NOTE: This method supports clock stretching;
 '       waits while SDA pin is held low
     dira[_SDA] := 1                             ' SDA low
-    dira[_SCL] := 0                             ' Float SCL
-    repeat until (ina[_SCL] == 1)               ' Wait: clock stretch
+    waitclockstretch{}                          ' wait: clock stretching
 
     dira[_SDA] := 0                             ' Float SDA
 
