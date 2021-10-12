@@ -5,7 +5,7 @@
     Description: Driver for HD44780 alphanumeric LCDs
     Copyright (c) 2021
     Started Sep 06, 2021
-    Updated Sep 11, 2021
+    Updated Oct 12, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,6 +18,7 @@ CON
     DEF_SCL     = 28
     DEF_SDA     = 29
     DEF_HZ      = 100_000
+    DEF_ADDR    = %000
 
 ' HD44780 control signals
     BL          = 1 << 3                        ' backlight
@@ -46,13 +47,13 @@ PUB Null{}
 
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom IO pins and I2C bus frequency
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< ioexp#I2C_MAX_FREQ                ' validate pins and bus freq
-        if (status := ioexp.startx(SCL_PIN, SDA_PIN, I2C_HZ))
+}   I2C_HZ =< ioexp#I2C_MAX_FREQ and lookdown(ADDR_BITS: %000..%111)
+        if (status := ioexp.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS))
             time.usleep(core#T_POR)             ' wait for device startup
                 return
     ' if this point is reached, something above failed

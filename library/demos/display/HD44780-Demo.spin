@@ -5,7 +5,7 @@
     Description: Demo of the HD44780 LCD driver
     Copyright (c) 2021
     Started Sep 08, 2021
-    Updated Sep 09, 2021
+    Updated Oct 12, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -26,6 +26,7 @@ CON
     I2C_SCL     = 28
     I2C_SDA     = 29
     I2C_HZ      = 100_000                       ' max is 100_000
+    ADDR_BITS   = %111                          ' %000 (def) .. %111
 ' --
 
 OBJ
@@ -60,7 +61,7 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if lcd.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+    if lcd.startx(I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS)
         ser.strln(string("HD44780 driver started (I2C)"))
     else
         ser.strln(string("HD44780 driver failed to start - halting"))
