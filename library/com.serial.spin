@@ -1,14 +1,17 @@
-' Original Authors: Jeff Martin, Andy Lindsay, Chip Gracey
+{
+    --------------------------------------------
+    Filename: com.serial.spin
+    Author: Jesse Burt
+    Description: UART engine
+        (@80MHz Fsys: 250kbps TX/RX, or 1Mbps TX-only)
+    Started 2009
+    Updated Oct 12, 2021
+    See end of file for terms of use.
+    --------------------------------------------
 
-{{
-    This object implements core serial functionality.
-
-    # Usage
-
-    -   Call Start, or StartRxTx, first.
-    -   Be sure to set the Parallax Serial Terminal software to the baudrate specified in Start, and the proper COM port.
-    -   At 80 MHz, this object properly receives/transmits at up to 250 Kbaud, or performs transmit-only at up to 1 Mbaud.
-}}
+    NOTE: This is based on Parallax Serial Terminal.spin,
+    originally by Jeff Martin, Andy Lindsay, Chip Gracey
+}
 
 CON
 
@@ -118,7 +121,13 @@ PUB CharIn
     Returns: $00..$FF
 }}
 
+#ifdef __FLEXSPIN__
+    result := rxcheck
+    repeat while result < 0
+        result := rxcheck
+#else
     repeat while (result := RxCheck) < 0
+#endif
 
 PUB RxCheck
 {
@@ -273,4 +282,26 @@ txdata                  res     1
 txbits                  res     1
 txcnt                   res     1
 txcode                  res     1
+
+DAT
+{
+    --------------------------------------------------------------------------------------------------------
+    TERMS OF USE: MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+    associated documentation files (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    --------------------------------------------------------------------------------------------------------
+}
 
