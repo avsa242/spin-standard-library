@@ -20,6 +20,10 @@ CON
     MAX_COLOR       = 65535
     BYTESPERPX      = 2
 
+' Subpixel order
+    RGB             = 0
+    BGR             = 1
+
 ' Character attributes
     DRAWBG          = 1 << 0
 
@@ -398,6 +402,23 @@ PUB Reset{}
     else                                        ' if not, just soft-reset
         com.wrbyte_cmd(core#SWRESET)
         time.msleep(5)
+
+PUB SubpixelOrder(order): curr_ord
+' Set subpixel color order
+'   Valid values:
+'       RGB (0): Red-Green-Blue order
+'       BGR (1): Blue-Green-Red order
+'   Any other value returns the current (cached) setting
+    curr_ord := _madctl
+    case order
+        RGB, BGR:
+            order <<= core#BGR
+        other:
+            return ((curr_ord >> core#BGR) & 1)
+
+    _madctl := ((curr_ord & core#BGR_MASK) | order)
+    com.wrbyte_cmd(core#MADCTL)
+    com.wrbyte_dat(_madctl)
 
 PUB Update
 ' Dummy method
