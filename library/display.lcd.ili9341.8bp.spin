@@ -266,6 +266,21 @@ PUB DisplayInverted(state)
         0, 1:
             com.wrbyte_cmd(core#INVOFF + ||(state))
 
+PUB DisplayRotate(state): curr_state
+' Rotate display
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value returns the current setting
+    curr_state := _madctl
+    case ||(state)
+        0, 1:
+            state := ||(state) << core#MV
+        other:
+            return (((curr_state >> core#MV) & 1) == 1)
+
+    _madctl := ((curr_state & core#MV_MASK) | state)
+    com.wrbyte_cmd(core#MADCTL)
+    com.wrbyte_dat(_madctl)
+
 PUB Line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
 ' Draw line from (x1, y1) to (x2, y2), in color
     if (x1 == x2)
