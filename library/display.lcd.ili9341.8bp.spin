@@ -319,7 +319,21 @@ PUB MirrorH(state): curr_state
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
 
-PUB MirrorV(state)
+PUB MirrorV(state): curr_state
+' Mirror display, vertically
+'   Valid values:
+'       TRUE (-1 or 1), FALSE (0)
+'   Any other value returns the current (cached) setting
+    curr_state := _madctl
+    case ||(state)
+        0, 1:
+            state := ||(state) << core#MY
+        other:
+            return (((curr_state >> core#MY) & 1) == 1)
+
+    _madctl := ((curr_state & core#MY_MASK) | state)
+    com.wrbyte_cmd(core#MADCTL)
+    com.wrbyte_dat(_madctl)
 
 PUB Plot(x, y, color) | cmd_pkt[3]
 ' Draw a pixel at (x, y), in color
