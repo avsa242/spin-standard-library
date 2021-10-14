@@ -48,7 +48,7 @@ PUB Main
 
     setup
     lcd.preset{}
-
+    lcd.displayinverted(false)
     lcd.bgcolor(0)
     lcd.clear{}
     lcd.box(0, 0, XMAX, YMAX, $FFFF, false)

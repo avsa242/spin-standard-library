@@ -226,6 +226,8 @@ PUB Clear{}
     com.wrbyte_cmd(core#RAMWR)
     com.wrwordx_dat(_bgcolor, _buff_sz)
 
+PUB Contrast(c)
+
 PUB DisplayBounds(x1, y1, x2, y2) | x, y, cmd_pkt[2]
 ' Set drawing area for subsequent drawing command(s)
     if x2 < x1                                  ' x2 must be greater than x1
@@ -251,6 +253,15 @@ PUB DisplayBounds(x1, y1, x2, y2) | x, y, cmd_pkt[2]
 
     com.wrbyte_cmd(core#PASET)
     com.wrblock_dat(@cmd_pkt.byte[4], 4)
+
+PUB DisplayInverted(state)
+' Invert display colors
+'   Valid values:
+'       TRUE (-1 or 1), FALSE (0)
+'   Any other value is ignored
+    case ||(state)
+        0, 1:
+            com.wrbyte_cmd(core#INVOFF + ||(state))
 
 PUB Line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
 ' Draw line from (x1, y1) to (x2, y2), in color
@@ -288,6 +299,10 @@ PUB Line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
         if e2 < ddx
             err += ddx
             y1 += sy
+
+PUB MirrorH(state)
+
+PUB MirrorV(state)
 
 PUB Plot(x, y, color) | cmd_pkt[3]
 ' Draw a pixel at (x, y), in color
