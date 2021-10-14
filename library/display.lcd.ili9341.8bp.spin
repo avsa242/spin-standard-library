@@ -24,6 +24,10 @@ CON
     RGB             = 0
     BGR             = 1
 
+' Display refresh direction
+    NORM            = 0
+    INV             = 1
+
 ' Character attributes
     DRAWBG          = 1 << 0
 
@@ -422,6 +426,23 @@ PUB SubpixelOrder(order): curr_ord
 
 PUB Update
 ' Dummy method
+
+PUB VertRefreshDir(mode): curr_mode
+' Set panel vertical refresh direction
+'   (refresh direction relative to panel's top-left (0, 0) location)
+'   NORM (0): normal
+'   INV (1): inverted
+'   Any other value returns the current (cached) setting
+    curr_mode := _madctl
+    case mode
+        NORM, INV:
+            mode <<= core#ML
+        other:
+            return ((curr_mode >> core#ML) & 1)
+
+    _madctl := ((curr_mode & core#ML_MASK) | mode)
+    com.wrbyte_cmd(core#MADCTL)
+    com.wrbyte_dat(_madctl)
 
 DAT
 {
