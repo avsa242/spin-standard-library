@@ -36,6 +36,9 @@ VAR
     word _bytesperln
     byte _RESET
 
+    ' shadow registers
+    byte _madctl
+
 PUB Startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT): status
 ' Start driver using custom I/O settings
 '   DATA_BASEPIN: first (lowest) pin of 8 data pin block (must be contiguous)
@@ -300,7 +303,21 @@ PUB Line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
             err += ddx
             y1 += sy
 
-PUB MirrorH(state)
+PUB MirrorH(state): curr_state
+' Mirror display, horizontally
+'   Valid values:
+'       TRUE (-1 or 1), FALSE (0)
+'   Any other value returns the current (cached) setting
+    curr_state := _madctl
+    case ||(state)
+        0, 1:
+            state := (||(state) ^ 1) << core#MX
+        other:
+            return ((((curr_state >> core#MX) & 1) == 1) ^ 1)
+
+    _madctl := ((curr_state & core#MX_MASK) | state)
+    com.wrbyte_cmd(core#MADCTL)
+    com.wrbyte_dat(_madctl)
 
 PUB MirrorV(state)
 

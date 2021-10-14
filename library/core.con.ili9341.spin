@@ -41,7 +41,22 @@ CON
     RAMRD       = $2E
 
     PTLAR       = $30
+
     MADCTL      = $36
+    MADCTL_MASK = $FC
+        MY      = 7
+        MX      = 6
+        MV      = 5
+        ML      = 4
+        BGR     = 3
+        MH      = 2
+        MY_MASK = (1 << MY) ^ MADCTL_MASK
+        MX_MASK = (1 << MX) ^ MADCTL_MASK
+        MV_MASK = (1 << MV) ^ MADCTL_MASK
+        ML_MASK = (1 << ML) ^ MADCTL_MASK
+        BGR_MASK = (1 << BGR) ^ MADCTL_MASK
+        MH_MASK = (1 << MH) ^ MADCTL_MASK
+
     PIXFMT      = $3A
 
 ' Access to below requires EXTC pin to be pulled high
