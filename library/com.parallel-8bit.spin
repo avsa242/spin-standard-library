@@ -5,7 +5,7 @@
     Description: 8-bit parallel I/O engine for LCDs
     Copyright (c) 2021
     Started Oct 13, 2021
-    Updated Oct 13, 2021
+    Updated Oct 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,7 +21,7 @@ CON
 VAR
 
     long _cog
-    long _io_cmd, _ptr_buff, _nr_bytes
+    long _io_cmd, _ptr_buff, _xfer_cnt
     long _DATA, _CS, _DC, _WR, _RD
 
 PUB Null{}
@@ -53,14 +53,14 @@ PUB DeInit{}
 
 PUB WrByte_CMD(c)
 ' Write command (8-bits)
-    _nr_bytes := 1                              ' set data size
+    _xfer_cnt := 1                              ' set data size
     _ptr_buff := c                              ' command byte
     _io_cmd := CMD                              ' signal command to engine
     repeat until (_io_cmd == IDLE)              ' wait for engine to finish
 
 PUB WrByte_DAT(d)
 ' Write data (8-bits)
-    _nr_bytes := 1
+    _xfer_cnt := 1
     _ptr_buff := d
     _io_cmd := DATA
     repeat until (_io_cmd == IDLE)
@@ -69,14 +69,14 @@ PUB WrBlock_DAT(ptr_buff, nr_bytes)
 ' Write block of data
 '   ptr_buff: pointer to buffer of data
 '   nr_bytes: number of bytes to write to display
-    longmove(@_ptr_buff, @ptr_buff, 2)
-    _io_cmd := BLKDAT
+    longmove(@_ptr_buff, @ptr_buff, 2)          ' copy params to PASM engine
+    _io_cmd := BLKDAT                           '   params
     repeat until (_io_cmd == IDLE)
 
-PUB WrWordX_DAT(dw, nr_bytes)
-' Repeatedly write word dw, nr_bytes times
+PUB WrWordX_DAT(dw, nr_words)
+' Repeatedly write word dw, nr_words times
     _ptr_buff := dw
-    _nr_bytes := nr_bytes
+    _xfer_cnt := nr_words
     _io_cmd := REPDAT
     repeat until (_io_cmd == IDLE)
 
