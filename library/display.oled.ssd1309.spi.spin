@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Created: Dec 27, 2019
-    Updated: Apr 6, 2021
+    Updated: Oct 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,7 +36,7 @@ OBJ
 
 VAR
 
-    long _CS, _SCK, _MOSI, _DC, _RES
+    long _CS, _DC, _RES
     long _ptr_drawbuffer
     word _buff_sz
     word _bytesperln
@@ -45,7 +45,8 @@ VAR
 PUB Null{}
 ' This is not a top-level object
 
-PUB Startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuff): status
+PUB Startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, {
+}   WIDTH, HEIGHT, ptr_dispbuff): status
 ' Start the driver with custom settings
 ' Valid values:
 '       width: 0..128
