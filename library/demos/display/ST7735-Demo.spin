@@ -5,11 +5,11 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Mar 10, 2020
-    Updated: Apr 4, 2021
+    Updated: Oct 11, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
-
+#define GFX_DIRECT
 
 CON
 
@@ -20,14 +20,14 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 8
-    DC_PIN      = 11
-    RES_PIN     = 12
-    SDA_PIN     = 10
-    SCK_PIN     = 9
+    CS_PIN      = 12
+    DC_PIN      = 10
+    RES_PIN     = 11
+    SDA_PIN     = 13
+    SCK_PIN     = 15
 
     WIDTH       = 128
-    HEIGHT      = 64
+    HEIGHT      = 128
 ' --
 
     BPP         = 2
@@ -44,13 +44,15 @@ OBJ
     disp        : "display.lcd.st7735.spi"
     int         : "string.integer"
     fnt5x8      : "font.5x8"
+    math        : "math.int"
 
 VAR
 
     long _stack_timer[50]
     long _timer_set
-    long _rndseed
+#ifndef GFX_DIRECT
     byte _framebuff[BUFFSZ]
+#endif
     byte _timer_cog
 
 PUB Main{} | time_ms
@@ -60,62 +62,62 @@ PUB Main{} | time_ms
 
     disp.mirrorh(TRUE)                          ' change these to suit the
     disp.mirrorv(TRUE)                          ' orientation of your display
-    disp.clearall{}
+    disp.clear{}
 
     demo_greet{}
     time.sleep(1)
-    disp.clearall{}
+    disp.clear{}
 
     time_ms := 5_000
 
     ser.position(0, 3)
 
     demo_sinewave(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_triwave(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_memscroller(time_ms, $0000, $FFFF-BUFFSZ)
-    disp.clearall{}
+    disp.clear{}
 
     demo_bitmap(time_ms, $8000)
-    disp.clearall{}
+    disp.clear{}
 
     demo_box(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_boxfilled(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_linesweepx(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_linesweepy(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_line(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_plot(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_bouncingball(time_ms, 5)
-    disp.clearall{}
+    disp.clear{}
 
     demo_circle(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_wander(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_seqtext(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_rndtext(time_ms)
 
     demo_contrast(2, 1)
-    disp.clearall{}
+    disp.clear{}
 
     stop{}
     repeat
@@ -123,10 +125,10 @@ PUB Main{} | time_ms
 PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
 ' Draws a simple ball bouncing off screen edges
 ' Pick a random screen location to start from, and a random direction
-    bx := (rnd(XMAX) // (WIDTH - radius * 4)) + radius * 2
-    by := (rnd(YMAX) // (HEIGHT - radius * 4)) + radius * 2
-    dx := rnd(4) // 2 * 2 - 1
-    dy := rnd(4) // 2 * 2 - 1
+    bx := (math.rndi(XMAX) // (WIDTH - radius * 4)) + radius * 2
+    by := (math.rndi(YMAX) // (HEIGHT - radius * 4)) + radius * 2
+    dx := math.rndi(4) // 2 * 2 - 1
+    dy := math.rndi(4) // 2 * 2 - 1
 
     ser.str(string("Demo_BouncingBall - "))
     _timer_set := testtime
@@ -151,6 +153,7 @@ PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
 
 PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
 ' Continuously redraws bitmap at address ptr_bitmap
+#ifndef GFX_DIRECT
     ser.str(string("Demo_Bitmap - "))
     _timer_set := testtime
     iteration := 0
@@ -161,6 +164,7 @@ PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
         iteration++
 
     report(testtime, iteration)
+#endif
 
 PUB Demo_Box(testtime) | iteration, c
 ' Draws random lines
@@ -169,8 +173,8 @@ PUB Demo_Box(testtime) | iteration, c
     iteration := 0
 
     repeat while _timer_set
-        c := rnd(disp#MAX_COLOR)
-        disp.box(rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), c, FALSE)
+        c := math.rndi(disp#MAX_COLOR)
+        disp.box(math.rndi(XMAX), math.rndi(YMAX), math.rndi(XMAX), math.rndi(YMAX), c, FALSE)
         disp.update{}
         iteration++
 
@@ -183,8 +187,8 @@ PUB Demo_BoxFilled(testtime) | iteration, c
     iteration := 0
 
     repeat while _timer_set
-        c := rnd(disp#MAX_COLOR)
-        disp.box(rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), c, TRUE)
+        c := math.rndi(disp#MAX_COLOR)
+        disp.box(math.rndi(XMAX), math.rndi(YMAX), math.rndi(XMAX), math.rndi(YMAX), c, TRUE)
         disp.update{}
         iteration++
 
@@ -197,10 +201,10 @@ PUB Demo_Circle(testtime) | iteration, x, y, r
     iteration := 0
 
     repeat while _timer_set
-        x := rnd(XMAX)
-        y := rnd(YMAX)
-        r := rnd(YMAX/2)
-        disp.circle(x, y, r, rnd(disp#MAX_COLOR), false)
+        x := math.rndi(XMAX)
+        y := math.rndi(YMAX)
+        r := math.rndi(YMAX/2)
+        disp.circle(x, y, r, math.rndi(disp#MAX_COLOR), false)
         disp.update{}
         iteration++
 
@@ -238,7 +242,7 @@ PUB Demo_Line(testtime) | iteration
     iteration := 0
 
     repeat while _timer_set
-        disp.line(rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), rnd(disp#MAX_COLOR))
+        disp.line(math.rndi(XMAX), math.rndi(YMAX), math.rndi(XMAX), math.rndi(YMAX), math.rndi(disp#MAX_COLOR))
         disp.update{}
         iteration++
 
@@ -282,6 +286,7 @@ PUB Demo_LineSweepY(testtime) | iteration, y
 
 PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, ptr
 ' Dumps Propeller Hub RAM (and/or ROM) to the display buffer
+#ifndef GFX_DIRECT
     ptr := start_addr
 
     ser.str(string("Demo_MEMScroller - "))
@@ -297,6 +302,7 @@ PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, ptr
         iteration++
 
     report(testtime, iteration)
+#endif
 
 PUB Demo_Plot(testtime) | iteration, x, y
 ' Draws random pixels to the screen, with random color
@@ -305,7 +311,7 @@ PUB Demo_Plot(testtime) | iteration, x, y
     iteration := 0
 
     repeat while _timer_set
-        disp.plot(rnd(XMAX), rnd(YMAX), rnd(disp#MAX_COLOR))
+        disp.plot(math.rndi(XMAX), math.rndi(YMAX), math.rndi(disp#MAX_COLOR))
         disp.update{}
         iteration++
 
@@ -331,7 +337,7 @@ PUB Demo_Sinewave(testtime) | iteration, x, y, modifier, offset, div
     repeat while _timer_set
         repeat x from 0 to XMAX
             modifier := (||(cnt) / 1_000_000)   ' system counter as modifier
-            y := offset + sin(x * modifier) / div
+            y := offset + math.sin(x * modifier) / div
             disp.plot(x, y, disp#MAX_COLOR)
 
         disp.update{}
@@ -370,9 +376,9 @@ PUB Demo_RndText(testtime) | iteration
     iteration := 0
 
     repeat while _timer_set
-        disp.fgcolor(rnd(disp#MAX_COLOR))
-        disp.bgcolor(rnd(disp#MAX_COLOR))
-        disp.char(32 #> rnd(127))
+        disp.fgcolor(math.rndi(disp#MAX_COLOR))
+        disp.bgcolor(math.rndi(disp#MAX_COLOR))
+        disp.char(32 #> math.rndi(127))
         disp.update{}
         iteration++
 
@@ -403,7 +409,6 @@ PUB Demo_TriWave(testtime) | iteration, x, y, ydir
 
 PUB Demo_Wander(testtime) | iteration, x, y, d
 ' Draws randomly wandering pixels
-    _rndseed := cnt
     x := XMAX/2                                 ' start at screen center
     y := YMAX/2
 
@@ -412,7 +417,7 @@ PUB Demo_Wander(testtime) | iteration, x, y, d
     iteration := 0
 
     repeat while _timer_set
-        case d := rnd(4)                        ' which way to move?
+        case d := math.rndi(4)                  ' which way to move?
             1:                                  ' wander right
                 x += 2
                 if x > XMAX                     ' wrap around at the edge
@@ -429,25 +434,11 @@ PUB Demo_Wander(testtime) | iteration, x, y, d
                 y -= 2
                 if y < 0
                     y := YMAX
-        disp.plot(x, y, rnd(disp#MAX_COLOR))
+        disp.plot(x, y, math.rndi(disp#MAX_COLOR))
         disp.update{}
         iteration++
 
     report(testtime, iteration)
-
-PRI Sin(angle): sine
-' Return the sine of angle
-    sine := angle << 1 & $FFE
-    if angle & $800
-       sine := word[$F000 - sine]   ' Use sine table from ROM
-    else
-       sine := word[$E000 + sine]
-    if angle & $1000
-       -sine
-
-PRI RND(maxval): r
-' Return random number up to maxval
-    return ||(? _rndseed) // maxval
 
 PRI Report(testtime, iterations)
 
@@ -494,17 +485,23 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
+#ifdef GFX_DIRECT
+    if disp.startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, 0)
+#else
     if disp.startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
-        ser.str(string("ST7735 driver started. Draw buffer @ $"))
+#endif
+        ser.str(string("ST7735 driver started"))
         ser.hex(disp.address(-2), 8)
         disp.fontscale(1)
-        disp.fontsize(6, 8)
+        disp.fontspacing(1, 1)
+        disp.fontsize(5, 8)
         disp.fontaddress(fnt5x8.baseaddr{})
     else
         ser.str(string("ST7735 driver failed to start - halting"))
         stop{}
         repeat
     _timer_cog := cognew(cog_timer{}, @_stack_timer)
+    math.rndseed(cnt)
 
 PUB Stop{}
 
