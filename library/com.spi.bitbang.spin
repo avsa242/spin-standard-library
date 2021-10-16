@@ -5,7 +5,7 @@
     Modified by: Jesse Burt
     Description: PASM SPI driver (~4MHz)
     Started Jul 19, 2011
-    Updated Oct 5, 2021
+    Updated Oct 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -172,7 +172,7 @@ Cmd_Loop        rdlong  ptr_params, par wz      ' wait for command
     if_z        jmp     #cmd_loop
 
                 mov     t1,         ptr_params  ' copy params from hub
-                rdlong  ptr_buff,   t1          ' pointer to user data to R/W
+                rdlong  ptrbuff,    t1          ' pointer to user data to R/W
                 add     t1,         #4
                 rdlong  count,      t1          ' nr_bytes to R/W
                 add     t1,         #4
@@ -204,24 +204,24 @@ LastCMD_ret     ret
 
 ReadBytes
 ' Read multiple bytes
-'   ptr_buff: pointer to buffer in hub
+'   ptrbuff: pointer to buffer in hub
 '   count: number of bytes to read
                 andn    outa,       CSmask      ' select chip
 :readloop       mov     spibyte,    #0
                 call    #spiread                ' shift in bits
-                wrbyte  spibyte,    ptr_buff    ' write byte to hub
-                add     ptr_buff,   #1          ' advance to next location
+                wrbyte  spibyte,    ptrbuff     ' write byte to hub
+                add     ptrbuff,    #1           ' advance to next location
                 djnz    count,      #:readloop  ' loop if more bytes left
 ReadBytes_ret   ret
 
 WriteBytes
 ' Write multiple bytes
-'   ptr_buff: pointer to buffer in hub
+'   ptrbuff: pointer to buffer in hub
 '   count: number of bytes to write
                 andn    outa,       CSmask      ' select chip
-:writeloop      rdbyte  spibyte,    ptr_buff    ' read byte from hub and
+:writeloop      rdbyte  spibyte,    ptrbuff     ' read byte from hub and
                 call    #spiwrite               '   shift it out
-                add     ptr_buff,   #1          ' advance to next byte
+                add     ptrbuff,    #1          ' advance to next byte
                 djnz    count,      #:writeloop ' loop if more bytes left
 WriteBytes_ret  ret
 
@@ -268,7 +268,7 @@ param_b         res     1
 param_c         res     1
 ptr_params      res     1
 spibyte         res     1
-ptr_buff        res     1
+ptrbuff         res     1
 command_addr    res     1
 count           res     1
 
