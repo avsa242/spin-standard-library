@@ -352,7 +352,7 @@ PUB Setup{}
 '    if oled.start(RESET_PIN)
 
     ' use all custom settings
-    if oled.startx(SCL_PIN, SDA_PIN, RESET_PIN, I2C_HZ, SLAVE_BIT)
+    if oled.startx(SCL_PIN, SDA_PIN, RESET_PIN, I2C_HZ, SLAVE_BIT, HEIGHT)
         ser.strln(string("US2066 driver started"))
     else
         ser.strln(string("US2066 driver failed to start - halting"))
