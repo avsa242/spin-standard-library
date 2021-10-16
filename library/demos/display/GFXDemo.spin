@@ -14,10 +14,14 @@
 '#define SSD1306_I2C
 '#define SSD1306_SPI
 '#define SSD1309
-#define SSD1331
-'#define SSD1351
+'#define SSD1331
+#define SSD1351
 '#define ST7735
 '#define VGABITMAP6BPP
+
+' Uncomment to bypass the draw buffer, and draw directly to the display
+'   (required if the buffer would be too big for RAM)
+#define GFX_DIRECT
 
 OBJ
 
@@ -54,8 +58,8 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    WIDTH       = 96                            ' change these for your
-    HEIGHT      = 64                            '   display
+    WIDTH       = 128                            ' change these for your
+    HEIGHT      = 128                            '   display
 
 ' I2C-connected displays                        ' free-form I/O connections
     SCL_PIN     = 28
@@ -96,6 +100,7 @@ VAR
 
     long _stack_timer[50]
     long _timer_set, _time
+#ifndef GFX_DIRECT
 #ifdef SSD1306_I2C
     byte _framebuff[BUFFSZ]                     ' 1bpp
 #elseifdef SSD1306_SPI
@@ -105,15 +110,16 @@ VAR
 #else
     word _framebuff[BUFFSZ]                     ' 16bpp
 #endif
+#endif
 
 PUB Main{}
 
     setup{}
     disp.mirrorh(false)                         ' change these to reorient for
     disp.mirrorv(false)                         '   your display
+    disp.clear{}
 
     _time := 5_000                              ' time each demo runs (ms)
-
     demo_greet{}
     demo_bitmap(0, XMAX, YMAX)                  ' (pointer to bitmap, size)
     demo_bounce{}
@@ -332,7 +338,11 @@ PUB Setup{}
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_96x64{}
 #elseifdef SSD1351
+#ifdef GFX_DIRECT
+    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, 0)
+#else
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+#endif
 '        disp.preset_oled_c_click_96x96{}
         disp.preset_128x{}
 #elseifdef ST7735
@@ -366,7 +376,6 @@ DAT
 #elseifdef VGABITMAP6BPP
     _drv_name   byte "VGA6BPP", 0
 #endif
-
 {
     --------------------------------------------------------------------------------------------------------
     TERMS OF USE: MIT License

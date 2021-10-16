@@ -10,6 +10,7 @@
     --------------------------------------------
 }
 #define SSD1351
+#define MEMMV_NATIVE wordmove
 #include "lib.gfx.bitmap.spin"
 CON
 
@@ -210,6 +211,22 @@ PUB AddrMode(mode): curr_mode
 
     _sh_REMAPCOLOR := ((_sh_REMAPCOLOR & core#SEGREMAP_MASK) | mode)
     writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
+
+#ifdef GFX_DIRECT
+PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs
+' Display bitmap
+'   ptr_bmap: pointer to bitmap data
+'   (xs, ys): upper-left corner of bitmap
+'   bm_wid: width of bitmap, in pixels
+'   bm_lns: number of lines in bitmap
+    displaybounds(xs, ys, xs+(bm_wid-1), ys+(bm_lns-1))
+    outa[_CS] := 0
+    outa[_DC] := core#CMD
+    spi.wr_byte(core#WRITERAM)
+    outa[_DC] := core#DATA
+    spi.wrblock_lsbf(ptr_bmap, ((xs * ys) + ((xs + bm_wid) * (ys + bm_lns))*2))
+    outa[_CS] := 1
+#endif
 
 #ifdef GFX_DIRECT
 PUB Box(x1, y1, x2, y2, c, f) | cmd_pkt[2], sy
