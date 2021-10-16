@@ -5,7 +5,7 @@
     Description: 8-bit parallel I/O engine for LCDs
     Copyright (c) 2021
     Started Oct 13, 2021
-    Updated Oct 15, 2021
+    Updated Oct 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,7 +16,8 @@ CON
     CMD         = 1
     DATA        = 2
     BLKDAT      = 3
-    REPDAT      = 4
+    BLKWDMSBF   = 4
+    REPDAT      = 5
 
 VAR
 
@@ -73,10 +74,17 @@ PUB WrBlock_DAT(ptr_buff, nr_bytes)
     _io_cmd := BLKDAT                           '   params
     repeat until (_io_cmd == IDLE)
 
+PUB WrBlkWord_MSBF(ptr_buff, nr_words)
+' Write block of words (MSByte-first)
+'   ptr_buff: pointer to buffer of data
+'   nr_words: number of words to write to display
+    longmove(@_ptr_buff, @ptr_buff, 2)
+    _io_cmd := BLKWDMSBF
+    repeat until (_io_cmd == IDLE)
+
 PUB WrWordX_DAT(dw, nr_words)
 ' Repeatedly write word dw, nr_words times
-    _ptr_buff := dw
-    _xfer_cnt := nr_words
+    longmove(@_ptr_buff, @dw, 2)
     _io_cmd := REPDAT
     repeat until (_io_cmd == IDLE)
 
@@ -93,8 +101,8 @@ initio
             mov     iolink, par
             mov     ptrbuff, iolink             ' get spin buffer ptr
             add     ptrbuff, #4
-            mov     ptr_nrbytes, iolink         ' get ptr to spin nr_bytes
-            add     ptr_nrbytes, #8
+            mov     ptr_xcnt, iolink            ' get ptr to spin nr_bytes
+            add     ptr_xcnt, #8
             mov     tmp0, iolink                ' get D7..0 pins mask
             add     tmp0, #12
             rdlong  DATMASK, tmp0
@@ -129,6 +137,8 @@ cmdloop
     if_e    jmp     #wr_dat
             cmp     tmp0, #BLKDAT   wz
     if_e    jmp     #wrblk_data
+            cmp     tmp0, #BLKWDMSBF wz
+    if_e    jmp     #wrblkwd_msbf
             cmp     tmp0, #REPDAT   wz
     if_e    jmp     #wrwordx_data
 
@@ -162,10 +172,10 @@ wr_dat
 
 
 wrblk_data
-' Write block of data
+' Write block of bytes
             or      outa, DC                    ' DC high: data
             rdlong  ptr_data, ptrbuff           ' get pointer to data
-            rdlong  bytecnt, ptr_nrbytes        '   and number of bytes
+            rdlong  xcnt, ptr_xcnt              '   and number of bytes
 :dbyteloop
             rdbyte  dbyte, ptr_data             ' get next byte of data
             andn    outa, DATMASK               ' D7..0 low
@@ -173,15 +183,39 @@ wrblk_data
             or      outa, WRC                   ' clock out byte
             andn    outa, WRC
             add     ptr_data, #1                ' advance ptr to next byte
-            djnz    bytecnt, #:dbyteloop        ' loop if more bytes
+            djnz    xcnt, #:dbyteloop           ' loop if more bytes
             jmp     #cmdexit                    ' return
 
+wrblkwd_msbf
+' Write block of words, MSByte-first
+            or      outa, DC                    ' DC high: data
+            rdlong  ptr_data, ptrbuff           ' get pointer to data
+            rdlong  xcnt, ptr_xcnt              '   and number of words
+
+:dwordloop
+            rdword  dword, ptr_data             ' get next word of data
+            mov     hbyte, dword
+            shr     hbyte, #8
+            mov     lbyte, dword
+            and     lbyte, #$FF
+
+            andn    outa, DATMASK               ' D7..0 low
+            or      outa, hbyte                 ' write MSB
+            or      outa, WRC                   ' clock it out
+            andn    outa, WRC
+            andn    outa, DATMASK               ' D7..0 low
+            or      outa, lbyte                 ' write LSB
+            or      outa, WRC                   ' clock it out
+            andn    outa, WRC
+            add     ptr_data, #2                ' advance ptr to next word
+            djnz    xcnt, #:dwordloop           ' loop if more bytes
+            jmp     #cmdexit                    ' return
 
 wrwordx_data
-' Repeatedly write the same byte of data
+' Repeatedly write the same word of data, xcnt times
             or      outa, DC                    ' DC high: data
             rdlong  dword, ptrbuff              ' get pointer to word of data
-            rdlong  bytecnt, ptr_nrbytes        '   and number of bytes XXX
+            rdlong  xcnt, ptr_xcnt              '   and number of words
             mov     hbyte, dword                ' isolate MSB of word
             shr     hbyte, #8
             mov     lbyte, dword                '   and LSB
@@ -195,7 +229,7 @@ wrwordx_data
             or      outa, lbyte                 ' write LSB
             or      outa, WRC                   ' clock it out
             andn    outa, WRC
-            djnz    bytecnt, #:repdloop         ' loop if more bytes
+            djnz    xcnt, #:repdloop            ' loop if more words
             jmp     #cmdexit                    ' return
 
 
@@ -212,8 +246,8 @@ dword       long    0
 cmdbyte     long    0
 clrcmd      long    IDLE
 ptrbuff     long    0
-ptr_nrbytes long    0
-bytecnt     long    0
+ptr_xcnt    long    0
+xcnt        long    0
 hbyte       long    0
 lbyte       long    0
 
