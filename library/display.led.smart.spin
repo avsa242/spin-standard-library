@@ -1,56 +1,15 @@
 {                                                                                                               
     --------------------------------------------
-    Filename: display.led.addressable.neopixel.spin
+    Filename: display.led.smart.spin
     Author: Jesse Burt
-    Description: Driver for Neopixel addressable LED arrays
+    Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated Apr 4, 2021
+    Updated Jun 13, 2021
     See end of file for terms of use.
     --------------------------------------------
 
-    NOTE: This is a modified version of Jon McPhalen's jm_rgbx_pixel.spin driver.
-        Original header preserved below.
-}
-'' =================================================================================================             
-''
-''   File....... jm_rgbx_pixel.spin
-''   Purpose.... 800kHz driver for WS281x & SK681xRGBW LEDs
-''   Author..... Jon "JonnyMac" McPhalen
-''               Copyright (C) 2016-18 Jon McPhalen
-''               -- see below for terms of use
-''   E-mail..... jon@jonmcphalen.com
-''   Started.... 
-''   Updated.... 10 NOV 2017
-''               -- added WS2813, updated WS2811 timing
-''               -- added morph()
-''               -- removed gamma32
-''                  * use scale_rgbw(rgbw, gamma(level)) 
-''               -- refined PASM shift_out code
-''               -- modified PASM shift_out code for better precision  
-''               -- modified startx() interface
-''               -- consolodated for 24- and 32-bit pixels
-''               -- updated WS2812b timing and removed swap flag from standard start methods
-''
-'' =================================================================================================
-
-{ -------------------------------------- }
-{  NOTE: Requires system clock >= 80MHz  }
-{ -------------------------------------- }
-
-{
-  Important Note:
-
-    In order to accomdate 24- and 32-bit pixels, the data for 24-bit pixels must be left
-    aligned in long holding the RGB value. In previous drivers, the data was right aligned.
-
-    old format: $00_RR_GG_BB
-    new format: $RR_GG_BB_00
-
-    BYTE0 of the pixel data holds the white channel for RBGW pixels.
-
-    $RR_GG_BB_WW
-
-    The driver needs to know the data pixel length: 24 (rgb) or 32 (rgbw) bits
+    NOTE: This is a modified version of jm_rgbx_pixel.spin,
+        originally written by Jon McPhalen
 }
 #define NEOPIXEL
 #include "lib.gfx.bitmap.spin"
@@ -67,27 +26,35 @@ CON
   ' -- modified for RGB and RGBW pixels
 
   '             RR GG BB WW
-    BLACK      = $00_00_00_00
-    RED        = $FF_00_00_00
-    GREEN      = $00_FF_00_00
-    BLUE       = $00_00_FF_00
-    WHITE      = $FF_FF_FF_00
-    WHITE2     = $00_00_00_FF   
-    CYAN       = $00_FF_FF_00
-    MAGENTA    = $FF_00_FF_00
-    YELLOW     = $FF_FF_00_00
-    CHARTREUSE = $7F_FF_00_00
-    ORANGE     = $FF_60_00_00
-    AQUAMARINE = $7F_FF_D4_00
-    PINK       = $FF_5F_5F_00
-    TURQUOISE  = $3F_E0_C0_00
-    REALWHITE  = $C8_FF_FF_00
-    INDIGO     = $3F_00_7F_00
-    VIOLET     = $BF_7F_BF_00
-    MAROON     = $32_00_10_00
-    BROWN      = $0E_06_00_00
-    CRIMSON    = $DC_28_3C_00
-    PURPLE     = $8C_00_FF_00
+    BLACK       = $00_00_00_00
+    RED         = $FF_00_00_00
+    GREEN       = $00_FF_00_00
+    BLUE        = $00_00_FF_00
+    WHITE       = $FF_FF_FF_00
+    WHITE2      = $00_00_00_FF
+    CYAN        = $00_FF_FF_00
+    MAGENTA     = $FF_00_FF_00
+    YELLOW      = $FF_FF_00_00
+    CHARTREUSE  = $7F_FF_00_00
+    ORANGE      = $FF_60_00_00
+    AQUAMARINE  = $7F_FF_D4_00
+    PINK        = $FF_5F_5F_00
+    TURQUOISE   = $3F_E0_C0_00
+    REALWHITE   = $C8_FF_FF_00
+    INDIGO      = $3F_00_7F_00
+    VIOLET      = $BF_7F_BF_00
+    MAROON      = $32_00_10_00
+    BROWN       = $0E_06_00_00
+    CRIMSON     = $DC_28_3C_00
+    PURPLE      = $8C_00_FF_00
+
+    WS2811      = $2811
+    WS2812      = $2812
+    WS2812B     = $2812B
+    WS2813      = $2813
+    SK6812_24   = $6812_24
+    SK6812_32   = $6812_32
+    TM1803      = $1803
 
 VAR
 

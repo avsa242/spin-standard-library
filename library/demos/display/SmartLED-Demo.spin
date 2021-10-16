@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: NeoPixel-Demo.spin
-    Description: Demo of the NeoPixel driver
+    Filename: SmartLED-Demo.spin
+    Description: Demo of the SmartLED driver
     Author: Jesse Burt
     Copyright (c) 2021
-    Started: Nov 3, 2019
-    Updated: Apr 5, 2021
+    Started: Jun 13, 2021
+    Updated: Jun 13, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,8 +19,8 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    NEOPIX_PIN  = 0
-    NEOPIX_MODEL= $6812_32                      ' $2811, $2812, $2812B, $2813,
+    SMLED_PIN  = 0
+    SMLED_MODEL= $6812_32                      ' $2811, $2812, $2812B, $2813,
                                                 ' $6812_24, $6812_32, $1803
 
     WIDTH       = 87                            ' width/length of strip
@@ -39,7 +39,7 @@ OBJ
     cfg : "core.con.boardcfg.flip"
     ser : "com.serial.terminal.ansi"
     time: "time"
-    disp: "display.led.addressable.neopixel.spin"
+    disp: "display.led.smart.spin"
     int : "string.integer"
     fnt : "font.5x8"
 
@@ -197,11 +197,11 @@ PUB Demo_Circle(testtime) | iteration, x, y, r
     report(testtime, iteration)
 
 PUB Demo_Greet{}
-' Display the banner/greeting on the OLED
+' Display the banner/greeting on the LEDs
     disp.fgcolor(disp#MAX_COLOR)
     disp.bgcolor(0)
     disp.position(0, 0)
-    disp.strln(string("NeoPixel on the"))
+    disp.strln(string("SmartLED on the"))
     disp.strln(string("Parallax"))
     disp.printf1(string("P8X32A @ %dMHz\n"), clkfreq/1_000_000)
     disp.printf2(string("%dx%d"), WIDTH, HEIGHT)
@@ -472,14 +472,14 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if disp.start(NEOPIX_PIN, WIDTH, HEIGHT, NEOPIX_MODEL, @_framebuff)
-        ser.strln(string("Neopixel driver started"))
+    if disp.start(SMLED_PIN, WIDTH, HEIGHT, SMLED_MODEL, @_framebuff)
+        ser.strln(string("SmartLED driver started"))
         disp.drawto(@_offscreen)
         disp.fontaddress(fnt.baseaddr{})
         disp.fontsize(6, 8)
         disp.clearall{}
     else
-        ser.strln(string("NeoPixel driver failed to start - halting"))
+        ser.strln(string("SmartLED driver failed to start - halting"))
         repeat
     _timer_cog := cognew(cog_timer{}, @_stack_timer)
 
