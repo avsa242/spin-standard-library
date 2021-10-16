@@ -5,11 +5,12 @@
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
     Copyright (c) 2021
     Started: Apr 28, 2019
-    Updated: May 15, 2021
+    Updated: Oct 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 #define SSD1331
+#define MEMMV_NATIVE wordmove
 #include "lib.gfx.bitmap.spin"
 
 CON
