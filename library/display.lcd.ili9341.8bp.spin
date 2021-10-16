@@ -5,7 +5,7 @@
     Description: Driver for ILI9341 LCD controllers
     Copyright (c) 2021
     Started Oct 14, 2021
-    Updated Oct 14, 2021
+    Updated Oct 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -172,6 +172,16 @@ PUB Stop{}
 ' Power off the display, and stop the engine
     powered(false)
     com.deinit{}
+
+PUB Bitmap(ptr_bmap, xs, ys, xe, ye, nr_words)
+' Draw bitmap
+'   ptr_bmap: pointer to bitmap data
+'   (xs, ys): upper-left corner of bitmap
+'   (xe, ye): lower-right corner of bitmap
+'   nr_words: number of 16-bit words to read/draw from bitmap
+    displaybounds(xs, ys, xe, ye)
+    com.wrbyte_cmd(core#RAMWR)
+    com.wrblkword_msbf(ptr_bmap, nr_words)
 
 PUB Box(x1, y1, x2, y2, color, filled) | xt, yt
 ' Draw a box from (x1, y1) to (x2, y2) in color, optionally filled
@@ -375,27 +385,21 @@ PUB MirrorV(state): curr_state
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
 
-PUB Plot(x, y, color) | cmd_pkt[3]
+PUB Plot(x, y, color) | cmd_pkt
 ' Draw a pixel at (x, y), in color
-    cmd_pkt.byte[0] := x.byte[1]                ' set x start and end
-    cmd_pkt.byte[1] := x.byte[0]                '   params to the same
-    cmd_pkt.byte[2] := x.byte[1]
-    cmd_pkt.byte[3] := x.byte[0]
+    if (x > _disp_xmax) or (x < 0) or (y > _disp_ymax) or (y < 0)
+        return                                  ' reject invalid coordinates
 
-    cmd_pkt.byte[4] := y.byte[1]                ' set y start and end
-    cmd_pkt.byte[5] := y.byte[0]                '   params to the same
-    cmd_pkt.byte[6] := y.byte[1]
-    cmd_pkt.byte[7] := y.byte[0]
-
-    cmd_pkt.byte[8] := color.byte[1]
-    cmd_pkt.byte[9] := color.byte[0]
+    cmd_pkt.byte[0] := color.byte[1]
+    cmd_pkt.byte[1] := color.byte[0]
 
     com.wrbyte_cmd(core#CASET)
-    com.wrblock_dat(@cmd_pkt.byte[0], 4)
+    com.wrwordx_dat(x, 2)
     com.wrbyte_cmd(core#PASET)
-    com.wrblock_dat(@cmd_pkt.byte[4], 4)
+    com.wrwordx_dat(y, 2)
+
     com.wrbyte_cmd(core#RAMWR)
-    com.wrblock_dat(@cmd_pkt.byte[8], 2)
+    com.wrblock_dat(@cmd_pkt, 2)
 
 PUB Powered(state)
 ' Enable display power
