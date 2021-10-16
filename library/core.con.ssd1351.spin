@@ -5,7 +5,7 @@
     Description: Low-level constants
     Copyright (c) 2021
     Started: Mar 11, 2020
-    Updated: Apr 7, 2021
+    Updated: Sep 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -14,6 +14,11 @@ CON
 
     SCK_MAX_FREQ            = 20_000_000
     SPI_MODE                = 0
+
+    T_POR                   = 300_000           ' uSec
+
+    CMD                     = 0                 ' D/C low
+    DATA                    = 1                 ' D/C high
 
 ' Register map
     SETCOLUMN               = $15
@@ -42,6 +47,7 @@ CON
         COMREMAP_MASK       = (1 << COMREMAP) ^ SETREMAP_MASK
         COMSPLIT_MASK       = (1 << COMSPLIT) ^ SETREMAP_MASK
         COLORFMT_MASK       = (COLORFMT_BITS << COLORFMT) ^ SETREMAP_MASK
+        ADDRINC_MASK        = 1 ^ SETREMAP_MASK
 
     STARTLINE               = $A1
     DISPOFFSET              = $A2

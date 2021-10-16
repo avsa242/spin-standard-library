@@ -9,7 +9,7 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-
+#define GFX_DIRECT
 CON
 
     _clkmode    = cfg#_clkmode
@@ -19,14 +19,14 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    DIN_PIN     = 10
-    CLK_PIN     = 9
-    CS_PIN      = 8
-    DC_PIN      = 11
-    RES_PIN     = 12
+    DIN_PIN     = 11
+    CLK_PIN     = 12
+    CS_PIN      = 15
+    DC_PIN      = 13
+    RES_PIN     = 14
 
-    WIDTH       = 96
-    HEIGHT      = 96
+    WIDTH       = 128
+    HEIGHT      = 128
 ' --
 
     ' calculate some constraints used by the demo
@@ -49,77 +49,82 @@ VAR
     long _stack_timer[50]
     long _timer_set
     long _rndseed
+#ifndef GFX_DIRECT
     byte _framebuff[BUFFSZ]
+#endif
     byte _timer_cog
 
 PUB Main{} | time_ms
 
     setup{}
-    oled.clearall{}
-
     ' change these to suit the orientation of your display
-    oled.mirrorh(TRUE)
-    oled.mirrorv(FALSE)
+    oled.mirrorh(false)
+    oled.mirrorv(true)
+
+    oled.bgcolor(0)
+    oled.clear{}
 
     demo_greet{}
-    time.sleep(5)
-    oled.clearall{}
+    time.sleep(1)
+    oled.clear{}
 
     time_ms := 5_000
 
     ser.position(0, 3)
 
     demo_sinewave(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_triwave(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_memscroller(time_ms, $0000, $FFFF-BUFFSZ)
-    oled.clearall{}
+    oled.clear{}
 
     demo_bitmap(time_ms, $8000)
-    oled.clearall{}
+    oled.clear{}
 
     demo_box(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_boxfilled(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_linesweepx(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_linesweepy(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_line(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_plot(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_bouncingball(time_ms, 5)
-    oled.clearall{}
+    oled.clear{}
 
     demo_circle(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_wander(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_seqtext(time_ms)
-    oled.clearall{}
+    oled.clear{}
 
     demo_rndtext(time_ms)
 
     demo_contrast(2, 1)
-    oled.clearall{}
 
+    oled.clear{}
+    oled.stop
     repeat
 
 PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
 ' Continuously redraws bitmap at address ptr_bitmap
+#ifndef GFX_DIRECT
     ser.str(string("Demo_Bitmap - "))
     _timer_set := testtime
     iteration := 0
@@ -130,6 +135,7 @@ PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
         iteration++
 
     report(testtime, iteration)
+#endif
 
 PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
 ' Draws a simple ball bouncing off screen edges
@@ -282,6 +288,7 @@ PUB Demo_LineSweepY(testtime) | iteration, y
 
 PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, ptr
 ' Dumps Propeller Hub RAM (and/or ROM) to the display buffer
+#ifndef GFX_DIRECT
     ptr := start_addr
 
     ser.str(string("Demo_MEMScroller - "))
@@ -297,6 +304,7 @@ PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, ptr
         iteration++
 
     report(testtime, iteration)
+#endif
 
 PUB Demo_Plot(testtime) | iteration, x, y
 ' Draws random pixels to the screen, with color -1 (invert)
@@ -494,12 +502,17 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
+#ifndef GFX_DIRECT
     if oled.startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+#else
+    if oled.startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, 0)
+#endif
         ser.strln(string("SSD1351 driver started"))
         oled.preset_128xhiperf{}
-        oled.fontscale(1)
-        oled.fontsize(6, 8)
         oled.fontaddress(fnt5x8.baseaddr{})
+        oled.fontscale(1)
+        oled.fontspacing(1, 1)
+        oled.fontsize(fnt5x8#WIDTH, fnt5x8#HEIGHT)
     else
         ser.strln(string("SSD1351 driver failed to start - halting"))
         repeat
