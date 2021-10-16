@@ -6,7 +6,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Apr 11, 2021
-    Updated: Apr 11, 2021
+    Updated: Oct 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -14,10 +14,10 @@
 '#define SSD1306_I2C
 '#define SSD1306_SPI
 '#define SSD1309
-'#define SSD1331
+#define SSD1331
 '#define SSD1351
 '#define ST7735
-#define VGABITMAP6BPP
+'#define VGABITMAP6BPP
 
 OBJ
 
@@ -54,7 +54,7 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    WIDTH       = 128                           ' change these for your
+    WIDTH       = 96                            ' change these for your
     HEIGHT      = 64                            '   display
 
 ' I2C-connected displays                        ' free-form I/O connections
@@ -64,11 +64,11 @@ CON
     SCL_FREQ    = 1_000_000
 
 ' SPI-connected displays
-    CS_PIN      = 8
-    SCK_PIN     = 9
-    MOSI_PIN    = 10
-    DC_PIN      = 11
-    RES_PIN     = 12
+    CS_PIN      = 16
+    SCK_PIN     = 17
+    MOSI_PIN    = 18
+    DC_PIN      = 19
+    RES_PIN     = 20
 
 ' VGA
     VGA_PINGRP  = 2                             ' 0, 1, 2, 3
@@ -115,7 +115,7 @@ PUB Main{}
     _time := 5_000                              ' time each demo runs (ms)
 
     demo_greet{}
-    demo_bitmap($0000, BUFFSZ)                  ' (pointer to bitmap, size)
+    demo_bitmap(0, XMAX, YMAX)                  ' (pointer to bitmap, size)
     demo_bounce{}
     demo_box{}
     demo_boxfilled{}
@@ -129,9 +129,9 @@ PUB Main{}
 
     repeat
 
-PUB Demo_Bitmap(ptr_bitmap, bmap_sz)
-' Continuously redraw bitmap at address ptr_bitmap
-    disp.bitmap(ptr_bitmap, bmap_sz, 0)
+PUB Demo_Bitmap(ptr_bitmap, bm_wid, bm_lns)
+' Display bitmap at address ptr_bitmap
+    disp.bitmap(ptr_bitmap, 0, 0, bm_wid, bm_lns)
     disp.update{}
     waitclear{}
 

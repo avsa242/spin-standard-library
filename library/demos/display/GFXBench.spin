@@ -5,15 +5,15 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Apr 10, 2021
-    Updated: Apr 11, 2021
+    Updated: Oct 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 ' Uncomment one display type below
-#define SSD1306_I2C
+'#define SSD1306_I2C
 '#define SSD1306_SPI
 '#define SSD1309
-'#define SSD1331
+#define SSD1331
 '#define SSD1351
 '#define ST7735
 '#define VGABITMAP6BPP
@@ -52,8 +52,8 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    WIDTH       = 128                           ' change these for your
-    HEIGHT      = 32                            '   display
+    WIDTH       = 96                            ' change these for your
+    HEIGHT      = 64                            '   display
 
 ' I2C-connected displays                        ' free-form I/O connections
     SCL_PIN     = 28
@@ -62,11 +62,11 @@ CON
     SCL_FREQ    = 400_000
 
 ' SPI-connected displays
-    CS_PIN      = 8
-    SCK_PIN     = 9
-    MOSI_PIN    = 10
-    DC_PIN      = 11
-    RES_PIN     = 12
+    CS_PIN      = 16
+    SCK_PIN     = 17
+    MOSI_PIN    = 18
+    DC_PIN      = 19
+    RES_PIN     = 20
     SCK_FREQ    = 10_000_000
 
 ' VGA
@@ -151,7 +151,7 @@ PUB Main{} | time_ms, sz, maxsz, iteration, bench, ch, color
         case bench
             BITMAP:
                 repeat while _timer_set
-                    disp.bitmap($00000, sz-1, 0)
+                    disp.bitmap(0, 0, 0, sz-1, sz-1)
                     disp.update{}
                     iteration++
             BOX:
