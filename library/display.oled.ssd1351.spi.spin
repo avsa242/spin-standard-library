@@ -5,13 +5,14 @@
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
     Copyright (c) 2021
     Started: Mar 11, 2020
-    Updated: Oct 3, 2021
+    Updated: Oct 17, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 #define SSD1351
 #define MEMMV_NATIVE wordmove
 #include "lib.gfx.bitmap.spin"
+
 CON
 
     MAX_COLOR       = 65535
@@ -71,8 +72,7 @@ PUB Null{}
 PUB Startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuff): status
 ' Start driver using custom I/O settings
     if lookdown(CS_PIN: 0..31) and lookdown(DC_PIN: 0..31) {
-}   and lookdown(DIN_PIN: 0..31) and lookdown(CLK_PIN: 0..31) {
-}   and lookdown(RES_PIN: 0..31)
+}   and lookdown(DIN_PIN: 0..31) and lookdown(CLK_PIN: 0..31)
         if (status := spi.init(CLK_PIN, DIN_PIN, -1, core#SPI_MODE))
             _DC := DC_PIN
             _RES := RES_PIN
