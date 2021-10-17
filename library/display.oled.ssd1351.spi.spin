@@ -223,8 +223,12 @@ PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
     outa[_CS] := 0
     outa[_DC] := core#CMD
     spi.wr_byte(core#WRITERAM)
+
+    ' calc total number of pixels to write, based on dims and color depth
+    ' clamp to a minimum of 1 to avoid odd behavior
+    nr_pix := 1 #> ((xs + bm_wid-1) * (ys + bm_lns-1) * BYTESPERPX)
+
     outa[_DC] := core#DATA
-    nr_pix := 1 #> ((xs + bm_wid-1) * (ys + bm_lns-1) * 2)
     spi.wrblock_lsbf(ptr_bmap, nr_pix)
     outa[_CS] := 1
 #endif
