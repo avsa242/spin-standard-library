@@ -14,14 +14,14 @@
 '#define SSD1306_I2C
 '#define SSD1306_SPI
 '#define SSD1309
-'#define SSD1331
+#define SSD1331
 '#define SSD1351
-#define ST7735
+'#define ST7735
 '#define VGABITMAP6BPP
 
 ' Uncomment to bypass the draw buffer, and draw directly to the display
 '   (required if the buffer would be too big for RAM)
-#define GFX_DIRECT
+'#define GFX_DIRECT
 
 OBJ
 
@@ -58,8 +58,8 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    WIDTH       = 128                            ' change these for your
-    HEIGHT      = 128                            '   display
+    WIDTH       = 96                            ' change these for your
+    HEIGHT      = 64                            '   display
 
 ' I2C-connected displays                        ' free-form I/O connections
     SCL_PIN     = 28
@@ -135,6 +135,7 @@ PUB Main{}
     demo_text{}
     demo_wander{}
 
+    disp.stop{}
     repeat
 
 PUB Demo_Bitmap(ptr_bitmap, bm_wid, bm_lns)

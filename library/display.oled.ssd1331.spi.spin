@@ -46,6 +46,9 @@ CON
     RGB         = 0
     BGR         = 1
 
+' Character attributes
+    DRAWBG          = 1 << 0
+
 OBJ
 
     core    : "core.con.ssd1331"                ' HW-specific constants
@@ -110,7 +113,7 @@ PUB Defaults{}
     contrast(127)
     powered(TRUE)
     displaybounds(0, 0, 95, 63)
-    clearaccel{}
+    clear{}
     displayvisibility(NORMAL)
 
 PUB Preset_96x64{}
@@ -126,7 +129,7 @@ PUB Preset_96x64{}
     interlaced(false)
     powered(TRUE)
     displaybounds(0, 0, 95, 63)
-    clearaccel{}
+    clear{}
     displayvisibility(NORMAL)
 
 PUB Preset_96x64_HiPerf{}
@@ -142,7 +145,7 @@ PUB Preset_96x64_HiPerf{}
     interlaced(false)
     powered(TRUE)
     displaybounds(0, 0, 95, 63)
-    clearaccel{}
+    clear{}
     displayvisibility(NORMAL)
 
 PUB Preset_96x{}
@@ -158,7 +161,7 @@ PUB Preset_96x{}
     interlaced(false)
     powered(TRUE)
     displaybounds(0, 0, _disp_width, _disp_height)
-    clearaccel{}
+    clear{}
     displayvisibility(NORMAL)
 
 PUB Address(addr): curr_addr
@@ -183,32 +186,98 @@ PUB AddrMode(mode): curr_mode
     _sh_REMAPCOLOR := ((_sh_REMAPCOLOR & core#SEGREMAP_MASK) | mode)
     writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
-PUB BoxAccel(sx, sy, ex, ey, boxcolor, fillcolor) | tmp[3]
-' Draw a box, using the display's native/accelerated box function
+#ifdef GFX_DIRECT
+PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
+' Display bitmap
+'   ptr_bmap: pointer to bitmap data
+'   (xs, ys): upper-left corner of bitmap
+'   bm_wid: width of bitmap, in pixels
+'   bm_lns: number of lines in bitmap
+    displaybounds(xs, ys, xs+(bm_wid-1), ys+(bm_lns-1))
+    outa[_CS] := 0
+    ' calc total number of pixels to write, based on dims and color depth
+    ' clamp to a minimum of 1 to avoid odd behavior
+    nr_pix := 1 #> ((xs + bm_wid-1) * (ys + bm_lns-1) * BYTESPERPX)
+
+    outa[_DC] := core#DATA
+    spi.wrblock_lsbf(ptr_bmap, nr_pix)
+    outa[_CS] := 1
+#endif
+
+#ifdef GFX_DIRECT
+PUB Box(sx, sy, ex, ey, color, filled) | tmp[3]
+' Draw a box
+'   sx, sy: Start coordinates x0, y0
+'   ex, ey: End coordinates
+'   color:  Box color
+'   filled: Flag to set whether to fill the box or not
     sx := 0 #> sx <# _disp_xmax
     sy := 0 #> sy <# _disp_ymax
     ex := sx #> ex <# _disp_xmax
     ey := sy #> ey <# _disp_ymax
-
+    if filled
+        filled := color
+        fillaccelenabled(true)
+    else
+        filled := _bgcolor
+        fillaccelenabled(false)
     tmp.byte[0] := sx
     tmp.byte[1] := sy
     tmp.byte[2] := ex
     tmp.byte[3] := ey
-    tmp.byte[4] := rgb565_r8(boxcolor) << 1
-    tmp.byte[5] := rgb565_g8(boxcolor)
-    tmp.byte[6] := rgb565_b8(boxcolor) << 1
-    tmp.byte[7] := rgb565_r8(fillcolor) << 1
-    tmp.byte[8] := rgb565_g8(fillcolor)
-    tmp.byte[9] := rgb565_b8(fillcolor) << 1
+    tmp.byte[4] := rgb565_r8(color) << 1        ' R LSB is don't care
+    tmp.byte[5] := rgb565_g8(color)
+    tmp.byte[6] := rgb565_b8(color) << 1        ' B LSB is don't care
+    tmp.byte[7] := rgb565_r8(color) << 1
+    tmp.byte[8] := rgb565_g8(color)
+    tmp.byte[9] := rgb565_b8(color) << 1
     writereg(core#DRAWRECT, 10, @tmp)
+#endif
 
-PUB ClearAccel{} | tmp
-' Clears the display directly, using the display's native/accelerated clear function
+#ifdef GFX_DIRECT
+PUB Char(ch) | gl_c, gl_r, lastgl_c, lastgl_r
+' Draw character from currently loaded font
+    lastgl_c := _font_width-1
+    lastgl_r := _font_height-1
+    case ch
+        CR:
+            _charpx_x := 0
+        LF:
+            _charpx_y += _charcell_h
+            if _charpx_y > _charpx_xmax
+                _charpx_y := 0
+        0..127:                                 ' validate ASCII code
+            ' walk through font glyph data
+            repeat gl_c from 0 to lastgl_c      ' column
+                repeat gl_r from 0 to lastgl_r  ' row
+                    ' if the current offset in the glyph is a set bit, draw it
+                    if byte[_font_addr][(ch << 3) + gl_c] & (|< gl_r)
+                        plot((_charpx_x + gl_c), (_charpx_y + gl_r), _fgcolor)
+                    else
+                    ' otherwise, draw the background color, if enabled
+                        if _char_attrs & DRAWBG
+                            plot((_charpx_x + gl_c), (_charpx_y + gl_r), _bgcolor)
+            ' move the cursor to the next column, wrapping around to the left,
+            ' and wrap around to the top of the display if the bottom is reached
+            _charpx_x += _charcell_w
+            if _charpx_x > _charpx_xmax
+                _charpx_x := 0
+                _charpx_y += _charcell_h
+            if _charpx_y > _charpx_ymax
+                _charpx_y := 0
+        other:
+            return
+#endif
+
+#ifdef GFX_DIRECT
+PUB Clear{} | tmp
+' Clear the display
     tmp.byte[0] := 0
     tmp.byte[1] := 0
     tmp.byte[2] := _disp_xmax
     tmp.byte[3] := _disp_ymax
     writereg(core#CLEAR, 4, @tmp)
+#endif
 
 PUB ClockDiv(divider): curr_div
 ' Set clock frequency divider used by the display controller
@@ -455,7 +524,7 @@ PUB ExtSupply{} | tmp
     writereg(core#SETMASTER, 1, @tmp)
 
 PUB FillAccelEnabled(state): curr_state
-' Enable the display's native/accelerated fill function, when using BoxAccel()
+' Enable the display's native/accelerated fill function, when using Box()
     curr_state := _sh_FILL
     case ||(state)
         0, 1:
@@ -482,8 +551,9 @@ PUB Interlaced(state): curr_state
     _sh_REMAPCOLOR := ((_sh_REMAPCOLOR & core#COMSPLIT_MASK) | state)
     writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
-PUB LineAccel(sx, sy, ex, ey, color) | tmp[2]
-' Draw a line, using the display's native/accelerated line function
+#ifdef GFX_DIRECT
+PUB Line(sx, sy, ex, ey, color) | tmp[2]
+' Draw line from sx, sy to ex, ey, in color
     sx := 0 #> sx <# _disp_xmax
     sy := 0 #> sy <# _disp_ymax
     ex := 0 #> ex <# _disp_xmax
@@ -493,10 +563,11 @@ PUB LineAccel(sx, sy, ex, ey, color) | tmp[2]
     tmp.byte[1] := sy
     tmp.byte[2] := ex
     tmp.byte[3] := ey
-    tmp.byte[4] := rgb565_r8(color) << 1
+    tmp.byte[4] := rgb565_r8(color) << 1        ' R LSB is don't care
     tmp.byte[5] := rgb565_g8(color)
-    tmp.byte[6] := rgb565_b8(color) << 1
+    tmp.byte[6] := rgb565_b8(color) << 1        ' B LSB is don't care
     writereg(core#DRAWLINE, 7, @tmp)
+#endif
 
 PUB MirrorH(state): curr_state
 ' Mirror the display, horizontally
@@ -549,7 +620,8 @@ PUB Phase2Period(clks): curr_clks
     _sh_PHASE12PER := ((_sh_PHASE12PER & core#PHASE2_MASK) | clks)
     writereg(core#PRECHG, 1, @_sh_PHASE12PER)
 
-PUB PlotAccel(x, y, color) | tmp
+#ifdef GFX_DIRECT
+PUB Plot(x, y, color) | tmp
 ' Draw a pixel, using the display's native/accelerated plot/pixel function
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -567,6 +639,7 @@ PUB PlotAccel(x, y, color) | tmp
     spi.wr_byte(color.byte[1])
     spi.deselectafter(true)
     spi.wr_byte(color.byte[0])
+#endif
 
 PUB Powered(state): curr_state
 ' Enable display power

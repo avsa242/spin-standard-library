@@ -14,8 +14,8 @@
 '#define SSD1306_SPI
 '#define SSD1309
 '#define SSD1331
-'#define SSD1351
-#define ST7735
+#define SSD1351
+'#define ST7735
 '#define VGABITMAP6BPP
 
 ' Uncomment to bypass the draw buffer, and draw directly to the display
@@ -226,6 +226,7 @@ PUB Main{} | time_ms, sz, maxsz, iteration, bench, ch, color
             quit
 
     ser.strln(string("COMPLETE"))
+    disp.stop{}
     repeat
 
 PRI Report(testtime, iterations)
