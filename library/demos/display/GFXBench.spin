@@ -14,8 +14,8 @@
 '#define SSD1306_SPI
 '#define SSD1309
 '#define SSD1331
-#define SSD1351
-'#define ST7735
+'#define SSD1351
+#define ST7735
 '#define VGABITMAP6BPP
 
 ' Uncomment to bypass the draw buffer, and draw directly to the display
@@ -120,6 +120,8 @@ VAR
 #else
     word _framebuff[BUFFSZ]                     ' 16bpp
 #endif
+#else
+    byte _framebuff                             ' dummy var, for GFX_DIRECT
 #endif
 
 PUB Main{} | time_ms, sz, maxsz, iteration, bench, ch, color
@@ -287,11 +289,7 @@ PUB Setup{}
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_96x64{}
 #elseifdef SSD1351
-#ifdef GFX_DIRECT
-    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, 0)
-#else
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
-#endif
 '        disp.preset_oled_c_click_96x96{}
         disp.preset_128x{}
 #elseifdef ST7735

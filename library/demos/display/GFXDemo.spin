@@ -6,7 +6,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Apr 11, 2021
-    Updated: Oct 16, 2021
+    Updated: Oct 17, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,8 +15,8 @@
 '#define SSD1306_SPI
 '#define SSD1309
 '#define SSD1331
-#define SSD1351
-'#define ST7735
+'#define SSD1351
+#define ST7735
 '#define VGABITMAP6BPP
 
 ' Uncomment to bypass the draw buffer, and draw directly to the display
@@ -110,6 +110,8 @@ VAR
 #else
     word _framebuff[BUFFSZ]                     ' 16bpp
 #endif
+#else
+    byte _framebuff                             ' dummy VAR for GFX_DIRECT
 #endif
 
 PUB Main{}
@@ -338,19 +340,16 @@ PUB Setup{}
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_96x64{}
 #elseifdef SSD1351
-#ifdef GFX_DIRECT
-    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, 0)
-#else
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
-#endif
 '        disp.preset_oled_c_click_96x96{}
         disp.preset_128x{}
 #elseifdef ST7735
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_greentab128x128{}
 #endif
+        disp.fontspacing(1, 1)
         disp.fontscale(1)
-        disp.fontsize(6, 8)
+        disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
         disp.fontaddress(fnt.baseaddr{})
         ser.printf1(string("%s driver started\n"), @_drv_name)
     else
