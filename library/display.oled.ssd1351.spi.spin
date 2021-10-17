@@ -213,7 +213,7 @@ PUB AddrMode(mode): curr_mode
     writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
 #ifdef GFX_DIRECT
-PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs
+PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
 ' Display bitmap
 '   ptr_bmap: pointer to bitmap data
 '   (xs, ys): upper-left corner of bitmap
@@ -224,7 +224,8 @@ PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs
     outa[_DC] := core#CMD
     spi.wr_byte(core#WRITERAM)
     outa[_DC] := core#DATA
-    spi.wrblock_lsbf(ptr_bmap, ((xs * ys) + ((xs + bm_wid) * (ys + bm_lns))*2))
+    nr_pix := 1 #> ((xs + bm_wid-1) * (ys + bm_lns-1) * 2)
+    spi.wrblock_lsbf(ptr_bmap, nr_pix)
     outa[_CS] := 1
 #endif
 

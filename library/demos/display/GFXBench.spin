@@ -13,10 +13,14 @@
 '#define SSD1306_I2C
 '#define SSD1306_SPI
 '#define SSD1309
-#define SSD1331
-'#define SSD1351
+'#define SSD1331
+#define SSD1351
 '#define ST7735
 '#define VGABITMAP6BPP
+
+' Uncomment to bypass the draw buffer, and draw directly to the display
+'   (required if the buffer would be too big for RAM)
+#define GFX_DIRECT
 
 OBJ
 
@@ -52,8 +56,8 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    WIDTH       = 96                            ' change these for your
-    HEIGHT      = 64                            '   display
+    WIDTH       = 128                            ' change these for your
+    HEIGHT      = 128                            '   display
 
 ' I2C-connected displays                        ' free-form I/O connections
     SCL_PIN     = 28
@@ -106,6 +110,7 @@ VAR
 
     long _stack_timer[50]
     long _timer_set
+#ifndef GFX_DIRECT
 #ifdef SSD1306_I2C
     byte _framebuff[BUFFSZ]                     ' 1bpp
 #elseifdef SSD1306_SPI
@@ -114,6 +119,7 @@ VAR
     byte _framebuff[BUFFSZ]                     ' 8bpp
 #else
     word _framebuff[BUFFSZ]                     ' 16bpp
+#endif
 #endif
 
 PUB Main{} | time_ms, sz, maxsz, iteration, bench, ch, color
@@ -281,15 +287,20 @@ PUB Setup{}
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_96x64{}
 #elseifdef SSD1351
+#ifdef GFX_DIRECT
+    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, 0)
+#else
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+#endif
 '        disp.preset_oled_c_click_96x96{}
         disp.preset_128x{}
 #elseifdef ST7735
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_greentab128x128{}
 #endif
+        disp.fontspacing(1, 1)
         disp.fontscale(1)
-        disp.fontsize(6, 8)
+        disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
         disp.fontaddress(fnt.baseaddr{})
         ser.printf1(string("%s driver started\n"), @_drv_name)
     else
