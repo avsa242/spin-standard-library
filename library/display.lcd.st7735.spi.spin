@@ -2,7 +2,7 @@
     --------------------------------------------
     Filename: display.lcd.st7735.spi.spin
     Author: Jesse Burt
-    Description: Driver for Sitronix ST7735-based displays (4W SPI)
+    Description: Driver for Sitronix ST7735-based displays
     Copyright (c) 2021
     Started Mar 7, 2020
     Updated Oct 17, 2021
@@ -217,8 +217,12 @@ PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
 #endif
 
 #ifdef GFX_DIRECT
-PUB Box(x1, y1, x2, y2, color, fill) | cmd_pkt[3], sy
-
+PUB Box(x1, y1, x2, y2, color, fill) | cmd_pkt[3]
+' Draw a box
+'   (x1, y1): upper-left corner of box
+'   (x2, y2): lower-right corner of box
+'   color: border and (optional) fill color
+'   fill: filled flag (0: no fill, nonzero: fill)
     if (x2 < x1) or (y2 < y1)
         return
     if fill
