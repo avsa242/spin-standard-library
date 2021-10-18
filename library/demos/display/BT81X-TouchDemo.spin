@@ -3,9 +3,9 @@
     Filename: BT81X-TouchDemo.spin
     Author: Jesse Burt
     Description: Demo of the BT81x driver touchscreen functionality
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Sep 30, 2019
-    Updated Dec 31, 2020
+    Updated Oct 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -184,13 +184,10 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if eve.start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if eve.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
         ser.strln(string("BT81x driver started"))
     else
         ser.str(string("BT81x driver failed to start - halting"))
-        eve.stop{}
-        time.msleep(500)
-        ser.stop{}
         repeat
 
 DAT
