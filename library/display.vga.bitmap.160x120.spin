@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Apr 4, 2021
+    Updated: Oct 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -36,6 +36,7 @@
 }}
 #define _PASM_
 #define VGABITMAP6BPP
+#define MEMMV_NATIVE bytemove
 #include "lib.gfx.bitmap.spin"
 
 CON

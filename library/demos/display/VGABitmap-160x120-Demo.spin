@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Apr 24, 2020
-    Updated: Apr 4, 2021
+    Updated: Oct 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -145,7 +145,7 @@ PUB Demo_Bitmap(testtime, bitmap_addr) | iteration
     iteration := 0
 
     repeat while _timer_set
-        display.Bitmap (bitmap_addr, BUFFSZ, 0)
+        display.Bitmap (bitmap_addr, 0, 0, XMAX, YMAX)
 
         iteration++
 
@@ -288,7 +288,7 @@ PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, pos, st, en
         if pos >end_addr
             pos := start_addr
         display.WaitVSync
-        display.Bitmap (pos, BUFFSZ, 0)
+        display.Bitmap (pos, 0, 0, XMAX, YMAX)
         iteration++
 
     Report(testtime, iteration)
