@@ -1,10 +1,10 @@
-{                                                                                                               
+{
     --------------------------------------------
     Filename: display.led.smart.spin
     Author: Jesse Burt
     Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated Jun 13, 2021
+    Updated Oct 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -12,6 +12,7 @@
         originally written by Jon McPhalen
 }
 #define NEOPIXEL
+#define MEMMV_NATIVE longmove
 #include "lib.gfx.bitmap.spin"
 
 CON
