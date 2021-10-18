@@ -6,7 +6,7 @@
      64-bit I2C Silicon Serial Number
     Copyright (c) 2021
     Started Oct 27, 2019
-    Updated Aug 15, 2021
+    Updated Oct 18, 2021
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This driver will start successfully if the Propeller's EEPROM is on
@@ -32,7 +32,7 @@ OBJ
 #elseifdef DS28CM00_SPIN
     i2c : "tiny.com.i2c"                        ' SPIN I2C engine
 #else
-#error "One of DS28CM00_PASM or DS28CM00_PASM must be defined"
+#error "One of DS28CM00_PASM or DS28CM00_SPIN must be defined"
 #endif
     core: "core.con.ds28cm00"                   ' HW-specific constants
     time: "time"                                ' timekeeping methods
