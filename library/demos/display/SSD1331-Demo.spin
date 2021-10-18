@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Nov 3, 2019
-    Updated: Apr 6, 2021
+    Updated: Oct 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -125,7 +125,7 @@ PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
     iteration := 0
 
     repeat while _timer_set
-        oled.bitmap(ptr_bitmap, BUFFSZ, 0)
+        oled.bitmap(ptr_bitmap, 0, 0, XMAX, YMAX)
         oled.update{}
         iteration++
 
@@ -289,7 +289,7 @@ PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, ptr
     iteration := 0
 
     repeat while _timer_set
-        oled.bitmap(ptr, BUFFSZ, 0)             ' show 1 screenful of RAM
+        oled.bitmap(ptr, 0, 0, XMAX, YMAX)      ' show 1 screenful of RAM
         ptr += BPL                              ' advance memory pointer
         if ptr > end_addr                       ' wrap around if the end of
             ptr := start_addr                   '   Propeller RAM is reached
