@@ -5,12 +5,13 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Created: Oct 11, 2018
-    Updated: May 18, 2021
+    Updated: Oct 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 
 #define HT16K33-ADAFRUIT
+#define MEMMV_NATIVE bytemove
 #include "lib.gfx.bitmap.spin"
 
 CON
