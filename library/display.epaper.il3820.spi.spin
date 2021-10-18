@@ -5,11 +5,12 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2021
     Started Nov 30, 2019
-    Updated Apr 4, 2021
+    Updated Oct 18, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
 #define IL38xx
+#define MEMMV_NATIVE bytemove
 #include "lib.gfx.bitmap.spin"
 
 CON
