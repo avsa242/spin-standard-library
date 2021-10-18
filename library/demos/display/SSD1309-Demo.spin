@@ -148,7 +148,7 @@ PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
     iteration := 0
 
     repeat while _timer_set
-        oled.bitmap(ptr_bitmap, BUFFSZ, 0)
+        oled.bitmap(ptr_bitmap, 0, 0, XMAX, YMAX)
         oled.update{}
         iteration++
 
@@ -260,7 +260,7 @@ PUB Demo_MEMScroller(testtime, start_addr, end_addr) | iteration, ptr, st, en
     iteration := 0
 
     repeat while _timer_set
-        oled.bitmap(ptr, BUFFSZ, 0)             ' show 1 screenful of RAM
+        oled.bitmap(ptr, 0, 0, XMAX, YMAX)      ' show 1 screenful of RAM
         ptr += 128                              ' advance memory pointer
         if ptr > end_addr                       ' wrap around if the end of
             ptr := start_addr                   '   Propeller RAM is reached
