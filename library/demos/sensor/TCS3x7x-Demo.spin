@@ -5,7 +5,7 @@
     Description: Demo of the TCS3x7x driver
     Copyright (c) 2021
     Started: Jun 24, 2018
-    Updated: May 15, 2021
+    Updated: Jul 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
