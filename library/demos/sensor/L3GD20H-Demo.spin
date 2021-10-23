@@ -5,7 +5,7 @@
     Description: Demo of the L3GD20H driver
     Copyright (c) 2021
     Started Aug 12, 2017
-    Updated Jan 26, 2021
+    Updated Sep 29, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -25,13 +25,14 @@ CON
 ' I2C
     I2C_SCL     = 28
     I2C_SDA     = 29
-    I2C_HZ      = 400_000
+    I2C_HZ      = 400_000                       ' 400_000 max
+    I2C_ADDR    = 0                             ' 0, 1
 
 ' SPI
-    CS_PIN      = 0
-    SCL_PIN     = 1
-    SDO_PIN     = 2
-    SDA_PIN     = 3
+    SPI_CS      = 0
+    SPI_SCL     = 1
+    SPI_SDA     = 2
+    SPI_SDO     = 3
 ' --
 
     DAT_X_COL   = 20
@@ -115,11 +116,11 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 #ifdef L3GD20H_SPI
-    if gyro.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+    if gyro.startx(SPI_CS, SPI_SCL, SPI_SDA, SPI_SDO)
         ser.strln(string("L3GD20H driver started (SPI)"))
     else
 #elseifdef L3GD20H_I2C
-    if gyro.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+    if gyro.startx(I2C_SCL, I2C_SDA, I2C_HZ, I2C_ADDR)
         ser.strln(string("L3GD20H driver started (I2C)"))
     else
 #endif

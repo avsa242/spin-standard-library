@@ -5,7 +5,7 @@
     Description: Driver for the ST L3GD20H 3DoF gyroscope
     Copyright (c) 2021
     Started Jul 11, 2020
-    Updated Apr 29, 2021
+    Updated Oct 23, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,6 +17,7 @@ CON
     DEF_SCL             = 28
     DEF_SDA             = 29
     DEF_HZ              = 100_000
+    DEF_ADDR            = 0
     I2C_MAX_FREQ        = core#I2C_MAX_FREQ
 
 ' Indicate to user apps how many Degrees of Freedom each sub-sensor has
@@ -26,6 +27,14 @@ CON
     MAG_DOF             = 0
     BARO_DOF            = 0
     DOF                 = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
+
+' Scales and data rates used during calibration/bias/offset process
+    CAL_XL_SCL          = 0
+    CAL_G_SCL           = 245
+    CAL_M_SCL           = 0
+    CAL_XL_DR           = 0
+    CAL_G_DR            = 100
+    CAL_M_DR            = 0
 
 ' Axis-specific constants
     X_AXIS              = 0
@@ -62,6 +71,7 @@ VAR
 
     long _gyro_cnts_per_lsb
     long _gbiasraw[3]
+    byte _addr_bits
 
 OBJ
 
@@ -81,15 +91,16 @@ PUB Null{}
 #ifdef L3GD20H_I2C
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    status := startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    status := startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom I/O pins and I2C bus speed
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}       I2C_HZ =< core#I2C_MAX_FREQ
+}       I2C_HZ =< core#I2C_MAX_FREQ and lookdown(ADDR_BITS: 0, 1)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.msleep(1)                      ' wait for device startup
-            if i2c.present(SLAVE_WR)            ' check device bus presence
+            _addr_bits := ADDR_BITS << 1
+            if i2c.present(SLAVE_WR | _addr_bits)' check device bus presence
                 if deviceid{} == core#DEVID_RESP' validate device
                     return status
     ' if this point is reached, something above failed
@@ -164,7 +175,7 @@ PUB AccelDataRate(Hz)
 PUB AccelDataReady{}
 ' Dummy method
 
-PUB AccelDataOverrun
+PUB AccelDataOverrun{}
 ' Dummy method
 
 PUB AccelG(x, y, z)
@@ -193,31 +204,36 @@ PUB BlockUpdateEnabled(state): curr_state
 PUB Calibrate{}
 ' Dummy method
 
-PUB CalibrateGyro{} | gbiasrawtmp[3], axis, gx, gy, gz, nr_samples
-' Calibrate the Gyroscope
-' Turn on FIFO and set threshold to 31 samples
-    fifoenabled(true)
-    fifomode(FIFO)
-    fifothreshold(31)                           ' set, confirm setting and use
-    nr_samples := fifothreshold(-2)             ' as number of samples to avg
-    repeat until fifofull{}                     ' wait until FIFO filled
-    longfill(@gbiasrawtmp, 0, 3)                ' initialize temp vars to 0
-    gyrobias(0, 0, 0, W)                        ' Clear out the existing bias;
-                                                '   otherwise it accumulates
+PUB CalibrateGyro{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[GYRO_DOF], samples
+' Calibrate the gyroscope
+    longfill(@axis, 0, 10)                      ' initialize vars to 0
+    orig_scl := gyroscale(-2)                   ' save user's current settings
+    orig_dr := gyrodatarate(-2)
+    gyrobias(0, 0, 0, W)                        ' clear existing bias
 
-    repeat nr_samples                           ' Read FIFO samples
-        gyrodata(@gx, @gy, @gz)
-        gbiasrawtmp[X_AXIS] += gx               ' Accumulate, for each axis
-        gbiasrawtmp[Y_AXIS] += gy
-        gbiasrawtmp[Z_AXIS] += gz
+    ' set sensor to CAL_G_SCL range, CAL_G_DR Hz data rate
+    gyroscale(CAL_G_SCL)
+    gyrodatarate(CAL_G_DR)
+    samples := CAL_G_DR                         ' samples = DR, for 1 sec time
 
-    ' average the sample data for each axis and update the offsets
-    gyrobias(gbiasrawtmp[X_AXIS]/nr_samples, gbiasrawtmp[Y_AXIS]/nr_samples, {
-}   gbiasrawtmp[Z_AXIS]/nr_samples, W)
-    fifoenabled(false)                          ' Turn the FIFO back off
-    fifomode(BYPASS)
+    ' accumulate and average approx. 1sec worth of samples
+    repeat samples
+        repeat until gyrodataready{}
+        gyrodata(@tmpx, @tmpy, @tmpz)
+        tmp[X_AXIS] += tmpx
+        tmp[Y_AXIS] += tmpy
+        tmp[Z_AXIS] += tmpz
 
-PUB CalibrateMag(samples)
+    repeat axis from X_AXIS to Z_AXIS           ' calc avg
+        tmp[axis] /= samples
+
+    ' update offsets
+    gyrobias(tmp[X_AXIS], tmp[Y_AXIS], tmp[Z_AXIS], W)
+
+    gyroscale(orig_scl)                         ' restore user's settings
+    gyrodatarate(orig_dr)
+
+PUB CalibrateMag{}
 ' Dummy method
 
 PUB CalibrateXLG{}
@@ -652,7 +668,7 @@ PUB Temperature{}: temp_adc
 ' Read device temperature
     readreg(core#OUT_TEMP, 1, @temp_adc)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from the slave device into ptr_buff
     case reg_nr                                 ' validate reg #
         $0F, $20..$27, $2E..$39:
@@ -673,17 +689,17 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
     spi.deselectafter(true)
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
 #elseifdef L3GD20H_I2C
-    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
     cmd_pkt.byte[1] := reg_nr
     i2c.start{}
     i2c.wrblock_lsbf(@cmd_pkt, 2)
     i2c.start{}
-    i2c.wr_byte(SLAVE_RD)
+    i2c.wr_byte(SLAVE_RD | _addr_bits)
     i2c.rdblock_lsbf(ptr_buff, nr_bytes, TRUE)
     i2c.stop{}
 #endif
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write num_bytes to the slave device from the address stored in ptr_buff
     case reg_nr                                 ' validate reg #
         $20..$25, $2E, $30, $32..$39:
@@ -694,7 +710,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
             spi.deselectafter(true)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
 #elseifdef L3GD20H_I2C
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
