@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Oct 18, 2021
+    Updated: Oct 23, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -58,29 +58,34 @@ OBJ
 
     ctrs    : "core.con.counters"
 
-PUB Start(pinGroup, WIDTH, HEIGHT, drawbuffer_address): okay
-' PinGroup - Pin group to use to drive the video circuit. Between 0 and 3.
-    Stop
+PUB Startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): okay
+' Start VGA engine
+'   PINGRP: 8-pin group number (0, 1, 2, 3 for start pin as 0, 8, 16, 24, resp)
+'   pins must be connected contiguously in the following (ascending) order:
+'       Vsync, Hsync, B0, B1, G0, G1, R0, R1
+'   WIDTH, HEIGHT: ignored for compatibility with other drivers
+'   ptr_dispbuff: pointer to 19,200 byte (160*120) display/frame buffer
+    stop
 
-    _disp_width := DISP_WIDTH                               ' Use these constants DISP_WIDTH and HEIGHT
-    _disp_height := DISP_HEIGHT                             ' WIDTH and HEIGHT are just dummy params
-    _disp_xmax := _disp_width - 1                           '   for API compatibility with other drivers
+    _disp_width := DISP_WIDTH                   ' use builtin symbols; params
+    _disp_height := DISP_HEIGHT                 '   are only for API compat
+    _disp_xmax := _disp_width - 1               '   with other drivers
     _disp_ymax := _disp_height - 1
     _buff_sz := _disp_width * _disp_height
     _bytesperln := DISP_WIDTH * BYTESPERPX
-    Address(drawbuffer_address)
+    address(ptr_dispbuff)
 
-    pinGroup := ((pinGroup <# 3) #> 0)
-    directionState := ($FF << (8 * pinGroup))
-    videoState := ($30_00_00_FF | (pinGroup << 9))
+    PINGRP := ((PINGRP <# 3) #> 0)
+    directionState := ($FF << (8 * PINGRP))
+    videoState := ($30_00_00_FF | (PINGRP << 9))
 
-    pinGroup := constant((PIX_CLK + 1_600) / 4)
+    PINGRP := constant((PIX_CLK + 1_600) / 4)
     frequencyState := 1
     repeat 32
-        pinGroup <<= 1
+        PINGRP <<= 1
         frequencyState <-= 1
-        if(pinGroup => clkfreq)
-            pinGroup -= clkfreq
+        if(PINGRP => clkfreq)
+            PINGRP -= clkfreq
             frequencyState += 1
 
     displayIndicatorAddress := @displayIndicator
