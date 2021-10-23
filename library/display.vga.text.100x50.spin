@@ -47,20 +47,20 @@ VAR
     long _screenptr
     long _row, _col
 
-PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
+PUB Startx(BASEPIN, ptr_dispbuff, ptr_color, ptr_cursor, ptr_sync) : okay | i, j
 '' Start VGA driver - starts two COGs
 '' returns false if two COGs not available
 ''
-''     BasePin = VGA starting pin (0, 8, 16, 24, etc.)
+''     BASEPIN = VGA starting pin (0, 8, 16, 24, etc.)
 ''
-''   ScreenPtr = Pointer to 8,192 bytes containing ASCII codes for each of the
+''   ptr_dispbuff = Pointer to 8,192 bytes containing ASCII codes for each of the
 ''               128x64 screen characters. Each byte's top bit controls color
 ''               inversion while the lower seven bits provide the ASCII code.
 ''               Screen memory is arranged left-to-right, top-to-bottom.
 ''
 ''               screen byte example: %1_1000001 = inverse "A"
 ''
-''    ColorPtr = Pointer to 64 words which define the foreground and background
+''    ptr_color = Pointer to 64 words which define the foreground and background
 ''               colors for each row. The lower byte of each word contains the
 ''               foreground RGB data for that row, while the upper byte
 ''               contains the background RGB data. The RGB data in each byte is
@@ -68,7 +68,7 @@ PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
 ''
 ''               color word example: %%0020_3300 = gold on blue
 ''
-''   CursorPtr = Pointer to 6 bytes which control the cursors:
+''   ptr_cursor = Pointer to 6 bytes which control the cursors:
 ''
 ''               bytes 0,1,2: X, Y, and MODE of cursor 0
 ''               bytes 3,4,5: X, Y, and MODE of cursor 1
@@ -87,7 +87,7 @@ PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
 ''
 ''               cursor example: 127, 63, %010 = blinking block in lower-right
 ''
-''     SyncPtr = Pointer to long which gets written with -1 upon each screen
+''     ptr_sync = Pointer to long which gets written with -1 upon each screen
 ''               refresh. May be used to time writes/scrolls, so that chopiness
 ''               can be avoided. You must clear it each time if you want to see
 ''               it re-trigger.
@@ -96,25 +96,25 @@ PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
     Stop
 
     'implant pin settings
-    reg_vcfg := $200000FF + (BasePin & %111000) << 6
-    i := $FF << (BasePin & %011000)
-    j := BasePin & %100000 == 0
+    reg_vcfg := $200000FF + (BASEPIN & %111000) << 6
+    i := $FF << (BASEPIN & %011000)
+    j := BASEPIN & %100000 == 0
     reg_dira := i & j
     reg_dirb := i & !j
 
-    _screenptr := ScreenPtr
+    _screenptr := ptr_dispbuff
     'implant CNT value to sync COGs to
     sync_cnt := cnt + $10000
 
     'implant pointers
-    longmove(@screen_base, @ScreenPtr, 3)
+    longmove(@screen_base, @ptr_dispbuff, 3)
     font_base := @font
 
     'implant unique settings and launch first COG
     vf_lines.byte := VF
     vb_lines.byte := VB
     font_third := 1
-    cog[1] := cognew(@d0, SyncPtr) + 1
+    cog[1] := cognew(@d0, ptr_sync) + 1
 
     'allow time for first COG to launch
     waitcnt($2000 + cnt)
@@ -123,7 +123,7 @@ PUB Start(BasePin, ScreenPtr, ColorPtr, CursorPtr, SyncPtr) : okay | i, j
     vf_lines.byte := VF+4
     vb_lines.byte := VB-4
     font_third := 0
-    cog[0] := cognew(@d0, SyncPtr) + 1
+    cog[0] := cognew(@d0, ptr_sync) + 1
 
     'if both COGs launched, return true
     if cog[0] and cog[1]
