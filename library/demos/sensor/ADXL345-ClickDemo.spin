@@ -6,13 +6,10 @@
         click-detection functionality
     Copyright (c) 2021
     Started May 30, 2021
-    Updated May 30, 2021
+    Updated Sep 28, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the following to choose which interface the ADXL345 is connected to
-#define ADXL345_I2C
-'#define ADXL345_SPI
 
 CON
 
@@ -91,12 +88,16 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-#ifdef ADXL345_SPI
-    if accel.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
-        ser.strln(string("ADXL345 driver started (SPI)"))
-#elseifdef ADXL345_I2C
+
+#ifdef ADXL345_I2C
     if accel.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
         ser.strln(string("ADXL345 driver started (I2C)"))
+#elseifdef ADXL345_SPI3W
+    if accel.startx(CS_PIN, SCL_PIN, SDA_PIN)
+        ser.strln(string("ADXL345 driver started (SPI-3 wire)"))
+#elseifdef ADXL345_SPI4W
+    if accel.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+        ser.strln(string("ADXL345 driver started (SPI-4 wire)"))
 #endif
     else
         ser.strln(string("ADXL345 driver failed to start - halting"))

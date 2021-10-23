@@ -5,10 +5,20 @@
     Description: Driver for the Analog Devices ADXL345 3DoF Accelerometer
     Copyright (c) 2021
     Started Mar 14, 2020
-    Updated Aug 31, 2021
+    Updated Oct 23, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
+
+' preprocessor doesn't support AND/OR, so workaround this by defining an SPI
+'   symbol generic to either the 3-wire or 4-wire variant, to simplify the
+'   #ifdef'd code in the driver
+#ifdef ADXL345_SPI3W
+#define ADXL345_SPI
+#endif
+#ifdef ADXL345_SPI4W
+#define ADXL345_SPI
+#endif
 
 CON
 
@@ -87,7 +97,7 @@ OBJ
 #elseifdef ADXL345_SPI
     spi : "com.spi.4w"                          ' PASM SPI engine (~1MHz)
 #else
-#error "One of ADXL345_I2C or ADXL345_SPI must be defined"
+#error "One of ADXL345_I2C, ADXL345_SPI3W, or ADXL345_SPI4W must be defined"
 #endif
     core: "core.con.adxl345"                    ' HW-specific constants
     time: "time"                                ' timekeeping methods
@@ -106,15 +116,34 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
             i2c.write($FF)
             repeat 2
                 i2c.stop{}
+            spimode(4)
             if deviceid{} == core#DEVID_RESP
                 return status
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
-#elseifdef ADXL345_SPI
+#elseifdef ADXL345_SPI3W
+PUB Startx(CS_PIN, SCL_PIN, SDIO_PIN): status
+' Start using custom I/O pin settings (SPI-3 wire)
+    if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
+}   lookdown(SDIO_PIN: 0..31)
+        if (status := spi.init(SCL_PIN, SDIO_PIN, SDIO_PIN, core#SPI_MODE))
+            time.msleep(1)
+            _CS := CS_PIN
+
+            io.high(_CS)                        ' ensure CS starts high
+            io.output(_CS)
+            spimode(3)
+            if deviceid{} == core#DEVID_RESP
+                return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
+#elseifdef ADXL345_SPI4W
 PUB Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
-' Start using custom I/O pin settings (SPI)
+' Start using custom I/O pin settings (SPI-4 wire)
     if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
 }   lookdown(SDA_PIN: 0..31) and lookdown(SDO_PIN: 0..31)
         if (status := spi.init(SCL_PIN, SDA_PIN, SDO_PIN, core#SPI_MODE))
@@ -123,6 +152,7 @@ PUB Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
 
             io.high(_CS)                        ' ensure CS starts high
             io.output(_CS)
+            spimode(4)
             if deviceid{} == core#DEVID_RESP
                 return status
     ' if this point is reached, something above failed
@@ -210,12 +240,15 @@ PUB AccelBias(bias_x, bias_y, bias_z, rw) | tmp
             case bias_x
                 -128..127:
                 other:
+                    return                      ' out of range
             case bias_y
                 -128..127:
                 other:
+                    return                      ' out of range
             case bias_z
                 -128..127:
                 other:
+                    return                      ' out of range
             writereg(core#OFSX, 1, @bias_x)
             writereg(core#OFSY, 1, @bias_y)
             writereg(core#OFSZ, 1, @bias_z)
@@ -819,6 +852,20 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
     io.high(_CS)
 #endif
+
+PRI spiMode(mode): curr_mode
+' Set SPI interface mode
+'   Valid values:
+'       3: 3-wire SPI
+'       4: 4-wire SPI
+    case mode
+        3:
+            mode := 1 << core#SPI
+        4:
+            mode := 0
+        other:
+            return
+    writereg(core#DATA_FORMAT, 1, @mode)
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to slave device

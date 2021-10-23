@@ -1,10 +1,11 @@
 {
     --------------------------------------------
-    Filename: ADXL345-Demo.spin
+    Filename: ADXL345-InactivityDemo.spin
     Author: Jesse Burt
     Description: Demo of the ADXL345 driver
+        Inactivity interrupt functionality
     Copyright (c) 2021
-    Started Mar 14, 2020
+    Started Aug 29, 2021
     Updated Sep 28, 2021
     See end of file for terms of use.
     --------------------------------------------
@@ -36,68 +37,43 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    int     : "string.integer"
     accel   : "sensor.accel.3dof.adxl345.i2cspi"
 
-PUB Main{}
+PUB Main{} | i
 
     setup{}
     accel.preset_active{}                       ' default settings, but enable
                                                 ' sensor data acquisition and
                                                 ' set scale factor
-
-    repeat
-        ser.position(0, 3)
-        accelcalc{}
-        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
-            calibrate{}                         ' to calibrate sensor offsets
-
-PUB AccelCalc{} | ax, ay, az
-
-    repeat until accel.acceldataready{}
-    accel.accelg(@ax, @ay, @az)
-    ser.str(string("Accel (g): "))
-    ser.positionx(DAT_X_COL)
-    decimal(ax, 1_000_000)
-    ser.positionx(DAT_Y_COL)
-    decimal(ay, 1_000_000)
-    ser.positionx(DAT_Z_COL)
-    decimal(az, 1_000_000)
-    ser.clearline{}
-    ser.newline{}
-
-PUB Calibrate{}
-
-    ser.position(0, 5)
-    ser.str(string("Calibrating..."))
+    accel.actinactlink(TRUE)
+    accel.actthresh(0_500000)
+    accel.inactthresh(0_125000)
+    accel.inacttime(3)
+    accel.actaxisenabled(%110)
+    accel.inactaxisenabled(%110)
+    accel.intmask(accel#ACTIVITY | accel#INACTIVITY)
+    accel.autosleep(TRUE)
     accel.calibrateaccel{}
-    ser.position(0, 5)
-    ser.clearline{}
 
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
-' Display a scaled up number as a decimal
-'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
-    whole := scaled / divisor
-    tmp := divisor
-    places := 0
-    part := 0
-    sign := 0
-    if scaled < 0
-        sign := "-"
-    else
-        sign := " "
+    ser.printf1(string("ActThresh(): %d\n"), accel.actthresh(-2))
+    ser.printf1(string("InactThresh(): %d\n"), accel.inactthresh(-2))
+    ser.printf1(string("InactTime(): %d\n"), accel.inacttime(-2))
+    ser.printf1(string("AutoSleep(): %d\n"), accel.autosleep(-2))
+    ser.str(string("ActAxisEnabled() (%XYZ): %"))
+    ser.bin(accel.actaxisenabled(-2), 3)
+    ser.newline{}
+    ser.str(string("InactAxisEnabled() (%XYZ): %"))
+    ser.bin(accel.inactaxisenabled(-2), 3)
+    ser.newline{}
+    ser.strln(string("Move the sensor to awaken it."))
+    ser.strln(string("This can be done again, once it reports INACTIVE."))
 
     repeat
-        tmp /= 10
-        places++
-    until tmp == 1
-    scaled //= divisor
-    part := int.deczeroed(||(scaled), places)
-
-    ser.char(sign)
-    ser.dec(||(whole))
-    ser.char(".")
-    ser.str(part)
+        i := accel.interrupt{}
+        if i & accel#INACTIVITY
+            ser.strln(string("INACTIVE"))
+        if i & accel#ACTIVITY
+            ser.strln(string("ACTIVE"))
 
 PUB Setup{}
 
