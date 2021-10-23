@@ -48,14 +48,13 @@ CON
 
 VAR long cog
 
-PUB start(BasePin, ColorPtr, PixelPtr, SyncPtr) : okay | i, j
-
+PUB Startx(BASEPIN, ptr_colormap, ptr_dispbuff, ptr_sync) : okay | i, j
 '' Start VGA driver - starts a COG
 '' returns false if no COG available
 ''
-''     BasePin = VGA starting pin (0, 8, 16, 24, etc.)
+''     BASEPIN = VGA starting pin (0, 8, 16, 24)
 ''
-''    ColorPtr = Pointer to 192 words which define the "0" and "1" colors for
+''    ptr_colormap = Pointer to 192 words which define the "0" and "1" colors for
 ''               each 32x32 pixel group. The lower byte of each word contains
 ''               the "0" bit RGB data while the upper byte of each word contains
 ''               the "1" bit RGB data for the associated group. The RGB
@@ -63,12 +62,12 @@ PUB start(BasePin, ColorPtr, PixelPtr, SyncPtr) : okay | i, j
 ''
 ''               color word example: %%0020_3300 = "0" = gold, "1" = blue
 ''
-''    PixelPtr = Pointer to 6,144 longs containing pixels that make up the 512 x
+''    ptr_dispbuff = Pointer to 6,144 longs containing pixels that make up the 512 x
 ''               384 pixel bitmap. Longs' LSBs appear left on the screen, while
 ''               MSBs appear right. The longs are arranged in sequence from left-
 ''               to-right, then top-to-bottom.
 ''
-''     SyncPtr = Pointer to long which gets written with non-0 upon each screen
+''     ptr_sync = Pointer to long which gets written with non-0 upon each screen
 ''               refresh. May be used to time writes/scrolls, so that chopiness
 ''               can be avoided. You must clear it each time if you want to see
 ''               it re-trigger.
@@ -77,13 +76,13 @@ PUB start(BasePin, ColorPtr, PixelPtr, SyncPtr) : okay | i, j
   stop
 
   'implant pin settings and pointers, then launch COG
-  reg_vcfg := $200000FF + (BasePin & %111000) << 6
-  i := $FF << (BasePin & %011000)
-  j := BasePin & %100000 == 0
+  reg_vcfg := $200000FF + (BASEPIN & %111000) << 6
+  i := $FF << (BASEPIN & %011000)
+  j := BASEPIN & %100000 == 0
   reg_dira := i & j
   reg_dirb := i & !j
-  longmove(@color_base, @ColorPtr, 2)
-  if (cog := cognew(@init, SyncPtr) + 1)
+  longmove(@color_base, @ptr_colormap, 2)
+  if (cog := cognew(@init, ptr_sync) + 1)
     return true
 
 

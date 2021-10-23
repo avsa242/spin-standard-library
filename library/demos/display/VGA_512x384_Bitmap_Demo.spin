@@ -28,7 +28,7 @@ VAR
 PUB start | h, i, j, k, x, y
 
   'start vga
-  vga.start(16, @colors, @pixels, @sync)
+  vga.startx(16, @colors, @pixels, @sync)
 
   'init colors to cyan on blue
   repeat i from 0 to tiles - 1
