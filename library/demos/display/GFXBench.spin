@@ -14,13 +14,14 @@
 '#define SSD1306_SPI
 '#define SSD1309
 '#define SSD1331
-#define SSD1351
+'#define SSD1351
 '#define ST7735
-'#define VGABITMAP6BPP
+#define VGABITMAP6BPP
 
 ' Uncomment to bypass the draw buffer, and draw directly to the display
 '   (required if the buffer would be too big for RAM)
-#define GFX_DIRECT
+'   NOTE: not supported by all drivers
+'#define GFX_DIRECT
 
 OBJ
 
@@ -279,7 +280,7 @@ PUB Setup{}
     if disp.startx(SCL_PIN, SDA_PIN, RES_PIN, SCL_FREQ, ADDR_BITS, WIDTH, HEIGHT, @_framebuff)
         disp.preset_128x{}
 #elseifdef VGABITMAP6BPP
-    if disp.start(VGA_PINGRP, WIDTH, HEIGHT, @_framebuff)
+    if disp.startx(VGA_PINGRP, WIDTH, HEIGHT, @_framebuff)
 #elseifdef SSD1306_SPI
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_128x{}
