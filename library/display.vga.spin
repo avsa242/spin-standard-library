@@ -1,9 +1,9 @@
-''***************************************
-''*  VGA Driver v1.1                    *
-''*  Author: Chip Gracey                *
-''*  Copyright (c) 2006 Parallax, Inc.  *
-''*  See end of file for terms of use.  *
-''***************************************
+'***************************************
+'*  VGA Driver v1.1                    *
+'*  Author: Chip Gracey                *
+'*  Copyright (c) 2006 Parallax, Inc.  *
+'*  See end of file for terms of use.  *
+'***************************************
 
 ' v1.0 - 01 May 2006 - original version
 ' v1.1 - 15 May 2006 - pixel tile size can now be 16 x 32 to enable more efficient
@@ -18,17 +18,39 @@ VAR
 
     long cog
 
-PUB Start(vgaptr) : okay
-'' Start VGA driver - starts a cog
-'' returns false if no cog available
-''
-''   vgaptr = pointer to VGA parameters
+PUB Startx(ptr_params) : okay
+' Start VGA driver - starts a cog
+' returns false if no cog available
+'
+' ptr_params: pointer to VGA parameters
+' Structure:
+' [0]vga_status      'status: off/visible/invisible  read-only
+'    vga_enable      'enable: off/on                 write-only
+'    vga_pins        'pins: byte(2),topbit(3)        write-only
+'    vga_mode        'mode: interlace,hpol,vpol      write-only
+'    vga_videobase   'video base @word               write-only
+'    vga_colorbase   'color base @long               write-only
+'    vga_hc          'horizontal cells               write-only
+'    vga_vc          'vertical cells                 write-only
+'    vga_hx          'horizontal cell expansion      write-only
+'    vga_vx          'vertical cell expansion        write-only
+'    vga_ho          'horizontal offset              write-only
+'    vga_vo          'vertical offset                write-only
+'    vga_hd          'horizontal display pixels      write-only
+'    vga_hf          'horizontal front-porch pixels  write-only
+'    vga_hs          'horizontal sync pixels         write-only
+'    vga_hb          'horizontal back-porch pixels   write-only
+'    vga_vd          'vertical display lines         write-only
+'    vga_vf          'vertical front-porch lines     write-only
+'    vga_vs          'vertical sync lines            write-only
+'    vga_vb          'vertical back-porch lines      write-only
+'[20]vga_rate        'pixel rate (Hz)                write-only
 
-    Stop
-    okay := cog := cognew(@entry, vgaptr) + 1
+    stop
+    okay := cog := cognew(@entry, ptr_params) + 1
 
 PUB Stop
-'' Stop VGA driver - frees a cog
+' Stop VGA driver - frees a cog
 
     if cog
         cogstop(cog~ - 1)
@@ -390,182 +412,178 @@ _rate                   res     1       '500_000+       read-only
                         fit     COLORTABLE              'fit underneath COLORTABLE ($180-$1BF)
 
 
-''
-''___
-''VAR                   'VGA parameters - 21 contiguous longs
-''
-''  long  vga_status    '0/1/2 = off/visible/invisible      read-only
-''  long  vga_enable    '0/non-0 = off/on                   write-only
-''  long  vga_pins      '%pppttt = pins                     write-only
-''  long  vga_mode      '%tihv = tile,interlace,hpol,vpol   write-only
-''  long  vga_screen    'pointer to screen (words)          write-only
-''  long  vga_colors    'pointer to colors (longs)          write-only
-''  long  vga_ht        'horizontal tiles                   write-only
-''  long  vga_vt        'vertical tiles                     write-only
-''  long  vga_hx        'horizontal tile expansion          write-only
-''  long  vga_vx        'vertical tile expansion            write-only
-''  long  vga_ho        'horizontal offset                  write-only
-''  long  vga_vo        'vertical offset                    write-only
-''  long  vga_hd        'horizontal display ticks           write-only
-''  long  vga_hf        'horizontal front porch ticks       write-only
-''  long  vga_hs        'horizontal sync ticks              write-only
-''  long  vga_hb        'horizontal back porch ticks        write-only
-''  long  vga_vd        'vertical display lines             write-only
-''  long  vga_vf        'vertical front porch lines         write-only
-''  long  vga_vs        'vertical sync lines                write-only
-''  long  vga_vb        'vertical back porch lines          write-only
-''  long  vga_rate      'tick rate (Hz)                     write-only
-''
-''The preceding VAR section may be copied into your code.
-''After setting variables, do start(@vga_status) to start driver.
-''
-''All parameters are reloaded each superframe, allowing you to make live
-''changes. To minimize flicker, correlate changes with vga_status.
-''
-''Experimentation may be required to optimize some parameters.
-''
-''Parameter descriptions:
-''  __________
-''  vga_status
-''
-''    driver sets this to indicate status:
-''      0: driver disabled (vga_enable = 0 or CLKFREQ < 16MHz)
-''      1: currently outputting invisible sync data
-''      2: currently outputting visible screen data
-''  __________
-''  vga_enable
-''
-''        0: disable (pins will be driven low, reduces power)
-''    non-0: enable
-''  ________
-''  vga_pins
-''
-''    bits 5..3 select pin group:
-''      %000: pins 7..0
-''      %001: pins 15..8
-''      %010: pins 23..16
-''      %011: pins 31..24
-''      %100: pins 39..32
-''      %101: pins 47..40
-''      %110: pins 55..48
-''      %111: pins 63..56
-''
-''    bits 2..0 select top pin within group
-''    for example: %01111 (15) will use pins %01000-%01111 (8-15)
-''  ________
-''  vga_mode
-''
-''    bit 3 selects between 16x16 and 16x32 pixel tiles:
-''      0: 16x16 pixel tiles (tileheight = 16)
-''      1: 16x32 pixel tiles (tileheight = 32)
-''
-''    bit 2 controls interlace:
-''      0: progressive scan (less flicker, good for motion, required for LCD monitors)
-''      1: interlaced scan (allows you to double vga_vt, good for text)
-''
-''    bits 1 and 0 select horizontal and vertical sync polarity, respectively
-''      0: active low
-''      1: active high
-''  __________
-''  vga_screen
-''
-''    pointer to words which define screen contents (left-to-right, top-to-bottom)
-''      number of words must be vga_ht * vga_vt
-''      each word has two bitfields: a 6-bit colorset ptr and a 10-bit pixelgroup ptr
-''        bits 15..10: select the colorset* for the associated pixel tile
-''        bits 9..0: select the pixelgroup** address %ppppppppppcccc00 (p=address, c=0..15)
-''
-''       * colorsets are longs which each define four 8-bit colors
-''
-''      ** pixelgroups are <tileheight> longs which define (left-to-right, top-to-bottom) the 2-bit
-''         (four color) pixels that make up a 16x16 or a 16x32 pixel tile
-''  __________
-''  vga_colors
-''
-''    pointer to longs which define colorsets
-''      number of longs must be 1..64
-''      each long has four 8-bit fields which define colors for 2-bit (four color) pixels
-''      first long's bottom color is also used as the screen background color
-''      8-bit color fields are as follows:
-''        bits 7..2: actual state of pins 7..2 within pin group*
-''        bits 1..0: don't care (used within driver for hsync and vsync)
-''
-''    * it is suggested that:
-''        bits/pins 7..6 are used for red
-''        bits/pins 5..4 are used for green
-''        bits/pins 3..2 are used for blue
-''      for each bit/pin set, sum 240 and 470-ohm resistors to form 75-ohm 1V signals
-''      connect signal sets to RED, GREEN, and BLUE on VGA connector
-''      always connect group pin 1 to HSYNC on VGA connector via 240-ohm resistor
-''      always connect group pin 0 to VSYNC on VGA connector via 240-ohm resistor
-''  ______
-''  vga_ht
-''
-''    horizontal number of pixel tiles - must be at least 1
-''  ______
-''  vga_vt
-''
-''    vertical number of pixel tiles - must be at least 1
-''  ______
-''  vga_hx
-''
-''    horizontal tile expansion factor - must be at least 1
-''
-''    make sure 16 * vga_ht * vga_hx + ||vga_ho is equal to or at least 16 less than vga_hd
-''  ______
-''  vga_vx
-''
-''    vertical tile expansion factor - must be at least 1
-''
-''    make sure <tileheight> * vga_vt * vga_vx + ||vga_vo does not exceed vga_vd
-''      (for interlace, use <tileheight> / 2 * vga_vt * vga_vx + ||vga_vo)
-''  ______
-''  vga_ho
-''
-''    horizontal offset in ticks - pos/neg value (0 recommended)
-''    shifts the display right/left
-''  ______
-''  vga_vo
-''
-''    vertical offset in lines - pos/neg value (0 recommended)
-''    shifts the display up/down
-''  ______
-''  vga_hd
-''
-''    horizontal display ticks
-''  ______
-''  vga_hf
-''
-''    horizontal front porch ticks
-''  ______
-''  vga_hs
-''
-''    horizontal sync ticks
-''  ______
-''  vga_hb
-''
-''    horizontal back porch ticks
-''  ______
-''  vga_vd
-''
-''    vertical display lines
-''  ______
-''  vga_vf
-''
-''    vertical front porch lines
-''  ______
-''  vga_vs
-''
-''    vertical sync lines
-''  ______
-''  vga_vb
-''
-''    vertical back porch lines
-''  ________
-''  vga_rate
-''
-''    tick rate in Hz
-''
-''    driver will limit value to be within 500KHz and 128MHz
-''    pixel rate (vga_rate / vga_hx) should be no more than CLKFREQ / 4
+'
+'___
+'VAR                   'VGA parameters - 21 contiguous longs
+'
+'  long  vga_status    '0/1/2 = off/visible/invisible      read-only
+'  long  vga_enable    '0/non-0 = off/on                   write-only
+'  long  vga_pins      '%pppttt = pins                     write-only
+'  long  vga_mode      '%tihv = tile,interlace,hpol,vpol   write-only
+'  long  vga_screen    'pointer to screen (words)          write-only
+'  long  vga_colors    'pointer to colors (longs)          write-only
+'  long  vga_ht        'horizontal tiles                   write-only
+'  long  vga_vt        'vertical tiles                     write-only
+'  long  vga_hx        'horizontal tile expansion          write-only
+'  long  vga_vx        'vertical tile expansion            write-only
+'  long  vga_ho        'horizontal offset                  write-only
+'  long  vga_vo        'vertical offset                    write-only
+'  long  vga_hd        'horizontal display ticks           write-only
+'  long  vga_hf        'horizontal front porch ticks       write-only
+'  long  vga_hs        'horizontal sync ticks              write-only
+'  long  vga_hb        'horizontal back porch ticks        write-only
+'  long  vga_vd        'vertical display lines             write-only
+'  long  vga_vf        'vertical front porch lines         write-only
+'  long  vga_vs        'vertical sync lines                write-only
+'  long  vga_vb        'vertical back porch lines          write-only
+'  long  vga_rate      'tick rate (Hz)                     write-only
+'
+'The preceding VAR section may be copied into your code.
+'After setting variables, do start(@vga_status) to start driver.
+'
+'All parameters are reloaded each superframe, allowing you to make live
+'changes. To minimize flicker, correlate changes with vga_status.
+'
+'Experimentation may be required to optimize some parameters.
+'
+'Parameter descriptions:
+'  __________
+'  vga_status
+'
+'    driver sets this to indicate status:
+'      0: driver disabled (vga_enable = 0 or CLKFREQ < 16MHz)
+'      1: currently outputting invisible sync data
+'      2: currently outputting visible screen data
+'  __________
+'  vga_enable
+'
+'        0: disable (pins will be driven low, reduces power)
+'    non-0: enable
+'  ________
+'  vga_pins
+'
+'    bits 5..3 select pin group:
+'      %000: pins 7..0
+'      %001: pins 15..8
+'      %010: pins 23..16
+'      %011: pins 31..24
+'
+'    bits 2..0 select top pin within group
+'    for example: %01111 (15) will use pins %01000-%01111 (8-15)
+'  ________
+'  vga_mode
+'
+'    bit 3 selects between 16x16 and 16x32 pixel tiles:
+'      0: 16x16 pixel tiles (tileheight = 16)
+'      1: 16x32 pixel tiles (tileheight = 32)
+'
+'    bit 2 controls interlace:
+'      0: progressive scan (less flicker, good for motion, required for LCD monitors)
+'      1: interlaced scan (allows you to double vga_vt, good for text)
+'
+'    bits 1 and 0 select horizontal and vertical sync polarity, respectively
+'      0: active low
+'      1: active high
+'  __________
+'  vga_screen
+'
+'    pointer to words which define screen contents (left-to-right, top-to-bottom)
+'      number of words must be vga_ht * vga_vt
+'      each word has two bitfields: a 6-bit colorset ptr and a 10-bit pixelgroup ptr
+'        bits 15..10: select the colorset* for the associated pixel tile
+'        bits 9..0: select the pixelgroup** address %ppppppppppcccc00 (p=address, c=0..15)
+'
+'       * colorsets are longs which each define four 8-bit colors
+'
+'      ** pixelgroups are <tileheight> longs which define (left-to-right, top-to-bottom) the 2-bit
+'         (four color) pixels that make up a 16x16 or a 16x32 pixel tile
+'  __________
+'  vga_colors
+'
+'    pointer to longs which define colorsets
+'      number of longs must be 1..64
+'      each long has four 8-bit fields which define colors for 2-bit (four color) pixels
+'      first long's bottom color is also used as the screen background color
+'      8-bit color fields are as follows:
+'        bits 7..2: actual state of pins 7..2 within pin group*
+'        bits 1..0: don't care (used within driver for hsync and vsync)
+'
+'    * it is suggested that:
+'        bits/pins 7..6 are used for red
+'        bits/pins 5..4 are used for green
+'        bits/pins 3..2 are used for blue
+'      for each bit/pin set, sum 240 and 470-ohm resistors to form 75-ohm 1V signals
+'      connect signal sets to RED, GREEN, and BLUE on VGA connector
+'      always connect group pin 1 to HSYNC on VGA connector via 240-ohm resistor
+'      always connect group pin 0 to VSYNC on VGA connector via 240-ohm resistor
+'  ______
+'  vga_ht
+'
+'    horizontal number of pixel tiles - must be at least 1
+'  ______
+'  vga_vt
+'
+'    vertical number of pixel tiles - must be at least 1
+'  ______
+'  vga_hx
+'
+'    horizontal tile expansion factor - must be at least 1
+'
+'    make sure 16 * vga_ht * vga_hx + ||vga_ho is equal to or at least 16 less than vga_hd
+'  ______
+'  vga_vx
+'
+'    vertical tile expansion factor - must be at least 1
+'
+'    make sure <tileheight> * vga_vt * vga_vx + ||vga_vo does not exceed vga_vd
+'      (for interlace, use <tileheight> / 2 * vga_vt * vga_vx + ||vga_vo)
+'  ______
+'  vga_ho
+'
+'    horizontal offset in ticks - pos/neg value (0 recommended)
+'    shifts the display right/left
+'  ______
+'  vga_vo
+'
+'    vertical offset in lines - pos/neg value (0 recommended)
+'    shifts the display up/down
+'  ______
+'  vga_hd
+'
+'    horizontal display ticks
+'  ______
+'  vga_hf
+'
+'    horizontal front porch ticks
+'  ______
+'  vga_hs
+'
+'    horizontal sync ticks
+'  ______
+'  vga_hb
+'
+'    horizontal back porch ticks
+'  ______
+'  vga_vd
+'
+'    vertical display lines
+'  ______
+'  vga_vf
+'
+'    vertical front porch lines
+'  ______
+'  vga_vs
+'
+'    vertical sync lines
+'  ______
+'  vga_vb
+'
+'    vertical back porch lines
+'  ________
+'  vga_rate
+'
+'    tick rate in Hz
+'
+'    driver will limit value to be within 500KHz and 128MHz
+'    pixel rate (vga_rate / vga_hx) should be no more than CLKFREQ / 4
 

@@ -122,7 +122,7 @@ PUB start(pins)
   vga_pins := pins
   vga_videobase := @screen
   vga_colorbase := @vgacolors
-  result := vga.start(@vga_status)
+  result := vga.startx(@vga_status)
 
 
 '' Stop terminal - frees a cog
