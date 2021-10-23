@@ -5,7 +5,7 @@
     Description: Demo of the INA219 driver
     Copyright (c) 2021
     Started Sep 18, 2019
-    Updated May 30, 2021
+    Updated Oct 23, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -44,7 +44,7 @@ PUB Main{} | vbus, vshunt, i, p
 
     ina219.preset320s_2a_100mohm{}
 
-    ina219.currentbias(4096)                    ' 0..65535
+    ina219.currentscale(4096)                   ' 0..65535
                                                 ' (>0 for current readings)
 
     ser.position(VBUS_COL, 3)
