@@ -94,7 +94,7 @@ PUB Box(x0, y0, x1, y1, color, filled) | x, y
                 repeat x from x0 to x1
                     plot(x, y, color)
 #else
-                x := ||(x1-x0)
+                x := ||(x1-x0)+1
                 if x1 < x0
                     repeat y from y0 to y1
                         memFill(x1, y, color, x)
