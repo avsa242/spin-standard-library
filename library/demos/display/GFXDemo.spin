@@ -6,7 +6,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Apr 11, 2021
-    Updated: Oct 17, 2021
+    Updated: Oct 24, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,7 +17,8 @@
 '#define SSD1331
 '#define SSD1351
 '#define ST7735
-#define VGABITMAP6BPP
+'#define VGABITMAP6BPP
+#define HUB75
 
 ' Uncomment to bypass the draw buffer, and draw directly to the display
 '   (required if the buffer would be too big for RAM)
@@ -48,6 +49,8 @@ OBJ
     disp    : "display.lcd.st7735.spi"
 #elseifdef VGABITMAP6BPP
     disp    : "display.vga.bitmap.160x120"
+#elseifdef HUB75
+    disp    : "display.led.hub75"
 #endif
 
 CON
@@ -59,8 +62,8 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    WIDTH       = 96                            ' change these for your
-    HEIGHT      = 64                            '   display
+    WIDTH       = 64                            ' change these for your
+    HEIGHT      = 32                            '   display
 
 ' I2C-connected displays                        ' free-form I/O connections
     SCL_PIN     = 28
@@ -77,6 +80,13 @@ CON
 
 ' VGA
     VGA_PINGRP  = 2                             ' 0, 1, 2, 3
+
+' HUB75
+    RGB_BASEPIN = 0
+    ADDR_BASEPIN= 6
+    CLKPIN      = 10
+    LATPIN      = 11
+    BLPIN       = 12
 ' --
 
     BPP         = disp#BYTESPERPX
@@ -88,6 +98,8 @@ CON
 #elseifdef SSD1309
     BUFFSZ      = (WIDTH * HEIGHT) / 8
 #elseifdef VGABITMAP6BPP
+    BUFFSZ      = (WIDTH * HEIGHT) * BPP
+#elseifdef HUB75
     BUFFSZ      = (WIDTH * HEIGHT) * BPP
 #else
     BUFFSZ      = ((WIDTH * HEIGHT) * BPP) / 2
@@ -108,6 +120,8 @@ VAR
     byte _framebuff[BUFFSZ]                     ' 1bpp
 #elseifdef VGABITMAP6BPP
     byte _framebuff[BUFFSZ]                     ' 6bpp
+#elseifdef HUB75
+    byte _framebuff[BUFFSZ]                     ' 3bpp
 #else
     word _framebuff[BUFFSZ]                     ' 16bpp
 #endif
@@ -348,6 +362,8 @@ PUB Setup{}
 #elseifdef ST7735
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_greentab128x128{}
+#elseifdef HUB75
+    if disp.startx(RGB_BASEPIN, ADDR_BASEPIN, BLPIN, CLKPIN, LATPIN, WIDTH, HEIGHT, @_framebuff)
 #endif
         disp.fontspacing(1, 1)
         disp.fontscale(1)
@@ -376,6 +392,8 @@ DAT
     _drv_name   byte "ST7735", 0
 #elseifdef VGABITMAP6BPP
     _drv_name   byte "VGA6BPP", 0
+#elseifdef HUB75
+    _drv_name   byte "HUB75", 0
 #endif
 {
     --------------------------------------------------------------------------------------------------------
