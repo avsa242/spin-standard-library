@@ -5,7 +5,7 @@
     Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2021
     Started May 19, 2019
-    Updated Oct 18, 2021
+    Updated Oct 24, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -219,6 +219,8 @@ PUB Clear{}
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #elseifdef VGABITMAP6BPP
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
+#elseifdef HUB75
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
 #endif
 
@@ -395,6 +397,8 @@ PUB Plot(x, y, color)
             return
 #elseifdef VGABITMAP6BPP
     byte[_ptr_drawbuffer][x + (y * _disp_width)] := (color << 2) | $3
+#elseifdef HUB75
+    byte[_ptr_drawbuffer][x + (y * _disp_width)] := color
 #else
 #warning "No supported display types defined!"
 #endif
@@ -425,6 +429,8 @@ PUB Point(x, y): pix_clr
     return (byte[_ptr_drawbuffer][(x + (y >> 3) * _disp_width)] & (1 << (y & 7)) <> 0) * -1
 #elseifdef VGABITMAP6BPP
     return byte[_ptr_drawbuffer][x + (y * _disp_width)] >> 2
+#elseifdef HUB75
+    return byte[_ptr_drawbuffer][x + (y * _disp_width)]
 #else
 #warning "No supported display types defined!"
 #endif
@@ -523,6 +529,10 @@ PUB ScrollDown(sx, sy, ex, ey) | scr_width, src, dest, x, y
         bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
         copy(sx, y, ex, y, sx, y+1)
+#elseifdef HUB75
+        src := sx + (y * _disp_width)
+        dest := sx + ((y+1) * _disp_width)
+        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #else
 #warning "No supported display types defined!"
 #endif
@@ -560,6 +570,10 @@ PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
         bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
         copy(sx, y, ex, y, sx-1, y)
+#elseifdef HUB75
+        src := sx + (y * _disp_width)
+        dest := (sx-1) + (y * _disp_width)
+        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #else
 #warning "No supported display types defined!"
 #endif
@@ -597,6 +611,10 @@ PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y
         bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
         copy(sx, y, ex, y, sx+1, y)
+#elseifdef HUB75
+        src := sx + (y * _disp_width)
+        dest := (sx+1) + (y * _disp_width)
+        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #else
 #warning "No supported display types defined!"
 #endif
@@ -634,6 +652,10 @@ PUB ScrollUp(sx, sy, ex, ey) | scr_width, src, dest, x, y
         bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #elseifdef LEDMATRIX_CHARLIEPLEXED
         copy(sx, y, ex, y, sx, y-1)
+#elseifdef HUB75
+        src := sx + (y * _disp_width)
+        dest := sx + ((y-1) * _disp_width)
+        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #else
 #warning "No supported display types defined!"
 #endif
@@ -669,6 +691,8 @@ PRI memFill(xs, ys, val, count)
     bytefill(ptr_start, val, count)
 #elseifdef VGABITMAP6BPP
     bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), (val << 2) | $3, count)
+#elseifdef HUB75
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 #endif
 #include "lib.terminal.spin"
 
