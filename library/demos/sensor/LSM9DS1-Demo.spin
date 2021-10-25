@@ -5,7 +5,7 @@
     Description: Demo of the LSM9DS1 driver
     Copyright (c) 2021
     Started Aug 12, 2017
-    Updated May 31, 2021
+    Updated Oct 2, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,10 +18,19 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    SCL_PIN     = 0
-    SDIO_PIN    = 1
-    CS_AG_PIN   = 2
-    CS_M_PIN    = 3
+' I2C configuration
+    I2C_SCL     = 28
+    I2C_SDA     = 29
+    I2C_HZ      = 400_000                       ' 400_000 max
+
+' SPI configuration
+
+    SPI_CS_AG   = 0
+    SPI_CS_M    = 1
+    SPI_SCL     = 2
+    SPI_SDIO    = 3                             ' SPI (3-wire only)
+    SPI_SDA     = 3
+    SPI_SDO     = 4                             ' SPI (4-wire only)
 ' --
 
     DAT_X_COL   = 20
@@ -34,12 +43,12 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.9dof.lsm9ds1.spi"
+    imu     : "sensor.imu.9dof.lsm9ds1.i2cspi"
 
 PUB Main{}
 
     setup{}
-    imu.preset_xl_g_m_3wspi{}                   ' default settings, but enable
+    imu.preset_active{}                         ' default settings, but enable
                                                 ' reading mag through same bus
                                                 ' as accel and gyro, and set
                                                 ' scale factor for all three
@@ -136,12 +145,18 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if imu.startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDIO_PIN)
-        ser.strln(string("LSM9DS1 driver started"))
+#ifdef LSM9DS1_I2C
+    if imu.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+        ser.strln(string("LSM9DS1 driver started (I2C)"))
+#elseifdef LSM9DS1_SPI3W
+    if imu.startx(SPI_CS_AG, SPI_CS_M, SPI_SCL, SPI_SDIO)
+        ser.strln(string("LSM9DS1 driver started (SPI 3-wire)"))
+#elseifdef LSM9DS1_SPI4W
+    if imu.startx(SPI_CS_AG, SPI_CS_M, SPI_SCL, SPI_SDA, SPI_SDO)
+        ser.strln(string("LSM9DS1 driver started (SPI 4-wire)"))
+#endif
     else
         ser.strln(string("LSM9DS1 driver failed to start - halting"))
-        imu.stop{}
-        time.msleep(5)
         repeat
 
 DAT

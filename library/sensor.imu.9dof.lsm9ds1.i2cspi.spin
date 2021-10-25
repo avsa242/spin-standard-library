@@ -5,12 +5,21 @@
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
     Copyright (c) 2021
     Started Aug 12, 2017
-    Updated Jun 5, 2021
+    Updated Oct 25, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
-
+#ifdef LSM9DS1_SPI3W
+#define LSM9DS1_SPI
+#elseifdef LSM9DS1_SPI4W
+#define LSM9DS1_SPI
+#endif
 CON
+
+    DEF_SCL                 = 28
+    DEF_SDA                 = 29
+    DEF_HZ                  = 100_000
+    I2C_MAX_FREQ            = core#I2C_MAX_FREQ
 
 ' Indicate to user apps how many Degrees of Freedom each sub-sensor has
 '   (also imply whether or not it has a particular sensor)
@@ -115,7 +124,13 @@ CON
 
 OBJ
 
+#ifdef LSM9DS1_I2C
+    i2c     : "com.i2c"
+#elseifdef LSM9DS1_SPI
     spi     : "com.spi.4w"
+#else
+#error "One of LSM9DS1_I2C, LSM9DS1_SPI3W, or LSM9DS1_SPI4W must be defined"
+#endif
     core    : "core.con.lsm9ds1"
     time    : "time"
 
@@ -130,6 +145,23 @@ VAR
 PUB Null{}
 ' This is not a top-level object
 
+#ifdef LSM9DS1_I2C
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+' Start using custom I/O pins
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   I2C_HZ =< core#I2C_MAX_FREQ
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+            time.usleep(core#TPOR)              ' startup time
+
+            if deviceid{} == core#WHOAMI_BOTH_RESP
+                xlgsoftreset{}                  ' reset/initialize to
+                magsoftreset{}                  ' POR defaults
+                return status                   ' validate device
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
+#elseifdef LSM9DS1_SPI3W
 PUB Startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDIO_PIN): status
 ' Start using custom I/O pins
     if lookdown(SCL_PIN: 0..31) and lookdown(SDIO_PIN: 0..31) and {
@@ -142,19 +174,52 @@ PUB Startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDIO_PIN): status
             dira[_CS_M] := 1
             time.usleep(core#TPOR)              ' startup time
 
-            xlgsoftreset{}                      ' reset/initialize to
-            magsoftreset{}                      ' POR defaults
+            spimode(3)
 
             if deviceid{} == core#WHOAMI_BOTH_RESP
+                xlgsoftreset{}                  ' reset/initialize to
+                magsoftreset{}                  ' POR defaults
                 return status                   ' validate device
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
+#elseifdef LSM9DS1_SPI4W
+PUB Startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
+' Start using custom I/O pins
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
+}   lookdown(CS_AG_PIN: 0..31) and lookdown(CS_M_PIN: 0..31) and {
+}   lookdown(SDO_PIN: 0..31)
+        if (status := spi.init(SCL_PIN, SDA_PIN, SDO_PIN, core#SPI_MODE))
+            longmove(@_CS_AG, @CS_AG_PIN, 2)
+            outa[_CS_AG] := 1                   ' make sure CS starts
+            outa[_CS_M] := 1                    '   high
+            dira[_CS_AG] := 1
+            dira[_CS_M] := 1
+            time.usleep(core#TPOR)              ' startup time
+
+            spimode(4)
+
+            xlgsoftreset{}                      ' reset/initialize to
+            magsoftreset{}                      ' POR defaults
+
+            if deviceid{} == core#WHOAMI_BOTH_RESP
+                xlgsoftreset{}                  ' reset/initialize to
+                magsoftreset{}                  ' POR defaults
+                return status                   ' validate device
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
+#endif
 
 PUB Stop{}
 
+#ifdef LSM9DS1_I2C
+    i2c.deinit{}
+#elseifdef LSM9DS1_SPI
     spi.deinit{}
+#endif
 
 PUB Defaults{}
 ' Factory default settings
@@ -162,26 +227,26 @@ PUB Defaults{}
     magsoftreset{}
     time.usleep(core#TPOR)
 
-PUB Preset_XL_G_M_3WSPI{}
+PUB Preset_Active{}
 ' Like Defaults(), but
 '   * enables output data (XL/G: 59Hz, Mag: 40Hz)
-'   * sets SPI mode to 3-wire
-'   * disables magnetometer I2C interface
     xlgsoftreset{}
     magsoftreset{}
     time.usleep(core#TPOR)
 
-' Set both the Accel/Gyro and Mag to 3-wire SPI mode
-    setspi3wiremode{}
     addressautoinc(TRUE)
+#ifdef LSM9DS1_I2C
+    magi2c(TRUE)                                ' enable mag I2C interface
+#elseifdef LSM9DS1_SPI
     magi2c(FALSE)                               ' disable mag I2C interface
-    xlgdatablockupdate(TRUE)                    ' ensure MSB & LSB are from
-    magblockupdate(TRUE)                        '   the same "frame" of data
+#endif
+    blockupdate{}
     xlgdatarate(59)                             ' arbitrary
-    magdatarate(40_000)                         '
+    magdatarate(40)                             '
     gyroscale(245)                              ' already the POR defaults,
     accelscale(2)                               ' but still need to call these
     magscale(4)                                 ' to set scale factor hub vars
+    magopmode(MAG_OPMODE_CONT)
 
 PUB AccelAxisEnabled(mask): curr_mask
 ' Enable data output for Accelerometer - per axis
@@ -596,6 +661,9 @@ PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_y] := ~~tmp.word[Y_AXIS] - _gbiasraw[Y_AXIS]
     long[ptr_z] := ~~tmp.word[Z_AXIS] - _gbiasraw[Z_AXIS]
 
+PUB GyroDataOverrun{}
+' dummy method
+
 PUB GyroDataRate(rate): curr_rate
 ' Set Gyroscope Output Data Rate, in Hz
 '   Valid values: 0, 15, 60, 119, 238, 476, 952
@@ -808,7 +876,7 @@ PUB GyroIntThresh(x, y, z, rw) | gscl, lsb, tmp[2], axis
             readreg(XLG, core#INT_GEN_THS_XH_G, 6, @tmp)
             ' scale values up to output
             '   data scale (micro-dps)
-            repeat axis from X_AXIS to Z_AXIS
+            repeat axis from X_AXIS to Z_AXIS   'xxx review - much diff. than spin2
                 tmp.word[axis] := ((tmp.word[axis] & core#INT_G_BITS) << 1) ~> 1
             long[x] := ~~tmp.word[X_AXIS] * lsb
             long[y] := ~~tmp.word[Y_AXIS] * lsb
@@ -896,16 +964,6 @@ PUB IntInactivity{}: flag
     readreg(XLG, core#STATUS_REG, 1, @flag)
     return (((flag >> core#INACT) & 1) == 1)
 
-PUB MagBlockUpdate(state): curr_state
-' Enable block update for magnetometer data
-'   Valid values:
-'       TRUE(-1 or 1): Output registers not updated until MSB and LSB have been
-'           read
-'       FALSE(0): Continuous update
-'   Any other value polls the chip and returns the current setting
-    return booleanChoice (MAG, core#CTRL_REG5_M, core#BDU_M, core#BDU_M_MASK,{
-}   core#CTRL_REG5_M_MASK, state, 1)
-
 PUB MagBias(mxbias, mybias, mzbias, rw) | tmp[2]
 ' Read or write/manually set Magnetometer calibration offset values
 '   Valid values:
@@ -964,7 +1022,7 @@ PUB MagDataOverrun{}: status
 
 PUB MagDataRate(rate): curr_rate
 ' Set Magnetometer Output Data Rate, in Hz
-'   Valid values: 0 (0.625Hz), 1 (1.250), 2 (2.5), 5, *10, 20, 40, 80
+'   Valid values: 0 (0.625), 1 (1.250), 2 (2.5), 5, *10, 20, 40, 80
 '   Any other value polls the chip and returns the current setting
     curr_rate := 0
     readreg(MAG, core#CTRL_REG1_M, 1, @curr_rate)
@@ -1185,7 +1243,11 @@ PUB MagSoftreset{} | tmp
 
     tmp := 0                                    ' clear reset bit manually
     writereg(MAG, core#CTRL_REG2_M, 1, @tmp)    ' to come out of reset
-    setspi3wiremode{}
+#ifdef LSM9DS1_SPI3W
+    spimode(3)
+#elseifdef LSM9DS1_SPI4W
+    spimode(4)
+#endif
 
 PUB Temperature{}: temp
 ' Get temperature from chip
@@ -1223,15 +1285,6 @@ PUB TempScale(scale): curr_scl
         other:
             return _temp_scale
 
-PRI XLGDataBlockUpdate(state): curr_state
-' Wait until both MSB and LSB of output registers are read before updating
-'   Valid values:
-'       FALSE (0): Continuous update
-'       TRUE (1 or -1): Do not update until both MSB and LSB are read
-'   Any other value polls the chip and returns the current setting
-    return booleanchoice(XLG, core#CTRL_REG8, core#BDU, core#BDU_MASK,{
-}   core#CTRL_REG8_MASK, state, 1)
-
 PUB XLGDataRate(rate): curr_rate
 ' Set output data rate of accelerometer and gyroscope, in Hz
 '   Valid values: 0 (power down), 14, 59, 119, 238, 476, 952
@@ -1265,7 +1318,7 @@ PUB XLGIntActiveState(state): curr_state
 
 PUB XLGSoftreset{} | tmp
 ' Perform soft-reset of accelerometer/gyroscope
-    tmp := core#XLG_SW_RESET
+    tmp := core#XLG_SW_RESET | (1 << core#BOOT)
     writereg(XLG, core#CTRL_REG8, 1, @tmp)
     time.msleep(10)
 
@@ -1293,22 +1346,54 @@ PRI addressAutoInc(state): curr_state
         other:
             return (((curr_state >> core#IF_ADD_INC) & 1) == 1)
 
-    state := ((curr_state & core#IF_ADD_INC) | state)
+    state := ((curr_state & core#IF_ADD_INC_MASK) | state)
     writereg(XLG, core#CTRL_REG8, 1, @state)
+
+PRI blockUpdate{} | tmp
+' Wait to update the output data registers until both the MSB and LSB
+'   are updated internally
+    tmp := 0
+    readreg(XLG, core#CTRL_REG8, 1, @tmp)
+    tmp |= (1 << core#BDU)
+    writereg(XLG, core#CTRL_REG8, 1, @tmp)
+
+    tmp := 0
+    readreg(MAG, core#CTRL_REG5_M, 1, @tmp)
+    tmp |= (1 << core#BDU_M)
+    writereg(MAG, core#CTRL_REG5_M, 1, @tmp)
 
 PRI MagI2C(state): curr_state
 ' Enable Magnetometer I2C interface
 '   Valid values: *TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
-    return booleanchoice(MAG, core#CTRL_REG3_M, core#M_I2C_DIS, {
-}   core#M_I2C_DIS_MASK, core#CTRL_REG3_M_MASK, state, -1)
+    curr_state := 0
+    readreg(MAG, core#CTRL_REG3_M, 1, @curr_state)
+    case ||(state)
+        0, 1:
+            ' setting the M_I2C_DIS bit _disables_ I2C, so invert
+            '   the value passed to this method
+            state := (||(state) ^ 1) << core#M_I2C_DIS
+        other:
+            return ((((curr_state >> core#M_I2C_DIS) & 1) ^ 1) == 1)
 
-PRI setSPI3WireMode{} | tmp
-' Set SPI interface to 3-wire mode
-    tmp := core#XLG_3WSPI
-    writereg(XLG, core#CTRL_REG8, 1, @tmp)
-    tmp := core#M_3WSPI
-    writereg(MAG, core#CTRL_REG3_M, 1, @tmp)
+    state := ((curr_state & core#M_I2C_DIS_MASK) | state)
+    writereg(MAG, core#CTRL_REG3_M, 1, @state)
+
+PRI SPIMode(mode)
+' Set SPI interface mode
+    case mode
+        3:
+            mode := core#XLG_3WSPI              ' set the SIM bit
+            writereg(XLG, core#CTRL_REG8, 1, @mode)
+            mode := core#M_3WSPI
+            writereg(MAG, core#CTRL_REG3_M, 1, @mode)
+        4:
+            mode := 0                           ' clear all bits
+            writereg(XLG, core#CTRL_REG8, 1, @mode)
+            mode := 0
+            writereg(MAG, core#CTRL_REG3_M, 1, @mode)
+        other:
+            return
 
 PRI booleanChoice(device, reg_nr, field, fieldmask, regmask, choice, invertchoice): bool
 ' Reusable method for writing a field that is of a boolean or on-off type
@@ -1332,7 +1417,7 @@ PRI booleanChoice(device, reg_nr, field, fieldmask, regmask, choice, invertchoic
     choice := ((bool & fieldmask) | choice) & regmask
     writereg(device, reg_nr, 1, @choice)
 
-PRI readReg(device, reg_nr, nr_bytes, ptr_buff) | tmp
+PRI readReg(device, reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read from device
 ' Validate register - allow only registers that are
 '   not 'reserved' (ST states reading should only be performed on registers listed in
@@ -1340,29 +1425,55 @@ PRI readReg(device, reg_nr, nr_bytes, ptr_buff) | tmp
     case device
         XLG:
             case reg_nr
-                $04..$0D, $0F..$24, $26..$37:
-                    outa[_CS_AG] := 0
-                    spi.wr_byte(reg_nr | READ)
-                    spi.rdblock_lsbf(ptr_buff, nr_bytes)
-                    outa[_CS_AG] := 1
+                $15, $16, $17, $18, $1A, $1C, $28, $2A, $2C:
+                $04..$0D, $0F..$14, $1E..$24, $26, $27, $2E..$37:
                 other:
                     return
+#ifdef LSM9DS1_I2C
+            cmd_pkt.byte[0] := core#SLAVE_ADDR_XLG
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.start{}
+            i2c.write(core#SLAVE_ADDR_XLG | 1)
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
+            i2c.stop{}
+#elseifdef LSM9DS1_SPI
+            outa[_CS_AG] := 0
+            spi.wr_byte(reg_nr | READ)
+            spi.rdblock_lsbf(ptr_buff, nr_bytes)
+            outa[_CS_AG] := 1
+#endif
         MAG:
             case reg_nr
-                $05..$0A, $0F, $20..$24, $27..$2D, $30..$33:
-                    reg_nr |= READ
-                    reg_nr |= MS
-                    outa[_CS_M] := 0
-                    spi.wr_byte(reg_nr)
-                    spi.rdblock_lsbf(ptr_buff, nr_bytes)
-                    outa[_CS_M] := 1
+                $05, $07, $09, $28, $2A, $2C:   ' multi-byte regs
+#ifdef LSM9DS1_I2C
+                    reg_nr |= core#MB_I2C       ' multi-byte trans. enabled
+#elseifdef LSM9DS1_SPI
+                    reg_nr |= core#MS_SPI       ' multi-byte trans. enabled
+#endif
+                $0F, $20..$24, $27, $30..$33:
                 other:
                     return
-
+#ifdef LSM9DS1_I2C
+            cmd_pkt.byte[0] := core#SLAVE_ADDR_MAG
+            cmd_pkt.byte[1] := reg_nr
+            i2c.start{}
+            i2c.wrblock_lsbf(@cmd_pkt, 2)
+            i2c.start{}
+            i2c.write(core#SLAVE_ADDR_MAG | 1)
+            i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
+            i2c.stop{}
+#elseifdef LSM9DS1_SPI
+            outa[_CS_M] := 0
+            spi.wr_byte(reg_nr | READ)
+            spi.rdblock_lsbf(ptr_buff, nr_bytes)
+            outa[_CS_M] := 1
+#endif
         other:
             return
 
-PRI writeReg(device, reg_nr, nr_bytes, ptr_buff) | tmp
+PRI writeReg(device, reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write byte to device
 '   Validate register - allow only registers that are
 '       writeable, and not 'reserved' (ST claims writing to these can
@@ -1370,6 +1481,16 @@ PRI writeReg(device, reg_nr, nr_bytes, ptr_buff) | tmp
     case device
         XLG:
             case reg_nr
+#ifdef LSM9DS1_I2C
+                $04..$0D, $10..$13, $1E..$24, $2E, $30..$37:
+                    cmd_pkt.byte[0] := core#SLAVE_ADDR_XLG
+                    cmd_pkt.byte[1] := reg_nr
+                    i2c.start{}
+                    i2c.wrblock_lsbf(@cmd_pkt, 2)
+                    i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+                    i2c.stop{}
+                    return
+#elseifdef LSM9DS1_SPI
                 $04..$0D, $10..$13, $1E..$21, $23, $24, $2E, $30..$37:
                     outa[_CS_AG] := 0
                     spi.wr_byte(reg_nr)
@@ -1378,14 +1499,26 @@ PRI writeReg(device, reg_nr, nr_bytes, ptr_buff) | tmp
                 core#CTRL_REG8:
                     outa[_CS_AG] := 0
                     spi.wr_byte(reg_nr)
+#ifdef LSM9DS1_SPI3W
                     ' enforce 3-wire SPI mode
                     byte[ptr_buff][0] := byte[ptr_buff][0] | (1 << core#SIM)
+#endif
                     spi.wrblock_lsbf(ptr_buff, nr_bytes)
                     outa[_CS_AG] := 1
+#endif
                 other:
                     return
         MAG:
             case reg_nr
+#ifdef LSM9DS1_I2C
+                $05..$0A, $0F, $20, $21..$24, $27..$2D, $30..$33:
+                    cmd_pkt.byte[0] := core#SLAVE_ADDR_MAG
+                    cmd_pkt.byte[1] := reg_nr | core#MB_I2C
+                    i2c.start{}
+                    i2c.wrblock_lsbf(@cmd_pkt, 2)
+                    i2c.wrblock_lsbf(ptr_buff, nr_bytes)
+                    i2c.stop
+#elseifdef LSM9DS1_SPI
                 $05..$0A, $0F, $20, $21, $23, $24, $27..$2D, $30..$33:
                     reg_nr |= WRITE
                     reg_nr |= MS
@@ -1397,10 +1530,13 @@ PRI writeReg(device, reg_nr, nr_bytes, ptr_buff) | tmp
                     reg_nr |= WRITE
                     outa[_CS_M] := 0
                     spi.wr_byte(reg_nr)
+#ifdef LSM9DS1_SPI3W
                     ' enforce 3-wire SPI mode
                     byte[ptr_buff][0] := byte[ptr_buff][0] | (1 << core#M_SIM)
+#endif
                     spi.wrblock_lsbf(ptr_buff, nr_bytes)
                     outa[_CS_M] := 1
+#endif
                 other:
                     return
         other:
