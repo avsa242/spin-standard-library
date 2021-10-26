@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
     Copyright (c) 2021
     Started: Mar 11, 2020
-    Updated: Oct 17, 2021
+    Updated: Oct 26, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -60,8 +60,10 @@ VAR
 
     long _CS, _DC, _RES
     long _ptr_drawbuffer
-    word _disp_width, _disp_height, _disp_xmax, _disp_ymax, _buff_sz
-    word _bytesperln
+    word _bytesperln, _buff_sz
+
+    byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
+    byte _offs_x, _offs_y
 
     ' shadow registers
     byte _sh_CLK, _sh_REMAPCOLOR, _sh_PHASE12PER
@@ -118,18 +120,44 @@ PUB Defaults{}
     clear{}
     displayvisibility(NORMAL)
 
-PUB Preset_OLED_C_Click_96x96{}
-' Preset: 96px wide, 96px high, MikroE OLED C Click
+PUB Preset_ClickC_Away{}
+' Preset: MikroE OLED C Click (96x96)
 '   (Parallax #64208, MikroE #MIKROE-1585)
+'   **Oriented so glass panel is facing away from user user, PCB facing towards
 '   origin (upper-left) isn't at 0, 0 on this panel
 '   start at 16 pixels in from the left, and add that to the right-hand side
-    displaybounds(16, 0, 16+95, 95)
+    displaybounds(0, 0, 95, 95)
     addrmode(ADDR_HORIZ)
     subpixelorder(RGB)
     interlaced(FALSE)
     colordepth(COLOR_65K)
     displaystartline(0)
-    displayoffset(96)
+    mirrorh(TRUE)
+    mirrorv(TRUE)
+    displayoffset(16, 32)
+    clockfreq(3020)
+    clockdiv(1)
+    contrast(127)
+    displaylines(96)
+
+    powered(TRUE)
+    displayvisibility(NORMAL)
+
+PUB Preset_ClickC_Towards{}
+' Preset: MikroE OLED C Click (96x96)
+'   (Parallax #64208, MikroE #MIKROE-1585)
+'   **Oriented so glass panel is facing towards user, PCB facing away
+'   origin (upper-left) isn't at 0, 0 on this panel
+'   start at 16 pixels in from the left, and add that to the right-hand side
+    displaybounds(0, 0, 95, 95)
+    addrmode(ADDR_HORIZ)
+    subpixelorder(RGB)
+    interlaced(FALSE)
+    colordepth(COLOR_65K)
+    displaystartline(0)
+    mirrorh(FALSE)
+    mirrorv(FALSE)
+    displayoffset(16, 96)
     clockfreq(3020)
     clockdiv(1)
     contrast(127)
@@ -146,7 +174,7 @@ PUB Preset_128x{}
     interlaced(FALSE)
     colordepth(COLOR_65K)
     displaystartline(0)
-    displayoffset(0)
+    displayoffset(0, 0)
     clockfreq(3020)
     clockdiv(1)
     contrast(127)
@@ -163,7 +191,7 @@ PUB Preset_128x128{}
     interlaced(FALSE)
     colordepth(COLOR_65K)
     displaystartline(0)
-    displayoffset(0)
+    displayoffset(0, 0)
     clockfreq(3020)
     clockdiv(1)
     contrast(127)
@@ -181,7 +209,7 @@ PUB Preset_128xHiPerf{}
     interlaced(FALSE)
     colordepth(COLOR_65K)
     displaystartline(0)
-    displayoffset(0)
+    displayoffset(0, 0)
     clockfreq(3100)
     clockdiv(1)
     contrast(127)
@@ -234,14 +262,18 @@ PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
 #endif
 
 #ifdef GFX_DIRECT
-PUB Box(x1, y1, x2, y2, c, f) | cmd_pkt[2], sy
-
+PUB Box(x1, y1, x2, y2, c, fill) | cmd_pkt[2]
+' Draw a box
+'   (x1, y1): upper-left corner of box
+'   (x2, y2): lower-right corner of box
+'   c: color
+'   fill: filled flag (0: no fill, nonzero: fill)
     if (x2 < x1) or (y2 < y1)
         return
-    if f
+    if fill
         cmd_pkt.byte[0] := core#SETCOLUMN       ' D/C L
-        cmd_pkt.byte[1] := x1                   ' D/C H
-        cmd_pkt.byte[2] := x2
+        cmd_pkt.byte[1] := x1+_offs_x           ' D/C H
+        cmd_pkt.byte[2] := x2+_offs_x
         cmd_pkt.byte[3] := core#SETROW          ' D/C L
         cmd_pkt.byte[4] := y1                   ' D/C H
         cmd_pkt.byte[5] := y2
@@ -439,8 +471,8 @@ PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
 }   or lookup(ey: 0..127)
         return
 
-    tmpx.byte[0] := sx
-    tmpx.byte[1] := ex
+    tmpx.byte[0] := sx+_offs_x
+    tmpx.byte[1] := ex+_offs_x
     tmpy.byte[0] := sy
     tmpy.byte[1] := ey
 
@@ -478,15 +510,11 @@ PUB DisplayInverted(state)
         other:
             return
 
-PUB DisplayOffset(disp_line)
-' Set display offset/vertical shift, in lines
-'   Valid values: 0..127 (default: 96)
-'   Any other value is ignored
-    case disp_line
-        0..127:
-            writereg(core#DISPOFFSET, 1, @disp_line)
-        other:
-            return
+PUB DisplayOffset(x, y)
+' Set display offset
+    _offs_x := 0 #> x <# 127
+    y := 0 #> y <# 127
+    writereg(core#DISPOFFSET, 1, @y)            ' SSD1351 built-in
 
 PUB DisplayStartLine(disp_line)
 ' Set display start line
@@ -662,14 +690,10 @@ PUB Phase3Period(clks)
 #ifdef GFX_DIRECT
 PUB Plot(x, y, c) | cmd_pkt[3]
 ' Draw a pixel, using the display's native/accelerated plot/pixel function
-#ifdef __FLEXSPIN__
     if (x => 0 and x =< _disp_xmax) and (y => 0 and y =< _disp_ymax)
-#else
-    if lookdown(x: 0.._disp_xmax) and lookdown(y: 0.._disp_ymax)
-#endif
         cmd_pkt.byte[0] := core#SETCOLUMN       ' D/C L
-        cmd_pkt.byte[1] := x                    ' D/C H
-        cmd_pkt.byte[2] := x
+        cmd_pkt.byte[1] := x+_offs_x            ' D/C H
+        cmd_pkt.byte[2] := x+_offs_x
         cmd_pkt.byte[3] := core#SETROW          ' D/C L
         cmd_pkt.byte[4] := y                    ' D/C H
         cmd_pkt.byte[5] := y
@@ -749,6 +773,7 @@ PUB Reset{}
 PUB Update{}
 ' Send the draw buffer to the display
 #ifndef GFX_DIRECT
+    displaybounds(0, 0, _disp_xmax, _disp_ymax)
     outa[_DC] := core#CMD
     outa[_CS] := 0
     spi.wr_byte(core#WRITERAM)
