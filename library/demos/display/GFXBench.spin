@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2021
     Started: Apr 10, 2021
-    Updated: Oct 16, 2021
+    Updated: Oct 26, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -23,6 +23,9 @@
 '   (required if the buffer would be too big for RAM)
 '   NOTE: not supported by all drivers
 '#define GFX_DIRECT
+
+' Check the Setup() method for different possible preset settings
+'   for your display type
 
 OBJ
 
@@ -143,8 +146,8 @@ PUB Main{} | time_ms, sz, maxsz, iteration, bench, ch, color
 
     setup{}
 
-    disp.mirrorh(false)                         ' change these to reorient for
-    disp.mirrorv(false)                         '   your display
+'    disp.mirrorh(false)                         ' change these to reorient for
+'    disp.mirrorv(false)                         '   your display
 
     disp.clear{}
     disp.fgcolor(disp#MAX_COLOR)
@@ -306,8 +309,11 @@ PUB Setup{}
         disp.preset_96x64{}
 #elseifdef SSD1351
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
-'        disp.preset_oled_c_click_96x96{}
-        disp.preset_128x{}
+'       Choose preset settings
+'        disp.preset_clickc_away{}               'MikroE Click - facing away
+'        disp.preset_clickc_towards{}            'MikroE Click - facing towards
+'        disp.preset_128x{}                      'Other 128x displays
+        disp.preset_128xhiperf{}                '128x, max display osc. freq.
 #elseifdef ST7735
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         disp.preset_greentab128x128{}
