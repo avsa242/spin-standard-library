@@ -5,7 +5,7 @@
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
     Copyright (c) 2021
     Started Aug 12, 2017
-    Updated Oct 25, 2021
+    Updated Oct 26, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -56,9 +56,9 @@ CON
     C                       = 0
     F                       = 1
 
-' Endian constants
-    LITTLE                  = 0
-    BIG                     = 1
+' Output data byte order
+    LSBF                    = 0
+    MSBF                    = 1
 
 ' Interrupt active states (applies to both XLG and Mag)
     ACTIVE_HIGH             = 0
@@ -298,6 +298,22 @@ PUB AccelData(ax, ay, az) | tmp[2]
     long[ay] := ~~tmp.word[Y_AXIS] - _abiasraw[Y_AXIS]
     long[az] := ~~tmp.word[Z_AXIS] - _abiasraw[Z_AXIS]
 
+PUB AccelDataByteOrder(order): curr_order
+' Byte order of accelerometer output data
+'   Valid values: LSBF (0) or MSBF (1)
+'   Any other value polls the chip and returns the current setting
+'   NOTE: This setting also affects gyroscope output data
+'       (hardware limitation)
+    readreg(XLG, core#CTRL_REG8, 1, @curr_order)
+    case order
+        LSBF, MSBF:
+            order := order << core#BLE
+        other:
+            return ((curr_order >> core#BLE) & 1)
+
+    order := ((curr_order & core#BLE_MASK) | order)
+    writereg(XLG, core#CTRL_REG8, 1, @order)
+
 PUB AccelDataOverrun{}: flag
 ' Dummy method
 
@@ -535,20 +551,6 @@ PUB DeviceID{}: id
     readreg(XLG, core#WHO_AM_I_XG, 1, @id.byte[1])
     readreg(MAG, core#WHO_AM_I_M, 1, @id.byte[0])
 
-PUB Endian(order): curr_order  'XXX rename to DataByteOrder()
-' Choose byte order of acclerometer/gyroscope data
-'   Valid values: LITTLE (0) or BIG (1)
-'   Any other value polls the chip and returns the current setting
-    readreg(XLG, core#CTRL_REG8, 1, @curr_order)
-    case order
-        LITTLE, BIG:
-            order := order << core#BLE
-        other:
-            return ((curr_order >> core#BLE) & 1)
-
-    order := ((curr_order & core#BLE_MASK) | order)
-    writereg(XLG, core#CTRL_REG8, 1, @order)
-
 PUB FIFOEnabled(state): curr_state
 ' Enable FIFO memory
 '   Valid values: FALSE (0), TRUE(1 or -1)
@@ -660,6 +662,14 @@ PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_x] := ~~tmp.word[X_AXIS] - _gbiasraw[X_AXIS]
     long[ptr_y] := ~~tmp.word[Y_AXIS] - _gbiasraw[Y_AXIS]
     long[ptr_z] := ~~tmp.word[Z_AXIS] - _gbiasraw[Z_AXIS]
+
+PUB GyroDataByteOrder(order): curr_order
+' Byte order of gyroscope output data
+'   Valid values: LSBF (0) or MSBF (1)
+'   Any other value polls the chip and returns the current setting
+'   NOTE: This setting also affects accelerometer output data
+'       (hardware limitation)
+    return acceldatabyteorder(order)
 
 PUB GyroDataOverrun{}
 ' dummy method
@@ -1003,6 +1013,21 @@ PUB MagData(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_y] := ~~tmp.word[Y_AXIS]           ' because the mag has
     long[ptr_z] := ~~tmp.word[Z_AXIS]           ' offset registers built-in
 
+PUB MagDataByteOrder(order): curr_order
+' Byte order of magnetometer output data
+'   Valid values: LSBF (0) or MSBF (1)
+'   Any other value polls the chip and returns the current setting
+    curr_order := 0
+    readreg(MAG, core#CTRL_REG4_M, 1, @curr_order)
+    case order
+        LSBF, MSBF:
+            order := order << core#BLE_M
+        other:
+            return ((curr_order >> core#BLE_M) & 1)
+
+    order := ((curr_order & core#BLE_M_MASK) | order)
+    writereg(MAG, core#CTRL_REG4_M, 1, @order)
+
 PUB MagDataOverrun{}: status
 ' Magnetometer data overrun
 '   Returns: Overrun flag as bitfield
@@ -1041,21 +1066,6 @@ PUB MagDataReady{}: flag
 '   Returns: TRUE (-1) if data available, FALSE (0) otherwise
     readreg(MAG, core#STATUS_REG_M, 1, @flag)
     return (((flag >> core#ZYXDA) & 1) == 1)
-
-PUB MagEndian(order): curr_order
-' Choose byte order of magnetometer data
-'   Valid values: LITTLE (0) or BIG (1)
-'   Any other value polls the chip and returns the current setting
-    curr_order := 0
-    readreg(MAG, core#CTRL_REG4_M, 1, @curr_order)
-    case order
-        LITTLE, BIG:
-            order := order << core#BLE_M
-        other:
-            return ((curr_order >> core#BLE_M) & 1)
-
-    order := ((curr_order & core#BLE_M_MASK) | order)
-    writereg(MAG, core#CTRL_REG4_M, 1, @order)
 
 PUB MagFastRead(state): curr_state
 ' Enable reading of only the MSB of data to increase reading efficiency, at
