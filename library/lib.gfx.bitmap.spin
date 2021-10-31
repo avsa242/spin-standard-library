@@ -5,7 +5,7 @@
     Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2021
     Started May 19, 2019
-    Updated Oct 24, 2021
+    Updated Oct 31, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -81,14 +81,9 @@ PUB Box(x0, y0, x1, y1, color, filled) | x, y
                 repeat x from x0 to x1
                     Plot(x, y, color)
 #else
-#ifdef __FLEXSPIN__
-            if x0 => 0 and x0 =< _disp_xmax and y0 => 0 and {
-}           y0 =< _disp_ymax and x1 => 0 and x1 =< _disp_xmax and {
-}           y1 => 0 and y1 =< _disp_ymax
-#else
-            if lookdown(x0: 0.._disp_xmax) and lookdown(y0: 0.._disp_ymax) {
-}           and lookdown(x1: 0.._disp_xmax) and lookdown(y1: 0.._disp_ymax)
-#endif
+            if (x0 => 0) and (x0 =< _disp_xmax) and (y0 => 0) and {
+}           (y0 =< _disp_ymax) and (x1 => 0) and (x1 =< _disp_xmax) and {
+}           (y1 => 0) and (y1 =< _disp_ymax)
 #ifdef GFX_DIRECT
             repeat y from y0 to y1
                 repeat x from x0 to x1
@@ -500,164 +495,74 @@ PUB ScrollDown(sx, sy, ex, ey) | scr_width, src, dest, x, y
 ' Scroll a region of the display down by 1 pixel
     scr_width := ex-sx
     repeat y from ey-1 to sy
-
-#ifdef IL38xx
+#ifdef HT16K33-ADAFRUIT
         copy(sx, y, ex, y, sx, y+1)             ' Use Copy() for monochrome
-#elseifdef SSD130X                              ' display types, until a more
+#elseifdef IL38xx                               ' display types, until a more
         copy(sx, y, ex, y, sx, y+1)             ' efficient method can be
-#elseifdef SSD1331                              ' devised
-        src := sx + (y * _bytesperln)
-        dest := sx + ((y+1) * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef NEOPIXEL
-        src := sx + (y * _bytesperln)
-        dest := sx + ((y+1) * _bytesperln)
-        longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef HT16K33-ADAFRUIT
+#elseifdef LEDMATRIX_CHARLIEPLEXED              ' devised
         copy(sx, y, ex, y, sx, y+1)
-#elseifdef ST7735
-        src := sx + (y * _bytesperln)
-        dest := sx + ((y+1) * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef SSD1351
-        src := sx + (y * _bytesperln)
-        dest := sx + ((y+1) * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef VGABITMAP6BPP
-        src := sx + (y * _disp_width)
-        dest := sx + ((y+1) * _disp_width)
-        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef LEDMATRIX_CHARLIEPLEXED
+#elseifdef SSD130X
         copy(sx, y, ex, y, sx, y+1)
-#elseifdef HUB75
-        src := sx + (y * _disp_width)
-        dest := sx + ((y+1) * _disp_width)
-        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #else
-#warning "No supported display types defined!"
+        src := sx + (y * _disp_width) * BYTESPERPX
+        dest := sx + ((y+1) * _disp_width) * BYTESPERPX
+        MEMMV_NATIVE(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #endif
 
-PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, x, y
+PUB ScrollLeft(sx, sy, ex, ey) | scr_width, src, dest, y, yoffs
 ' Scroll a region of the display left by 1 pixel
     scr_width := ex-sx
     repeat y from sy to ey
-
-#ifdef IL38xx
+#ifdef HT16K33-ADAFRUIT
+        copy(sx, y, ex, y, sx-1, y)
+#elseifdef IL38xx
+        copy(sx, y, ex, y, sx-1, y)
+#elseifdef LEDMATRIX_CHARLIEPLEXED
         copy(sx, y, ex, y, sx-1, y)
 #elseifdef SSD130X
         copy(sx, y, ex, y, sx-1, y)
-#elseifdef SSD1331
-        src := sx + (y * _bytesperln)
-        dest := (sx-BYTESPERPX) + (y * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef NEOPIXEL
-        src := sx + (y * _bytesperln)
-        dest := (sx-BYTESPERPX) + (y * _bytesperln)
-        longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef HT16K33-ADAFRUIT
-        copy(sx, y, ex, y, sx-1, y)
-#elseifdef ST7735
-        src := sx + (y * _bytesperln)
-        dest := (sx-BYTESPERPX) + (y * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef SSD1351
-        src := sx + (y * _bytesperln)
-        dest := (sx-BYTESPERPX) + (y * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef VGABITMAP6BPP
-        src := sx + (y * _disp_width)
-        dest := (sx-1) + (y * _disp_width)
-        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef LEDMATRIX_CHARLIEPLEXED
-        copy(sx, y, ex, y, sx-1, y)
-#elseifdef HUB75
-        src := sx + (y * _disp_width)
-        dest := (sx-1) + (y * _disp_width)
-        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #else
-#warning "No supported display types defined!"
+        yoffs := (y * _disp_width)
+        src := (sx + yoffs) * BYTESPERPX
+        dest := ((0 #> (sx-1)) + yoffs) * BYTESPERPX
+        MEMMV_NATIVE(_ptr_drawbuffer+dest, _ptr_drawbuffer+src, scr_width)
 #endif
 
-PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y
+PUB ScrollRight(sx, sy, ex, ey) | scr_width, src, dest, y, yoffs
 ' Scroll a region of the display right by 1 pixel
     scr_width := ex-sx
     repeat y from sy to ey
-
-#ifdef IL38xx
+#ifdef HT16K33-ADAFRUIT
+        copy(sx, y, ex, y, sx+1, y)
+#elseifdef IL38xx
+        copy(sx, y, ex, y, sx+1, y)
+#elseifdef LEDMATRIX_CHARLIEPLEXED
         copy(sx, y, ex, y, sx+1, y)
 #elseifdef SSD130X
         copy(sx, y, ex, y, sx+1, y)
-#elseifdef SSD1331
-        src := sx + (y * _bytesperln)
-        dest := (sx+BYTESPERPX) + (y * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef NEOPIXEL
-        src := sx + (y * _bytesperln)
-        dest := (sx+BYTESPERPX) + (y * _bytesperln)
-        longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef HT16K33-ADAFRUIT
-        copy(sx, y, ex, y, sx+1, y)
-#elseifdef ST7735
-        src := sx + (y * _bytesperln)
-        dest := (sx+BYTESPERPX) + (y * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef SSD1351
-        src := sx + (y * _bytesperln)
-        dest := (sx+BYTESPERPX) + (y * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef VGABITMAP6BPP
-        src := sx + (y * _disp_width)
-        dest := (sx+1) + (y * _disp_width)
-        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef LEDMATRIX_CHARLIEPLEXED
-        copy(sx, y, ex, y, sx+1, y)
-#elseifdef HUB75
-        src := sx + (y * _disp_width)
-        dest := (sx+1) + (y * _disp_width)
-        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #else
-#warning "No supported display types defined!"
+        yoffs := (y * _disp_width)
+        src := (sx + yoffs) * BYTESPERPX
+        dest := (((sx+1) <# _disp_width) + yoffs) * BYTESPERPX
+        MEMMV_NATIVE(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #endif
 
 PUB ScrollUp(sx, sy, ex, ey) | scr_width, src, dest, x, y
 ' Scroll a region of the display up by 1 pixel
     scr_width := ex-sx
     repeat y from sy+1 to ey
-
-#ifdef IL38xx
+#ifdef HT16K33-ADAFRUIT
+        copy(sx, y, ex, y, sx, y-1)
+#elseifdef IL38xx
+        copy(sx, y, ex, y, sx, y-1)
+#elseifdef LEDMATRIX_CHARLIEPLEXED
         copy(sx, y, ex, y, sx, y-1)
 #elseifdef SSD130X
         copy(sx, y, ex, y, sx, y-1)
-#elseifdef SSD1331
-        src := sx + (y * _bytesperln)
-        dest := sx + ((y-1) * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef NEOPIXEL
-        src := sx + (y * _bytesperln)
-        dest := sx + ((y-1) * _bytesperln)
-        longmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef HT16K33-ADAFRUIT
-        copy(sx, y, ex, y, sx, y-1)
-#elseifdef ST7735
-        src := sx + (y * _bytesperln)
-        dest := sx + ((y-1) * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef SSD1351
-        src := sx + (y * _bytesperln)
-        dest := sx + ((y-1) * _bytesperln)
-        wordmove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef VGABITMAP6BPP
-        src := sx + (y * _disp_width)
-        dest := sx + ((y-1) * _disp_width)
-        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
-#elseifdef LEDMATRIX_CHARLIEPLEXED
-        copy(sx, y, ex, y, sx, y-1)
-#elseifdef HUB75
-        src := sx + (y * _disp_width)
-        dest := sx + ((y-1) * _disp_width)
-        bytemove(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #else
-#warning "No supported display types defined!"
+        src := sx + (y * _disp_width) * BYTESPERPX
+        dest := sx + ((y-1) * _disp_width) * BYTESPERPX
+        MEMMV_NATIVE(_ptr_drawbuffer + dest, _ptr_drawbuffer + src, scr_width)
 #endif
 
 PUB TextCols{}: cols
