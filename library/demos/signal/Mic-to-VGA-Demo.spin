@@ -7,7 +7,7 @@
         to digitize audio from an electret mic and
         display the waveform on a VGA monitor
     Started 2006
-    Updated May 13, 2021
+    Updated Nov 14, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -57,7 +57,7 @@ VAR
 PUB Start | i
 
     ' start vga
-    vga.start(VGA_BASEPIN, @_colors, @_pixels, @_sync)
+    vga.startx(VGA_BASEPIN, @_colors, @_pixels, @_sync)
 
     ' init colors to cyan on black
     repeat i from 0 to TILES - 1
