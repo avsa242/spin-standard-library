@@ -6,7 +6,7 @@
         16x4 IR array
     Copyright (c) 2021
     Started: Jan 4, 2018
-    Updated: May 22, 2021
+    Updated: Nov 14, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -181,7 +181,7 @@ PUB EEPROM(state): curr_state
     readreg(core#CONFIG, 2, 0, @curr_state)
     case ||(state)
         0, 1:
-            state := (1-||(state)) << core#EEPROMENA
+            state := (1-(||(state))) << core#EEPROMENA
         other:
             return (1-((curr_state >> core#EEPROMENA) & 1)) == 1
 
@@ -242,24 +242,6 @@ PUB GetPixel(ptr_buff, col, line): pix_word | tmpframe, offs
 
     readreg(offs, 1, 0, @tmpframe)
     long[ptr_buff][offs] := pix_word := ~~tmpframe.word[0]
-
-PUB I2CFM(mode): curr_mode
-' Enable I2C Fast Mode+
-'   Valid values:
-'     *TRUE (-1 or 1): Max I2C bus speed 1000kbit/sec
-'      FALSE (0): Max I2C bus speed 400kbit/sec
-'   NOTE: This is independent of, and has no effect on what speed the driver
-'   was started with.
-'   Any other value polls the chip and returns the current setting
-    readreg(core#CONFIG, 2, 0, @curr_mode)
-    case ||(mode)
-        0, 1:
-            mode := (1-(||(mode))) << core#I2CFMP
-        other:
-            return (1-((curr_mode >> core#I2CFMP) & 1)) == 1
-
-    mode := ((curr_mode & core#I2CFMP_MASK) | mode)
-    writereg(core#CONFIG, curr_mode)
 
 PUB Measure{}
 ' Perform measurement, when OpMode is set to SINGLE
@@ -369,6 +351,24 @@ PUB Reset(set): flag
 
     set := ((flag & core#RESET_MASK) | set)
     writereg(core#CONFIG, set)
+
+PRI I2CFM(mode): curr_mode
+' Enable I2C Fast Mode+
+'   Valid values:
+'     *TRUE (-1 or 1): Max I2C bus speed 1000kbit/sec
+'      FALSE (0): Max I2C bus speed 400kbit/sec
+'   NOTE: This is independent of, and has no effect on what speed the driver
+'   was started with.
+'   Any other value polls the chip and returns the current setting
+    readreg(core#CONFIG, 2, 0, @curr_mode)
+    case ||(mode)
+        0, 1:
+            mode := (1-(||(mode))) << core#I2CFMP
+        other:
+            return (1-((curr_mode >> core#I2CFMP) & 1)) == 1
+
+    mode := ((curr_mode & core#I2CFMP_MASK) | mode)
+    writereg(core#CONFIG, curr_mode)
 
 PRI readReg(reg_nr, nr_reads, rd_step, ptr_buff) | cmd_pkt[2]
 ' Read nr_reads from device into ptr_buff

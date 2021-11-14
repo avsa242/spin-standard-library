@@ -6,7 +6,7 @@
         VGA display
     Copyright (c) 2021
     Started: Jun 27, 2020
-    Updated: Jan 12, 2021
+    Updated: Nov 14, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -183,7 +183,7 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
 
     setuppalette{}
-    vga.start(VGA_PINGROUP, WIDTH, HEIGHT, @_framebuffer)
+    vga.startx(VGA_PINGROUP, WIDTH, HEIGHT, @_framebuffer)
         ser.strln(string("VGA 8bpp driver started"))
         vga.fontaddress(fnt.baseaddr{})
         vga.fontscale(1)
