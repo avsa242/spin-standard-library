@@ -5,7 +5,7 @@
     Modified by: Jesse Burt
     Description: VGA 32x15 text-mode/terminal display
     Started 2006
-    Updated May 13, 2021
+    Updated Nov 14, 2021
     See end of file for terms of use.
     --------------------------------------------
 
@@ -76,7 +76,7 @@ PUB Start(VGA_BASEPIN): status
     _vga_colors := @_colors
     _vga_rate := clkfreq >> 2
 
-    return vga.start(@_vga_status)
+    return vga.startx(@_vga_status)
 
 PUB Stop
 ' Stop terminal - frees a cog
