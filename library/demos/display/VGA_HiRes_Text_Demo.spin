@@ -67,7 +67,7 @@ VAR
 
 PUB Start | i, j
     'start vga text driver
-    vgatext.start(cfg#VGA, @screen, @colors, @cx0, @sync)
+    vgatext.startx(cfg#VGA, @screen, @colors, @cx0, @sync)
 
     'start mouse and set bound parameters
     mouse.start(cfg#MOUSE_DATA, cfg#MOUSE_CLK)
