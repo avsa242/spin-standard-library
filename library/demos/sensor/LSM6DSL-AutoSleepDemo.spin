@@ -1,17 +1,15 @@
 {
     --------------------------------------------
-    Filename: LSM6DSL-Demo.spin
+    Filename: LSM6DSL-AutoSleepDemo.spin
     Author: Jesse Burt
     Description: Demo of the LSM6DSL driver
+        Auto-sleep functionality
     Copyright (c) 2021
-    Started Feb 18, 2021
+    Started Dec 27, 2021
     Updated Dec 27, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the below lines to choose the interface
-#define LSM6DSL_I2C
-'#define LSM6DSL_SPI
 
 CON
 
@@ -19,20 +17,22 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
+    LED1        = cfg#LED1
     SER_BAUD    = 115_200
 
 ' I2C configuration
     SCL_PIN     = 28
     SDA_PIN     = 29
     I2C_HZ      = 400_000                       ' max is 400_000
-    ADDR_BITS   = 0                             ' 0, 1
+    ADDR_BITS   = 1                             ' 0, 1
 
 ' SPI configuration
     CS_PIN      = 0
     SCK_PIN     = 1
     MOSI_PIN    = 2
     MISO_PIN    = 3
+
+    INT_PIN     = 24                            ' LSM6DSL INT_PIN pin
 ' --
 
     DAT_X_COL   = 20
@@ -46,19 +46,50 @@ OBJ
     time    : "time"
     int     : "string.integer"
     imu     : "sensor.imu.6dof.lsm6dsl.i2cspi"
+    core    : "core.con.lsm6dsl"
 
-PUB Main{}
+VAR
+
+    long _isr_stack[50]                         ' stack for ISR core
+    long _intflag                               ' interrupt flag
+
+PUB Main{} | intsource, temp, sysmod
 
     setup{}
     imu.preset_active{}                         ' default settings, but enable
-                                                ' sensors, and set scale
-                                                ' factors
+                                                ' sensor power, and set
+                                                ' scale factors
 
+    imu.acceldatarate(208)
+    imu.accelscale(2)
+    imu.gyrodatarate(104)
+    imu.gyroscale(250)
+
+    imu.inacttime(5_000)                        ' inactivity timeout ~5sec
+    imu.inactthresh(0_250000)
+    imu.accelsleeppwrmode(imu#LOPWR_GSLEEP)
+    imu.int1mask(imu#INACTIVE)
+
+    dira[LED1] := 1
+
+    ' The demo continuously displays the current accelerometer data.
+    ' When the sensor goes to sleep after approx. 5 seconds, the change
+    '   in data rate is visible as a slowed update of the display.
+    ' To wake the sensor, shake it along the X and/or Y axes
+    '   by at least 0.250g's.
+    ' When the sensor is awake, the LED1 should be on.
+    ' When the sensor goes to sleep, it should turn off.
     repeat
         ser.position(0, 3)
-        accelcalc{}
-        gyrocalc{}
-
+        accelcalc{}                             ' show accel data
+        intsource := imu.intinactivity{}
+        if _intflag                             ' interrupt triggered
+            intsource := imu.intinactivity{}
+            if intsource                        ' (in)activity event
+                outa[LED1] := 0
+            else
+                outa[LED1] := 1
+        else
         if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
             calibrate{}                         ' to calibrate sensor offsets
 
@@ -76,27 +107,11 @@ PUB AccelCalc{} | ax, ay, az
     ser.clearline{}
     ser.newline{}
 
-PUB GyroCalc{} | gx, gy, gz
-
-    repeat until imu.gyrodataready{}
-    imu.gyrodps(@gx, @gy, @gz)
-    ser.str(string("Gyro (dps):"))
-    ser.positionx(DAT_X_COL)
-    decimal(gx, 1000000)
-    ser.positionx(DAT_Y_COL)
-    decimal(gy, 1000000)
-    ser.positionx(DAT_Z_COL)
-    decimal(gz, 1000000)
-    ser.clearline{}
-    ser.newline{}
-
 PUB Calibrate{}
 
-    ser.position(0, 7)
+    ser.position(0, 5)
     ser.str(string("Calibrating..."))
-    imu.calibratemag{}
     imu.calibrateaccel{}
-    imu.calibrategyro{}
     ser.positionx(0)
     ser.clearline{}
 
@@ -126,6 +141,15 @@ PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
     ser.str(part)
     ser.chars(" ", 5)
 
+PRI ISR{}
+' Interrupt service routine
+    dira[INT_PIN] := 0                          ' INT_PIN as input
+    repeat
+        waitpne(|< INT_PIN, |< INT_PIN, 0)      ' wait for INT_PIN (active low)
+        _intflag := 1                           '   set flag
+        waitpeq(|< INT_PIN, |< INT_PIN, 0)      ' now wait for it to clear
+        _intflag := 0                           '   clear flag
+
 PUB Setup{}
 
     ser.start(SER_BAUD)
@@ -141,9 +165,9 @@ PUB Setup{}
 #endif
     else
         ser.strln(string("LSM6DSL driver failed to start - halting"))
-        imu.stop{}
-        time.msleep(5)
         repeat
+
+    cognew(isr, @_isr_stack)                    ' start ISR in another core
 
 DAT
 {
