@@ -5,7 +5,7 @@
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
     Copyright (c) 2021
     Created: Sep 30, 2018
-    Updated: Aug 6, 2021
+    Updated: Dec 28, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -125,14 +125,17 @@ PUB CJWord2Temp(cj_word): temp
         F:
             temp := ((temp * 90) / 50) + 32_00
 
-PUB ColdJuncBias(offset): curr_offs 'XXX Make param units degrees
-' Set Cold-Junction temperature sensor offset (default: 0)
+PUB ColdJuncBias(offset): curr_offs
+' Set Cold-Junction temperature sensor offset, in ten-thousandths of a degree C
+'   Valid values: -8_0000..7_9375 (default: 0)
+'   Any other value polls the chip and returns the current setting
     case offset
-        -128..127:  '-8C..7.9375C
-            writereg(core#CJTO, 1, @offset) 'xxx lsb is 0.0625C
+        -8_0000..7_9375:
+            offset /= 0_0625
+            writereg(core#CJTO, 1, @offset)
         other:
             readreg(core#CJTO, 1, @curr_offs)
-            return ~~curr_offs
+            return (~curr_offs * 0_0625)
 
 PUB ColdJuncData{}: cj_word
 ' Read cold-junction data
