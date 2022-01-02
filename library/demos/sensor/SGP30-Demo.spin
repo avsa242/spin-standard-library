@@ -3,9 +3,9 @@
     Filename: SGP30-Demo.spin
     Author: Jesse Burt
     Description: Demo of the SGP30 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 20, 2020
-    Updated Jan 30, 2021
+    Updated Jan 2, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,20 +34,21 @@ OBJ
 
 VAR
 
-    byte _sn[6]
+    word _sn[3]
     byte _tmp[6]
 
 PUB Main{} | i, tmp
 
     setup{}
+
     iaq.reset{}                                 ' reset first for reliability
 
     bytefill(@_sn, 0, 6)
     iaq.serialnum(@_sn)
 
     ser.str(string("SN: "))
-    repeat i from 0 to 5
-        ser.hex(_sn[i], 2)
+    repeat i from 0 to 2
+        ser.hex(_sn[i], 4)
 
     ser.newline
 
