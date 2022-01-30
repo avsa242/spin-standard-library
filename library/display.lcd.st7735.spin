@@ -1,15 +1,14 @@
 {
     --------------------------------------------
-    Filename: display.lcd.st7735.spi.spin
+    Filename: display.lcd.st7735.spin
     Author: Jesse Burt
     Description: Driver for Sitronix ST7735-based displays
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Mar 7, 2020
-    Updated Oct 17, 2021
+    Updated Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-#define ST7735
 #define MEMMV_NATIVE wordmove
 #include "lib.gfx.bitmap.spin"
 
@@ -60,12 +59,8 @@ CON
 
 VAR
 
-    long _ptr_drawbuffer
-    word _buff_sz
     word _framerate
-    word _bytesperln
     byte _CS, _RESET, _DC
-    byte _disp_width, _disp_height, _disp_xmax, _disp_ymax, _offs_x, _offs_y
 
 '   Shadow registers
     byte _colmod, _madctl, _opmode
@@ -337,6 +332,10 @@ PUB Clear{}
     outa[_DC] := core#DATA
     spi.wrwordx_msbf(_bgcolor, _buff_sz/2)
     outa[_CS] := 1
+#else
+PUB Clear{}
+' Clear the display buffer
+    wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #endif
 
 PUB ColorDepth(format): curr_fmt
@@ -632,12 +631,8 @@ PUB PartialArea(sy, ey) | tmp
 
 #ifdef GFX_DIRECT
 PUB Plot(x, y, color) | tmp, xs, ys, xe, ye, cmd_pkt[3]
-' Draw a pixel at x, y
-#ifdef __FLEXSPIN__
+' Draw a pixel at x, y (direct to display)
     if (x => 0 and x =< _disp_xmax) and (y => 0 and y =< _disp_ymax)
-#else
-    if lookdown(x: 0.._disp_xmax) and lookdown(y: 0.._disp_ymax)
-#endif
         cmd_pkt.byte[0] := core#CASET           ' D/C L
         cmd_pkt.byte[1] := x+_offs_x            ' D/C H
         cmd_pkt.byte[2] := x+_offs_x
@@ -663,6 +658,21 @@ PUB Plot(x, y, color) | tmp, xs, ys, xe, ye, cmd_pkt[3]
         outa[_DC] := core#DATA
         spi.wrblock_lsbf(@cmd_pkt.byte[7], 2)
         outa[_CS] := 1
+
+#else
+
+PUB Plot(x, y, color)
+' Draw a pixel at (x, y) in color (buffered)
+    word[_ptr_drawbuffer][x + (y * _disp_width)] := color
+#endif
+
+#ifndef GFX_DIRECT
+PUB Point(x, y): pix_clr
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+
+    return word[_ptr_drawbuffer][x + (y * _disp_width)]
 #endif
 
 PUB Powered(state)
@@ -847,6 +857,15 @@ PUB Update{}
     outa[_DC] := core#DATA                      ' D/C high = data
     spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
     outa[_CS] := 1
+#endif
+
+#ifndef GFX_DIRECT
+PRI memFill(xs, ys, val, count)
+' Fill region of display buffer memory
+'   xs, ys: Start of region
+'   val: Color
+'   count: Number of consecutive memory locations to write
+    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), val, count)
 #endif
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff)
