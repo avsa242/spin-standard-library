@@ -3,9 +3,9 @@
     Filename: HT16K33-Demo.spin
     Description: Demo of the HT16K33 driver
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Created: Nov 21, 2020
-    Updated: Oct 18, 2021
+    Updated: Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -38,7 +38,7 @@ OBJ
     cfg : "core.con.boardcfg.flip"
     ser : "com.serial.terminal.ansi"
     time: "time"
-    disp: "display.led.ht16k33.i2c"
+    disp: "display.led.ht16k33"
     int : "string.integer"
     fnt : "font.5x8"
 
@@ -53,50 +53,50 @@ VAR
 PUB Main{} | time_ms
 
     setup{}
-    disp.clearall{}
+    disp.clear{}
 
     ser.position(0, 3)
 
     demo_greet{}
     time.sleep(5)
-    disp.clearall{}
+    disp.clear{}
 
     time_ms := 5_000
 
     demo_sinewave(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_triwave(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_memscroller(time_ms, $0000, $FFFF-BUFFSZ)
-    disp.clearall{}
+    disp.clear{}
 
     demo_lineSweepx(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_linesweepy(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_line(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_plot(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_circle(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_wander(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_seqtext(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_rndtext(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
-    stop{}
+    repeat
 
 PUB Demo_Bitmap(testtime, bitmap_addr) | iteration
 ' Continuously redraws bitmap at address bitmap_addr
@@ -429,17 +429,9 @@ PUB Setup{}
         disp.fontaddress(fnt.baseaddr{})
     else
         ser.str(string("HT16K33 driver failed to start - halting"))
-        stop{}
+        repeat
 
     _timer_cog := cognew(cog_Timer, @_stack_timer)
-
-PUB Stop{}
-
-    disp.displayvisibility(FALSE)
-    disp.stop{}
-    cogstop(_timer_cog)
-    ser.stop{}
-    repeat
 
 DAT
 

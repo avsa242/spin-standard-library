@@ -3,9 +3,9 @@
     Filename: HT16K33-14SegDemo.spin
     Description: Demo of the HT16K33 14-segment driver
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Created: Jun 22, 2021
-    Updated: Jun 22, 2021
+    Updated: Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -37,7 +37,7 @@ OBJ
     cfg : "core.con.boardcfg.flip"
     ser : "com.serial.terminal.ansi"
     time: "time"
-    disp: "display.led-seg.ht16k33.i2c"
+    disp: "display.led-seg.ht16k33"
     int : "string.integer"
     fs  : "string.float"
     

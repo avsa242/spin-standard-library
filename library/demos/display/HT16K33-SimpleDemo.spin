@@ -3,9 +3,9 @@
     Filename: HT16K33-SimpleDemo.spin
     Description: Simplified Demo of the HT16K33 driver
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Created: Nov 21, 2020
-    Updated: Apr 4, 2021
+    Updated: Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -37,7 +37,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    matrix  : "display.led.ht16k33.i2c"
+    matrix  : "display.led.ht16k33"
     fnt     : "font.5x8"
 
 VAR
@@ -105,9 +105,6 @@ PUB Setup{}
         ser.strln(string("HT16K33 driver started"))
     else
         ser.strln(string("HT16K33 driver failed to start - halting"))
-        matrix.stop{}
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT
