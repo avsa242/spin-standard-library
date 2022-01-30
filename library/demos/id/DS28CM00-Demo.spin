@@ -35,7 +35,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    ssn     : "id.ssn.ds28cm00.i2c"
+    ssn     : "id.ssn.ds28cm00"
 
 VAR
 
