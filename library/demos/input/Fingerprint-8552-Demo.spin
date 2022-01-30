@@ -3,9 +3,9 @@
     Filename: FINGERPRINT-8552-Demo.spin
     Author: Jesse Burt
     Description: Demo of the Fingerprint reader SKU#8552 driver
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started May 18, 2020
-    Updated Aug 9, 2020
+    Updated Jan 1, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,15 +17,12 @@ CON
 
 ' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
 
     FPRINT_RX   = 9
     FPRINT_TX   = 8
     FPRINT_BL   = 10
     FPRINT_RST  = 11
-    FPRINT_BPS  = 19_200
 ' --
 
     PROMPT_X    = 0
@@ -36,64 +33,42 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    io      : "io"
-    fng     : "input.biometric.fingerprint-8552.uart"
+    fng     : "input.biometric.fingerprint-8552"
 
-PUB Main | uid, tmp, priv, usercnt, cmplevel, addpolicy, finished, stmp, priv_lvl
+VAR
 
-    setup
+    long _usercnt, _cmplvl, _add_pol
 
-    cmplevel := 5                                           ' (most lenient) 0..9 (most strict)
-    addpolicy := fng#PROHIBIT                               ' ALLOW (0), PROHIBIT (1)
+PUB Main{} | uid, tmp, priv, finished, stmp, priv_lvl
+
+    setup{}
+
+    _cmplvl := 5                                ' 0..9 (lenient..strict)
+    _add_pol := fng#PROHIBIT                    ' ALLOW (0), PROHIBIT (1)
 
     repeat
-        ser.clear
-        ser.position(0, 3)
-        ser.str(string("Total user count: "))
-        ser.dec(usercnt := fng.totalusercount)
+        ser.clear{}
 
-        ser.position(50, 3)
-        fng.comparisonlevel(cmplevel)
-        ser.str(string("Comparison level: "))
-        ser.dec(fng.comparisonlevel(-2))
+        showsettings{}
+        showhelp{}
 
-        ser.position(50, 4)
-        fng.addpolicy(addpolicy)
-        ser.str(string("Duplicate print add policy: "))
-        addpolicy := fng.addpolicy(-2)
-        ser.str(lookupz(addpolicy: string("Allow"), string("Prohibit")))
-
-        ser.position(0, 6)
-        ser.str(string("Help:", ser#CR, ser#LF))
-        ser.str(string("a, A: Add a fingerprint to the database", ser#CR, ser#LF))
-        ser.str(string("l, L: Change comparison level", ser#CR, ser#LF))
-        ser.str(string("p, P: Change fingerprint add policy", ser#CR, ser#LF))
-        if usercnt
-            ser.str(string("d: Delete a specific user from the database", ser#CR, ser#LF))
-            ser.str(string("D: Delete all users from the database", ser#CR, ser#LF))
-            ser.str(string("u, U: List users with their privilege levels", ser#CR, ser#LF))
-            ser.str(string("m: Check fingerprint for match against specific user", ser#CR, ser#LF))
-            ser.str(string("M: Check fingerprint for match against any user", ser#CR, ser#LF))
-        ser.str(string("q, Q: Quit", ser#CR, ser#LF))
-
-        case ser.CharIn
-            "a", "A":
+        case ser.charin{}
+            "a", "A":                           ' add a user/print
                 repeat
                     ser.position(PROMPT_X, PROMPT_Y)
-                    ser.str(string("Privilege level for user "))
-                    uid := usercnt+1                        ' Get next available user id
-                    ser.dec(uid)
-                    ser.str(string("? (1..3) > "))
-                    priv_lvl := ser.decin
+                    uid := _usercnt+1
+                    ser.printf1(string("Privilege level for user %d? (1..3) > "), uid)
+                    priv_lvl := ser.decin{}
                     ifnot lookdown(priv_lvl: 1..3)
-                        quit
-                    ser.str(string(" (3 scans will be required)", ser#CR, ser#LF))
-                    stmp := fng.addprint(uid, priv_lvl)     ' Scanner requires 3 scans of a fingerprint
-                    ser.newline
-                    if stmp <> 0                            ' Scan failed for some reason:
+                        quit                    ' invalid privilege level
+                    ser.strln(string(" (3 scans will be required)"))
+                    ' scanner requires 3 scans of a fingerprint
+                    stmp := fng.addprint(uid, priv_lvl)
+                    ser.newline{}
+                    if stmp <> 0                ' scan failed
                         ser.str(string("Scan was unsuccessful: "))
-                        case stmp
-                            $01:
+                        case stmp               ' error code returned from
+                            $01:                '   the sensor:
                                 ser.str(string("Non-specific failure"))
                             $06:
                                 ser.str(string("User already exists"))
@@ -101,108 +76,126 @@ PUB Main | uid, tmp, priv, usercnt, cmplevel, addpolicy, finished, stmp, priv_lv
                                 ser.str(string("Fingerprint already exists"))
                             $08:
                                 ser.str(string("Timeout"))
-                            OTHER:
-                                ser.str(string("Exception error (BUG): "))
-                                ser.dec(stmp)
-                        ser.newline
+                        ser.newline{}
                         ser.str(string("Retry? (y/n)> "))
-                        case ser.charin
+                        case ser.charin{}
                             "y", "Y": finished := FALSE
-                            OTHER: finished := TRUE
-                    else
+                            other: finished := TRUE
+                    else                        ' scan succeeded
                         finished := TRUE
-                until finished
-
-            "d":
-                if usercnt                                  ' Try to delete _only_ if there's
+                until finished                  ' finished adding user/print
+            "d":                                ' delete specific user
+                ' only try if there's at least one user stored in the database
+                if _usercnt
                     ser.position(PROMPT_X, PROMPT_Y)
-                    ser.str(string("Delete user #> "))      '   at least one user stored in the
-                    uid := ser.decin                        '   database
+                    uid := prompt(string("Delete user #> "))
                     fng.deleteuser(uid)
                 else
                     next
-
-            "D":
-                if usercnt
+            "D":                                ' delete all users
+                if _usercnt
                     ser.position(PROMPT_X, PROMPT_Y)
-                    ser.str(string("delete all users", ser#CR, ser#LF))
-                    fng.deleteallusers
+                    ser.strln(string("delete all users"))
+                    fng.deleteallusers{}
                 else
                     next
-
-            "l", "L":
+            "l", "L":                           ' set print comparison level
                 ser.position(PROMPT_X, PROMPT_Y)
-                ser.str(string("Comparison level? (0..9)> "))
-                tmp := ser.decin
+                tmp := prompt(string("Comparison level? (0..9)> "))
                 if lookdown(tmp: 0..9)
-                    fng.comparisonlevel(cmplevel := tmp)
-
-            "m":
-                if usercnt
+                    fng.comparisonlevel(tmp)
+                    _cmplvl := tmp
+            "m":                                ' check match against uid
+                if _usercnt
                     ser.position(PROMPT_X, PROMPT_Y)
-                    ser.str(string("Check fingerprint against stored uid# (1.."))
-                    ser.dec(usercnt)
-                    ser.str(string(") > "))
-                    uid := ser.decin
-                    ifnot lookdown(uid: 1..usercnt)         ' User ID entered invalid? Skip below code
-                        next
+                    ser.printf1(string("Check fingerprint against stored uid# (1..%d) > "), _usercnt)
+                    uid := ser.decin{}
+                    ifnot lookdown(uid: 1.._usercnt)
+                        next                    ' invalid uid
                     ser.dec(uid)
-                    ser.newline
+                    ser.newline{}
                     tmp := fng.printmatchesuser(uid)
                     ser.str(lookupz(||(tmp): string("Not a match"), string("Match")))
                     ser.clearline{}
-                    ser.newline
-                    pressanykey
-
-            "M":
-                if usercnt
+                    ser.newline{}
+                    pressanykey{}
+            "M":                                ' find a match to any uid
+                if _usercnt
                     ser.position(PROMPT_X, PROMPT_Y)
                     ser.str(string("Ready to match print to a user: "))
-                    if tmp := fng.printmatch
-                        ser.dec(tmp)
+                    if tmp := fng.printmatch{}
+                        ser.printf1(string("Matches user #%d"), tmp)
                     else
                         ser.str(string("Unrecognized"))
-                    ser.newline
-                    pressanykey
-
-            "p", "P":
-                addpolicy ^= 1
-                fng.addpolicy(addpolicy)
-
-            "q", "Q":
+                    ser.newline{}
+                    pressanykey{}
+            "p", "P":                           ' toggle duplicate add policy
+                _add_pol ^= 1
+                fng.addpolicy(_add_pol)
+            "q", "Q":                           ' quit
                 ser.str(string("Halting"))
                 quit
-
-            "u", "U":
-                if usercnt
-                    repeat tmp from 1 to usercnt
-                        ser.str(string("Privilege for uid "))
-                        ser.dec(tmp)
-                        ser.str(string(": "))
+            "u", "U":                           ' list users and privileges
+                if _usercnt
+                    repeat tmp from 1 to _usercnt
                         priv := fng.userpriv(tmp)
-                        ser.dec(priv)
-                        ser.newline
-                    pressanykey
+                        ser.printf2(string("Privilege for uid %d: %d\n"), tmp, priv)
+                    pressanykey{}
+            other:
 
-            OTHER:
+    repeat
 
-    flashled(led, 100)
-
-PRI PressAnyKey
+PRI PressAnyKey{}
 
     ser.str(string("Press any key to return"))
-    repeat until ser.charin
+    repeat until ser.charin{}
 
-PUB Setup
+PRI Prompt(ptr_str): dec
+' display a prompt and wait for a decimal number input
+    ser.str(ptr_str)
+    return ser.decin{}
 
-    repeat until ser.start (115_200)
+PRI ShowHelp{}
+
+    ser.position(0, 6)
+    ser.strln(string("Help:"))
+    ser.strln(string("a, A: Add a fingerprint to the database"))
+    ser.strln(string("l, L: Change comparison level"))
+    ser.strln(string("p, P: Change fingerprint add policy"))
+    if _usercnt
+        ser.strln(string("d: Delete a specific user from the database"))
+        ser.strln(string("D: Delete all users from the database"))
+        ser.strln(string("u, U: List users with their privilege levels"))
+        ser.strln(string("m: Check fingerprint for match against specific user"))
+        ser.strln(string("M: Check fingerprint for match against any user"))
+    ser.strln(string("q, Q: Quit"))
+
+PRI ShowSettings{}
+
+        ser.position(0, 3)
+        ser.str(string("Total user count: "))
+        ser.dec(_usercnt := fng.totalusercount{})
+
+        ser.position(50, 3)
+        fng.comparisonlevel(_cmplvl)
+        ser.str(string("Comparison level: "))
+        ser.dec(fng.comparisonlevel(-2))
+
+        ser.position(50, 4)
+        fng.addpolicy(_add_pol)
+        ser.str(string("Duplicate print add policy: "))
+        _add_pol := fng.addpolicy(-2)
+        ser.str(lookupz(_add_pol: string("Allow"), string("Prohibit")))
+
+PUB Setup{}
+
+    ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear
-    ser.str(string("Serial terminal started", ser#CR, ser#LF))
-    fng.start(FPRINT_TX, FPRINT_RX, FPRINT_BPS, FPRINT_BL, FPRINT_RST)
-    ser.str(string("Fingerprint reader started", ser#CR, ser#LF))
+    ser.strln(string("Serial terminal started"))
+    fng.start(FPRINT_TX, FPRINT_RX, FPRINT_BL, FPRINT_RST)
+    ser.strln(string("Fingerprint reader started"))
 
-#include "lib.utility.spin"
 
 DAT
 {
