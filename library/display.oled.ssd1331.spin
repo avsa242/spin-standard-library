@@ -1,15 +1,14 @@
 {
     --------------------------------------------
-    Filename: display.oled.ssd1331.spi.spin
+    Filename: display.oled.ssd1331.spin
     Author: Jesse Burt
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started: Apr 28, 2019
-    Updated: Oct 16, 2021
+    Updated: Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-#define SSD1331
 #define MEMMV_NATIVE wordmove
 #include "lib.gfx.bitmap.spin"
 
@@ -47,7 +46,7 @@ CON
     BGR         = 1
 
 ' Character attributes
-    DRAWBG          = 1 << 0
+    DRAWBG      = 1 << 0
 
 OBJ
 
@@ -58,10 +57,6 @@ OBJ
 VAR
 
     long _CS, _SCK, _MOSI, _DC, _RES
-    long _ptr_drawbuffer
-    word _buff_sz
-    word _bytesperln
-    byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
 
     ' shadow registers used since the display registers can't be read from
     byte _sh_SETCOLUMN, _sh_SETROW, _sh_SETCONTRAST_A, _sh_SETCONTRAST_B, _sh_SETCONTRAST_C
@@ -97,10 +92,13 @@ PUB Startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_drawbuf
     return FALSE
 
 PUB Stop{}
-
+' Turn off display, stop SPI engine, clear out variable space
     displayvisibility(ALL_OFF)
     powered(FALSE)
     spi.deinit{}
+    longfill(@_CS, 0, 6)
+    wordfill(@_buff_sz, 0, 2)
+    bytefill(@_disp_width, 0, 30)
 
 PUB Defaults{}
 ' Factory default settings
@@ -269,6 +267,10 @@ PUB Char(ch) | gl_c, gl_r, lastgl_c, lastgl_r
             return
 #endif
 
+PUB CharAttrs(attrs)
+' Set character attributes
+    _char_attrs := attrs
+
 #ifdef GFX_DIRECT
 PUB Clear{} | tmp
 ' Clear the display
@@ -277,6 +279,12 @@ PUB Clear{} | tmp
     tmp.byte[2] := _disp_xmax
     tmp.byte[3] := _disp_ymax
     writereg(core#CLEAR, 4, @tmp)
+
+#else
+
+PUB Clear{}
+' Clear the display buffer
+    wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #endif
 
 PUB ClockDiv(divider): curr_div
@@ -639,6 +647,21 @@ PUB Plot(x, y, color) | tmp
     spi.wr_byte(color.byte[1])
     spi.deselectafter(true)
     spi.wr_byte(color.byte[0])
+
+#else
+
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color (buffered)
+    word[_ptr_drawbuffer][x + (y * _disp_width)] := ((color >> 8) & $FF) | ((color << 8) & $FF00)
+#endif
+
+#ifndef GFX_DIRECT
+PUB Point(x, y): pix_clr
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+
+    return word[_ptr_drawbuffer][x + (y * _disp_width)]
 #endif
 
 PUB Powered(state): curr_state
@@ -758,6 +781,15 @@ PUB WriteBuffer(ptr_buff, buff_sz)
 PRI NoOp{}
 ' No-operation
     writereg(core#NOP3, 0, 0)
+
+#ifndef GFX_DIRECT
+PRI memFill(xs, ys, val, count)
+' Fill region of display buffer memory
+'   xs, ys: Start of region
+'   val: Color
+'   count: Number of consecutive memory locations to write
+    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
+#endif
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes from ptr_buff to device
