@@ -3,9 +3,9 @@
     Filename: HD44780-Demo.spin
     Author: Jesse Burt
     Description: Demo of the HD44780 LCD driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 08, 2021
-    Updated Oct 12, 2021
+    Updated Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,7 +34,7 @@ OBJ
     cfg : "core.con.boardcfg.flip"
     ser : "com.serial.terminal.ansi"
     time: "time"
-    lcd : "display.lcd.hd44780.multi"
+    lcd : "display.lcd-alpha.hd44780"
 
 PUB Main{}
 

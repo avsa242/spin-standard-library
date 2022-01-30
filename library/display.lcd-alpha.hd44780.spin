@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: display.lcd.hd44780.multi.spin
+    Filename: display.lcd.hd44780.spin
     Author: Jesse Burt
     Description: Driver for HD44780 alphanumeric LCDs
     Copyright (c) 2021
