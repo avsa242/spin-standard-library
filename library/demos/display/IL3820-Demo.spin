@@ -3,9 +3,9 @@
     Filename: IL3820-Demo.spin
     Author: Jesse Burt
     Description: Demo of the IL3820 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 30, 2019
-    Updated Apr 4, 2021
+    Updated Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -39,7 +39,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    epaper  : "display.epaper.il3820.spi"
+    epaper  : "display.epaper.il3820"
     fnt     : "font.5x8"
 
 VAR
@@ -111,9 +111,7 @@ PUB Setup{}
         epaper.fontsize(6, 8)
     else
         ser.strln(string("IL3820 driver failed to start - halting"))
-        epaper.stop{}
-        time.msleep(500)
-        ser.stop{}
+        repeat
 
 DAT
 {

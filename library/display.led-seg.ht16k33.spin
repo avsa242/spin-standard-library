@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: display.led-seg.ht16k33.i2c.spin
+    Filename: display.led-seg.ht16k33.spin
     Description: Driver for HT16K33-based LED segment displays
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Created: Jun 22, 2021
-    Updated: Jun 22, 2021
+    Updated: Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }

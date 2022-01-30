@@ -1,16 +1,16 @@
 {
     --------------------------------------------
-    Filename: display.led.ht16k33.i2c.spin
+    Filename: display.led.ht16k33.spin
     Description: Driver for HT16K33-based LED matrix displays
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Created: Oct 11, 2018
-    Updated: Oct 18, 2021
+    Updated: Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
-#define HT16K33-ADAFRUIT
+#define 1BPP
 #define MEMMV_NATIVE bytemove
 #include "lib.gfx.bitmap.spin"
 
@@ -32,13 +32,8 @@ CON
 
 VAR
 
-    long _ptr_drawbuffer
-    word _buff_sz
-    byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
-    byte _disp_buff[8]
     byte _dispsetup
     byte _addr_bits
-    byte _bytesperln
 
 OBJ
 
@@ -128,8 +123,11 @@ PUB Brightness(level)
             return
     writereg(core#BRIGHTNESS, level)
 
-PUB ClearAccel{}
-' Dummy method
+#ifndef GFX_DIRECT
+PUB Clear{}
+' Clear the display buffer
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
+#endif
 
 PUB DisplayVisibility(state)
 ' Enable display visibility
@@ -156,9 +154,51 @@ PUB OscEnabled(state)
             return
     writereg(core#OSCILLATOR, state)
 
+#ifdef GFX_DIRECT
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color (direct to display)
+
+#else
+
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color (buffered)
+    x := x + 7
+    x := x // 8
+
+    case color
+        1:
+            byte[_ptr_drawbuffer][y] |= |< x
+        0:
+            byte[_ptr_drawbuffer][y] &= !(|< x)
+        -1:
+            byte[_ptr_drawbuffer][y] ^= |< x
+        other:
+            return
+#endif
+
+#ifndef GFX_DIRECT
+PUB Point(x, y): pix_clr
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+
+    x := x + 7
+    x := x // 8
+    return byte[_ptr_drawbuffer][y + (x >> 3) * _disp_width]
+#endif
+
 PUB Update{}
 ' Write display buffer to display
     writereg(core#DISP_RAM, _ptr_drawbuffer)
+
+#ifndef GFX_DIRECT
+PRI memFill(xs, ys, val, count)
+' Fill region of display buffer memory
+'   xs, ys: Start of region
+'   val: Color
+'   count: Number of consecutive memory locations to write
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
+#endif
 
 PRI writeReg(reg_nr, ptr_buff) | cmd_pkt[2], i
 ' Write reg_nr to device from ptr_buff
