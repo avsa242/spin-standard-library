@@ -1,15 +1,15 @@
 {
     --------------------------------------------
-    Filename: display.oled.ssd1306.i2cspi.spin
+    Filename: display.oled.ssd1306.spin
     Description: Driver for Solomon Systech SSD1306 OLED displays
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Created: Apr 26, 2018
-    Updated: Oct 18, 2021
+    Updated: Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-#define SSD130X
+#define 1BPP
 #define MEMMV_NATIVE bytemove
 #include "lib.gfx.bitmap.spin"
 
@@ -49,10 +49,6 @@ OBJ
 VAR
 
     long _DC, _RES
-    long _ptr_drawbuffer
-    word _buff_sz
-    word _bytesperln
-    byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
     byte _sa0
 
 PUB Null{}
@@ -139,7 +135,7 @@ PUB Defaults{}
     powered(FALSE)
     displaylines(64)
     displaystartline(0)
-    chargepumpreg(TRUE)
+    chgpumpvoltage(7_500)
     addrmode(PAGE)
     contrast(127)
     displayvisibility(NORMAL)
@@ -150,7 +146,7 @@ PUB Preset_128x{}
 ' Preset: 128px wide, determine settings for height at runtime
     displaylines(_disp_height)
     displaystartline(0)
-    chargepumpreg(TRUE)
+    chgpumpvoltage(7_500)
     addrmode(HORIZ)
     displayvisibility(NORMAL)
     case _disp_height
@@ -166,7 +162,7 @@ PUB Preset_128x32{}
 ' Preset: 128px wide, setup for 32px height
     displaylines(32)
     displaystartline(0)
-    chargepumpreg(TRUE)
+    chgpumpvoltage(7_500)
     addrmode(HORIZ)
     displayvisibility(NORMAL)
     compincfg(0, 0)
@@ -176,7 +172,7 @@ PUB Preset_128x64{}
 ' Preset: 128px wide, setup for 64px height
     displaylines(64)
     displaystartline(0)
-    chargepumpreg(TRUE)
+    chgpumpvoltage(7_500)
     addrmode(HORIZ)
     displayvisibility(NORMAL)
     compincfg(1, 0)
@@ -204,20 +200,31 @@ PUB AddrMode(mode)
 
     writereg(core#MEM_ADDRMODE, 1, mode)
 
-PUB ChargePumpReg(enabled)
-' Enable Charge Pump Regulator when display power enabled
-'   Valid values: TRUE (-1 or 1), FALSE (0)
+PUB ChgPumpVoltage(v)
+' Set charge pump regulator voltage, in millivolts
+'   Valid values:
+'       0 (off), 6_000, *7_500, 8_500, 9_000
 '   Any other value is ignored
-    case ||(enabled)
-        0, 1:
-            enabled := lookupz(||(enabled): $10, $14)
+'   NOTE: This must be called before display power is enabled with Powered()
+    case v
+        0_000:
+            v := core#CHGP_OFF
+        6_000:
+            v := core#CHGP_6000
+        7_500:
+            v := core#CHGP_7500
+        8_500:
+            v := core#CHGP_8500
+        9_000:
+            v := core#CHGP_9000
         other:
             return
 
-    writereg(core#CHARGEPUMP, 1, enabled)
+    writereg(core#CHGPUMP, 1, v)
 
-PUB ClearAccel{}
-' Dummy method
+PUB Clear{}
+' Clear the display buffer
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 
 PUB ClockFreq(freq)
 ' Set display internal oscillator frequency, in kHz
@@ -378,6 +385,30 @@ PUB MirrorV(state)
 
     writereg(core#COMDIR_NORM, 0, state)
 
+#ifdef GFX_DIRECT
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color (direct to display)
+#else
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color (buffered)
+    case color
+        1:
+            byte[_ptr_drawbuffer][x + (y>>3) * _disp_width] |= (|< (y&7))
+        0:
+            byte[_ptr_drawbuffer][x + (y>>3) * _disp_width] &= !(|< (y&7))
+        -1:
+            byte[_ptr_drawbuffer][x + (y>>3) * _disp_width] ^= (|< (y&7))
+        OTHER:
+            return
+#endif
+
+PUB Point(x, y): pix_clr
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+
+    return (byte[_ptr_drawbuffer][(x + (y >> 3) * _disp_width)] & (1 << (y & 7)) <> 0) * -1
+
 PUB Powered(state) | tmp
 ' Enable display power
     case ||(state)
@@ -446,6 +477,13 @@ PUB WriteBuffer(ptr_buff, buff_sz) | tmp
     spi.deselectafter(true)
     spi.wrblock_lsbf(ptr_buff, buff_sz)
 #endif
+
+PRI memFill(xs, ys, val, count)
+' Fill region of display buffer memory
+'   xs, ys: Start of region
+'   val: Color
+'   count: Number of consecutive memory locations to write
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 
 PRI writeReg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp, ackbit
 ' Write nr_bytes from val to device
