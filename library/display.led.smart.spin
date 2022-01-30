@@ -4,14 +4,13 @@
     Author: Jesse Burt
     Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated Oct 18, 2021
+    Updated Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 
     NOTE: This is a modified version of jm_rgbx_pixel.spin,
         originally written by Jon McPhalen
 }
-#define NEOPIXEL
 #define MEMMV_NATIVE longmove
 #include "lib.gfx.bitmap.spin"
 
@@ -60,19 +59,17 @@ CON
 VAR
 
     long _cog
-    long _ptr_framebuffer, _ptr_drawbuffer, _buff_sz            ' pointer to active pixel buffer
-    long _disp_width, _disp_height, _disp_xmax, _disp_ymax
-    long _npixels                                               ' number of pixels in buffer
-    word _bytesperln
+    long _ptr_framebuffer                       ' pointer to active pixel buffer
+    long _npixels                               ' number of pixels in buffer
 
 ' do not modify order; this structure passed to PASM cog
 '
-    long _connection                                            ' compressed connection details
-    long _resetticks                                            ' ticks in reset period
-    long _rgfix                                                 ' swap r&g? + bit count for pixels
-    long _t0h                                                   ' bit0 high time (ticks)      
-    long _t1h                                                   ' bit1 high time (ticks)
-    long _cycleticks                                            ' ticks in 1.25us
+    long _connection                            ' compressed connection details
+    long _resetticks                            ' ticks in reset period
+    long _rgfix                                 ' swap r&g? + bit count for pixels
+    long _t0h                                   ' bit0 high time (ticks)
+    long _t1h                                   ' bit1 high time (ticks)
+    long _cycleticks                            ' ticks in 1.25us
     long _updateframe
 
 PUB Null
@@ -195,9 +192,9 @@ PUB Address(addr, count, pin, bits) : c
     _connection := c                                            ' set new connection
     result := _ptr_framebuffer
 
-PUB ClearAccel
-' Turns off all LEDs
-    longfill(_ptr_framebuffer, $00_00_00_00, _npixels)
+PUB Clear{}
+' Clear the display buffer
+    longfill(_ptr_drawbuffer, _bgcolor, _npixels)
 
 PUB Connected
 ' Returns true when latest connection details picked up by driver
@@ -214,6 +211,26 @@ PUB NumPixels
 ' Returns number of pixels in assiged pixel array                      
     return _npixels
 
+#ifdef GFX_DIRECT
+PUB Plot(x, y, color)
+' Draw a pixel at (x, y) in color (direct to display)
+
+#else
+
+PUB Plot(x, y, color)
+' Draw a pixel at (x, y) in color (buffered)
+    long[_ptr_drawbuffer][x + (y * _disp_width)] := color
+#endif
+
+#ifndef GFX_DIRECT
+PUB Point(x, y): pix_clr
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+
+    return long[_ptr_drawbuffer][x + (y * _disp_width)]
+#endif
+
 PUB Running
 ' Returns true if running
     return (_cog <> 0)
@@ -222,6 +239,15 @@ PUB Update
 ' Write the draw buffer to the display
 '   NOTE: This is only required when using double-buffering
     longmove(_ptr_framebuffer, _ptr_drawbuffer, _buff_sz/4)
+
+#ifndef GFX_DIRECT
+PRI memFill(xs, ys, val, count)
+' Fill region of display buffer memory
+'   xs, ys: Start of region
+'   val: Color
+'   count: Number of consecutive memory locations to write
+    longfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
+#endif
 
 DAT
 ' Gamma table
