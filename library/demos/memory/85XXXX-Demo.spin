@@ -39,7 +39,7 @@ OBJ
     ser         : "com.serial.terminal.ansi"
     cfg         : "core.con.boardcfg.flip"
     time        : "time"
-    mem         : "memory.fram.85xxxx.i2c"
+    mem         : "memory.fram.85xxxx"
 
 VAR
 
