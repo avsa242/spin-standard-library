@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: display.lcd.ili9341.8bp.spin
+    Filename: display.lcd.ili9341.spin
     Author: Jesse Burt
     Description: Driver for ILI9341 LCD controllers
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Oct 14, 2021
-    Updated Oct 16, 2021
+    Updated Jan 15, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,6 +20,14 @@ CON
     MAX_COLOR       = 65535
     BYTESPERPX      = 2
 
+' Display visibility modes
+    ALL_OFF         = 0
+    OFF             = 0
+    NORMAL          = 1
+    ON              = 1
+    INVERTED        = 2
+    ALL_ON          = 3
+
 ' Subpixel order
     RGB             = 0
     BGR             = 1
@@ -31,6 +39,13 @@ CON
 ' Character attributes
     DRAWBG          = 1 << 0
 
+' Internal use
+    VMH             = 0
+    VML             = 1
+
+    CLK_DIV         = 0                         ' FRMCTR1
+    FRM_RT          = 1
+
 OBJ
 
     time: "time"                                ' timekeeping methods
@@ -39,13 +54,12 @@ OBJ
 
 VAR
 
-    long _buff_sz
-    word _disp_width, _disp_height, _disp_xmax, _disp_ymax
-    word _bytesperln
     byte _RESET
 
     ' shadow registers
-    byte _madctl
+    word _vcomh, _vcoml
+    byte _madctl, _pwr_ctrl2, _vmctrl1[2], _vcomoffs, _colmod, _frmctr1[2]
+    byte _g3ctrl
 
 PUB Startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT): status
 ' Start driver using custom I/O settings
@@ -68,105 +82,52 @@ PUB Startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT)
             _bytesperln := _disp_width * BYTESPERPX
             reset{}
 
-PUB Preset
+PUB Preset{}
 ' Preset settings
-    com.wrbyte_cmd(core#SWRESET)
+    reset{}
     time.msleep(5)
 
-    com.wrbyte_cmd(core#DISPOFF)
+    displayvisibility(OFF)
+    gvddvoltage(4_750)
+    vghstepfactor(7)
+    vglstepfactor(3)
+    vcomhvoltage(5_000)
+    vcomlvoltage(-0_600)
+    vcomoffset(-44)
 
-    com.wrbyte_cmd(core#PWCTR1)
-    com.wrbyte_dat($26)
+    mirrorv(false)
+    mirrorh(false)
+    displayrotate(false)
+    vertrefreshdir(NORM)
+    subpixelorder(RGB)
+    horizrefreshdir(NORM)
 
-    com.wrbyte_cmd(core#PWCTR2)
-    com.wrbyte_dat($11)
+    colordepth(16)
 
-    com.wrbyte_cmd(core#VMCTR1)
-    com.wrbyte_dat($5c)
-    com.wrbyte_dat($4c)
+    clkdiv(1)
+    framerate(70)
 
-    com.wrbyte_cmd(core#VMCTR2)
-    com.wrbyte_dat($94)
+    gamma3chctrl(false)
+    gammafixedcurve(2_2)                        ' param ignored; for symbolic purpose only
+    gammatablen(@_gammatbl_neg)
+    gammatablep(@_gammatbl_pos)
 
-    com.wrbyte_cmd(core#MADCTL)
-'    com.wrbyte_dat(%0010_11_00)
-'    com.wrbyte_dat(%0010_11_00)
-    com.wrbyte_dat($48)
+    displaybounds(0, 0, 239, 319)
 
-    com.wrbyte_cmd(core#PIXFMT) 'OK
-    com.wrbyte_dat($55)
-
-    com.wrbyte_cmd(core#FRMCTR1)
-    com.wrbyte_dat($00)
-    com.wrbyte_dat($1B)
-
-    com.wrbyte_cmd($f2) ' 3Gamma Function Disable
-    com.wrbyte_dat($08)
-    com.wrbyte_cmd(core#GAMMASET)
-    com.wrbyte_dat($01) ' gamma set 4 gamma curve 01/02/04/08
-    com.wrbyte_cmd(core#GMCTRP1) 'positive gamma correction
-    com.wrbyte_dat($1f)
-    com.wrbyte_dat($1a)
-    com.wrbyte_dat($18)
-    com.wrbyte_dat($0a)
-    com.wrbyte_dat($0f)
-    com.wrbyte_dat($06)
-    com.wrbyte_dat($45)
-    com.wrbyte_dat($87)
-    com.wrbyte_dat($32)
-    com.wrbyte_dat($0a)
-    com.wrbyte_dat($07)
-    com.wrbyte_dat($02)
-    com.wrbyte_dat($07)
-    com.wrbyte_dat($05)
-    com.wrbyte_dat($00)
-    com.wrbyte_cmd(core#GMCTRN1) 'negamma correction
-    com.wrbyte_dat($00)
-    com.wrbyte_dat($25)
-    com.wrbyte_dat($27)
-    com.wrbyte_dat($05)
-    com.wrbyte_dat($10)
-    com.wrbyte_dat($09)
-    com.wrbyte_dat($3a)
-    com.wrbyte_dat($78)
-    com.wrbyte_dat($4d)
-    com.wrbyte_dat($05)
-    com.wrbyte_dat($18)
-    com.wrbyte_dat($0d)
-    com.wrbyte_dat($38)
-    com.wrbyte_dat($3a)
-    com.wrbyte_dat($1f)
-
-'--------------ddram ---------------------
-    com.wrbyte_cmd(core#CASET) ' column set
-    com.wrbyte_dat($00)
-    com.wrbyte_dat($00)
-    com.wrbyte_dat($00)
-    com.wrbyte_dat($EF)
-    com.wrbyte_cmd(core#PASET) ' page address set
-    com.wrbyte_dat($00)
-    com.wrbyte_dat($00)
-    com.wrbyte_dat($01)
-    com.wrbyte_dat($3F)
+' xxx todo
     ' com.wrbyte_cmd($34) ' tearing effect off
     'com.wrbyte_cmd($35) ' tearing effect on
     'com.wrbyte_cmd($b4) ' display inversion
     'com.wrbyte_dat($00)
-    com.wrbyte_cmd(core#ENTRYMODE) 'entry mode set
-    com.wrbyte_dat($07)
-
-'-----------------display---------------------
     com.wrbyte_cmd(core#DFUNCTR) ' display function control
     com.wrbyte_dat($0a)
     com.wrbyte_dat($82)
     com.wrbyte_dat($27)
     com.wrbyte_dat($00)
-    com.wrbyte_cmd(core#SLPOUT) 'sleep out
-    time.msleep(100)
-    com.wrbyte_cmd(core#DISPON) ' display on
-    time.msleep(100)
-    com.wrbyte_cmd(core#RAMWR) 'memory write
-    time.msleep(200)
+' xxx
+
+    powered(true)
+    displayvisibility(NORMAL)
 
 PUB Stop{}
 ' Power off the display, and stop the engine
@@ -247,6 +208,37 @@ PUB Clear{}
     com.wrbyte_cmd(core#RAMWR)
     com.wrwordx_dat(_bgcolor, _buff_sz)
 
+PUB ClkDiv(cdiv): curr_cdiv
+' Set LCD clock divisor
+'   Valid values: 1, 2, 4, 8
+'   Any other value returns the current (cached) setting
+    case cdiv
+        1, 2, 4, 8:
+            _frmctr1[CLK_DIV] := lookdownz(cdiv: 1, 2, 4, 8)
+            com.wrbyte_cmd(core#FRMCTR1)
+            com.wrbyte_dat(_frmctr1[CLK_DIV])
+            com.wrbyte_dat(_frmctr1[FRM_RT])
+        other:
+            return lookupz(_frmctr1[CLK_DIV]: 1, 2, 4, 8)
+
+PUB ColorDepth(cbpp): curr_cbpp
+' Set display color depth, in bits per pixel
+'   Valid values: 16, 18
+'   Any other value returns the current (cached) setting
+    case cbpp
+        16:
+            _colmod := $55
+        18:
+            _colmod := $66
+        other:
+            if (_colmod == $55)
+                return 16
+            elseif (_colmod == $66)
+                return 18
+
+    com.wrbyte_cmd(core#COLMOD)
+    com.wrbyte_dat(_colmod)
+
 PUB Contrast(c)
 
 PUB DisplayBounds(x1, y1, x2, y2) | x, y, cmd_pkt[2]
@@ -298,6 +290,79 @@ PUB DisplayRotate(state): curr_state
     _madctl := ((curr_state & core#MV_MASK) | state)
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
+
+PUB DisplayVisibility(state): curr_state
+' Set display visibility
+'   Valid values:
+'       ALL_OFF/OFF (0), NORMAL/ON (1), ALL_ON (3)
+'   Any other value is ignored
+'   NOTE: Does not affect the display RAM contents
+    case state
+        OFF:
+            com.wrbyte_cmd(core#DISPOFF)
+        ON:
+            com.wrbyte_cmd(core#ETMOD)
+            com.wrbyte_dat(core#GDR_NORM)
+            com.wrbyte_cmd(core#DISPON)
+        ALL_ON:
+            com.wrbyte_cmd(core#ETMOD)
+            com.wrbyte_dat(core#GDR_VGH)
+        other:
+
+PUB FrameRate(frate): curr_frate
+' Set LCD maximum frame rate, in Hz
+'   Valid values: 61, 63, 65, 68, 70, 73, 76, 79, 83, 86, 90, 95, 100, 106,
+'                   112, 119
+'   Any other value returns the current (cached) setting
+'   NOTE: This setting only affects the display when operating in NORMAL mode
+    case frate
+        61, 63, 65, 68, 70, 73, 76, 79, 83, 86, 90, 95, 100, 106, 112, 119:
+            _frmctr1[FRM_RT] := lookdownz(frate: 119, 112, 106, 100, 95, 90, {
+}           86, 83, 79, 76, 73, 70, 68, 65, 63, 61)
+            com.wrbyte_cmd(core#FRMCTR1)
+            com.wrbyte_dat(_frmctr1[CLK_DIV])
+            com.wrbyte_dat(_frmctr1[FRM_RT])
+        other:
+            return lookupz(_frmctr1[FRM_RT]: 119, 112, 106, 100, 95, 90, 86, {
+}           83, 79, 76, 73, 70, 68, 65, 63, 61)
+
+PUB Gamma3ChCtrl(state): curr_state
+' Enable 3-gamma control
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value returns the current (cached) setting
+    case ||(state)
+        0, 1:
+            _g3ctrl := %10 | ||(state)
+            com.wrbyte_cmd(core#GM3CTRL)
+            com.wrbyte_dat(_g3ctrl)
+        other:
+            return ((_g3ctrl & 1) == 1)
+
+PUB GammaFixedCurve(prest): curr_prest
+' Set gamma curve preset
+'   NOTE: Parameter is ignored; for API compatibility with other drivers
+    com.wrbyte_cmd(core#GAMMASET)
+    com.wrbyte_dat($01)
+
+PUB GammaTableN(ptr_buff)
+' Modify gamma table (negative polarity)
+    com.wrbyte_cmd(core#GMCTRN1)
+    com.wrblock_dat(ptr_buff, 15)
+
+PUB GammaTableP(ptr_buff)
+' Modify gamma table (positive polarity)
+    com.wrbyte_cmd(core#GMCTRP1)
+    com.wrblock_dat(ptr_buff, 15)
+
+PUB GVDDVoltage(v): curr_v
+' Set GVDD level, in millivolts
+'   (reference level for VCOM and grayscale voltage level)
+'   Valid values: 3_000..6_000 (rounded to nearest 50mV)
+    case v
+        3_000..6_000:
+            v := (v / 50) - 57
+            com.wrbyte_cmd(core#PWCTR1)
+            com.wrbyte_cmd(v)
 
 PUB HorizRefreshDir(mode): curr_mode
 ' Set panel horizontal refresh direction
@@ -448,6 +513,46 @@ PUB SubpixelOrder(order): curr_ord
 PUB Update
 ' Dummy method
 
+PUB VCOMHVoltage(v): curr_v
+' Set VCOMH voltage, in millivolts
+'   Valid values: 2_700..5875 (rounded to nearest 25mV; default: 3_925)
+'   Any other value returns the current (cached) setting
+    case v
+        2_700..5_875:
+            _vmctrl1[VMH] := v := (v - 2700) / 25
+            com.wrbyte_cmd(core#VMCTR1)
+            com.wrbyte_dat(_vmctrl1[VMH])
+            com.wrbyte_dat(_vmctrl1[VML])
+        other:
+            return (_vmctrl1[VMH] * 25) + 2_700
+
+PUB VCOMLVoltage(v): curr_v
+' Set VCOML voltage, in millivolts
+'   Valid values: -2_500..0 (rounded to nearest 25mV; default: -1_000)
+'   Any other value returns the current (cached) setting
+    case v
+        -2_500..0_000:
+            _vmctrl1[VML] := v := (v + 2_500) / 25
+            com.wrbyte_cmd(core#VMCTR1)
+            com.wrbyte_dat(_vmctrl1[VMH])
+            com.wrbyte_dat(_vmctrl1[VML])
+        other:
+            return (_vmctrl1[VML] * 25) - 2_500
+
+PUB VCOMOffset(v): curr_v
+' Set VCOMH/VCOML offset, in millivolts
+'   Valid values: -63..63 (default: 0)
+    curr_v := _vcomoffs
+    case v
+        -63..63:
+            v += 64
+            _vcomoffs := v
+            v |= core#SETNVM                    ' must be set to adjust
+            com.wrbyte_cmd(core#VMCTR2)
+            com.wrbyte_dat(v)
+        other:
+            return (_vcomoffs-64)
+
 PUB VertRefreshDir(mode): curr_mode
 ' Set panel vertical refresh direction
 '   (refresh direction relative to panel's top-left (0, 0) location)
@@ -464,6 +569,49 @@ PUB VertRefreshDir(mode): curr_mode
     _madctl := ((curr_mode & core#ML_MASK) | mode)
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
+
+PUB VGHStepFactor(fact): curr_fact
+' Set step-up factor for VGH operating voltage (VCI * n)
+'   Valid values: 6, 7
+'   Any other value returns the current (cached) setting
+    curr_fact := _pwr_ctrl2
+    case fact
+        6, 7:
+            fact := lookdownz(fact: 7, 6) << 1
+        other:
+            return ((curr_fact >> 1) & %11)
+
+    fact := ((curr_fact & core#VGH_MASK) | fact)
+    _madctl |= (1 << 4)
+    com.wrbyte_cmd(core#PWCTR2)
+    com.wrbyte_dat(fact)
+
+PUB VGLStepFactor(fact): curr_fact
+' Set step-up factor for VGL operating voltage (VCI * n)
+'   Valid values: 3, 4
+'   Any other value returns the current (cached) setting
+    curr_fact := _pwr_ctrl2
+    case fact
+        3, 4:
+            fact := lookdownz(fact: 4, 3)
+        other:
+            return (curr_fact & 1)
+
+    fact := ((curr_fact & core#VGH_MASK) | fact)
+    com.wrbyte_cmd(core#PWCTR2)
+    com.wrbyte_dat(fact)
+
+DAT
+
+    _gammatbl_neg   byte    $00, $25, $27, $05
+                    byte    $10, $09, $3a, $78
+                    byte    $4d, $05, $18, $0d
+                    byte    $38, $3a, $1f
+
+    _gammatbl_pos   byte    $1f, $1a, $18, $0a
+                    byte    $0f, $06, $45, $87
+                    byte    $32, $0a, $07, $02
+                    byte    $07, $05, $00
 
 DAT
 {
