@@ -38,7 +38,7 @@ OBJ
 
     cfg : "core.con.boardcfg.flip"
     time: "time"
-    oled: "display.oled.us2066.i2c"
+    oled: "display.oled-alpha.us2066"
     ser : "com.serial.terminal.ansi"
 
 PUB Main{}
