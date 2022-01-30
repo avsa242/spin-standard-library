@@ -3,9 +3,9 @@
     Filename: IL3897-Demo.spin
     Author: Jesse Burt
     Description: Demo of the IL3897 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Apr 4, 2021
+    Updated Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -45,7 +45,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    epaper  : "display.epaper.il3897.spi"
+    epaper  : "display.epaper.il3897"
     fnt     : "font.5x8"
 
 VAR
