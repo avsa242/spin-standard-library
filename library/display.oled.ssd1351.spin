@@ -1,15 +1,14 @@
 {
     --------------------------------------------
-    Filename: display.oled.ssd1351.spi.spin
+    Filename: display.oled.ssd1351.spin
     Author: Jesse Burt
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started: Mar 11, 2020
-    Updated: Oct 26, 2021
+    Updated: Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-#define SSD1351
 #define MEMMV_NATIVE wordmove
 #include "lib.gfx.bitmap.spin"
 
@@ -59,10 +58,6 @@ OBJ
 VAR
 
     long _CS, _DC, _RES
-    long _ptr_drawbuffer
-    word _bytesperln, _buff_sz
-
-    byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
     byte _offs_x, _offs_y
 
     ' shadow registers
@@ -369,6 +364,12 @@ PUB Clear{}
     outa[_DC] := core#DATA
     spi.wrwordx_msbf(_bgcolor, _buff_sz/2)
     outa[_CS] := 1
+
+#else
+
+PUB Clear{}
+' Clear the display buffer
+    wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #endif
 
 PUB ClockDiv(divider): curr_div
@@ -689,7 +690,7 @@ PUB Phase3Period(clks)
 
 #ifdef GFX_DIRECT
 PUB Plot(x, y, c) | cmd_pkt[3]
-' Draw a pixel, using the display's native/accelerated plot/pixel function
+' Draw a pixel at (x, y) (direct to display)
     if (x => 0 and x =< _disp_xmax) and (y => 0 and y =< _disp_ymax)
         cmd_pkt.byte[0] := core#SETCOLUMN       ' D/C L
         cmd_pkt.byte[1] := x+_offs_x            ' D/C H
@@ -717,6 +718,21 @@ PUB Plot(x, y, c) | cmd_pkt[3]
         spi.wrblock_lsbf(@cmd_pkt.byte[7], 2)
         outa[_CS] := 1
 
+#else
+
+PUB Plot(x, y, color)
+' Draw a pixel at (x, y) in color (buffered)
+    word[_ptr_drawbuffer][x + (y * _disp_width)] := color
+
+#endif
+
+#ifndef GFX_DIRECT
+PUB Point(x, y): pix_clr
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+
+    return word[_ptr_drawbuffer][x + (y * _disp_width)]
 #endif
 
 PUB Powered(state)
@@ -780,6 +796,15 @@ PUB Update{}
     outa[_DC] := core#DATA
     spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
     outa[_CS] := 1
+#endif
+
+#ifndef GFX_DIRECT
+PRI memFill(xs, ys, val, count)
+' Fill region of display buffer memory
+'   xs, ys: Start of region
+'   val: Color
+'   count: Number of consecutive memory locations to write
+    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
 #endif
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
