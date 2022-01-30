@@ -35,7 +35,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    amp     : "audio.amp.max9744.i2c"
+    amp     : "audio.amp.max9744"
 
 PUB Main{} | i, level
 
