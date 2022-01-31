@@ -29,7 +29,7 @@ VAR
 OBJ
 
     term        : "com.serial.terminal"
-    compass     : "sensor.compass.2dof.hm55b.spi"
+    compass     : "sensor.compass.2dof.hm55b"
     calibrate   : "Calibration"
     num         : "string.integer"
 
