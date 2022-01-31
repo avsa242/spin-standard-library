@@ -9,10 +9,6 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the below to choose I2C (PASM or SPIN) or SPI interface
-#define L3G4200D_I2C_PASM
-'#define L3G4200D_I2C_SPIN
-'#define L3G4200D_SPI
 
 CON
 
@@ -40,7 +36,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    gyro    : "sensor.gyroscope.3dof.l3g4200d.i2cspi"
+    gyro    : "sensor.gyroscope.3dof.l3g4200d"
     int     : "string.integer"
 
 PUB Main{}
@@ -123,9 +119,6 @@ PUB Setup{}
 #endif
     else
         ser.strln(string("L3G4200D driver failed to start - halting"))
-        gyro.stop{}
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT
