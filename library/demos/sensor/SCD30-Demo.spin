@@ -9,9 +9,7 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the below to choose either the PASM or SPIN I2C engine
-#define SCD30_PASM
-'#define SCD30_SPIN
+
 CON
 
     _clkmode    = cfg#_clkmode
@@ -36,7 +34,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    env     : "sensor.co2.scd30.i2c"
+    env     : "sensor.co2.scd30"
     int     : "string.integer"
     sf      : "string.format"
 
