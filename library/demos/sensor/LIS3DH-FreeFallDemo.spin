@@ -40,7 +40,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    accel   : "sensor.accel.3dof.lis3dh.i2cspi"
+    accel   : "sensor.accel.3dof.lis3dh"
 
 VAR
 

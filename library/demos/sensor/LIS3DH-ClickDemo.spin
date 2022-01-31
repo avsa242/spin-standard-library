@@ -4,15 +4,12 @@
     Author: Jesse Burt
     Description: Demo of the LIS3DH driver
         click-detection functionality
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jul 11, 2020
-    Updated Jan 27, 2021
+    Updated Jan 31, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the following to choose which interface the LIS3DH is connected to
-#define LIS3DH_I2C
-'#define LIS3DH_SPI
 
 CON
 
@@ -37,7 +34,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    accel   : "sensor.accel.3dof.lis3dh.i2cspi"
+    accel   : "sensor.accel.3dof.lis3dh"
 
 PUB Main{} | click_src, int_act, dclicked, sclicked, z_clicked, y_clicked, x_clicked
 
@@ -89,9 +86,6 @@ PUB Setup{}
 #endif
     else
         ser.strln(string("LIS3DH driver failed to start - halting"))
-        accel.stop{}
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT

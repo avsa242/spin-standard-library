@@ -9,9 +9,6 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the following to choose which interface the LIS3DH is connected to
-#define LIS3DH_I2C
-'#define LIS3DH_SPI
 
 CON
 
@@ -40,7 +37,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    accel   : "sensor.accel.3dof.lis3dh.i2cspi"
+    accel   : "sensor.accel.3dof.lis3dh"
 
 PUB Main{}
 
