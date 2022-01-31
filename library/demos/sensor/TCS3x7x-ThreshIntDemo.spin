@@ -35,7 +35,7 @@ OBJ
     cfg : "core.con.boardcfg.flip"
     ser : "com.serial.terminal.ansi"
     time: "time"
-    rgb : "sensor.color.tcs3x7x.i2c"
+    rgb : "sensor.color.tcs3x7x"
 
 VAR
 

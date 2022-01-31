@@ -3,9 +3,9 @@
     Filename: TCS3x7x-Demo.spin
     Author: Jesse Burt
     Description: Demo of the TCS3x7x driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started: Jun 24, 2018
-    Updated: Jul 20, 2021
+    Updated: Jan 31, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,7 +34,7 @@ OBJ
     ser : "com.serial.terminal.ansi"
     time: "time"
     io  : "io"
-    rgb : "sensor.color.tcs3x7x.i2c"
+    rgb : "sensor.color.tcs3x7x"
 
 PUB Main{}
 
@@ -72,9 +72,6 @@ PUB Setup{}
         ser.strln(string("TCS3X7X driver started"))
     else
         ser.strln(string("TCS3X7X driver failed to start - halting"))
-        rgb.stop{}
-        time.msleep(500)
-        ser.stop{}
         repeat
 
 DAT
