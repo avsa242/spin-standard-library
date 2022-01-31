@@ -29,7 +29,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    iaq     : "sensor.iaq.sgp30.i2c"
+    iaq     : "sensor.iaq.sgp30"
     int     : "string.integer"
 
 VAR
