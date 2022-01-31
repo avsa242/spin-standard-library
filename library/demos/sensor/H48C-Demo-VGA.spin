@@ -102,7 +102,7 @@ VAR
 OBJ
 
     cfg     : "core.con.boardcfg.quickstart-hib"
-    h48c    : "sensor.accel.3dof.h48c.spi"
+    h48c    : "sensor.accel.3dof.h48c"
     vga     : "display.vga.text"
 
 PUB Demo_Test{}
