@@ -2,10 +2,10 @@
     --------------------------------------------
     Filename: core.con.mma7455.spin
     Author: Jesse Burt
-    Description: Low-level constants
+    Description: MMA7455-specific constants
     Copyright (c) 2021
     Started Nov 27, 2019
-    Updated Jan 1, 2021
+    Updated Dec 30, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -60,9 +60,39 @@ CON
         STON_MASK       = (1 << STON) ^ MCTL_MASK
         GLVL_MASK       = (GLVL_BITS << GLVL) ^ MCTL_MASK
         MODE_MASK       = MODE_BITS ^ MCTL_MASK
+        DRPD_EN         = DRPD_MASK
+        DRPD_DIS        = (1 << DRPD)
+        DRPD_BIT        = (1 << DRPD)
 
     INTRST              = $17
+    INTRST_MASK         = $03
+        CLR_INT2        = 1
+        CLR_INT1        = 0
+        CLR_INT_BITS    = %11
+        CLR_INT_MASK    = CLR_INT_BITS ^ INTRST_MASK
+
     CTL1                = $18
+    CTL1_MASK           = $FF
+        DFBW            = 7
+        THOPT           = 6
+        ZDA             = 5
+        YDA             = 4
+        XDA             = 3
+        ZYXDA           = 3
+        INTREG          = 1
+        INTPIN          = 0
+        INTMASK         = 0                     ' pseudo field: all except DFBW
+        ZYXDA_BITS      = %111
+        INTREG_BITS     = %11
+        INTMASK_BITS    = %1111111
+        DFBW_MASK       = (1 << DFBW) ^ CTL1_MASK
+        THOPT_MASK      = (1 << THOPT) ^ CTL1_MASK
+        ZYXDA_MASK      = (ZYXDA_BITS << ZYXDA) ^ CTL1_MASK
+        INTREG_MASK     = (INTREG_BITS << INTREG) ^ CTL1_MASK
+        INTPIN_MASK     = 1 ^ CTL1_MASK
+        INTMASK_MASK    = INTMASK_BITS ^ CTL1_MASK
+        ZYXDA_INV       = ZYXDA_BITS << ZYXDA
+
     CTL2                = $19
     LDTH                = $1A
     PDTH                = $1B
@@ -73,4 +103,4 @@ CON
 
 
 PUB Null
-'' This is not a top-level object
+' This is not a top-level object
