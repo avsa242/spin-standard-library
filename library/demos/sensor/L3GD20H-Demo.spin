@@ -9,9 +9,6 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the lines below to select an interface
-#define L3GD20H_I2C
-'#define L3GD20H_SPI
 
 CON
 
@@ -45,7 +42,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    gyro    : "sensor.gyroscope.3dof.l3gd20h.i2cspi"
+    gyro    : "sensor.gyroscope.3dof.l3gd20h"
 
 PUB Main{}
 
@@ -125,9 +122,6 @@ PUB Setup{}
     else
 #endif
         ser.strln(string("L3GD20H driver failed to start - halting"))
-        gyro.stop{}
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT
