@@ -4,8 +4,8 @@
     Author: Jesse Burt
     Description: Driver for the MMA8452Q 3DoF accelerometer
     Copyright (c) 2021
-    Started May 09, 2021
-    Updated Nov 9, 2021
+    Started May 9, 2021
+    Updated Nov 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -213,9 +213,6 @@ PUB AccelBias(bias_x, bias_y, bias_z, rw) | tmp
             writereg(core#OFF_Z, 1, @_abiasraw[Z_AXIS])
             restoreopmode{}                     ' restore original opmode
 
-PUB AccelClearInt{}
-' Clear Accelerometer interrupts
-
 PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Read the Accelerometer output registers
     readreg(core#OUT_X_MSB, 6, @tmp)
@@ -225,6 +222,7 @@ PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
 
 PUB AccelDataOverrun{}: flag
 ' Flag indicating previously acquired data has been overwritten
+    flag := 0
     readreg(core#STATUS, 1, @flag)
     return ((flag & core#ZYX_OW) <> 0)
 
@@ -249,6 +247,7 @@ PUB AccelDataRate(rate): curr_rate
 
 PUB AccelDataReady{}: flag
 ' Flag indicating new accelerometer data available
+    flag := 0
     readreg(core#STATUS, 1, @flag)
     return ((flag & core#ZYX_DR) <> 0)
 

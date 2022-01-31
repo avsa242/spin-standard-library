@@ -38,7 +38,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    accel   : "sensor.accel.3dof.mma8452q.i2c"
+    accel   : "sensor.accel.3dof.mma8452q"
     int     : "string.integer"
 
 VAR
