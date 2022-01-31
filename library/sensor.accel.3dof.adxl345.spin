@@ -5,7 +5,7 @@
     Description: Driver for the Analog Devices ADXL345 3DoF Accelerometer
     Copyright (c) 2021
     Started Mar 14, 2020
-    Updated Oct 23, 2021
+    Updated Nov 12, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -71,19 +71,23 @@ CON
     FULL            = 1
 
 ' Interrupts
-    DATA_RDY        = 1 << 7
-    SING_TAP        = 1 << 6
-    DBL_TAP         = 1 << 5
-    ACTIVITY        = 1 << 4
-    INACTIVITY      = 1 << 3
-    FREEFALL        = 1 << 2
-    WTRMARK         = 1 << 1
-    OVERRUN         = 1
+    INT_DRDY        = 1 << 7
+    INT_SNGTAP      = 1 << 6
+    INT_DBLTAP      = 1 << 5
+    INT_ACTIV       = 1 << 4
+    INT_INACT       = 1 << 3
+    INT_FFALL       = 1 << 2
+    INT_WTRMARK     = 1 << 1
+    INT_OVRRUN      = 1
 
 ' Axis symbols for use throughout the driver
     X_AXIS          = 0
     Y_AXIS          = 1
     Z_AXIS          = 2
+
+' Interrupt active state
+    LOW             = 0
+    HIGH            = 1
 
 VAR
 
@@ -197,6 +201,15 @@ PUB Preset_ClickDet{}
                                                 '   to check for second tap
     doubleclickwindow(300_000)                  ' check second tap for 300ms
     clickintenabled(TRUE)
+
+PUB Preset_FreeFall{}
+' Preset settings for free-fall detection
+    acceldatarate(100)
+    accelscale(2)
+    freefalltime(100_000)                       ' 100_000us/100ms min time
+    freefallthresh(0_315000)                    ' 0.315g's
+    accelopmode(MEAS)
+    intmask(INT_FFALL)                          ' enable free-fall interrupt
 
 PUB AccelADCRes(bits): curr_res
 ' Set accelerometer ADC resolution, in bits
@@ -504,7 +517,7 @@ PUB ClickAxisEnabled(mask): curr_mask
 PUB Clicked{}: flag
 ' Flag indicating the sensor was single-clicked
 '   NOTE: Calling this method clears all interrupts
-    return ((interrupt{} & SING_TAP) <> 0)
+    return ((interrupt{} & INT_SNGTAP) <> 0)
 
 PUB ClickedInt{}: intstat
 ' Clicked interrupt status
@@ -603,7 +616,7 @@ PUB DeviceID{}: id
 PUB DoubleClicked{}: flag
 ' Flag indicating sensor was double-clicked
 '   NOTE: Calling this method clears all interrupts
-    return ((interrupt{} & DBL_TAP) <> 0)
+    return ((interrupt{} & INT_DBLTAP) <> 0)
 
 PUB DoubleClickWindow(dctime): curr_dctime
 ' Set window of time after ClickLatency() elapses that a second click
@@ -683,6 +696,33 @@ PUB FIFOUnreadSamples{}: nr_samples
     readreg(core#FIFO_STATUS, 1, @nr_samples)
     nr_samples &= core#ENTRIES_BITS
 
+PUB FreeFallThresh(thresh): curr_thr
+' Set free-fall threshold, in micro-g's
+'   Valid values: 0..15_937500 (0..15.9g's)
+'   Any other value polls the chip and returns the current setting
+    case thresh
+        0..15_937500:
+            thresh /= 0_062500
+            writereg(core#THRESH_FF, 1, @thresh)
+        other:
+            curr_thr := 0
+            readreg(core#THRESH_FF, 1, @curr_thr)
+            return (curr_thr * 0_062500)
+
+
+PUB FreeFallTime(fftime): curr_time
+' Set minimum time duration required to recognize free-fall, in microseconds
+'   Valid values: 0..1_275_000
+'   Any other value polls the chip and returns the current setting
+    case fftime
+        0..1_275_000:
+            fftime /= 5_000
+            writereg(core#TIME_FF, 1, @fftime)
+        other:
+            curr_time := 0
+            readreg(core#TIME_FF, 1, @curr_time)
+            return (curr_time * 5_000)
+
 PUB GyroAxisEnabled(xyzmask)
 ' Dummy method
 
@@ -751,6 +791,31 @@ PUB InactTime(itime): curr_time
             readreg(core#TIME_INACT, 1, @curr_time)
             return
 
+PUB InFreeFall{}: flag
+' Flag indicating device is in free-fall
+'   Returns:
+'       TRUE (-1): device is in free-fall
+'       FALSE (0): device isn't in free-fall
+    flag := 0
+    return ((interrupt{} & INT_FFALL) == INT_FFALL)
+
+PUB IntActiveState(state): curr_state
+' Set interrupt pin active state/logic level
+'   Valid values: LOW (0), HIGH (1)
+'   Any other value polls the chip and returns the current setting
+    curr_state := 0
+    readreg(core#DATA_FORMAT, 1, @curr_state)
+    case state
+        LOW, HIGH:
+            ' invert the passed param;
+            '   0 is active high, 1 is active low
+            state := ((state ^ 1) << core#INT_INVERT)
+        other:
+            return (((curr_state ^ 1) >> core#INT_INVERT) & 1)
+
+    state := ((curr_state & core#INT_INVERT_MASK) | state)
+    writereg(core#DATA_FORMAT, 1, @state)
+
 PUB Interrupt{}: int_src
 ' Flag indicating interrupt(s) asserted
 '   Bits: 76543210
@@ -763,6 +828,7 @@ PUB Interrupt{}: int_src
 '       1: Watermark
 '       0: Overrun
 '   NOTE: Calling this method clears all interrupts
+    int_src := 0
     readreg(core#INT_SOURCE, 1, @int_src)
 
 PUB IntMask(mask): curr_mask

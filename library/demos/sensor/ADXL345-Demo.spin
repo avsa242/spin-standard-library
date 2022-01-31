@@ -37,7 +37,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    accel   : "sensor.accel.3dof.adxl345.i2cspi"
+    accel   : "sensor.accel.3dof.adxl345"
 
 PUB Main{}
 
