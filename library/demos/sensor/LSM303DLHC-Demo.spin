@@ -5,7 +5,7 @@
     Description: Demo of the LSM303DLHC driver
     Copyright (c) 2021
     Started Jul 30, 2020
-    Updated Jan 28, 2021
+    Updated Jul 20, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,8 +18,8 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    SCL_PIN     = 4
-    SDA_PIN     = 3
+    SCL_PIN     = 28
+    SDA_PIN     = 29
     I2C_HZ      = 400_000                       ' max is 400_000
 ' --
 
@@ -33,7 +33,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.6dof.lsm303dlhc.i2c"
+    imu     : "sensor.imu.6dof.lsm303dlhc"
 
 PUB Main{}
 
@@ -69,11 +69,11 @@ PUB MagCalc{} | mx, my, mz
     imu.maggauss(@mx, @my, @mz)
     ser.str(string("Mag (gauss):"))
     ser.positionx(DAT_X_COL)
-    decimal(mx, 1000)
+    decimal(mx, 1000000)
     ser.positionx(DAT_Y_COL)
-    decimal(my, 1000)
+    decimal(my, 1000000)
     ser.positionx(DAT_Z_COL)
-    decimal(mz, 1000)
+    decimal(mz, 1000000)
     ser.clearline{}
     ser.newline{}
 
@@ -122,8 +122,6 @@ PUB Setup{}
         ser.strln(string("LSM303DLHC driver started"))
     else
         ser.strln(string("LSM303DLHC driver failed to start - halting"))
-        imu.stop{}
-        time.msleep(5)
         repeat
 
 DAT

@@ -3,9 +3,9 @@
     Filename: sensor.imu.6dof.lsm303dlhc.i2c.spin
     Author: Jesse Burt
     Description: Driver for the ST LSM303DLHC 6DoF IMU
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jul 29, 2020
-    Updated Jan 28, 2021
+    Updated Jan 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,6 +22,9 @@ CON
     DEF_HZ          = 100_000
     I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
+    LSBF            = 0
+    MSBF            = 1
+
 ' Indicate to user apps how many Degrees of Freedom each sub-sensor has
 '   (also imply whether or not it has a particular sensor)
     ACCEL_DOF       = 3
@@ -29,6 +32,14 @@ CON
     MAG_DOF         = 3
     BARO_DOF        = 0
     DOF             = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
+
+' Scales and data rates used during calibration/bias/offset process
+    CAL_XL_SCL      = 2
+    CAL_G_SCL       = 0
+    CAL_M_SCL       = 1_3
+    CAL_XL_DR       = 100
+    CAL_G_DR        = 0
+    CAL_M_DR        = 75
 
     FP_SCALE        = 1_000_000
 
@@ -53,7 +64,7 @@ CON
 
 VAR
 
-    long _abiasraw[3], _mbiasraw[3], _ares, _mres_xy, _mres_z
+    long _abiasraw[ACCEL_DOF], _mbiasraw[MAG_DOF], _ares, _mres_xy, _mres_z
 
 OBJ
 
@@ -72,7 +83,7 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom I/O pins and I2C bus frequency
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ                 ' validate pins and bus freq
-        if status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ)
+        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#TPOR)              ' wait for device startup
             if i2c.present(XL_SLAVE_WR)         ' test device bus presence
                 return status
@@ -98,7 +109,7 @@ PUB Preset_Active{}
     acceldatarate(50)
     accelscale(2)
     magopmode(CONT)
-    magscale(1_3)
+    magscale(1)
 
 PUB Preset_ClickDet{}
 ' Presets for click-detection
@@ -158,7 +169,7 @@ PUB AccelAxisEnabled(mask): curr_mask
             ' ZYX (XYZ order is sensor.imu standard)
             mask := (mask >< 3) & core#XYZEN_BITS
         other:
-            return (curr_mask & core#XYZEN_BITS)
+            return ((curr_mask & core#XYZEN_BITS) >< 3)
 
     mask := ((curr_mask & core#XYZEN_MASK) | mask)
     writereg(core#CTRL_REG1, 1, @mask)
@@ -190,20 +201,16 @@ PUB AccelBias(axbias, aybias, azbias, rw)
                     _abiasraw[Z_AXIS] := azbias
                 other:
 
-PUB AccelData(ax, ay, az) | raw[2], tmp[3]
+PUB AccelData(ax, ay, az) | tmp[2]
 ' Reads the Accelerometer output registers
-    longfill(@raw, 0, 5)
-    readreg(core#OUT_X_L, 6, @raw)
+    longfill(@tmp, 0, 2)
+    readreg(core#OUT_X_L, 6, @tmp)
 
     ' accel data is 12bit, left-justified in a 16bit word
-    ' align left with MSB of long, then SAR enough to chop the 4 LSBs off
-    tmp[X_AXIS] := (raw.word[X_AXIS] << 16) ~> 20
-    tmp[Y_AXIS] := (raw.word[Y_AXIS] << 16) ~> 20
-    tmp[Z_AXIS] := (raw.word[Z_AXIS] << 16) ~> 20
-
-    long[ax] := ~~tmp[X_AXIS] - _abiasraw[X_AXIS]
-    long[ay] := ~~tmp[Y_AXIS] - _abiasraw[Y_AXIS]
-    long[az] := ~~tmp[Z_AXIS] - _abiasraw[Z_AXIS]
+    '   extend sign, then right-justify
+    long[ax] := (~~tmp.word[X_AXIS] ~> 4) - _abiasraw[X_AXIS]
+    long[ay] := (~~tmp.word[Y_AXIS] ~> 4) - _abiasraw[Y_AXIS]
+    long[az] := (~~tmp.word[Z_AXIS] ~> 4) - _abiasraw[Z_AXIS]
 
 PUB AccelDataOverrun{}: flag
 ' Flag indicating previously acquired data has been overwritten
@@ -216,7 +223,7 @@ PUB AccelDataOverrun{}: flag
 '       Returns 0 otherwise
     flag := 0
     readreg(core#STATUS_REG, 1, @flag)
-    return ((flag >> core#X_OR) & core#DA_BITS)
+    return ((flag >> core#X_OR) & core#OR_BITS)
 
 PUB AccelDataReady{}: flag
 ' Flag indicating accelerometer data is ready
@@ -248,6 +255,61 @@ PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpx, tmpy, tmpz
     long[ptr_y] := tmpy * _ares
     long[ptr_z] := tmpz * _ares
 
+PUB AccelInt{}: curr_state
+' Read accelerometer interrupt state
+'   Bit 6543210 (For each bit, 0: No interrupt, 1: Interrupt has been generated)
+'       6: One or more interrupts have been generated
+'       5: Z-axis high event
+'       4: Z-axis low event
+'       3: Y-axis high event
+'       2: Y-axis low event
+'       1: X-axis high event
+'       0: X-axis low event
+    readreg(core#INT1_SRC, 1, @curr_state)
+
+PUB AccelIntMask(mask): curr_mask
+' Set accelerometer interrupt mask
+'   Bits:   543210
+'       5: Z-axis high event
+'       4: Z-axis low event
+'       3: Y-axis high event
+'       2: Y-axis low event
+'       1: X-axis high event
+'       0: X-axis low event
+'   Valid values: %000000..%111111
+'   Any other value polls the chip and returns the current setting
+    case mask
+        %000000..%111111:
+            writereg(core#INT1_CFG, 1, @mask)
+        other:
+            curr_mask := 0
+            readreg(core#INT1_CFG, 1, @curr_mask)
+            return
+
+PUB AccelIntThresh(thresh): curr_lvl
+' Set accelerometer interrupt threshold level, in micro-g's
+'   Valid values: 0..16_000000
+    case thresh
+        0..16_000000:                           ' 0..16M micro-g's = 0..16 g's
+        other:
+            curr_lvl := 0
+            readreg(core#INT1_THS, 1, @curr_lvl)
+            case accelscale(-2)
+                2: curr_lvl *= 16_000
+                4: curr_lvl *= 32_000
+                8: curr_lvl *= 62_000
+                16: curr_lvl *= 186_000         ' Scale threshold reg's 7-bit
+            return                              '   range to micro-g's
+
+    case accelscale(-2)
+        2: curr_lvl := 16_000
+        4: curr_lvl := 32_000
+        8: curr_lvl := 62_000
+        16: curr_lvl := 186_000                 ' Scale micro-g's to threshold
+                                                '   reg 7-bit range
+    thresh /= curr_lvl
+    writereg(core#INT1_THS, 1, @thresh)
+
 PUB AccelScale(scale): curr_scl
 ' Set measurement range of the accelerometer, in g's
 '   Valid values: 2, 4, 8, 16
@@ -266,68 +328,71 @@ PUB AccelScale(scale): curr_scl
     scale := ((curr_scl & core#FS_MASK) | scale)
     writereg(core#CTRL_REG4, 1, @scale)
 
-PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbias[3], axis, nr_samples, orig_state
+PUB CalibrateAccel{} | axis, orig_res, orig_scl, orig_dr, tmp[ACCEL_DOF], tmpx, tmpy, tmpz, samples
 ' Calibrate the accelerometer
 '   NOTE: The accelerometer must be oriented with the package top facing up
-'   for this method to be successful
-    tmpx := tmpy := tmpz := axis := nr_samples := 0
-    longfill(@tmpbias, 0, 3)
-    accelbias(0, 0, 0, W)
-    orig_state.byte[0] := acceladcres(-2)       ' preserve user settings
-    orig_state.byte[1] := accelscale(-2)
-    orig_state.word[1] := acceldatarate(-2)
+'       for this method to be successful
+    longfill(@axis, 0, 11)                      ' initialize vars to 0
+    orig_scl := accelscale(-2)                  ' save user's current settings
+    orig_dr := acceldatarate(-2)
+    accelbias(0, 0, 0, W)                       ' clear existing bias
 
-    acceladcres(12)                             ' set to 12bit, 2g FS, 100Hz
-    accelscale(2)
-    acceldatarate(100)
+    ' set sensor to CAL_XL_SCL range, CAL_XL_DR Hz data rate
+    accelscale(CAL_XL_SCL)
+    acceldatarate(CAL_XL_DR)
+    samples := CAL_XL_DR                        ' samples = DR, for 1 sec time
 
-    fifoenabled(TRUE)                           ' use FIFO for data collection
-    fifomode(FIFO)
-    fifothreshold(32)
-    nr_samples := fifothreshold(-2)             ' read back to confirm, and use
-    repeat until fifofull{}                     '   as sample count
-
-    repeat nr_samples
-        acceldata(@tmpx, @tmpy, @tmpz)          ' read FIFO data
-        tmpbias[X_AXIS] += tmpx                 ' accumulate samples for
-        tmpbias[Y_AXIS] += tmpy                 '   each axis
-        tmpbias[Z_AXIS] += tmpz + (1024000/_ares)
-
-    accelbias(tmpbias[X_AXIS] / nr_samples, tmpbias[Y_AXIS] / nr_samples,{
-}   tmpbias[Z_AXIS] / nr_samples, W)            ' average samples and set bias
-
-    fifoenabled(FALSE)                          ' turn off the FIFO
-    fifomode(BYPASS)
-
-    acceladcres(orig_state.byte[0])             ' restore user settings
-    accelscale(orig_state.byte[1])
-    acceldatarate(orig_state.word[1])
-
-PUB CalibrateMag{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, orig_state
-' Calibrate the magnetometer
-    longfill(@tmpx, 0, 9)                       ' Initialize vars to 0
-    samples := 32
-    magbias(0, 0, 0, W)
-    orig_state.byte[0] := magopmode(-2)         ' preserve user settings
-    orig_state.byte[1] := magscale(-2)
-    orig_state.byte[2] := magdatarate(-2)
-
-    magopmode(CONT)                         ' set to continuous, 1.3Gs,
-    magscale(1_3)                               '   75Hz
-    magdatarate(75)
-
+    ' accumulate and average approx. 1sec worth of samples
     repeat samples
-        magdata(@tmpx, @tmpy, @tmpz)            ' read mag data
-        tmpbias[X_AXIS] += tmpx                 ' accumulate samples for
-        tmpbias[Y_AXIS] += tmpy                 '   each axis
-        tmpbias[Z_AXIS] += tmpz
+        repeat until acceldataready{}
+        acceldata(@tmpx, @tmpy, @tmpz)
+        tmp[X_AXIS] += tmpx
+        tmp[Y_AXIS] += tmpy
+        tmp[Z_AXIS] += (tmpz-(1_000_000 / _ares))' cancel out 1g on Z-axis
 
-    magbias(tmpbias[X_AXIS] / samples, tmpbias[Y_AXIS] / samples, {
-}   tmpbias[Z_AXIS]/samples, W)                 ' average samples and set bias
+    repeat axis from X_AXIS to Z_AXIS           ' calc avg
+        tmp[axis] /= samples
 
-    magopmode(orig_state.byte[0])               ' restore user settings
-    magscale(orig_state.byte[1])
-    magdatarate(orig_state.byte[2])
+    ' update offsets
+    accelbias(tmp[X_AXIS], tmp[Y_AXIS], tmp[Z_AXIS], W)
+
+    accelscale(orig_scl)                        ' restore user's settings
+    acceldatarate(orig_dr)
+
+PUB CalibrateGyro{}
+' dummy method
+
+PUB CalibrateMag{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[MAG_DOF], samples
+' Calibrate the magnetometer
+    longfill(@axis, 0, 10)                      ' initialize vars to 0
+    orig_scl := magscale(-2)                    ' save user's current settings
+    orig_dr := magdatarate(-2)
+    magbias(0, 0, 0, W)                         ' clear existing bias
+
+    ' set sensor to CAL_M_SCL range, CAL_M_DR Hz data rate
+    magscale(CAL_M_SCL)
+    magdatarate(CAL_M_DR)
+    samples := CAL_M_DR                         ' samples = DR, for 1 sec time
+
+    ' accumulate and average approx. 1sec worth of samples
+    repeat samples
+        repeat until magdataready{}
+        magdata(@tmpx, @tmpy, @tmpz)
+        tmp[X_AXIS] += tmpx
+        tmp[Y_AXIS] += tmpy
+        tmp[Z_AXIS] += tmpz
+
+    repeat axis from X_AXIS to Z_AXIS           ' calc avg
+        tmp[axis] /= samples
+
+    ' update offsets
+    magbias(tmp[X_AXIS], tmp[Y_AXIS], tmp[Z_AXIS], W)
+
+    magscale(orig_scl)                          ' restore user's settings
+    magdatarate(orig_dr)
+
+PUB CalibrateXLG{}
+' dummy method
 
 PUB ClickAxisEnabled(mask): curr_mask
 ' Enable click detection per axis, and per click type
@@ -349,7 +414,7 @@ PUB Clicked{}: flag
 ' Flag indicating the sensor was single or double-clicked
 '   Returns: TRUE (-1) if sensor was single-clicked or double-clicked
 '            FALSE (0) otherwise
-    return (((clickedint >> core#SCLICK) & %11) <> 0)
+    return (((clickedint >> core#SCLICK) & core#CLICK_BITS) <> 0)
 
 PUB ClickedInt{}: int_src
 ' Clicked interrupt status
@@ -394,7 +459,7 @@ PUB ClickLatency(ltime): curr_ltime | time_res
 '   Any other value polls the chip and returns the current setting
 '   NOTE: Minimum unit is dependent on the current output data rate (AccelDataRate)
 '   NOTE: ST application note example uses AccelDataRate(400)
-    time_res := 1_000000 / acceldatarate(-2)                ' Resolution is (1 / AccelDataRate)
+    time_res := 1_000000 / acceldatarate(-2)    ' Resolution is (1 / AccelDataRate)
     case ltime
         0..(time_res * 255):
             ltime := (ltime / time_res)
@@ -413,7 +478,7 @@ PUB ClickThresh(thresh): curr_thr | ares
 '       8           7_937500 (= 7.937500g)
 '       16         15_875000 (= 15.875000g)
 '   NOTE: Each LSB = (AccelScale/128)*1M (e.g., 4g scale lsb=31250ug = 0_031250ug = 0.03125g)
-    ares := (accelscale(-2) * 1_000000) / 128               ' Resolution is current scale / 128
+    ares := (accelscale(-2) * 1_000000) / 128   ' Resolution is current scale / 128
     case thresh
         0..(127*ares):
             thresh := (thresh / ares)
@@ -440,7 +505,7 @@ PUB ClickTime(ctime): curr_ctime | time_res
 '   Any other value polls the chip and returns the current setting
 '   NOTE: Minimum unit is dependent on the current output data rate (AccelDataRate)
 '   NOTE: ST application note example uses AccelDataRate(400)
-    time_res := 1_000000 / acceldatarate(-2)                ' Resolution is (1 / AccelDataRate)
+    time_res := 1_000000 / acceldatarate(-2)    ' Resolution is (1 / AccelDataRate)
     case ctime
         0..(time_res * 127):
             ctime := (ctime / time_res)
@@ -469,7 +534,7 @@ PUB DoubleClickWindow(dctime): curr_dctime | time_res
 '   Any other value polls the chip and returns the current setting
 '   NOTE: Minimum unit is dependent on the current output data rate (AccelDataRate)
 '   NOTE: ST application note example uses AccelDataRate(400)
-    time_res := 1_000000 / acceldatarate(-2)                ' Resolution is (1 / AccelDataRate)
+    time_res := 1_000000 / acceldatarate(-2)    ' Resolution is (1 / AccelDataRate)
     case dctime
         0..(time_res * 255):
             dctime := (dctime / time_res)
@@ -546,60 +611,29 @@ PUB FIFOUnreadSamples{}: nr_samples
     readreg(core#FIFO_SRC_REG, 1, @nr_samples)
     return ((nr_samples & core#FSS_BITS) + 1)
 
-PUB Interrupt{}: curr_state
-' Read interrupt state
-'   Bit 6543210 (For each bit, 0: No interrupt, 1: Interrupt has been generated)
-'       6: One or more interrupts have been generated
-'       5: Z-axis high event
-'       4: Z-axis low event
-'       3: Y-axis high event
-'       2: Y-axis low event
-'       1: X-axis high event
-'       0: X-axis low event
-    readreg(core#INT1_SRC, 1, @curr_state)
+PUB GyroAxisEnabled(mask)
+' dummy method
 
-PUB IntMask(mask): curr_mask
-' Set interrupt mask
-'   Bits:   543210
-'       5: Z-axis high event
-'       4: Z-axis low event
-'       3: Y-axis high event
-'       2: Y-axis low event
-'       1: X-axis high event
-'       0: X-axis low event
-'   Valid values: %000000..%111111
-'   Any other value polls the chip and returns the current setting
-    case mask
-        %000000..%111111:
-            writereg(core#INT1_CFG, 1, @mask)
-        other:
-            curr_mask := 0
-            readreg(core#INT1_CFG, 1, @curr_mask)
-            return
+PUB GyroBias(x, y, z, rw)
+' dummy method
 
-PUB IntThresh(thresh): curr_lvl
-' Set interrupt threshold level, in micro-g's
-'   Valid values: 0..16_000000
-    case thresh
-        0..16_000000:                                       ' 0..16_000000 = 0..16M micro-g's = 0..16 g's
-        other:
-            curr_lvl := 0
-            readreg(core#INT1_THS, 1, @curr_lvl)
-            case accelscale(-2)                             '
-                2: curr_lvl *= 16_000                       '
-                4: curr_lvl *= 32_000                       '
-                8: curr_lvl *= 62_000                       '
-                16: curr_lvl *= 186_000                     ' Scale threshold register's 7-bit range
-            return                                          '   to micro-g's
+PUB GyroDataRate(rate)
+' dummy method
 
-    case accelscale(-2)                                     '
-        2: curr_lvl := 16_000                               '
-        4: curr_lvl := 32_000                               '
-        8: curr_lvl := 62_000                               '
-        16: curr_lvl := 186_000                             ' Scale micro-g's to threshold register's
+PUB GyroData(x, y, z)
+' dummy method
 
-    thresh /= curr_lvl                                       '   7-bit range
-    writereg(core#INT1_THS, 1, @thresh)
+PUB GyroDataOverrun{}
+' dummy method
+
+PUB GyroDataReady{}
+' dummy method
+
+PUB GyroDPS(x, y, z)
+' dummy method
+
+PUB GyroScale(scale)
+' dummy method
 
 PUB MagBias(mxbias, mybias, mzbias, rw)
 ' Read or write/manually set Magnetometer calibration offset values
@@ -608,9 +642,8 @@ PUB MagBias(mxbias, mybias, mzbias, rw)
 '           R (0), W (1)
 '       mxbias, mybias, mzbias:
 '           -2048..2047
-'   NOTE: When rw is set to READ, mxbias, mybias and mzbias must be addresses of respective variables to hold the returned
-'       calibration offset values.
-
+'   NOTE: When rw is set to READ, mxbias, mybias and mzbias must be pointers
+'       to respective variables to hold the returned offset values.
     case rw
         R:
             long[mxbias] := _mbiasraw[X_AXIS]
@@ -635,10 +668,11 @@ PUB MagBias(mxbias, mybias, mzbias, rw)
 
 PUB MagData(mx, my, mz) | tmp[2]
 ' Read the Magnetometer output registers
+    longfill(@tmp, 0, 2)
     readreg(core#OUT_X_H_M, 6, @tmp)
-    long[mx] := ~~tmp.word[X_AXIS] - _mbiasraw
-    long[my] := ~~tmp.word[Y_AXIS] - _mbiasraw
-    long[mz] := ~~tmp.word[Z_AXIS] - _mbiasraw
+    long[mx] := ~~tmp.word[0] - _mbiasraw[X_AXIS]
+    long[my] := ~~tmp.word[2] - _mbiasraw[Y_AXIS]
+    long[mz] := ~~tmp.word[1] - _mbiasraw[Z_AXIS]
 
 PUB MagDataOverrun{}: flag
 ' Flag indicating magnetometer data has overrun
@@ -664,18 +698,19 @@ PUB MagDataReady{}: flag
 '   Flag indicating new magnetometer data available
 '       Returns: TRUE(-1) if data available, FALSE otherwise
     readreg(core#SR_REG_M, 1, @flag)
-    return ((flag & core#DRDY_BITS) == 1)
+    return ((flag & core#DRDY_BITS) == 0)
 
 PUB MagEndian(endianness): curr_order
 ' Choose byte order of magnetometer data
 ' Dummy method
 
-PUB MagGauss(mx, my, mz) | tmp[3]
+PUB MagGauss(mx, my, mz) | tmp[MAG_DOF]
 ' Read the Magnetometer output registers and scale the outputs to micro-Gauss (1_000_000 = 1.000000 Gs)
+    longfill(@tmp, 0, MAG_DOF)
     magdata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[mx] := ((tmp[X_AXIS] * 1_000) / _mres_xy) * 1_000
-    long[my] := ((tmp[Y_AXIS] * 1_000) / _mres_xy) * 1_000
-    long[mz] := ((tmp[Z_AXIS] * 1_000) / _mres_z) * 1_000
+    long[mx] := tmp[X_AXIS] * _mres_xy
+    long[my] := tmp[Y_AXIS] * _mres_xy
+    long[mz] := tmp[Z_AXIS] * _mres_z
 
 PUB MagInt{}: intsrc
 ' Magnetometer interrupt source(s)
@@ -726,22 +761,22 @@ PUB MagPerf(mode): curr_mode
 
 PUB MagScale(scale): curr_scl
 ' Set full scale of Magnetometer, in Gauss
-'   Valid values: *1_3 (1.3), 1_9, 2_5, 4_0, 4_7, 5_6, 8_1
+'   Valid values: *1 (1.3), 2 (1.9), 3 (2.5), 4, 5 (4.7), 6 (5.6), 8 (8.1)
 '   Any other value polls the chip and returns the current setting
-    curr_scl := 0
-    readreg(core#CRB_REG_M, 1, @curr_scl)
-    case(scale)
-        1_3, 1_9, 2_5, 4_0, 4_7, 5_6, 8_1:
-            scale := lookdown(scale: 1_3, 1_9, 2_5, 4_0, 4_7, 5_6, 8_1)
-'            _mres := lookup(scale: 0_000140, 0_000290, 0_000430, 0_000580)
-'            _mres := 160
-            _mres_xy := lookup(scale: 1100, 855, 670, 450, 400, 330, 230)
-            _mres_z := lookup(scale: 980, 760, 600, 400, 355, 295, 205)
+    case scale
+        1, 2, 3, 4, 5, 6, 8:
+            scale := lookdown(scale: 1, 2, 3, 4, 5, 6, 8)
+            _mres_xy := lookup(scale: 0_000909, 0_001169, 0_001492, 0_002222, {
+}           0_002500, 0_003030, 0_004347)
+            _mres_z := lookup(scale: 0_001020, 0_001315, 0_001666, 0_002500, {
+}           0_002816, 0_003389, 0_004878)
             scale <<= core#GN
             writereg(core#CRB_REG_M, 1, @scale)
         other:
+            curr_scl := 0
+            readreg(core#CRB_REG_M, 1, @curr_scl)
             curr_scl := (curr_scl >> core#GN) & core#GN_BITS
-            return lookup(curr_scl: 1_3, 1_9, 2_5, 4_0, 4_7, 5_6, 8_1)
+            return lookup(curr_scl: 1, 2, 3, 4, 5, 6, 8)
 
 PUB MagSelfTest(enabled): curr_setting
 ' Enable on-chip magnetometer self-test
@@ -754,35 +789,41 @@ PUB MagSoftreset{}
 PUB Reset{}
 ' Reset the device
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, byte_ord
 ' Read nr_bytes from slave device into ptr_buff
     case reg_nr                                 ' validate reg #
-        $3220..$3227, $322E..$323D:             ' Accel regs
-        $3228..$322D:                           ' Accel/Mag data output regs
+        $32_20..$32_27, $32_2E..$32_3D:         ' Accel regs
+            byte_ord := LSBF
+        $32_28..$32_2D:                         ' Accel data output regs
             reg_nr |= core#RD_MULTI
-        $3C00..$3C0C, $3C31, $3C32:             ' Mag regs
+            byte_ord := LSBF
+        $3C_00..$3C_0C, $3C_31, $3C_32:         ' Mag regs
+            byte_ord := MSBF
         other:
             return
 
     cmd_pkt.byte[0] := reg_nr.byte[1]           ' slave address embedded in
-    cmd_pkt.byte[1] := reg_nr & $FF             '   the upper byte of reg_nr
+    cmd_pkt.byte[1] := reg_nr.byte[0]           '   the upper byte of reg_nr
     i2c.start{}
     i2c.wrblock_lsbf(@cmd_pkt, 2)
     i2c.start{}
     i2c.write(reg_nr.byte[1] | 1)
-    i2c.rdblock_lsbf(ptr_buff, nr_bytes, TRUE)
+    if (byte_ord == LSBF)                       ' accelerometer data is LSBf
+        i2c.rdblock_lsbf(ptr_buff, nr_bytes, TRUE)
+    elseif (byte_ord == MSBF)                   ' mag is MSBf
+        i2c.rdblock_msbf(ptr_buff, nr_bytes, TRUE)
     i2c.stop{}
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Write nr_bytes from ptr_buff to slave device
     case reg_nr                                 ' validate reg #
-        $3220..$3226, $322E, $3230, $3232..$3234, $3236..$323D:
-        $3C00..$3C02:
+        $32_20..$32_26, $32_2E, $32_30, $32_32..$32_34, $32_36..$32_3D:
+        $3C_00..$3C_02:
         other:
             return
 
     cmd_pkt.byte[0] := reg_nr.byte[1]
-    cmd_pkt.byte[1] := reg_nr & $FF
+    cmd_pkt.byte[1] := reg_nr.byte[0]
     i2c.start{}
     i2c.wrblock_lsbf(@cmd_pkt, 2)
     i2c.wrblock_lsbf(ptr_buff, nr_bytes)

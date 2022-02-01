@@ -31,7 +31,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    accel   : "sensor.imu.6dof.lsm303dlhc.i2c"
+    accel   : "sensor.imu.6dof.lsm303dlhc"
 
 PUB Main{} | click_src, int_act, dclicked, sclicked, z_clicked, y_clicked, x_clicked
 
@@ -78,9 +78,6 @@ PUB Setup{}
         ser.strln(string("LSM303DLHC driver started (I2C)"))
     else
         ser.strln(string("LSM303DLHC driver failed to start - halting"))
-        accel.stop{}
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT
