@@ -43,7 +43,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.9dof.lsm9ds1.i2cspi"
+    imu     : "sensor.imu.9dof.lsm9ds1"
 
 PUB Main{}
 
