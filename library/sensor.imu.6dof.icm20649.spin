@@ -78,7 +78,7 @@ OBJ
 #elseifdef ICM20649_I2C
     i2c : "com.i2c"                             ' PASM I2C engine
 #endif
-    core: "core.con.icm20649.spin"              ' hw-specific low-level const's
+    core: "core.con.icm20649"                   ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
 
 PUB Null{}
@@ -376,6 +376,9 @@ PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, orig_scl, ori
     gyrodatarate(orig_drate)
     gyrolowpassfilter(orig_lpf)
 
+PUB CalibrateMag{}
+' dummy method
+
 PUB CalibrateXLG{}
 
     calibrateaccel{}
@@ -548,6 +551,9 @@ PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_y] := ~~tmp.word[1]
     long[ptr_z] := ~~tmp.word[0]
 
+PUB GyroDataOverrun{}
+' dummy method
+
 PUB GyroDataRate(rate): curr_rate
 ' Set gyroscope output data rate, in Hz
 '   Valid values: 1..1100 (default: 1100)
@@ -656,6 +662,27 @@ PUB IntMask(mask): curr_mask
             curr_mask := 0
             readreg(core#INT_ENABLE, 1, @curr_mask)
             return
+
+PUB MagBias(x, y, z, rw)
+'dummy method
+
+PUB MagData(x, y, z)
+' dummy method
+
+PUB MagDataOverrun{}
+' dummy method
+
+PUB MagDataRate(rate)
+' dummy method
+
+PUB MagDataReady{}
+' dummy method
+
+PUB MagGauss(x, y, z)
+' dummy method
+
+PUB MagScale(scale)
+' dummy method
 
 PUB Powered(state): curr_state
 ' Enable device power

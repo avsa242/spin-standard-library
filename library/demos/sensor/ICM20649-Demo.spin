@@ -9,9 +9,6 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment _one_ of the below to choose the interface
-#define ICM20649_I2C
-'#define ICM20649_SPI
 
 CON
 
@@ -45,7 +42,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.6dof.icm20649.i2cspi"
+    imu     : "sensor.imu.6dof.icm20649"
 
 PUB Main{}
 
@@ -138,8 +135,6 @@ PUB Setup{}
 #endif
     else
         ser.str(string("ICM20649 driver failed to start - halting"))
-        imu.stop{}
-        time.msleep(5)
         repeat
 
 DAT
