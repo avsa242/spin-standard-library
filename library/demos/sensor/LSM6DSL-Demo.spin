@@ -9,9 +9,6 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the below lines to choose the interface
-#define LSM6DSL_I2C
-'#define LSM6DSL_SPI
 
 CON
 
@@ -45,7 +42,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.6dof.lsm6dsl.i2cspi"
+    imu     : "sensor.imu.6dof.lsm6dsl"
 
 PUB Main{}
 

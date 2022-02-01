@@ -45,7 +45,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.6dof.lsm6dsl.i2cspi"
+    imu     : "sensor.imu.6dof.lsm6dsl"
     core    : "core.con.lsm6dsl"
 
 VAR

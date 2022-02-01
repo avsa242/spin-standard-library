@@ -10,9 +10,6 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the following to choose which interface the LSM6DSL is connected to
-#define LSM6DSL_I2C
-'#define LSM6DSL_SPI
 
 CON
 
@@ -28,7 +25,7 @@ CON
     SDA_PIN     = 29                            ' SPI, I2C
     SDO_PIN     = 3                             ' SPI
     I2C_HZ      = 400_000                       ' I2C
-    SLAVE_OPT   = 0                             ' I2C
+    ADDR_BITS   = 0                             ' I2C
 ' --
 
 OBJ
@@ -36,7 +33,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    imu     : "sensor.imu.6dof.lsm6dsl.i2cspi"
+    imu     : "sensor.imu.6dof.lsm6dsl"
 
 PUB Main{} | click_src, int_act, dclicked, sclicked, z_clicked, y_clicked, x_clicked
 
@@ -83,7 +80,7 @@ PUB Setup{}
     if imu.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
         ser.strln(string("LSM6DSL driver started (SPI)"))
 #elseifdef LSM6DSL_I2C
-    if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ, SLAVE_OPT)
+    if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
         ser.strln(string("LSM6DSL driver started (I2C)"))
 #endif
     else
