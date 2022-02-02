@@ -31,7 +31,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    vcnl    : "sensor.light.vcnl4200.i2c"
+    vcnl    : "sensor.light.vcnl4200"
 
 PUB Main{}
 
