@@ -3,9 +3,9 @@
     Filename: TSL2591-Demo.spin
     Description: Demo of the TSL2591 driver
     Author: Jesse Burt
-    Copyright (c) 2020
+    Copyright (c) 2022
     Started Nov 23, 2019
-    Updated Dec 20, 2020
+    Updated Feb 2, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -35,7 +35,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     int     : "string.integer"
     time    : "time"
-    tsl2591 : "sensor.lux.tsl2591.i2c"
+    tsl2591 : "sensor.lux.tsl2591"
 
 PUB Main{}
 
@@ -82,8 +82,6 @@ PUB Setup{}
         tsl2591.defaults_als{}
     else
         ser.strln(string("TSL2591 driver failed to start - halting"))
-        time.msleep(30)
-        tsl2591.stop{}
         repeat
 
 DAT
