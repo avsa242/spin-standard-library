@@ -40,7 +40,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    temp    : "sensor.temperature.lm75.i2c"
+    temp    : "sensor.temperature.lm75"
 
 PUB Main{} | tmp
 
