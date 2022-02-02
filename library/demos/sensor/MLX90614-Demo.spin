@@ -35,7 +35,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    mlx     : "sensor.temperature.mlx90614.i2c"
+    mlx     : "sensor.temperature.mlx90614"
     int     : "string.integer"
 
 PUB Main{} | Tobj, Tamb
