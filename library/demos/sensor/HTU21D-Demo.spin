@@ -5,7 +5,7 @@
     Description: Demo of the HTU21D driver
     Copyright (c) 2021
     Started Jun 16, 2021
-    Updated Jun 16, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,7 +34,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    sens    : "sensor.temp_rh.htu21d.i2c"
+    sens    : "sensor.temp_rh.htu21d"
 
 PUB Main{}
 
@@ -91,7 +91,11 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
 
     if sens.startx(SCL_PIN, SDA_PIN, I2C_HZ)
-        ser.strln(string("HTU21D driver started"))
+#ifdef HTU21D_SPIN
+        ser.strln(string("HTU21D driver started (I2C-SPIN)"))
+#elseifdef HTU21D_PASM
+        ser.strln(string("HTU21D driver started (I2C-PASM)"))
+#endif
     else
         ser.strln(string("HTU21D driver failed to start - halting"))
         repeat
