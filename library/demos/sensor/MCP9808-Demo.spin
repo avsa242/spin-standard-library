@@ -3,12 +3,13 @@
     Filename: MCP9808-Demo.spin
     Author: Jesse Burt
     Description: Demo of the MCP9808 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jul 26, 2020
-    Updated Jan 17, 2021
+    Updated Feb 2, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+
 CON
 
     _xinfreq    = cfg#_xinfreq
@@ -33,7 +34,7 @@ OBJ
     cfg         : "core.con.boardcfg.flip"
     time        : "time"
     int         : "string.integer"
-    mcp9808     : "sensor.temperature.mcp9808.i2c"
+    mcp9808     : "sensor.temperature.mcp9808"
 
 PUB Main{} | t
 
@@ -81,7 +82,11 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
     if mcp9808.startx(I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS)
         mcp9808.defaults{}
-        ser.strln(string("MCP9808 driver started"))
+#ifdef MCP9808_SPIN
+        ser.strln(string("MCP9808 driver started (I2C-SPIN)"))
+#elseifdef MCP9808_PASM
+        ser.strln(string("MCP9808 driver started (I2C-PASM)"))
+#endif
     else
         ser.strln(string("MCP9808 driver failed to start - halting"))
         repeat
