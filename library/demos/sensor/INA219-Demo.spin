@@ -35,7 +35,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    ina219  : "sensor.power.ina219.i2c"
+    ina219  : "sensor.power.ina219"
     int     : "string.integer"
 
 PUB Main{} | vbus, vshunt, i, p
