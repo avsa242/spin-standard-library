@@ -34,7 +34,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     int     : "string.integer"
     time    : "time"
-    si70xx  : "sensor.temp_rh.si70xx.i2c"
+    si70xx  : "sensor.temp_rh.si70xx"
 
 VAR
 
