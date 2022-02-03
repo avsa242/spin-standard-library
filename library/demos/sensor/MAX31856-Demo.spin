@@ -3,9 +3,9 @@
     Filename: MAX31856-Demo.spin
     Description: Demo for the MAX31856 driver
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Created Sep 30, 2018
-    Updated Dec 28, 2021
+    Updated Feb 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,7 +36,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    max31856: "sensor.thermocouple.max31856.spi"
+    max31856: "sensor.thermocouple.max31856"
     int     : "string.integer"
 
 PUB Main{} | cj_temp, tc_temp
@@ -100,9 +100,6 @@ PUB Setup{}
         ser.strln(string("MAX31856 driver started"))
     else
         ser.strln(string("MAX31856 driver failed to start - halting"))
-        max31856.stop{}
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT
