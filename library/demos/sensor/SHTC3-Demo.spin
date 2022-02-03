@@ -3,9 +3,9 @@
     Filename: SHTC3-Demo.spin
     Author: Jesse Burt
     Description: Demo of the SHTC3 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jul 27, 2020
-    Updated Feb 15, 2021
+    Updated Feb 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -32,7 +32,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    shtc3   : "sensor.temp_rh.shtc3.i2c"
+    shtc3   : "sensor.temp_rh.shtc3"
     int     : "string.integer"
 
 PUB Main{}
@@ -89,9 +89,6 @@ PUB Setup{}
         ser.strln(string("SHTC3 driver started"))
     else
         ser.strln(string("SHTC3 driver failed to start - halting"))
-        shtc3.stop{}
-        time.msleep(30)
-        ser.stop{}
         repeat
 
 DAT
