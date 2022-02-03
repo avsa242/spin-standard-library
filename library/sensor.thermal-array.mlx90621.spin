@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Driver for the Melexis MLX90621
         16x4 IR array
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started: Jan 4, 2018
-    Updated: Nov 14, 2021
+    Updated: Jan 1, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -85,14 +85,15 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, core#EE_MAX_FREQ))
             time.usleep(core#T_POR)
-            if i2c.present(core#EE_SLAVE_ADDR)      ' first start I2C engine
-                readeeprom{}                        '   to read the EEPROM
-                time.msleep(5)
-                i2c.deinit{}
-                i2c.init(SCL_PIN, SDA_PIN, I2C_HZ)  ' This time re-setup for the sensor
-                time.msleep(5)
-                if i2c.present(SLAVE_WR)            ' check device bus presence
-                    return
+            if i2c.present(core#EE_SLAVE_ADDR)  ' first start I2C engine
+                if readeeprom{}                 '   to read the EEPROM
+                    time.msleep(5)
+                    i2c.deinit{}
+                                                ' now re-setup for the sensor
+                    i2c.init(SCL_PIN, SDA_PIN, I2C_HZ)
+                    time.msleep(5)
+                    if i2c.present(SLAVE_WR)    ' check device bus presence
+                        return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -305,18 +306,33 @@ PUB Powered(state): curr_state
     state := ((curr_state & core#OPMODE_MASK) | state)
     writereg(core#CONFIG, state)
 
-PUB ReadEEPROM{}
+PUB ReadEEPROM{}: status | ackbit, tries
 ' Read sensor EEPROM contents into RAM
-    bytefill(@_ee_data, $00, EE_SIZE)           ' clear RAM copy of EEPROM
+'   Returns:
+'       TRUE (-1): success
+'       FALSE (0): failure
+    bytefill(@_ee_data, 0, EE_SIZE)             ' clear RAM copy of EEPROM
+    tries := 0
 
-    i2c.start{}
-    i2c.write(core#EE_SLAVE_ADDR)
+    i2c.start{}                                 ' try to talk to the EEPROM
+    repeat
+        ackbit := i2c.write(core#EE_SLAVE_ADDR)
+        if (++tries > 3)                        ' give up after 3 tries
+            i2c.stop{}
+            return FALSE
+    until (ackbit == i2c#ACK)
     i2c.write($00)
 
     i2c.start{}                                 ' Read in the EEPROM
-    i2c.write(core#EE_SLAVE_ADDR|1)
+    repeat
+        ackbit := i2c.write(core#EE_SLAVE_ADDR|1)
+        if (++tries > 3)
+            i2c.stop{}
+            return FALSE
+    until (ackbit == i2c#ACK)
     i2c.rdblock_lsbf(@_ee_data, EE_SIZE, i2c#NAK)
     i2c.stop{}
+    return TRUE
 
 PUB RefreshRate(rate): curr_rate
 ' Set sensor refresh rate

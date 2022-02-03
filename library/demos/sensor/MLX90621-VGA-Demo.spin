@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Demo of the MLX90621 driver using a
         VGA display
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started: Jun 27, 2020
-    Updated: Nov 14, 2021
+    Updated: Feb 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -42,7 +42,7 @@ OBJ
     cfg     : "core.con.boardcfg.quickstart-hib"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    mlx     : "sensor.thermal-array.mlx90621.i2c"
+    mlx     : "sensor.thermal-array.mlx90621"
     vga     : "display.vga.bitmap.160x120"
     fnt     : "font.5x8"
     int     : "string.integer"
@@ -199,9 +199,6 @@ PUB Setup{}
         _mlx_adcref := 1
     else
         ser.strln(string("MLX90621 driver failed to start - halting"))
-        time.msleep(5)
-        vga.stop{}
-        mlx.stop{}
         repeat
 
     _col_scl := 16
