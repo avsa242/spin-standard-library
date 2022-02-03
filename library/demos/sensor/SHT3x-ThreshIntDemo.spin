@@ -1,10 +1,11 @@
 {
     --------------------------------------------
-    Filename: SHT3x-Demo.spin
+    Filename: SHT3x-ThreshIntDemo.spin
     Author: Jesse Burt
     Description: Demo of the SHT3x driver
+        Threshold interrupt functionality
     Copyright (c) 2022
-    Started Mar 10, 2018
+    Started Jan 8, 2022
     Updated Feb 3, 2022
     See end of file for terms of use.
     --------------------------------------------
@@ -16,14 +17,16 @@ CON
     _xinfreq        = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED             = cfg#LED1
+    LED1            = cfg#LED1
     SER_BAUD        = 115_200
 
-    SCL_PIN         = 28
+    SCL_PIN         = 28 
     SDA_PIN         = 29
-    ADDR_BIT        = 0                         ' 0, 1: opt. slave address
+    RESET_PIN       = 24                        ' optional (-1 to disable)
+    INT1            = 25                        ' ALERT pin (active high)
+
+    ADDR_BIT        = 0                         ' 0, 1: opt. I2C address bit
     I2C_HZ          = 1_000_000                 ' max is 1_000_000
-    RESET_PIN       = -1                        ' optional
 ' --
 
 ' Temperature scale
@@ -38,24 +41,61 @@ OBJ
     int     : "string.integer"
     time    : "time"
 
-PUB Main{} | temp, rh
+VAR
+
+    long _isr_stack[50]                         ' stack for ISR core
+    long _intflag                               ' interrupt flag
+
+PUB Main{} | dr
 
     setup{}
 
+    dr := 2                                     ' data rate: 0 (0.5), 1, 2, 4, 10Hz
+    sht3x.repeatability(0)
+    sht3x.datarate(dr)
+    sht3x.opmode(sht3x#CONT)
+
     sht3x.tempscale(C)
+    sht3x.intrhhithresh(25)                     ' RH hi/lo thresholds
+    sht3x.intrhlothresh(5)
+    sht3x.intrhhiclear(24)                      ' hi/lo thresh hysteresis
+    sht3x.intrhloclear(6)
+
+    sht3x.inttemphithresh(30)                   ' temp hi/lo thresholds
+    sht3x.inttemplothresh(10)
+    sht3x.inttemphiclear(29)                    ' hi/lo thresh hysteresis
+    sht3x.inttemploclear(7)
+
+    ser.strln(string("Set thresholds:"))
+    ser.printf2(string("RH Set low: %d  hi: %d\n"), sht3x.intrhlothresh(-2), {
+}   sht3x.intrhhithresh(-2))
+    ser.printf2(string("RH Clear low: %d  hi: %d\n"), sht3x.intrhloclear(-2), {
+}   sht3x.intrhhiclear(-2))
+    ser.printf2(string("Temp Set low: %d  hi: %d\n"), sht3x.inttemplothresh(-256), {
+}   sht3x.inttemphithresh(-256))
+    ser.printf2(string("Temp Clear low: %d  hi: %d\n"), sht3x.inttemploclear(-256), {
+}   sht3x.inttemphiclear(-256))
 
     repeat
-        ser.position(0, 3)
+        if (dr > 0)
+            time.msleep(1000/dr)
+        else
+            time.msleep(2000)
+        ser.position(0, 10)
 
         ser.str(string("Temperature: "))
         decimal(sht3x.temperature{}, 100)
         ser.newline{}
 
         ser.str(string("Relative humidity: "))
-        decimal(sht3x.humidity{}, 100)
+        decimal(sht3x.lasthumidity{}, 100)
         ser.newline{}
-
-        time.msleep (1000)
+        if _intflag
+            ser.position(0, 12)
+            ser.str(string("Interrupt"))
+        else
+            ser.position(0, 12)
+            ser.clearline{}
 
 PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
 ' Display a scaled up number as a decimal
@@ -82,6 +122,15 @@ PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
     ser.char(".")
     ser.str(part)
 
+PRI ISR{}
+' Interrupt service routine
+    dira[INT1] := 0                             ' INT1 as input
+    repeat
+        waitpeq(|< INT1, |< INT1, 0)            ' wait for INT1 (active high)
+        _intflag := 1                           '   set flag
+        waitpne(|< INT1, |< INT1, 0)            ' now wait for it to clear
+        _intflag := 0                           '   clear flag
+
 PUB Setup{}
 
     ser.start(SER_BAUD)
@@ -98,6 +147,8 @@ PUB Setup{}
     else
         ser.strln(string("SHT3x driver failed to start - halting"))
         repeat
+
+    cognew(isr, @_isr_stack)                    ' start ISR in another core
 
 DAT
 {
