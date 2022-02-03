@@ -3,9 +3,9 @@
     Filename: ADS1115-Demo.spin
     Author: Jesse Burt
     Description: Demo of the ADS1115 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Dec 29, 2019
-    Updated Nov 14, 2021
+    Updated Feb 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -35,7 +35,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    ads1115 : "signal.adc.ads1115.i2c"
+    ads1115 : "signal.adc.ads1115"
 
 PUB Main{} | ch
 
@@ -102,9 +102,6 @@ PRI Setup{}
         ser.strln(string("ADS1115 driver started"))
     else
         ser.strln(string("ADS1115 driver failed to start - halting"))
-        ads1115.stop{}
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT
