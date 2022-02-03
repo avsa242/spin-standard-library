@@ -3,9 +3,9 @@
     Filename: VEML6075-Demo.spin
     Author: Jesse Burt
     Description: Demo of the VEML6075 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Aug 18, 2019
-    Updated May 22, 2021
+    Updated Feb 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -29,7 +29,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    veml6075: "sensor.uv.veml6075.i2c"
+    veml6075: "sensor.uv.veml6075"
     int     : "string.integer"
 
 PUB Main{}
@@ -79,8 +79,6 @@ PUB Setup{}
         ser.strln(string("VEML6075 driver started"))
     else
         ser.strln(string("VEML6075 driver failed to start - halting"))
-        time.msleep(30)
-        ser.stop{}
         repeat
 
 DAT

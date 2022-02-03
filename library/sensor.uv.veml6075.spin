@@ -3,9 +3,9 @@
     Filename: sensor.uv.veml6075.i2c.spin
     Author: Jesse Burt
     Description: Driver for the Vishay VEML6075 UVA/UVB sensor
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Aug 18, 2019
-    Updated May 22, 2021
+    Updated Jan 15, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -55,9 +55,10 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#T_POR)
-            if present{}                    ' check device bus presence
-                if deviceid{} == core#DEV_ID_RESP
-                    return
+            i2c.stop{}                          ' attempt to make startup
+            i2c.write($ff)                      '   more reliable
+            if deviceid{} == core#DEV_ID_RESP
+                return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
