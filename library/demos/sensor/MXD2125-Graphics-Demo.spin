@@ -70,7 +70,7 @@ OBJ
     cfg     : "core.con.boardcfg.demoboard"
     tv      : "display.tv"
     gr      : "display.tv.graphics"
-    mxd2125 : "sensor.accel.2dof.mxd2125.pwm"
+    mxd2125 : "sensor.accel.2dof.mxd2125"
     math    : "math.int"
 
 PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlength, size

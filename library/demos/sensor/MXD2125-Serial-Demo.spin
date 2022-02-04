@@ -36,7 +36,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     int     : "string.integer"
-    accel   : "sensor.accel.2dof.mxd2125.pwm"
+    accel   : "sensor.accel.2dof.mxd2125"
     time    : "time"
 
 PUB Main{} | ax, ay, az
