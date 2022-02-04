@@ -33,7 +33,7 @@ OBJ
     time        : "time"
     int         : "string.integer"
     sf          : "string.format"
-    sx1231      : "wireless.transceiver.sx1231.spi"
+    sx1231      : "wireless.transceiver.sx1231"
 
 VAR
 
