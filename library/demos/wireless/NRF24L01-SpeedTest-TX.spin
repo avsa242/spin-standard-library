@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Speed test for nRF24L01+ modules
         TX Mode
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Apr 30, 2020
-    Updated Oct 19, 2020
+    Updated Sep 29, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -37,7 +37,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    nrf24   : "wireless.transceiver.nrf24l01.spi"
+    nrf24   : "wireless.transceiver.nrf24l01"
 
 VAR
 
@@ -58,7 +58,7 @@ PUB Main{} | i
 
 ' Experiment with these to observe effect on throughput
 '   NOTE: The receiver's settings _must_ match these (except txpower())
-    nrf24.datarate(2000)                        ' 250, 1000, 2000 (kbits/sec)
+    nrf24.datarate(2_000_000)                   ' 250_000, 1_000_000, 2_000_000
     nrf24.txpower(0)                            ' -18, -12, -6, 0 (dBm)
     nrf24.crccheckenabled(true)
     nrf24.crclength(1)                          ' 1, 2 bytes

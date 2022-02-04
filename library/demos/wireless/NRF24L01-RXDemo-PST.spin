@@ -35,7 +35,7 @@ OBJ
     ser         : "com.serial.terminal"
     cfg         : "core.con.boardcfg.flip"
     time        : "time"
-    nrf24       : "wireless.transceiver.nrf24l01.spi"
+    nrf24       : "wireless.transceiver.nrf24l01"
 
 VAR
 

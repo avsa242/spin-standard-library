@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Speed test for nRF24L01+ modules
         RX Mode
-    Copyright (c) 2020
+    Copyright (c) 2021
     Started Apr 30, 2020
-    Updated Oct 19, 2020
+    Updated Sep 29, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,7 +36,7 @@ OBJ
     cfg         : "core.con.boardcfg.flip"
     ser         : "com.serial.terminal.ansi"
     time        : "time"
-    nrf24       : "wireless.transceiver.nrf24l01.spi"
+    nrf24       : "wireless.transceiver.nrf24l01"
 
 VAR
 
@@ -59,7 +59,7 @@ PUB Main{} | i, iteration, testtime, pipe_nr
 
 ' Experiment with these to observe effect on throughput
 '   NOTE: The transmitter's settings _must_ match these
-    nrf24.datarate(2000)                        ' 250, 1000, 2000
+    nrf24.datarate(2_000_000)                   ' 250_000, 1_000_000, 2_000_000
     nrf24.autoackenabledpipes(%000011)
     nrf24.txpower(0)                            ' -18, -12, -6, 0 (dBm)
                                                 ' (for auto-ack, if enabled)

@@ -19,11 +19,11 @@ CON
     LED             = cfg#LED1
     SER_BAUD        = 115_200
 
-    CS_PIN          = 3
-    SCK_PIN         = 1
-    MOSI_PIN        = 4
-    MISO_PIN        = 0
-    CE_PIN          = 2
+    CS_PIN          = 1
+    SCK_PIN         = 2
+    MOSI_PIN        = 3
+    MISO_PIN        = 4
+    CE_PIN          = 0
 
     CHANNEL         = 2                         ' 0..125
 ' --
@@ -34,7 +34,7 @@ OBJ
     cfg         : "core.con.boardcfg.flip"
     time        : "time"
     int         : "string.integer"
-    nrf24       : "wireless.transceiver.nrf24l01.spi"
+    nrf24       : "wireless.transceiver.nrf24l01"
 
 VAR
 
