@@ -3,9 +3,9 @@
     Filename: SX1276-TXDemo.spin
     Author: Jesse Burt
     Description: Transmit demo of the SX1276 driver (LoRa mode)
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Dec 12, 2020
-    Updated May 18, 2021
+    Updated Feb 4, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,10 +19,12 @@ CON
     SER_BAUD        = 115_200
     LED             = cfg#LED1
 
-    CS_PIN          = 0
-    SCK_PIN         = 1
-    MOSI_PIN        = 2
-    MISO_PIN        = 3
+    CS_PIN          = 5
+    SCK_PIN         = 2
+    MOSI_PIN        = 3
+    MISO_PIN        = 4
+    RESET_PIN       = 6                         ' use is recommended
+                                                '   (-1 to disable)
 ' --
 
 OBJ
@@ -30,7 +32,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    lora    : "wireless.transceiver.sx1276.spi"
+    lora    : "wireless.transceiver.sx1276-lora"
     int     : "string.integer"
     sf      : "string.format"
 
@@ -91,12 +93,10 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if lora.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if lora.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, RESET_PIN)
         ser.strln(string("SX1276 driver started"))
     else
         ser.strln(string("SX1276 driver failed to start - halting"))
-        time.msleep(500)
-        ser.stop{}
         repeat
 
 DAT
