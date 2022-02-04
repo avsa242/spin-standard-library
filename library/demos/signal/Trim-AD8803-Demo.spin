@@ -5,7 +5,7 @@
     Modified by: Jesse Burt
     Description: AD8803 Octal 8-bit trim DAC demo
     Started 2007
-    Updated May 25, 2020
+    Updated Feb 4, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is a derivative of AD8803_DEMO.spin,
@@ -62,7 +62,7 @@ CON
 
 OBJ
 
-    dac     : "tiny.signal.dac.ad8803.spi"                      ' Octal 8-Bit Trim DAC
+    dac     : "tiny.signal.dac.ad8803"          ' Octal 8-Bit Trim DAC
 
 VAR
 
@@ -74,6 +74,8 @@ PUB Demo
     DACvalue   := 127                                           ' 0-255
 
     DAC.Set(CS, SDI, CLK, DACaddress, DACvalue)
+
+    repeat
 
 DAT
 {
