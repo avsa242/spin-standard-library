@@ -5,7 +5,7 @@
     Description: Driver for the PCF8563 Real Time Clock
     Copyright (c) 2021
     Started Sep 6, 2020
-    Updated Jul 20, 2021
+    Updated Aug 15, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -33,14 +33,18 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"                             ' PASM I2C engine
+#ifdef PCF8563_SPIN
+    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+#elseifdef PCF8563_PASM
+    i2c : "com.i2c"                             ' PASM I2C engine (400kHz)
+#endif
     core: "core.con.pcf8563"                    ' HW-specific constants
     time: "time"                                ' timekeeping functions
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start: status
+PUB Start{}: status
 ' Start using 'default' Propeller I2C pins,
 '   at safest universal speed of 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ)
