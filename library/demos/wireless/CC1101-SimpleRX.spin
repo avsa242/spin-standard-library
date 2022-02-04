@@ -38,7 +38,7 @@ OBJ
     time        : "time"
     int         : "string.integer"
     str         : "string"
-    cc1101      : "wireless.transceiver.cc1101.spi"
+    cc1101      : "wireless.transceiver.cc1101"
 
 VAR
 
