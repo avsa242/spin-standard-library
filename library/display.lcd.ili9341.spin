@@ -5,7 +5,7 @@
     Description: Driver for ILI9341 LCD controllers
     Copyright (c) 2022
     Started Oct 14, 2021
-    Updated Jan 15, 2022
+    Updated Feb 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -451,10 +451,9 @@ PUB MirrorV(state): curr_state
     com.wrbyte_dat(_madctl)
 
 PUB Plot(x, y, color) | cmd_pkt
-' Draw a pixel at (x, y), in color
-    if (x > _disp_xmax) or (x < 0) or (y > _disp_ymax) or (y < 0)
-        return                                  ' reject invalid coordinates
-
+' Plot pixel at (x, y) in color (direct to display)
+    if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
+        return                                  ' coords out of bounds, ignore
     cmd_pkt.byte[0] := color.byte[1]
     cmd_pkt.byte[1] := color.byte[0]
 
