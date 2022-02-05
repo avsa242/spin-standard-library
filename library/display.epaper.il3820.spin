@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2022
     Started Nov 30, 2019
-    Updated Jan 30, 2022
+    Updated Feb 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,7 +36,6 @@ OBJ
     spi : "com.spi.4w"
     core: "core.con.il3820"
     time: "time"
-    io  : "io"
 
 PUB Null{}
 ' This is not a top-level object
@@ -52,14 +51,13 @@ PUB Startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RST_PIN, BUSY_PIN, WIDTH, HEIGHT, p
             _RESET := RST_PIN
             _BUSY := BUSY_PIN
 
-            io.input(_BUSY)
-            io.output(_CS)
-            io.output(_DC)
-            io.output(_RESET)
-
-            io.high(_CS)
-            io.low(_DC)
-            io.high(_RESET)
+            dira[_BUSY] := 0
+            outa[_CS] := 1
+            dira[_CS] := 1
+            outa[_DC] := 0
+            dira[_DC] := 1
+            outa[_RESET] := 1
+            dira[_RESET] := 1
 
             _disp_width := WIDTH
             _disp_height := HEIGHT
@@ -140,7 +138,7 @@ PUB DisplayLines(lines) | tmp
 PUB DisplayReady{}: flag
 ' Flag indicating display is ready to accept commands
 '   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
-    return ((io.input(_BUSY) ^ 1) == 1)
+    return ((ina[_BUSY] ^ 1) == 1)
 
 PUB DummyLinePeriod(period): curr_per
 ' Set dummy line period, in units TGate (1 TGate = line width in uSec)
@@ -198,13 +196,15 @@ PUB GateLowVoltage(voltage) | curr_vlt
     voltage := ((curr_vlt & core#VGL_MASK) | voltage)
     writereg(core#GATEDRV_VOLT_CTRL, 1, @voltage)
 
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color
+    if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
+        return                                  ' coords out of bounds, ignore
 #ifdef GFX_DIRECT
-PUB Plot(x, y, color)
-' Plot pixel at (x, y) in color (direct to display)
-
+' direct to display
+'   (not implemented)
 #else
-PUB Plot(x, y, color)
-' Plot pixel at (x, y) in color (buffered)
+' buffered display
     case color
         1:
             byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] |= $80 >> (x & 7)
@@ -242,9 +242,9 @@ PUB Powered(state)
 PUB Reset{} | tmp
 ' Reset the display controller
 '   2 HW Reset
-    io.low(_RESET)
+    outa[_RESET] := 0
     time.msleep(200)
-    io.high(_RESET)
+    outa[_RESET] := 1
     time.msleep(200)
 
 '   3
@@ -336,17 +336,17 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff)
     case reg_nr
         $01, $03, $04, $0C, $10, $11, $1A, $21, $22, $24, $2C, $32, $3A..$3C, {
 }       $44, $45, $4E, $4F:                     ' Commands w/data bytes
-            io.low(_CS)
-            io.low(_DC)                         ' D/C low = command
+            outa[_CS] := 0
+            outa[_DC] := 0                      ' D/C low = command
             spi.wr_byte(reg_nr)
-            io.high(_DC)                        ' D/C high = data
+            outa[_DC] := 1                      ' D/C high = data
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
-            io.high(_CS)
+            outa[_CS] := 1
         core#SWRESET, core#MASTER_ACT, core#NOOP:' Simple commands
-            io.low(_CS)
-            io.low(_DC)
+            outa[_CS] := 0
+            outa[_DC] := 0
             spi.wr_byte(reg_nr)
-            io.high(_CS)
+            outa[_CS] := 1
         other:
             return
 
