@@ -32,7 +32,7 @@ OBJ
 
     cfg     : "core.con.boardcfg.flip"
     term    : "com.serial.terminal.ansi"
-    lfs     : "sensor.light.tsl230.analog-freq"
+    lfs     : "sensor.light.tsl230"
     time    : "time"
 
 PUB Main{}
