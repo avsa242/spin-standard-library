@@ -3,9 +3,9 @@
     Filename: GFXBench.spin
     Description: Graphics benchmark
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started: Apr 10, 2021
-    Updated: Oct 26, 2021
+    Updated: Feb 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,18 +36,18 @@ OBJ
     fnt     : "font.5x8"
 #ifdef SSD1306_I2C
 #define SSD130X_I2C
-    disp    : "display.oled.ssd1306.i2cspi"
+    disp    : "display.oled.ssd1306"
 #elseifdef SSD1306_SPI
 #define SSD130X_SPI
-    disp    : "display.oled.ssd1306.i2cspi"
+    disp    : "display.oled.ssd1306"
 #elseifdef SSD1309
-    disp    : "display.oled.ssd1309.spi"
+    disp    : "display.oled.ssd1309"
 #elseifdef SSD1331
-    disp    : "display.oled.ssd1331.spi"
+    disp    : "display.oled.ssd1331"
 #elseifdef SSD1351
-    disp    : "display.oled.ssd1351.spi"
+    disp    : "display.oled.ssd1351"
 #elseifdef ST7735
-    disp    : "display.lcd.st7735.spi"
+    disp    : "display.lcd.st7735"
 #elseifdef VGABITMAP6BPP
     disp    : "display.vga.bitmap.160x120"
 #elseifdef HUB75
@@ -158,7 +158,7 @@ PUB Main{} | time_ms, sz, maxsz, iteration, bench, ch, color
     disp.printf2(string("%dx%d"), WIDTH, HEIGHT)
     disp.update{}
     time.sleep(5)
-    disp.clearall{}
+    disp.clear{}
 
     maxsz := WIDTH <# HEIGHT                    ' find smallest disp. dimension
 
