@@ -61,6 +61,7 @@ VAR
 
     word _framerate
     byte _CS, _RESET, _DC
+    byte _offs_x, _offs_y
 
 '   Shadow registers
     byte _colmod, _madctl, _opmode
