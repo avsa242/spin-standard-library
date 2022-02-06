@@ -629,7 +629,7 @@ PUB PartialArea(sy, ey) | tmp
 
     writereg(core#PTLAR, 4, @tmp)
 
-PUB Plot(x, y, color)
+PUB Plot(x, y, color) | tmp, xs, ys, xe, ye, cmd_pkt[3]
 ' Plot pixel at (x, y) in color
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
         return                                  ' coords out of bounds, ignore
