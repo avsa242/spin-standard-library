@@ -5,7 +5,7 @@
     Description: Driver for Sitronix ST7735-based displays
     Copyright (c) 2022
     Started Mar 7, 2020
-    Updated Jan 30, 2022
+    Updated Feb 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -629,40 +629,39 @@ PUB PartialArea(sy, ey) | tmp
 
     writereg(core#PTLAR, 4, @tmp)
 
-#ifdef GFX_DIRECT
-PUB Plot(x, y, color) | tmp, xs, ys, xe, ye, cmd_pkt[3]
-' Draw a pixel at x, y (direct to display)
-    if (x => 0 and x =< _disp_xmax) and (y => 0 and y =< _disp_ymax)
-        cmd_pkt.byte[0] := core#CASET           ' D/C L
-        cmd_pkt.byte[1] := x+_offs_x            ' D/C H
-        cmd_pkt.byte[2] := x+_offs_x
-        cmd_pkt.byte[3] := core#RASET           ' D/C L
-        cmd_pkt.byte[4] := y+_offs_y            ' D/C H
-        cmd_pkt.byte[5] := y+_offs_y
-        cmd_pkt.byte[6] := core#RAMWR           ' D/C L
-        cmd_pkt.byte[7] := color.byte[1]        ' D/C H
-        cmd_pkt.byte[8] := color.byte[0]
-        outa[_DC] := core#CMD
-        outa[_CS] := 0
-        spi.wr_byte(cmd_pkt.byte[0])
-        outa[_DC] := core#DATA
-        spi.wrblock_lsbf(@cmd_pkt.byte[1], 2)
-
-        outa[_DC] := core#CMD
-        spi.wr_byte(cmd_pkt.byte[3])
-        outa[_DC] := core#DATA
-        spi.wrblock_lsbf(@cmd_pkt.byte[4], 2)
-
-        outa[_DC] := core#CMD
-        spi.wr_byte(cmd_pkt.byte[6])
-        outa[_DC] := core#DATA
-        spi.wrblock_lsbf(@cmd_pkt.byte[7], 2)
-        outa[_CS] := 1
-
-#else
-
 PUB Plot(x, y, color)
-' Draw a pixel at (x, y) in color (buffered)
+' Plot pixel at (x, y) in color
+    if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
+        return                                  ' coords out of bounds, ignore
+#ifdef GFX_DIRECT
+' direct to display
+    cmd_pkt.byte[0] := core#CASET           ' D/C L
+    cmd_pkt.byte[1] := x+_offs_x            ' D/C H
+    cmd_pkt.byte[2] := x+_offs_x
+    cmd_pkt.byte[3] := core#RASET           ' D/C L
+    cmd_pkt.byte[4] := y+_offs_y            ' D/C H
+    cmd_pkt.byte[5] := y+_offs_y
+    cmd_pkt.byte[6] := core#RAMWR           ' D/C L
+    cmd_pkt.byte[7] := color.byte[1]        ' D/C H
+    cmd_pkt.byte[8] := color.byte[0]
+    outa[_DC] := core#CMD
+    outa[_CS] := 0
+    spi.wr_byte(cmd_pkt.byte[0])
+    outa[_DC] := core#DATA
+    spi.wrblock_lsbf(@cmd_pkt.byte[1], 2)
+
+    outa[_DC] := core#CMD
+    spi.wr_byte(cmd_pkt.byte[3])
+    outa[_DC] := core#DATA
+    spi.wrblock_lsbf(@cmd_pkt.byte[4], 2)
+
+    outa[_DC] := core#CMD
+    spi.wr_byte(cmd_pkt.byte[6])
+    outa[_DC] := core#DATA
+    spi.wrblock_lsbf(@cmd_pkt.byte[7], 2)
+    outa[_CS] := 1
+#else
+' buffered display
     word[_ptr_drawbuffer][x + (y * _disp_width)] := color
 #endif
 
