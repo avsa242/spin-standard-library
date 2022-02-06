@@ -3,14 +3,13 @@
     Filename: display.led.hub75.spin
     Author: Jesse Burt
     Description: Driver for HUB75 RGB LED matrix displays
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started: Oct 24, 2021
-    Updated: Oct 24, 2021
+    Updated: Feb 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
-#define HUB75
 #define MEMMV_NATIVE bytemove
 #include "lib.gfx.bitmap.spin"
 
@@ -22,10 +21,7 @@ CON
 VAR
 
     long _eng_stack[50]
-    long _ptr_drawbuffer
     long _bl, _clk, _lat
-    word _disp_width, _disp_height, _disp_xmax, _disp_ymax, _buff_sz
-    word _bytesperln
     byte _rgbio, _addr
     byte _vsync
     byte _cog
@@ -88,11 +84,38 @@ PUB Address(addr): curr_addr
         other:
             return _ptr_drawbuffer
 
+#ifndef GFX_DIRECT
+PUB Clear{}
+' Clear the display buffer
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
+#endif
+
 PUB MirrorH(m)
 ' dummy method
 
 PUB MirrorV(m)
 ' dummy method
+
+PUB Plot(x, y, color) | tmp
+' Plot pixel at (x, y) in color
+    if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
+        return                                  ' coords out of bounds, ignore
+#ifdef GFX_DIRECT
+' direct to display
+'   (not implemented)
+#else
+' buffered display
+    byte[_ptr_drawbuffer][x + (y * _disp_width)] := color
+#endif
+
+#ifndef GFX_DIRECT
+PUB Point(x, y): pix_clr
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+
+    return byte[_ptr_drawbuffer][x + (y * _disp_width)]
+#endif
 
 PUB Update{}
 ' dummy method
@@ -133,6 +156,15 @@ PRI HUB75_Engine{} | r0, g0, b0, r1, g1, b1, a, b, c, d, bl, clk, lat, tmp, {
             outa[lat] := 1                      ' latch the data shifted in
             outa[bl] := 0                       ' unblank the display
 '            time.usleep(1)
+
+#ifndef GFX_DIRECT
+PRI memFill(xs, ys, val, count)
+' Fill region of display buffer memory
+'   xs, ys: Start of region
+'   val: Color
+'   count: Number of consecutive memory locations to write
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
+#endif
 
 DAT
 {
