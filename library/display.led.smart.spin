@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated Jan 30, 2022
+    Updated Feb 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -211,14 +211,15 @@ PUB NumPixels
 ' Returns number of pixels in assiged pixel array                      
     return _npixels
 
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color
+    if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
+        return                                  ' coords out of bounds, ignore
 #ifdef GFX_DIRECT
-PUB Plot(x, y, color)
-' Draw a pixel at (x, y) in color (direct to display)
-
+' direct to display
+'   (not implemented)
 #else
-
-PUB Plot(x, y, color)
-' Draw a pixel at (x, y) in color (buffered)
+' buffered display
     long[_ptr_drawbuffer][x + (y * _disp_width)] := color
 #endif
 
