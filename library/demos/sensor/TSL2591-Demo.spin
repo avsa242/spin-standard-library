@@ -35,7 +35,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     int     : "string.integer"
     time    : "time"
-    tsl2591 : "sensor.lux.tsl2591"
+    tsl2591 : "sensor.light.tsl2591"
 
 PUB Main{}
 
