@@ -3,9 +3,9 @@
     Filename: BT81X-Demo.spin
     Author: Jesse Burt
     Description: Demo of the BT81x driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 30, 2019
-    Updated May 15, 2021
+    Updated Feb 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,31 +19,31 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    MISO_PIN    = 3
+    CS_PIN      = 12
+    SCK_PIN     = 13
+    MOSI_PIN    = 14
+    MISO_PIN    = 15
 
     BRIGHTNESS  = 100                           ' Initial brightness (0..128)
 
-' Uncomment one of the following, depending on your display size/resolution
-#include "core.bt815.lcdtimings.800x480.spinh"
-'#include "core.bt815.lcdtimings.480x272.spinh"
-'#include "core.bt815.lcdtimings.320x240.spinh"
-'#include "core.bt815.lcdtimings.320x102.spinh"
 ' --
 
-    CENTERX     = DISP_WIDTH / 2
-    CENTERY     = DISP_HEIGHT / 2
+    INTER_DELAY = 2_000                         ' wait ms between demos
 
-    INTER_DELAY = 2                             ' wait seconds between demos
+' Uncomment one of the following, depending on your display size/resolution
+'   NOTE: WIDTH, HEIGHT, XMAX, YMAX, CENTERX, CENTERY symbols are defined
+'   in the display timings file.
+#include "eve3-lcdtimings.800x480.spinh"
+'#include "eve3-lcdtimings.480x272.spinh"
+'#include "eve3-lcdtimings.320x240.spinh"
+'#include "eve3-lcdtimings.320x102.spinh"
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    eve     : "display.lcd.bt81x.spi"
+    eve     : "display.lcd.bt81x"
 
 PUB Main{}
 
@@ -87,7 +87,7 @@ PUB DemoBoxes{} | i
     eve.linewidth(1)
     repeat i from 10 to CENTERY step 20
         eve.colorrgb(0, i/4, 128)
-        eve.box(i, CENTERY-i, DISP_XMAX-i, CENTERY+i)
+        eve.box(i, CENTERY-i, XMAX-i, CENTERY+i)
     eve.displaylistend{}
     time.sleep(INTER_DELAY)
 
@@ -114,7 +114,7 @@ PUB DemoDial{}
     eve.clear{}
     eve.dial(80, 60, 55, 0, $8000)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -122,7 +122,7 @@ PUB DemoDial{}
     eve.clear{}
     eve.dial(80, 60, 55, eve#OPT_FLAT, $8000)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -146,7 +146,7 @@ PUB DemoGauge{} | i
     eve.clear{}
     eve.gauge(CENTERX, CENTERY, 100, eve#OPT_FLAT, 10, 5, i, 100)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     repeat i from 0 to 100
         eve.waitidle{}
@@ -155,7 +155,7 @@ PUB DemoGauge{} | i
         eve.gauge(CENTERX, CENTERY, 50, eve#OPT_3D, 10, 5, i, 100)
         eve.displaylistend{}
         time.msleep(10)
-    time.sleep(1)
+    time.msleep(INTER_DELAY)
     repeat i from 100 to 0
         eve.waitidle{}
         eve.displayliststart{}
@@ -173,23 +173,23 @@ PUB DemoGradient{}
     eve.displayliststart{}
     eve.clearcolor(0, 0, 0)
     eve.clear{}
-    eve.gradient(0, 0, $0000FF, DISP_XMAX, 0, $FF0000)
+    eve.gradient(0, 0, $0000FF, XMAX, 0, $FF0000)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
     eve.clearcolor(0, 0, 0)
     eve.clear{}
-    eve.Gradient (0, 0, $808080, DISP_XMAX, 0, $80FF40)
+    eve.Gradient (0, 0, $808080, XMAX, 0, $80FF40)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
     eve.clearcolor(0, 0, 0)
     eve.clear{}
-    eve.gradient(0, 0, $808080, DISP_XMAX, DISP_YMAX, $80FF40)
+    eve.gradient(0, 0, $808080, XMAX, YMAX, $80FF40)
     eve.displaylistend{}
     time.sleep(INTER_DELAY)
 
@@ -203,7 +203,7 @@ PUB DemoGradientTransparency{}
     eve.str(80, 60, 30, eve#OPT_CENTER, string("background"))
     eve.gradienttransparency(0, 0, $FF00FF00, 160, 0, $0000FF00)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -225,7 +225,7 @@ PUB DemoKeys{} | k
     eve.clear{}
     eve.keys(10, 10, 140, 30, 26, 0, string("12345"))
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -233,7 +233,7 @@ PUB DemoKeys{} | k
     eve.clear{}
     eve.keys(10, 10, 140, 30, 26, eve#OPT_FLAT, string("12345"))
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -242,7 +242,7 @@ PUB DemoKeys{} | k
     eve.keys(10, 10, 140, 30, 26, 0, string("12345"))
     eve.keys(10, 60, 140, 30, 26, eve#OPT_CENTER, string("12345"))
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -250,7 +250,7 @@ PUB DemoKeys{} | k
     eve.clear{}
     eve.keys(10, 10, 140, 30, 26, $32, string("12345"))
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -261,7 +261,7 @@ PUB DemoKeys{} | k
     eve.keys(22, 61, 116, 28, 29, 0, string("123"))
     eve.keys(22, 91, 116, 28, 29, 0, string("0."))
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -272,7 +272,7 @@ PUB DemoKeys{} | k
     eve.keys(2, 50, 156, 21, 20, eve#OPT_CENTER, string("zxcvbnm"))
     eve.button(2, 74, 156, 21, 20, 0, string(" "))
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     k := $66
     eve.waitidle{}
@@ -293,12 +293,12 @@ PUB DemoLines{} | i
     eve.displayliststart{}
     eve.clearcolor(0, 0, 0)
     eve.clear{}
-    repeat i from 10 to DISP_XMAX-10 step 10
+    repeat i from 10 to XMAX-10 step 10
         eve.colorrgb(0, i/4, 128)
-        eve.line(i, 10, DISP_XMAX-10-i, DISP_YMAX-10)
-    repeat i from 10 to DISP_YMAX-10 step 10
+        eve.line(i, 10, XMAX-10-i, YMAX-10)
+    repeat i from 10 to YMAX-10 step 10
         eve.colorrgb(0, 128, i/4)
-        eve.line(DISP_XMAX-10, i, 10, DISP_YMAX-10-i)
+        eve.line(XMAX-10, i, 10, YMAX-10-i)
     eve.displaylistend{}
     time.sleep(INTER_DELAY)
 
@@ -311,7 +311,7 @@ PUB DemoNumbers{}
     eve.clear{}
     eve.num(20, 60, 31, 0, 42)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -319,7 +319,7 @@ PUB DemoNumbers{}
     eve.clear{}
     eve.num(80, 60, 31, eve#OPT_CENTER, 42)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -328,7 +328,7 @@ PUB DemoNumbers{}
     eve.num(20, 20, 31, eve#OPT_SIGNED, 42)
     eve.num(20, 60, 31, eve#OPT_SIGNED, -42)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -337,7 +337,7 @@ PUB DemoNumbers{}
     eve.num(150, 20, 31, eve#OPT_RIGHTX | 3, 42)
     eve.num(150, 60, 31, eve#OPT_SIGNED | eve#OPT_RIGHTX | 3, -1)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -361,7 +361,7 @@ PUB DemoProgressBar{}
     eve.clear{}
     eve.progressbar(20, 50, 120, 12, 0, 50, 100)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -369,7 +369,7 @@ PUB DemoProgressBar{}
     eve.clear{}
     eve.progressbar(20, 50, 120, 12, eve#OPT_FLAT, 50, 100)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -391,7 +391,7 @@ PUB DemoRotateScreen{} | r
         eve.rotatescreen(r)
         eve.str(CENTERX, CENTERY, 31, eve#OPT_CENTER, string("Screen rotation"))
         eve.displaylistend{}
-        time.sleep(2)
+        time.msleep(INTER_DELAY)
     time.sleep(INTER_DELAY)
 
 PUB DemoScrollbar{}
@@ -403,7 +403,7 @@ PUB DemoScrollbar{}
     eve.clear{}
     eve.scrollbar(20, 50, 120, 8, 0, 10, 40, 100)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -411,7 +411,7 @@ PUB DemoScrollbar{}
     eve.clear{}
     eve.scrollbar(20, 50, 120, 8, eve#OPT_FLAT, 10, 40, 100)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -432,7 +432,7 @@ PUB DemoSlider{}
     eve.clear{}
     eve.slider(20, 50, 120, 8, 0, 50, 100)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -440,7 +440,7 @@ PUB DemoSlider{}
     eve.clear{}
     eve.slider(20, 50, 120, 8, eve#OPT_FLAT, 50, 100)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -462,7 +462,7 @@ PUB DemoSpinner{} | i
     eve.str(CENTERX, CENTERY-30, 27, eve#OPT_CENTER, string("Please wait..."))
     eve.spinner(CENTERX, CENTERY, eve#SPIN_CIRCLE_DOTS, 0)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -471,7 +471,7 @@ PUB DemoSpinner{} | i
     eve.str(CENTERX, CENTERY-30, 27, eve#OPT_CENTER, string("Please wait..."))
     eve.spinner(CENTERX, CENTERY, eve#SPIN_LINE_DOTS, 0)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -480,7 +480,7 @@ PUB DemoSpinner{} | i
     eve.str(CENTERX, CENTERY-40, 27, eve#OPT_CENTER, string("Please wait..."))
     eve.spinner(CENTERX, CENTERY, eve#SPIN_CLOCKHAND, 0)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -489,7 +489,7 @@ PUB DemoSpinner{} | i
     eve.str(CENTERX, CENTERY-30, 27, eve#OPT_CENTER, string("Please wait..."))
     eve.spinner(CENTERX, CENTERY, eve#SPIN_ORBIT_DOTS, 0)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -497,7 +497,7 @@ PUB DemoSpinner{} | i
     eve.clear{}
     eve.spinner(CENTERX, CENTERY, eve#SPIN_CIRCLE_DOTS, 1)
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -529,7 +529,7 @@ PUB DemoToggle{}
     eve.toggle(60, 20, 33, 27, 0, 0, string("no", $FF, "yes"))
     eve.toggle(60, 60, 33, 27, 0, 65535, string("no", $FF, "yes"))
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -538,7 +538,7 @@ PUB DemoToggle{}
     eve.toggle(60, 20, 33, 27, eve#OPT_FLAT, 0, string("no", $FF, "yes"))
     eve.toggle(60, 60, 33, 27, eve#OPT_FLAT, 65535, string("no", $FF, "yes"))
     eve.displaylistend{}
-    time.sleep(2)
+    time.msleep(INTER_DELAY)
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -564,13 +564,10 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if eve.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if eve.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, @_disp_setup)
         ser.strln(string("BT81x driver started"))
     else
         ser.strln(string("BT81x driver failed to start - halting"))
-        eve.stop{}
-        time.msleep(500)
-        ser.stop{}
         repeat
 
 DAT

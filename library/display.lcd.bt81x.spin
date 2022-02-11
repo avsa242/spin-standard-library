@@ -1,24 +1,15 @@
 {
     --------------------------------------------
-    Filename: display.lcd.bt81x.spi.spin
+    Filename: display.lcd.bt81x.spin
     Author: Jesse Burt
     Description: Driver for the Bridgetek
         Advanced Embedded Video Engine (EVE) Graphic controller
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 25, 2019
-    Updated May 15, 2021
+    Updated Feb 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-
-#ifdef MO_50_70
-#elseifdef MO_43
-#elseifdef MO_35
-#elseifdef MO_29
-#else
-#warning "No supported display type defined!"
-#endif
-
 CON
 
 ' Recognized IDs
@@ -103,6 +94,13 @@ CON
     LR                  = %0100
     LL                  = %1000
 
+VAR
+
+    long _disp_width, _disp_height, _disp_xmax, _disp_ymax, _cent_x, _cent_y
+    long _hcyc_clks, _hoffs_cyc, _hsync0_cyc, _hsync1_cyc, _vcyc_clks
+    long _voffs_lns, _vsync0_cyc, _vsync1_cyc, _clkdiv, _swiz_md, _pclk_pol
+    long _clksprd, _dith_md, _ts_i2caddr
+
 OBJ
 
     spi : "com.spi.fast"
@@ -112,8 +110,17 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
-
+PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, PTR_DISP): status
+' Start the driver using custom I/O settings
+'   CS_PIN: SPI Chip Select
+'   SCK_PIN: SPI Clock
+'   MOSI_PIN: Master-Out Slave-In
+'   MISO_PIN: Master-In Slave-Out
+'   PTR_DISP: pointer to display setup
+'       Structure (18 longs):
+'       WIDTH, HEIGHT, XMAX, YMAX, HCYCLE_CLKS, HOFFSET_CYCS, HSYNC0_CYCS,
+'       HSYNC1_CYCS, VCYCLE_CLKS, VOFFSET_LNS, VSYNC0_CYCS, VSYNC1_CYCS,
+'       CLKDIV, SWIZZLE_MD, PCLK_POL, CLKSPRD, DITHER_MD, TS_I2CADDR
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
         if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, {
@@ -125,6 +132,7 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
             repeat until cpureset(-2) == READY
             if coprocerror{}                    ' reset coprocessor if it's
                 resetcopro{}                    '   in an error state
+            longmove(@_disp_width, PTR_DISP, 20)
             defaults{}
             return
     ' if this point is reached, something above failed
@@ -141,13 +149,14 @@ PUB Defaults{}
 ' Default settings, based on lcd chosen
     ' parameters for these are pulled from display definition #included in
     '   top-level application
-    displaytimings(HCYCLE_CLKS, HOFFSET_CYCLES, HSYNC0_CYCLES, HSYNC1_CYCLES, VCYCLE_CLKS, VOFFSET_LINES, VSYNC0_CYCLES, VSYNC1_CYCLES)
-    swizzle(SWIZZLE_MODE)
-    pixclockpolarity(PCLK_POLARITY)
-    clockspread(CLKSPREAD)
-    dither(DITHER_MODE)
-    displaywidth(DISP_WIDTH)
-    displayheight(DISP_HEIGHT)
+    displaytimings(_hcyc_clks, _hoffs_cyc, _hsync0_cyc, _hsync1_cyc, {
+}    _vcyc_clks, _voffs_lns, _vsync0_cyc, _vsync1_cyc)
+    swizzle(_swiz_md)
+    pixclockpolarity(_pclk_pol)
+    clockspread(_clksprd)
+    dither(_dith_md)
+    displaywidth(_disp_width)
+    displayheight(_disp_height)
 
     displayliststart{}
         clearcolor(0, 0, 0)
@@ -158,8 +167,8 @@ PUB Defaults{}
 
     ' parameters for these are pulled from display definition #included in
     '   top-level application
-    pixelclockdivisor(CLKDIV)                   ' set _here_, per BT AN033
-    touchi2caddr(TS_I2CADDR)                    ' set touchscreen I2C address
+    pixelclockdivisor(_clkdiv)
+    touchi2caddr(_ts_i2caddr)
 
 PUB Preset_HighPerf{}
 ' Like Defaults(), but sets clock to highest performance (72MHz)
@@ -181,10 +190,10 @@ PUB BoxBeveled(x0, y0, width, height, b_size, b_mask) | corner'XXX optimize: red
 '       Bit 2: Lower right (symbol LR)
 '       Bit 3: Lower left (symbol LL)
 '   b_size: number of pixels
-    x0 := 0 #> x0 <# DISP_XMAX
-    y0 := 0 #> y0 <# DISP_YMAX
-    width := 0 #> width <# DISP_XMAX
-    height := 0 #> height <# DISP_YMAX
+    x0 := 0 #> x0 <# _disp_xmax
+    y0 := 0 #> y0 <# _disp_ymax
+    width := 0 #> width <# _disp_xmax
+    height := 0 #> height <# _disp_ymax
     line(x0 + b_size, y0, x0 + width - b_size, y0)
     line(x0 + width - b_size, y0 + height, x0 + b_size, y0 + height)
     line(x0 + width, y0 + b_size, x0 + width, y0 + height - b_size)
@@ -241,10 +250,10 @@ PUB Button(x, y, width, height, font, opts, ptr_str) | i, j
 '       font: 0..31
 '       opts: OPT_3D (0), OPT_FLAT (256)
 '       ptr_str: Pointer to string to be displayed on button
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
-    width := 0 #> width <# DISP_XMAX
-    height := 0 #> height <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+    width := 0 #> width <# _disp_xmax
+    height := 0 #> height <# _disp_ymax
     coproccmd(core#CMD_BUTTON)
     coproccmd((y << 16) + x)
     coproccmd((height << 16) + width)
@@ -334,7 +343,7 @@ PUB CoProcError{}: flag
     readreg(core#CMD_READ, 2, @flag)
     return (flag == $FFF)
 
-PUB CPUReset(mask) | tmp    'XXX split return code into CPUState() or similar
+PUB CPUReset(mask): tmp    'XXX split return code into CPUState() or similar
 ' Reset any combination of audio, touch, and coprocessor engines
 '   Valid values:
 '       Bit: 210
@@ -365,9 +374,9 @@ PUB DeviceID{}: id
 
 PUB Dial(x, y, radius, opts, val)
 ' Draw a dial
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
-    radius := 0 #> radius <# DISP_XMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+    radius := 0 #> radius <# _disp_xmax
 
     coproccmd(core#CMD_DIAL)
     coproccmd((y << 16) | x)
@@ -446,9 +455,9 @@ PUB ExtClock{}
 
 PUB Gauge(x, y, radius, opts, major, minor, val, range)
 ' Draw a gauge
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
-    radius := 0 #> radius <# DISP_XMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+    radius := 0 #> radius <# _disp_xmax
 
     coproccmd(core#CMD_GAUGE)
     coproccmd((y << 16) | x)
@@ -480,11 +489,11 @@ PUB GPIODir(mask): curr_mask
 
 PUB Gradient(x0, y0, rgb0, x1, y1, rgb1)
 ' Draw a smooth color gradient
-    x0 := 0 #> x0 <# DISP_XMAX
-    y0 := 0 #> y0 <# DISP_YMAX
+    x0 := 0 #> x0 <# _disp_xmax
+    y0 := 0 #> y0 <# _disp_ymax
     rgb0 := $00_00_00 #> rgb0 <# $FF_FF_FF
-    x1 := 0 #> x1 <# DISP_XMAX
-    y1 := 0 #> y1 <# DISP_YMAX
+    x1 := 0 #> x1 <# _disp_xmax
+    y1 := 0 #> y1 <# _disp_ymax
     rgb1 := $00_00_00 #> rgb1 <# $FF_FF_FF
 
     coproccmd(core#CMD_GRADIENT)
@@ -495,10 +504,10 @@ PUB Gradient(x0, y0, rgb0, x1, y1, rgb1)
 
 PUB GradientTransparency(x0, y0, argb0, x1, y1, argb1)
 ' Draw a smooth color gradient, with transparency
-    x0 := 0 #> x0 <# DISP_XMAX
-    y0 := 0 #> y0 <# DISP_YMAX
-    x1 := 0 #> x1 <# DISP_XMAX
-    y1 := 0 #> y1 <# DISP_YMAX
+    x0 := 0 #> x0 <# _disp_xmax
+    y0 := 0 #> y0 <# _disp_ymax
+    x1 := 0 #> x1 <# _disp_xmax
+    y1 := 0 #> y1 <# _disp_ymax
 
     coproccmd(core#CMD_GRADIENTA)
     coproccmd((y0 << 16) | x0)
@@ -569,8 +578,8 @@ PUB IntClock{}
 
 PUB Keys(x, y, width, height, font, opts, ptr_str) | i, j
 ' Draw an array of keys 'XXX document
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
     coproccmd(core#CMD_KEYS)
     coproccmd((y << 16) | x)
     coproccmd((height << 16) | width)
@@ -613,8 +622,8 @@ PUB Num(x, y, font, opts, val)
 '   Valid options:
 '       OPT_CENTERX, OPT_CENTERY, OPT_CENTER, OPT_SIGNED
 ' NOTE: If no preceeding SetBase() is used, decimal will be used
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
     coproccmd(core#CMD_NUMBER)
     coproccmd((y << 16) | x)
     coproccmd((opts << 16) | font)
@@ -649,8 +658,8 @@ PUB PixClockPolarity(edge): curr_edge
 
 PUB Plot(x, y)
 ' Plot pixel at x, y in current color
-    X := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
+    X := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
 
     primitivebegin(POINTS)
     vertex2f(x, y)
@@ -684,7 +693,7 @@ PUB PrimitiveBegin(prim)
             prim := core#BEGIN | prim
             coproccmd(prim)
         other:
-            return FALSE
+            return
 
 PUB PrimitiveEnd{}
 ' End drawing a graphics primitive
@@ -692,10 +701,10 @@ PUB PrimitiveEnd{}
 
 PUB ProgressBar(x, y, width, height, opts, val, range)
 ' Draw a progress bar
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
-    width := 0 #> width <# DISP_XMAX
-    height := 0 #> height <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+    width := 0 #> width <# _disp_xmax
+    height := 0 #> height <# _disp_ymax
     coproccmd(core#CMD_PROGRESS)
     coproccmd((y << 16) | x)
     coproccmd((height << 16) | width)
@@ -758,10 +767,10 @@ PUB Scrollbar(x, y, width, height, opts, val, size, range)
 ' Draw a scrollbar
 '   NOTE: If width is greater than height, the scroll bar will be drawn horizontally,
 '       else it will be drawn vertically
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
-    width := 0 #> width <# DISP_XMAX
-    height := 0 #> height <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+    width := 0 #> width <# _disp_xmax
+    height := 0 #> height <# _disp_ymax
     coproccmd(core#CMD_SCROLLBAR)
     coproccmd((y << 16) | x)
     coproccmd((height << 16) | width)
@@ -786,10 +795,10 @@ PUB Sleep{}
 
 PUB Slider(x, y, width, height, opts, val, range)
 ' Draw a slider
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
-    width := 0 #> width <# DISP_XMAX
-    height := 0 #> height <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+    width := 0 #> width <# _disp_xmax
+    height := 0 #> height <# _disp_ymax
     coproccmd(core#CMD_SLIDER)
     coproccmd((y << 16) | x)
     coproccmd((height << 16) | width)
@@ -802,8 +811,8 @@ PUB SoftReset{}
 
 PUB Spinner(x, y, style, scale)
 ' Draw a spinner/busy indicator
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
     style := 0 #> style <# 3
     scale := 0 #> scale <# 2
     coproccmd(core#CMD_SPINNER)
@@ -827,8 +836,8 @@ PUB Str(x, y, font, opts, ptr_str) | i, j   'XXX rename to StrXY() or similar an
 '       font: 0..31 XXX expand/clarify
 '       opts: Options for the drawn text XXX expand/clarify
 '       ptr_str: Pointer to string
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
     coproccmd(core#CMD_TEXT)
     coproccmd((y << 16) + x)
     coproccmd((opts << 16) + font)
@@ -898,7 +907,7 @@ PUB TaggingEnabled(state)
 PUB TextWrap(pixels)
 ' Set pixel width for text wrapping
 '   NOTE: This setting applies to the Str and Button (when using the OPT_FILL option) methods
-    pixels := 0 #> pixels <# DISP_XMAX
+    pixels := 0 #> pixels <# _disp_xmax
     coproccmd(core#CMD_FILLWIDTH)
     coproccmd(pixels)
 
@@ -906,9 +915,9 @@ PUB Toggle(x, y, width, font, opts, state, ptr_str) | i, j
 ' Draw a toggle switch
 '   NOTE: String labels are UTF-8 formatted.
 '       A value of 255 separates label strings.
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
-    width := 0 #> width <# DISP_XMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+    width := 0 #> width <# _disp_xmax
     coproccmd(core#CMD_TOGGLE)
     coproccmd((y << 16) | x)
     coproccmd((font << 16) | width)
@@ -1007,8 +1016,8 @@ PUB VCycle(disp_lines): curr_lines
 
 PUB Vertex2F(x, y)
 ' Specify coordinates for following graphics primitive
-    x := 0 #> x <# DISP_XMAX
-    y := 0 #> y <# DISP_YMAX
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
     x <<= 4
     y <<= 4
     coproccmd(core#VERTEX2F | (x << core#V2F_X) | y)

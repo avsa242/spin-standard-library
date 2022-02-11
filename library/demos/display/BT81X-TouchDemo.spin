@@ -3,9 +3,9 @@
     Filename: BT81X-TouchDemo.spin
     Author: Jesse Burt
     Description: Demo of the BT81x driver touchscreen functionality
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 30, 2019
-    Updated Oct 18, 2021
+    Updated Feb 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -26,26 +26,25 @@ CON
 
     BRIGHTNESS  = 100                           ' Initial brightness (0..128)
 
-' Uncomment one of the following, depending on your display size/resolution
-#include "core.bt815.lcdtimings.800x480.spinh"
-'#include "core.bt815.lcdtimings.480x272.spinh"
-'#include "core.bt815.lcdtimings.320x240.spinh"
-'#include "core.bt815.lcdtimings.320x102.spinh"
 ' --
 
-    CENTERX     = DISP_WIDTH / 2
-    CENTERY     = DISP_HEIGHT / 2
     BUTTON_W    = 100
     BUTTON_H    = 50
-    BUTTON_CX   = CENTERX - (BUTTON_W / 2)
-    BUTTON_CY   = CENTERY - (BUTTON_H / 2)
+
+' Uncomment one of the following, depending on your display size/resolution
+'   NOTE: WIDTH, HEIGHT, XMAX, YMAX, CENTERX, CENTERY symbols are defined
+'   in the display timings file.
+#include "eve3-lcdtimings.800x480.spinh"
+'#include "eve3-lcdtimings.480x272.spinh"
+'#include "eve3-lcdtimings.320x240.spinh"
+'#include "eve3-lcdtimings.320x102.spinh"
 
 OBJ
 
     cfg         : "core.con.boardcfg.flip"
     ser         : "com.serial.terminal.ansi"
     time        : "time"
-    eve         : "display.lcd.bt81x.spi"
+    eve         : "display.lcd.bt81x"
 
 PUB Main{} | count, idle, state, x, y, t1, t2, t3, t4
 
@@ -79,7 +78,7 @@ PUB Main{} | count, idle, state, x, y, t1, t2, t3, t4
         if state == 1                           ' only update the scrollbar pos
             x := eve.touchxy{} >> 16            '   if it's being touched
             updatescrollbar(x)
-            if x > DISP_WIDTH-20                ' if pulled near the right edge
+            if x > WIDTH-20                     ' if pulled near the right edge
                 quit                            '   of the screen, exit loop
 
     t1 := t2 := t3 := t4 := 0
@@ -119,7 +118,10 @@ PUB Main{} | count, idle, state, x, y, t1, t2, t3, t4
     eve.powered(FALSE)
     repeat
 
-PUB UpdateButton(state)
+PUB UpdateButton(state) | btn_cx, btn_cy
+
+    btn_cx := CENTERX - (BUTTON_W / 2)
+    btn_cy := CENTERY - (BUTTON_H / 2)
 
     eve.waitidle{}                              ' wait for EVE to be ready
     eve.displayliststart{}                      ' begin list of graphics cmds
@@ -130,20 +132,20 @@ PUB UpdateButton(state)
     if state                                    ' button pressed
         eve.colorrgb(255, 255, 255)             ' button text color (pressed)
         eve.tagattach(1)                        ' tag or id# for this button
-        eve.button(BUTTON_CX, BUTTON_CY, 100, 50, 30, 0, string("TEST"))
+        eve.button(btn_cx, btn_cy, 100, 50, 30, 0, string("TEST"))
     else
         eve.colorrgb(0, 0, 192)                 ' button text color (up)
         eve.tagattach(1)
-        eve.button(BUTTON_CX, BUTTON_CY, 100, 50, 30, 0, string("TEST"))
+        eve.button(btn_cx, btn_cy, 100, 50, 30, 0, string("TEST"))
     eve.displaylistend{}                        ' end list; display everything
 
 PUB UpdateScrollbar(val) | w, h, x, y, sz
 
     sz := 10                                    ' scrollbar size
-    w := DISP_WIDTH-(sz << 1)-1                 '   width
+    w := WIDTH-(sz << 1)-1                      '   width
     h := 20                                     '   height
     x := 0+sz
-    y := DISP_HEIGHT-h-1
+    y := HEIGHT-h-1
 
     eve.waitidle{}
     eve.displayliststart{}
@@ -184,7 +186,7 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if eve.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if eve.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, @_disp_setup)
         ser.strln(string("BT81x driver started"))
     else
         ser.str(string("BT81x driver failed to start - halting"))
