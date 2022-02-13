@@ -5,7 +5,7 @@
     Description: Demo of the BT81x driver touchscreen functionality
     Copyright (c) 2022
     Started Sep 30, 2019
-    Updated Feb 10, 2022
+    Updated Feb 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -124,7 +124,7 @@ PUB UpdateButton(state) | btn_cx, btn_cy
     btn_cy := CENTERY - (BUTTON_H / 2)
 
     eve.waitidle{}                              ' wait for EVE to be ready
-    eve.displayliststart{}                      ' begin list of graphics cmds
+    eve.dlstart{}                               ' begin list of graphics cmds
     eve.clearcolor(0, 0, 0)
     eve.clear{}
     eve.widgetbgcolor($ff_ff_ff)                ' button colors (r_g_b)
@@ -137,7 +137,7 @@ PUB UpdateButton(state) | btn_cx, btn_cy
         eve.colorrgb(0, 0, 192)                 ' button text color (up)
         eve.tagattach(1)
         eve.button(btn_cx, btn_cy, 100, 50, 30, 0, string("TEST"))
-    eve.displaylistend{}                        ' end list; display everything
+    eve.dlend{}                                 ' end list; display everything
 
 PUB UpdateScrollbar(val) | w, h, x, y, sz
 
@@ -148,14 +148,14 @@ PUB UpdateScrollbar(val) | w, h, x, y, sz
     y := HEIGHT-h-1
 
     eve.waitidle{}
-    eve.displayliststart{}
+    eve.dlstart{}
     eve.clearcolor(0, 0, 0)
     eve.clear{}
     eve.widgetbgcolor($55_55_55)
     eve.widgetfgcolor($00_00_C0)
     eve.tagattach(1)
     eve.scrollbar(x, y, w, h, 0, x #> val <# w, sz, w)
-    eve.displaylistend{}
+    eve.dlend{}
 
 PUB UpdateToggle(t1, t2, t3, t4) | tag, tmp, x, y, w, sw, h
 
@@ -165,7 +165,7 @@ PUB UpdateToggle(t1, t2, t3, t4) | tag, tmp, x, y, w, sw, h
     y := CENTERY-(h*4)                          '   coords
 
     eve.waitidle{}
-    eve.displayliststart{}
+    eve.dlstart{}
     eve.clearcolor(0, 0, 0)
     eve.clear{}
     eve.widgetbgcolor($55_55_55)
@@ -178,7 +178,7 @@ PUB UpdateToggle(t1, t2, t3, t4) | tag, tmp, x, y, w, sw, h
     eve.toggle(x, y + (3 * (h*2)), w, h, 0, t3, string("OFF", $FF, "ON"))
     eve.tagattach(4)                            ' button
     eve.toggle(x, y + (4 * (h*2)), w, h, 0, t4, string("OFF", $FF, "ON"))
-    eve.displaylistend{}
+    eve.dlend{}
 
 PUB Setup{}
 
