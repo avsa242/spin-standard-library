@@ -13,15 +13,16 @@
 
 
 CON
-'' Font definition: width, height in pixels, ASCII code of highest character
+' Font definition: width, height in pixels, ASCII code of lowest and highest characters
     WIDTH       = 5
     HEIGHT      = 8
+    FIRSTCHAR   = 0
     LASTCHAR    = 127
 
 PUB Null
 ' This is not a top-level object
 
-PUB BaseAddr
+PUB BaseAddr{}: ptr
 ' Return base address of font table
     return @table
 
