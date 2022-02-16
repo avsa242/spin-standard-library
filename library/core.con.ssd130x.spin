@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: core.con.ssd1306.spin
+    Filename: core.con.ssd130x.spin
     Author: Jesse Burt
-    Description: SSD1306-specific constants
-    Copyright (c) 2021
+    Description: SSD130x-specific constants
+    Copyright (c) 2022
     Created: Apr 26, 2018
-    Updated: Jan 1, 2022
+    Updated: Feb 15, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,11 +22,16 @@ CON
     CTRLBYTE_CMD    = $00
     CTRLBYTE_DATA   = $40
 
+#ifdef SSD1306
     FOSC_MIN        = 333
     FOSC_MAX        = 407
+#elseifdef SSD1309
+    FOSC_MIN        = 360
+    FOSC_MAX        = 540
+#endif
 
 'FUNDAMENTAL COMMAND SET
-    CONTRAST        = $81 'Double byte command - send 8-bit contrast value after this command
+    CONTRAST        = $81
     RAMDISP_ON      = $A4
     ENTDISP_ON      = $A5
     DISP_NORM       = $A6
@@ -35,23 +40,23 @@ CON
     DISP_ON         = $AF
 
 'SCROLLING COMMAND TABLE
-    HSCROLL_R       = $26 '\
-    HSCROLL_L       = $27 '- 7 byte command - send $00 dummy byte, Page start, Time interval, Page end, $00, $FF dummy bytes after this command
-    SCROLL_VHR      = $29 '\
-    SCROLL_VHL      = $2A '- 6 byte command - send $00 dummy byte, Page start, Time interval, Page end, Vert. scroll offset
-    STOPSCROLL      = $2E ' Stop any of the above
-    STARTSCROLL     = $2F ' Stop any of the above
-    VSCROLL_AREA    = $A3 '- 3 byte command - send no. of rows in top fixed area (bits 5..0), no. of rows in scroll area after this command (bits 6..0)
+    HSCROLL_R       = $26
+    HSCROLL_L       = $27
+    SCROLL_VHR      = $29
+    SCROLL_VHL      = $2A
+    STOPSCROLL      = $2E
+    STARTSCROLL     = $2F
+    VSCROLL_AREA    = $A3
 
 'ADDRESSING SETTING COMMAND TABLE
-    MEM_ADDRMODE    = $20 '- 2 byte command - send addressing mode after this byte
-    SET_COLADDR     = $21 '- 3 byte command - send column start address, column end address after this byte
-    SET_PAGEADDR    = $22 '- 3 byte command - send page start address, page end address after this byte
+    MEM_ADDRMODE    = $20
+    SET_COLADDR     = $21
+    SET_PAGEADDR    = $22
 
 'HARDWARE CONFIGURATION
-    DISP_STLINE     = $40   ' | [5:0]
-    SEG_MAP0        = $A0 ' Column address 0 is mapped to SEG0
-    SEG_MAP127      = $A1 ' Column address 127 is mapped to SEG0
+    DISP_STLINE     = $40
+    SEG_MAP0        = $A0
+    SEG_MAP127      = $A1
     SETMUXRATIO     = $A8
     COMDIR_NORM     = $C0
     COMDIR_RMAP     = $C8
@@ -72,9 +77,13 @@ CON
         CHGP_9000   = %1000_0101
 
 'TIMING & DRIVING SCHEME
-    SETPRECHARGE    = $D9 '- 2 byte command - send phase 1 period and phase 2 period after this byte
-    SETVCOMDESEL    = $DB '- 2 byte command - send Vcomh deselect level after this byte
-
+    SETPRECHARGE    = $D9
+    SETVCOMDESEL    = $DB
+#ifdef SSD1306
+        VCOMH       = 4
+#elseifdef SSD1309
+        VCOMH       = 2
+#endif
     NOOP            = $E3
 
 PUB Null{}

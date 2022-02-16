@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: display.oled.ssd1306.spin
-    Description: Driver for Solomon Systech SSD1306 OLED displays
+    Filename: display.oled.ssd130x.spin
+    Description: Driver for Solomon Systech SSD130x OLED displays
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Apr 26, 2018
-    Updated: Feb 6, 2022
+    Updated: Feb 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -38,7 +38,7 @@ CON
 
 OBJ
 
-    core: "core.con.ssd1306"
+    core: "core.con.ssd130x"
     time: "time"
 #ifdef SSD130X_I2C
     i2c : "com.i2c"                             ' PASM I2C engine (~1MHz)
@@ -48,14 +48,14 @@ OBJ
 
 VAR
 
-    long _DC, _RES
-    byte _sa0
+    long _CS, _DC, _RES
+    byte _addr_bits
 
 PUB Null{}
 ' This is not a top-level object
 
 #ifdef SSD130X_I2C
-PUB Startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BIT, WIDTH, HEIGHT, ptr_dispbuff): status
+PUB Startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT, ptr_dispbuff): status
 ' Start the driver with custom I/O settings
 '   SCL_PIN: 0..31
 '   SDA_PIN: 0..31
@@ -64,14 +64,13 @@ PUB Startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BIT, WIDTH, HEIGHT, ptr_dispb
 '   SLAVE_LSB: 0, 1
 '   WIDTH: 96, 128
 '   HEIGHT: 32, 64
-    ' validate pins
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#TPOR)              ' wait for device startup
-            _sa0 := ||(ADDR_BIT == 1) << 1      ' slave address bit option
+            _addr_bits := ||(ADDR_BITS == 1) << 1 ' slave address bit option
             _RES := RES_PIN                     ' -1 to disable
 
-            if i2c.present(SLAVE_WR | _sa0)     ' test device bus presence
+            if i2c.present(SLAVE_WR | _addr_bits) ' test device bus presence
                 _disp_width := width
                 _disp_height := height
                 _disp_xmax := _disp_width-1
@@ -132,6 +131,10 @@ PUB Stop{}
 
 PUB Defaults{}
 ' Apply power-on-reset default settings
+#ifndef HAS_RESET
+    ' this code will be called only if HAS_RESET isn't defined at build-time
+    ' define it if the display's reset pin is to be controlled by GPIO
+    '   or if it's tied to the MCU's reset pin or similar
     powered(FALSE)
     displaylines(64)
     displaystartline(0)
@@ -139,8 +142,11 @@ PUB Defaults{}
     addrmode(PAGE)
     contrast(127)
     displayvisibility(NORMAL)
-    displaybounds(0, 0, _disp_xmax, _disp_ymax)
+    displaybounds(0, 0, 127, 63)
     powered(TRUE)
+#else
+    reset{}
+#endif
 
 PUB Preset_128x{}
 ' Preset: 128px wide, determine settings for height at runtime
@@ -178,7 +184,7 @@ PUB Preset_128x64{}
     compincfg(1, 0)
     powered(TRUE)
 
-PUB Address(addr)
+PUB Address(addr): curr_addr
 ' Set framebuffer address
     case addr
         $0004..$7FFF-_buff_sz:
@@ -195,10 +201,37 @@ PUB AddrMode(mode)
 '   Any other value is ignored
     case mode
         HORIZ, VERT, PAGE:
+            writereg(core#MEM_ADDRMODE, 1, mode)
         other:
             return
 
-    writereg(core#MEM_ADDRMODE, 1, mode)
+#ifdef GFX_DIRECT
+PUB Bitmap(ptr_bmap, sx, sy, ex, ey) | bm_sz
+' Display bitmap
+'   ptr_bmap: pointer to bitmap data
+'   (sx, sy): upper-left corner of bitmap
+'   (ex, ey): lower-right corner of bitmap
+    displaybounds(sx, sy, ex, ey)
+    bm_sz := ((ex-sx) * (ey-sy)) / 8
+
+    writebuffer(ptr_bmap, bm_sz)
+#endif
+
+#ifdef GFX_DIRECT
+PUB Char(ch) | ch_offs
+' Draw a character from the loaded font
+    ch_offs := _font_addr + (ch << 3)
+    displaybounds(_charpx_x, _charpx_y, _charpx_x+_charcell_w, _charpx_y+_charcell_h)
+
+    writebuffer(ch_offs, _charcell_w)
+
+    _charpx_x += _charcell_w                    ' go to next column
+    if (_charpx_x > _charpx_xmax)               ' last col?
+        _charpx_x := 0                          ' go to first col of
+        _charpx_y += _charcell_h                '   next line
+        if (_charpx_y > _charpx_ymax)           ' last col of last row?
+            _charpx_x := _charpx_y := 0         ' wrap to beginning of disp
+#endif
 
 PUB ChgPumpVoltage(v)
 ' Set charge pump regulator voltage, in millivolts
@@ -206,6 +239,9 @@ PUB ChgPumpVoltage(v)
 '       0 (off), 6_000, *7_500, 8_500, 9_000
 '   Any other value is ignored
 '   NOTE: This must be called before display power is enabled with Powered()
+#ifdef SSD1306
+    ' the SSD1309 doesn't have an internal charge pump,
+    ' so only build this code for the SSD1306
     case v
         0_000:
             v := core#CHGP_OFF
@@ -221,45 +257,50 @@ PUB ChgPumpVoltage(v)
             return
 
     writereg(core#CHGPUMP, 1, v)
+#endif
 
 PUB Clear{}
-' Clear the display buffer
+' Clear the display
+#ifdef GFX_DIRECT
+#ifdef SSD130X_I2C
+    i2c.start
+    i2c.write(SLAVE_WR | _addr_bits)
+    i2c.wr_byte(core#CTRLBYTE_DATA)
+    repeat _buff_sz
+        i2c.wr_byte(_bgcolor)
+    i2c.stop
+#elseifdef SSD130X_SPI
+    outa[_DC] := DATA
+    spi.deselectafter(true)
+    repeat _buff_sz
+        spi.wr_byte(_bgcolor)
+#endif
+#else
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
+#endif
 
 PUB ClockFreq(freq)
 ' Set display internal oscillator frequency, in kHz
-'   Valid values: 333, 337, 342, 347, 352, 357, 362, 367, 372, 377, 382, 387,
-'       392, 397, 402, 407
+'   Valid values: (disply-specific)
+'       SSD1306:
+'           333, 337, 342, 347, 352, 357, 362, 367, 372, 377, 382, 387, 392,
+'           397, 402, 407
+'       SSD1309:
+'           360, 372, 384, 396, 408, 420, 432, 444, 456, 468, 480, 492, 504,
+'           516, 528, 540
 '   Any other value is ignored
 '   NOTE: Range is interpolated, based solely on the range specified in the
 '   datasheet, divided into 16 steps
     case freq
         core#FOSC_MIN..core#FOSC_MAX:
-            freq := lookdownz(freq: 333, 337, 342, 347, 352, 357, 362, 367, {
-}           372, 377, 382, 387, 392, 397, 402, 407) << core#OSCFREQ
+#ifdef SSD1306
+            freq := ((freq / 5) - 66) << core#OSCFREQ
+#elseifdef SSD1309
+            freq := ((freq / 12) - 30) << core#OSCFREQ
+#endif
+            writereg(core#SETOSCFREQ, 1, freq)
         other:
             return
-
-    writereg(core#SETOSCFREQ, 1, freq)
-
-PUB COMLogicHighLevel(level)
-' Set COMmon pins high logic level, relative to Vcc
-'   Valid values:
-'       0_65: 0.65 * Vcc
-'      *0_77: 0.77 * Vcc
-'       0_83: 0.83 * Vcc
-'   Any other value sets the default value
-    case level
-        0_65:
-            level := %000 << 4
-        0_77:
-            level := %010 << 4
-        0_83:
-            level := %011 << 4
-        other:
-            level := %010 << 4
-
-    writereg(core#SETVCOMDESEL, 1, level)
 
 PUB COMPinCfg(pin_config, remap) | config
 ' Set COM Pins Hardware Configuration and Left/Right Remap
@@ -286,10 +327,9 @@ PUB Contrast(level)
 '   Any other value sets the default value
     case level
         0..255:
+            writereg(core#CONTRAST, 1, level)
         other:
             level := 127
-
-    writereg(core#CONTRAST, 1, level)
 
 PUB DisplayBounds(sx, sy, ex, ey)
 ' Set displayable area
@@ -320,10 +360,9 @@ PUB DisplayLines(lines)
     case lines
         16..64:
             lines -= 1
+            writereg(core#SETMUXRATIO, 1, lines)
         other:
             return
-
-    writereg(core#SETMUXRATIO, 1, lines)
 
 PUB DisplayOffset(offset)
 ' Set display offset/vertical shift
@@ -331,10 +370,9 @@ PUB DisplayOffset(offset)
 '   Any other value sets the default value
     case offset
         0..63:
+            writereg(core#SETDISPOFFS, 1, offset)
         other:
             offset := 0
-
-    writereg(core#SETDISPOFFS, 1, offset)
 
 PUB DisplayStartLine(start_line)
 ' Set Display Start Line
@@ -342,10 +380,9 @@ PUB DisplayStartLine(start_line)
 '   Any other value sets the default value
     case start_line
         0..63:
+            writereg(core#DISP_STLINE, 0, start_line)
         other:
             start_line := 0
-
-    writereg(core#DISP_STLINE, 0, start_line)
 
 PUB DisplayVisibility(mode)
 ' Set display visibility
@@ -367,10 +404,9 @@ PUB MirrorH(state)
 '   NOTE: Takes effect only after next display update
     case ||(state)
         0, 1: state := ||(state)
+            writereg(core#SEG_MAP0, 0, state)
         other:
             return
-
-    writereg(core#SEG_MAP0, 0, state)
 
 PUB MirrorV(state)
 ' Mirror display, vertically
@@ -405,21 +441,23 @@ PUB Plot(x, y, color)
             return
 #endif
 
+#ifndef GFX_DIRECT
 PUB Point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
 
     return (byte[_ptr_drawbuffer][(x + (y >> 3) * _disp_width)] & (1 << (y & 7)) <> 0) * -1
+#endif
 
 PUB Powered(state) | tmp
 ' Enable display power
     case ||(state)
         0, 1:
             state := ||(state) + core#DISP_OFF
+            writereg(state, 0, 0)
         other:
             return
-    writereg(state, 0, 0)
 
 PUB PrechargePeriod(phs1_clks, phs2_clks)
 ' Set display refresh pre-charge period, in display clocks
@@ -453,7 +491,7 @@ PUB Update{} | tmp
 
 #ifdef SSD130X_I2C
     i2c.start{}
-    i2c.wr_byte(SLAVE_WR | _sa0)
+    i2c.wr_byte(SLAVE_WR | _addr_bits)
     i2c.wr_byte(core#CTRLBYTE_DATA)
     i2c.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
     i2c.stop{}
@@ -463,15 +501,47 @@ PUB Update{} | tmp
     spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
 #endif
 
+PUB VCOMHVoltage(level)
+' Set COM output voltage, in millivolts
+'   Valid values:
+'       SSD1306:
+'           0_650: 0.65 * Vcc
+'          *0_770: 0.77 * Vcc
+'           0_830: 0.83 * Vcc
+'       SSD1309:
+'           0_640: 0.64 * Vcc
+'          *0_780: 0.78 * Vcc
+'           0_840: 0.84 * Vcc
+'   Any other value is ignored
+    case level
+#ifdef SSD1306
+        0_650:
+            level := %000 << core#VCOMH
+        0_770:
+            level := %010 << core#VCOMH
+        0_830:
+            level := %011 << core#VCOMH
+#elseifdef SSD1309
+        0_640:
+            level := %0000 << core#VCOMH
+        0_780:
+            level := %1101 << core#VCOMH
+        0_840:
+            level := %1111 << core#VCOMH
+#endif
+        other:
+            return
+
+    writereg(core#SETVCOMDESEL, 1, level)
+
 PUB WriteBuffer(ptr_buff, buff_sz) | tmp
 ' Write alternate buffer to display
 '   buff_sz: bytes to write
 '   ptr_buff: address of buffer to write to display
-    displaybounds(0, 0, _disp_xmax, _disp_ymax)
-
+'   NOTE: Does not set position on display
 #ifdef SSD130X_I2C
     i2c.start{}
-    i2c.wr_byte(SLAVE_WR | _sa0)
+    i2c.wr_byte(SLAVE_WR | _addr_bits)
     i2c.wr_byte(core#CTRLBYTE_DATA)
     i2c.wrblock_lsbf(ptr_buff, buff_sz)
     i2c.stop{}
@@ -481,17 +551,19 @@ PUB WriteBuffer(ptr_buff, buff_sz) | tmp
     spi.wrblock_lsbf(ptr_buff, buff_sz)
 #endif
 
+#ifndef GFX_DIRECT
 PRI memFill(xs, ys, val, count)
 ' Fill region of display buffer memory
 '   xs, ys: Start of region
 '   val: Color
 '   count: Number of consecutive memory locations to write
     bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
+#endif
 
 PRI writeReg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp, ackbit
 ' Write nr_bytes from val to device
 #ifdef SSD130X_I2C
-    cmd_pkt.byte[0] := SLAVE_WR | _sa0
+    cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
     cmd_pkt.byte[1] := core#CTRLBYTE_CMD
     case nr_bytes
         0:
