@@ -65,6 +65,12 @@ PUB Main{}
         repeat
 
     disp.preset{}
+
+    { change these to suit the orientation of your display }
+    disp.displayrotate(TRUE)
+    disp.mirrorh(FALSE)
+    disp.mirrorv(TRUE)
+
     _time := 5_000                              ' time each demo runs (ms)
 
     demo{}                                      ' start demo
