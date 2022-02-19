@@ -1,7 +1,7 @@
 {
     --------------------------------------------
-    Filename: SSD1351-Demo.spin
-    Description: SSD1351-specific setup for graphics demo
+    Filename: VGA6BPP-Demo.spin
+    Description: VGA6BPP-specific setup for graphics demo
     Author: Jesse Burt
     Copyright (c) 2022
     Started: Feb 17, 2022
@@ -18,34 +18,26 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    WIDTH       = 128
-    HEIGHT      = 128
+    WIDTH       = 160
+    HEIGHT      = 120
 
-{ SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    DC_PIN      = 3
+{ VGA configuration }
+    VGA_PINGRP  = 2                             ' 0..3
 
-    RES_PIN     = -1                             ' optional; -1 to disable
 ' --
 
     BPP         = disp#BYTESPERPX
     BYTESPERLN  = WIDTH * BPP
-    BUFFSZ      = (WIDTH * HEIGHT)
+    BUFFSZ      = (WIDTH * HEIGHT) * BPP
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    disp    : "display.oled.ssd1351"
+    disp    : "display.vga.bitmap.160x120"
 
 VAR
 
-#ifndef GFX_DIRECT
-    word _framebuff[BUFFSZ]                     ' display buffer
-#else
-    byte _framebuff                             ' dummy VAR for GFX_DIRECT
-#endif
+    byte _framebuff[BUFFSZ]                     ' display buffer
 
 PUB Main{}
 
@@ -54,7 +46,7 @@ PUB Main{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+    if disp.startx(VGA_PINGRP, WIDTH, HEIGHT, @_framebuff)
         ser.printf1(string("%s driver started"), @_drv_name)
         disp.fontspacing(1, 0)
         disp.fontscale(1)
@@ -64,8 +56,6 @@ PUB Main{}
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
 
-
-    disp.preset_128x{}
     _time := 5_000                              ' time each demo runs (ms)
 
     demo{}                                      ' start demo
@@ -74,7 +64,7 @@ PUB Main{}
 #include "GFXDemo-common.spinh"
 
 DAT
-    _drv_name   byte    "SSD1351 (SPI)", 0
+    _drv_name   byte    "VGA6BPP", 0
 
 {
 TERMS OF USE: MIT License

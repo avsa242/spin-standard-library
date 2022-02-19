@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: SSD1351-Demo.spin
-    Description: SSD1351-specific setup for graphics demo
+    Filename: SSD130X-Demo.spin
+    Description: SSD130X-specific setup for graphics demo
     Author: Jesse Burt
     Copyright (c) 2022
-    Started: Feb 17, 2022
-    Updated: Feb 17, 2022
+    Started: Feb 16, 2022
+    Updated: Feb 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,7 +19,13 @@ CON
     SER_BAUD    = 115_200
 
     WIDTH       = 128
-    HEIGHT      = 128
+    HEIGHT      = 64
+
+{ I2C configuration }
+    SCL_PIN     = 28
+    SDA_PIN     = 29
+    ADDR_BITS   = 0
+    SCL_FREQ    = 1_000_000
 
 { SPI configuration }
     CS_PIN      = 0
@@ -32,20 +38,16 @@ CON
 
     BPP         = disp#BYTESPERPX
     BYTESPERLN  = WIDTH * BPP
-    BUFFSZ      = (WIDTH * HEIGHT)
+    BUFFSZ      = ((WIDTH * HEIGHT) * BPP) / 8
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    disp    : "display.oled.ssd1351"
+    disp    : "display.oled.ssd130x"
 
 VAR
 
-#ifndef GFX_DIRECT
-    word _framebuff[BUFFSZ]                     ' display buffer
-#else
-    byte _framebuff                             ' dummy VAR for GFX_DIRECT
-#endif
+    byte _framebuff[BUFFSZ]                     ' display buffer
 
 PUB Main{}
 
@@ -54,7 +56,11 @@ PUB Main{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
+#ifdef SSD130X_I2C
+    if disp.startx(SCL_PIN, SDA_PIN, RES_PIN, SCL_FREQ, ADDR_BITS, WIDTH, HEIGHT, @_framebuff)
+#elseifdef SSD130X_SPI
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+#endif
         ser.printf1(string("%s driver started"), @_drv_name)
         disp.fontspacing(1, 0)
         disp.fontscale(1)
@@ -63,7 +69,6 @@ PUB Main{}
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
-
 
     disp.preset_128x{}
     _time := 5_000                              ' time each demo runs (ms)
@@ -74,7 +79,11 @@ PUB Main{}
 #include "GFXDemo-common.spinh"
 
 DAT
-    _drv_name   byte    "SSD1351 (SPI)", 0
+#ifdef SSD130X_I2C
+    _drv_name   byte    "SSD130X (I2C)", 0
+#elseifdef SSD130X_SPI
+    _drv_name   byte    "SSD130X (SPI)", 0
+#endif
 
 {
 TERMS OF USE: MIT License
