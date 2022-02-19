@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
     Copyright (c) 2022
     Started: Apr 28, 2019
-    Updated: Feb 6, 2022
+    Updated: Feb 19, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -52,13 +52,14 @@ OBJ
 
     core    : "core.con.ssd1331"                ' HW-specific constants
     time    : "time"                            ' timekeeping methods
-    spi     : "com.spi.fast"                    ' Counter-based SPI (20MHzW/10R)
+    spi     : "com.spi.fast-nocs"               ' SPI engine (20MHzW/10R)
 
 VAR
 
-    long _CS, _SCK, _MOSI, _DC, _RES
+    { I/O pins }
+    long _CS, _DC, _RES
 
-    ' shadow registers used since the display registers can't be read from
+    { shadow registers }
     byte _sh_SETCOLUMN, _sh_SETROW, _sh_SETCONTRAST_A, _sh_SETCONTRAST_B, _sh_SETCONTRAST_C
     byte _sh_MASTERCCTRL, _sh_SECPRECHG[3], _sh_REMAPCOLOR, _sh_DISPSTARTLINE, _sh_DISPOFFSET
     byte _sh_DISPMODE, _sh_MULTIPLEX, _sh_DIM, _sh_MASTERCFG, _sh_DISPONOFF, _sh_PWRSAVE
@@ -73,8 +74,12 @@ PUB Startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_drawbuf
 '   RES_PIN optional, but recommended (pin # only validated in Reset())
     if lookdown(CS_PIN: 0..31) and lookdown(DC_PIN: 0..31) and {
 }   lookdown(DIN_PIN: 0..31) and lookdown(CLK_PIN: 0..31)
-        if (status := spi.init(CS_PIN, CLK_PIN, DIN_PIN, -1, core#SPI_MODE))
-            longmove(@_CS, @CS_PIN, 5)
+        if (status := spi.init(CLK_PIN, DIN_PIN, -1, core#SPI_MODE))
+            _CS := CS_PIN
+            _DC := DC_PIN
+            _RES := RES_PIN
+            outa[_CS] := 1
+            dira[_CS] := 1
             outa[_DC] := 1
             dira[_DC] := 1
             reset{}
@@ -83,7 +88,7 @@ PUB Startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_drawbuf
             _disp_xmax := _disp_width-1
             _disp_ymax := _disp_height-1
             _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
-            _bytesperln := _disp_width * BYTESPERPX
+            _bytesperln := (_disp_width * BYTESPERPX)
             address(ptr_drawbuff)
             return
     ' if this point is reached, something above failed
@@ -96,12 +101,17 @@ PUB Stop{}
     displayvisibility(ALL_OFF)
     powered(FALSE)
     spi.deinit{}
-    longfill(@_CS, 0, 6)
-    wordfill(@_buff_sz, 0, 2)
-    bytefill(@_disp_width, 0, 30)
+    longfill(@_CS, 0, 3)
+    longfill(@_ptr_drawbuffer, 0, 14)           ' lib.gfx.bitmap.spin
+    wordfill(@_charpx_xmax, 0, 4)               ' lib.gfx.bitmap.spin
+    bytefill(@_charcell_w, 0, 6)                ' lib.gfx.bitmap.spin
+    bytefill(@_sh_SETCOLUMN, 0, 26)
 
 PUB Defaults{}
 ' Factory default settings
+#ifdef HAS_RESET
+    reset{}
+#else
     displayvisibility(ALL_OFF)
     displaystartline(0)
     displaylines(64)
@@ -113,6 +123,7 @@ PUB Defaults{}
     displaybounds(0, 0, 95, 63)
     clear{}
     displayvisibility(NORMAL)
+#endif
 
 PUB Preset_96x64{}
 ' Preset: 96px wide, setup for 64px height
@@ -205,7 +216,7 @@ PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
 #ifdef GFX_DIRECT
 PUB Box(sx, sy, ex, ey, color, filled) | tmp[3]
 ' Draw a box
-'   sx, sy: Start coordinates x0, y0
+'   sx, sy: Start coordinates
 '   ex, ey: End coordinates
 '   color:  Box color
 '   filled: Flag to set whether to fill the box or not
@@ -213,19 +224,25 @@ PUB Box(sx, sy, ex, ey, color, filled) | tmp[3]
     sy := 0 #> sy <# _disp_ymax
     ex := sx #> ex <# _disp_xmax
     ey := sy #> ey <# _disp_ymax
-    if filled
-        filled := color
-        fillaccelenabled(true)
-    else
-        filled := _bgcolor
-        fillaccelenabled(false)
+
+    if ( ||(filled) <> (_sh_FILL & 1) )         ' only call this if the filled
+        if (filled)                             '  param is different than the
+            fillaccelenabled(TRUE)              '  current filled setting
+        else                                    '  to avoid having to sending
+            fillaccelenabled(FALSE)             '  it to the display every time
+
+    { start, end coords }
     tmp.byte[0] := sx
     tmp.byte[1] := sy
     tmp.byte[2] := ex
     tmp.byte[3] := ey
+
+    { fg color - left-justified }
     tmp.byte[4] := rgb565_r8(color) << 1        ' R LSB is don't care
     tmp.byte[5] := rgb565_g8(color)
     tmp.byte[6] := rgb565_b8(color) << 1        ' B LSB is don't care
+
+    { bg color - left-justified }
     tmp.byte[7] := rgb565_r8(color) << 1
     tmp.byte[8] := rgb565_g8(color)
     tmp.byte[9] := rgb565_b8(color) << 1
@@ -333,19 +350,6 @@ PUB ColorDepth(format): curr_fmt
     _sh_REMAPCOLOR := ((_sh_REMAPCOLOR & core#COLORFMT_MASK) | format)
     writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
 
-PUB COMHighLogicLevel(level): curr_lvl
-' Set logic high level threshold of COM pins relative to Vcc, in millivolts
-'   Valid values: 440, 520, 610, 710, 830
-'   Any other value returns the current setting
-    case level
-        440, 520, 610, 710, 830:
-            level := lookdown(level: 440, 520, 610, 710, 830)
-            _sh_VCOMH := lookup(level: $00, $10, $20, $30, $3E)
-            writereg(core#VCOMH, 1, @_sh_VCOMH)
-        other:
-            curr_lvl := lookdown(_sh_VCOMH: $00, $10, $20, $30, $3E)
-            return lookup(curr_lvl: 440, 520, 610, 710, 830)
-
 PUB Contrast(level)
 ' Set display contrast/brightness
 '   Valid values: 0..255
@@ -387,7 +391,8 @@ PUB ContrastC(level): curr_lvl
         other:
             return _sh_SETCONTRAST_C
 
-PUB CopyAccel(sx, sy, ex, ey, dx, dy) | tmp[2]
+#ifdef GFX_DIRECT
+PUB Copy(sx, sy, ex, ey, dx, dy) | tmp[2]
 ' Use the display's accelerated Copy Region function
 '   Valid values:
 '       sx, ex, dx: 0..95
@@ -430,6 +435,7 @@ PUB CopyAccel(sx, sy, ex, ey, dx, dy) | tmp[2]
     tmp.byte[4] := dx
     tmp.byte[5] := dy
     writereg(core#COPY, 6, @tmp)
+#endif
 
 PUB CopyAccelInverted(state): curr_state
 ' Enable inverted colors, when using CopyAccel()
@@ -552,9 +558,10 @@ PUB Interlaced(state): curr_state
     curr_state := _sh_REMAPCOLOR
     case ||(state)
         0, 1:
+            { invert logic for COMSPLIT bit }
             state := (||(state) ^ 1) << core#COMSPLIT
         other:
-            return not (((curr_state >> core#COMSPLIT) & 1) == 1)
+            return (((curr_state >> core#COMSPLIT) & 1) == 0)
 
     _sh_REMAPCOLOR := ((_sh_REMAPCOLOR & core#COMSPLIT_MASK) | state)
     writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
@@ -611,7 +618,7 @@ PUB Phase1Period(clks): curr_clks
     case clks
         1..15:
         other:
-            return curr_clks & core#PHASE1
+            return (curr_clks & core#PHASE1)
 
     _sh_PHASE12PER := ((_sh_PHASE12PER & core#PHASE1_MASK) | clks)
     writereg(core#PRECHG, 1, @_sh_PHASE12PER)
@@ -623,7 +630,7 @@ PUB Phase2Period(clks): curr_clks
         1..15:
             clks <<= core#PHASE2
         other:
-            return (curr_clks >> core#PHASE2) & core#PHASE2
+            return ((curr_clks >> core#PHASE2) & core#PHASE2)
 
     _sh_PHASE12PER := ((_sh_PHASE12PER & core#PHASE2_MASK) | clks)
     writereg(core#PRECHG, 1, @_sh_PHASE12PER)
@@ -635,22 +642,21 @@ PUB Plot(x, y, color) | tmp
 #ifdef GFX_DIRECT
 ' direct to display
     tmp.byte[0] := x
-    tmp.byte[1] := _disp_xmax
+    tmp.byte[1] := x
     tmp.byte[2] := y
-    tmp.byte[3] := _disp_ymax
+    tmp.byte[3] := y
     
     writereg(core#SETCOLUMN, 2, @tmp)
     writereg(core#SETROW, 2, @tmp.byte[2])
-    color &= $FFFF
 
     outa[_DC] := DATA
-    spi.deselectafter(false)
+    outa[_CS] := 0
     spi.wr_byte(color.byte[1])
-    spi.deselectafter(true)
     spi.wr_byte(color.byte[0])
+    outa[_CS] := 1
 #else
 ' buffered display
-    word[_ptr_drawbuffer][x + (y * _disp_width)] := ((color >> 8) & $FF) | ((color << 8) & $FF00)
+    word[_ptr_drawbuffer][x + (y * _disp_width)] := color
 #endif
 
 #ifndef GFX_DIRECT
@@ -729,10 +735,10 @@ PUB Reset{}
     if lookdown(_RES: 0..31)
         dira[_RES] := 1
         outa[_RES] := 1
-        time.msleep(1)
         outa[_RES] := 0
-        time.msleep(10)
+        time.usleep(core#T_RES)
         outa[_RES] := 1
+        time.usleep(core#T_RES_COMPLT)
 
 PUB SubpixelOrder(order): curr_ord
 ' Set subpixel color order
@@ -752,9 +758,26 @@ PUB SubpixelOrder(order): curr_ord
 
 PUB Update{}
 ' Write the current display buffer to the display
+#ifndef GFX_DIRECT
+    { buffered displays only }
     outa[_DC] := DATA
-    spi.deselectafter(true)
+    outa[_CS] := 0
     spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
+    outa[_CS] := 1
+#endif
+
+PUB VCOMHVoltage(level): curr_lvl
+' Set COM output voltage, in millivolts
+'   Valid values: 440, 520, 610, 710, 830
+'   Any other value returns the current setting
+    case level
+        440, 520, 610, 710, 830:
+            level := lookdown(level: 440, 520, 610, 710, 830)
+            _sh_VCOMH := lookup(level: $00, $10, $20, $30, $3E)
+            writereg(core#VCOMH, 1, @_sh_VCOMH)
+        other:
+            curr_lvl := lookdown(_sh_VCOMH: $00, $10, $20, $30, $3E)
+            return lookup(curr_lvl: 440, 520, 610, 710, 830)
 
 PUB VertAltScan(state): curr_state
 ' Alternate Left-Right, Right-Left scanning, every other display line
@@ -773,9 +796,9 @@ PUB VertAltScan(state): curr_state
 PUB WriteBuffer(ptr_buff, buff_sz)
 ' Write alternate buffer to display
     outa[_DC] := DATA
-    spi.deselectafter(true)
+    outa[_CS] := 0
     spi.wrblock_lsbf(ptr_buff, buff_sz)
-
+    outa[_CS] := 1
 PRI NoOp{}
 ' No-operation
     writereg(core#NOP3, 0, 0)
@@ -786,46 +809,48 @@ PRI memFill(xs, ys, val, count)
 '   xs, ys: Start of region
 '   val: Color
 '   count: Number of consecutive memory locations to write
-    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
+    wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), val, count)
 #endif
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes from ptr_buff to device
     case reg_nr
-        ' commands w/parameters
+        { commands with parameters }
         $15, $21..$27, $75, $81..$83, $87, $8A..$8C, $A0..$A2, $A8, {
 }       $AD, $B0, $B1, $B3, $BB, $E3:
             outa[_DC] := CMD
-            spi.deselectafter(false)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
-            spi.deselectafter(true)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
+            outa[_CS] := 1
             return
 
-        ' commands w/o parameters
+        { simple commands }
         $2E, $2F, $A4..$A7, $AC, $AE, $AF, $BC, $BD, $E3:
             outa[_DC] := CMD
-            spi.deselectafter(true)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
+            outa[_CS] := 1
             return
 
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
