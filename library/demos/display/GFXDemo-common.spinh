@@ -2,13 +2,16 @@
     --------------------------------------------
     Filename: GFXDemo-common.spinh
     Description: Graphics demo for all supported
-        display types
+        display types (common code)
     Author: Jesse Burt
     Copyright (c) 2022
     Started: Feb 16, 2022
-    Updated: Feb 17, 2022
+    Updated: Feb 19, 2022
     See end of file for terms of use.
     --------------------------------------------
+
+    NOTE: This is not a top-level object. This file is meant to be #included
+    by a display driver-specific demo
 }
 
 OBJ
