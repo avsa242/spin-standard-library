@@ -5,7 +5,7 @@
     Description: Driver for Sitronix ST7735-based displays
     Copyright (c) 2022
     Started Mar 7, 2020
-    Updated Feb 17, 2022
+    Updated Feb 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -820,8 +820,6 @@ PUB PowerControl2(v25, vgh, vgl) | tmp
 
 PUB Reset{}
 ' Reset the display controller
-    outa[_RESET] := 1
-    dira[_RESET] := 1
     if lookdown(_RESET: 0..31)                  ' I/O pin defined - hard reset
         outa[_RESET] := 1
         time.usleep(10)
