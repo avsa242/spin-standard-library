@@ -3,26 +3,31 @@
     Filename: time.spin
     Author: Jesse Burt
     Description: Basic time/delay functions
-        (based on a subset of Clock.spin, originally by
-        Jeff Martin)
     Started 2006
-    Updated Sep 12, 2020
+    Updated Mar 6, 2022
     See end of file for terms of use.
     --------------------------------------------
-}
-{{
-    This object provides basic time functions for Spin.
 
-    Sleep methods are adjusted for method cost and freeze-protected.
-}}
+    NOTE: This object is based on a subset of Clock.spin,
+    originally by Jeff Martin
+}
+
+CON
+
+    { limits }
+    WMIN        = 381                           ' waitcnt() overhead minimum
+
+    { misc time unit symbols }
+    SECOND_US   = 1_000_000
+    SECOND_MS   = 1_000
+    SECOND      = 1
+    MINUTE      = (60 * SECOND)
+    HOUR        = (60 * MINUTE)
+    DAY         = (24 * HOUR)
 
 VAR
 
     long _sync
-
-CON
-
-    WMIN    = 381                                       ' WAITCNT overhead minimum
 
 PUB MSleep(msecs)
 ' Sleep for msecs milliseconds.
