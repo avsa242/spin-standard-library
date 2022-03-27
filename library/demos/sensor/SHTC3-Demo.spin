@@ -5,7 +5,7 @@
     Description: Demo of the SHTC3 driver
     Copyright (c) 2022
     Started Jul 27, 2020
-    Updated Feb 3, 2022
+    Updated Mar 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -26,6 +26,7 @@ CON
 
     C           = 0
     F           = 1
+    K           = 2
 
 OBJ
 
@@ -49,7 +50,7 @@ PUB Main{}
         ser.newline{}
 
         ser.str(string("Relative humidity: "))
-        decimal(shtc3.humidity{}, 100)
+        decimal(shtc3.rh{}, 100)
         ser.newline{}
 
         time.msleep(1000)
