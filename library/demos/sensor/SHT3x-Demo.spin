@@ -5,7 +5,7 @@
     Description: Demo of the SHT3x driver
     Copyright (c) 2022
     Started Mar 10, 2018
-    Updated Feb 3, 2022
+    Updated Mar 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -52,7 +52,7 @@ PUB Main{} | temp, rh
         ser.newline{}
 
         ser.str(string("Relative humidity: "))
-        decimal(sht3x.humidity{}, 100)
+        decimal(sht3x.rh{}, 100)
         ser.newline{}
 
         time.msleep (1000)

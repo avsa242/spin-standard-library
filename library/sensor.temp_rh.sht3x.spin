@@ -6,20 +6,12 @@
         Temperature/Relative Humidity sensors
     Copyright (c) 2022
     Started Nov 19, 2017
-    Updated Jan 9, 2022
+    Updated Mar 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-
+#include "sensor.temp_rh.common.spinh"
 CON
-
-    SLAVE_WR        = core#SLAVE_ADDR
-    SLAVE_RD        = core#SLAVE_ADDR|1
-
-    DEF_SCL         = 28
-    DEF_SDA         = 29
-    DEF_HZ          = 100_000
-    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
     MSB             = 1
     LSB             = 0
@@ -33,15 +25,9 @@ CON
     SINGLE          = 0
     CONT            = 1
 
-' Temperature scales
-    C               = 0
-    F               = 1
-
 VAR
 
     long _reset_pin
-    word _lasttemp, _lastrh
-    byte _temp_scale
     byte _repeatability
     byte _addr_bit
     byte _measure_mode
@@ -148,28 +134,6 @@ PUB HeaterEnabled(state): curr_state
             readreg(core#STATUS, 3, @curr_state)
             curr_state >>= 8                    ' Chop off CRC
             return ((curr_state >> core#HEATER) & 1) == 1
-
-PUB HumData{}: rh_adc | tmp[2]
-' Read relative humidity ADC data
-'   Returns: u16
-    tmp := 0
-    case _measure_mode
-        SINGLE:
-            oneshotmeasure(@tmp)
-            _lasttemp := tmp.word[1]
-            _lastrh := tmp.word[0]
-        CONT:
-            pollmeasure(@tmp)
-            ' update last temp and RH measurement vars
-            _lasttemp := (tmp.byte[5] << 8) | tmp.byte[4]
-            _lastrh := (tmp.byte[2] << 8) | tmp.byte[1]
-    return _lastrh
-
-PUB Humidity{}: rh
-' Current Relative Humidity, in hundredths of a percent
-'   Returns: Integer
-'   (e.g., 4762 is equivalent to 47.62%)
-    return rhword2percent(humdata{})
 
 PUB IntRHHiClear(level): curr_lvl
 ' High RH interrupt: clear level, in percent
@@ -305,18 +269,6 @@ PUB LastCRCOK{}: flag
     readreg(core#STATUS, 2, @flag)
     return ((flag & 1) == 0)
 
-PUB LastHumidity{}: rh
-' Previous Relative Humidity measurement, in hundredths of a percent
-'   Returns: Integer
-'   (e.g., 4762 is equivalent to 47.62%)
-    return rhword2percent(_lastrh)
-
-PUB LastTemperature{}: temp
-' Previous Temperature measurement, in hundredths of a degree
-'   Returns: Integer
-'   (e.g., 2105 is equivalent to 21.05 deg C)
-    return tempword2deg(_lasttemp)
-
 PUB OpMode(mode): curr_mode
 ' Set device operating mode
 '   Valid values
@@ -357,7 +309,23 @@ PUB Reset{}
             writereg(core#SOFTRESET, 0, 0)
     time.usleep(core#T_POR)
 
-PUB RHWord2Percent(rh_word): rh
+PUB RHData{}: rh_adc | tmp[2]
+' Read relative humidity ADC data
+'   Returns: u16
+    tmp := 0
+    case _measure_mode
+        SINGLE:
+            oneshotmeasure(@tmp)
+            _last_temp := tmp.word[1]
+            _last_rh := tmp.word[0]
+        CONT:
+            pollmeasure(@tmp)
+            ' update last temp and RH measurement vars
+            _last_temp := (tmp.byte[5] << 8) | tmp.byte[4]
+            _last_rh := (tmp.byte[2] << 8) | tmp.byte[1]
+    return _last_rh
+
+PUB RHWord2Pct(rh_word): rh
 ' Convert RH ADC word to percent
 '   Returns: relative humidity, in hundredths of a percent
     return (100 * (rh_word * 100)) / core#ADC_MAX
@@ -373,33 +341,15 @@ PUB TempData{}: temp_adc | tmp[2]
     case _measure_mode
         SINGLE:
             oneshotmeasure(@tmp)
-            _lasttemp := tmp.word[1]
-            _lastrh := tmp.word[0]
+            _last_temp := tmp.word[1]
+            _last_rh := tmp.word[0]
         CONT:
             pollmeasure(@tmp)
             ' update last temp and RH measurement vars
-            _lasttemp := (tmp.byte[5] << 8) | tmp.byte[4]
-            _lastrh := (tmp.byte[2] << 8) | tmp.byte[1]
+            _last_temp := (tmp.byte[5] << 8) | tmp.byte[4]
+            _last_rh := (tmp.byte[2] << 8) | tmp.byte[1]
 
-    return _lasttemp
-
-PUB Temperature{}: temp
-' Current Temperature, in hundredths of a degree
-'   Returns: Integer
-'   (e.g., 2105 is equivalent to 21.05 deg C)
-    return tempword2deg(tempdata{})
-
-PUB TempScale(scale): curr_scale
-' Set temperature scale used by Temperature method
-'   Valid values:
-'       C (0): Celsius
-'       F (1): Fahrenheit
-'   Any other value returns the current setting
-    case scale
-        C, F:
-            _temp_scale := scale
-        other:
-            return _temp_scale
+    return _last_temp
 
 PUB TempWord2Deg(temp_word): temp
 ' Convert temperature ADC word to temperature
