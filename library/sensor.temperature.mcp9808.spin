@@ -3,26 +3,16 @@
     Filename: sensor.temperature.mcp9808.i2c.spin
     Author: Jesse Burt
     Description: Driver for Microchip MCP9808 temperature sensors
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jul 26, 2020
-    Updated Aug 15, 2021
+    Updated Mar 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+{ pull in methods common to all Temp/RH drivers }
+#include "sensor.temp_rh.common.spinh"
 
 CON
-
-    SLAVE_WR        = core#SLAVE_ADDR
-    SLAVE_RD        = core#SLAVE_ADDR|1
-
-    DEF_SCL         = 28
-    DEF_SDA         = 29
-    DEF_HZ          = 100_000
-    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
-
-' Temperature scales
-    C               = 0
-    F               = 1
 
 ' Interrupt active states
     LOW             = 0
@@ -34,7 +24,7 @@ CON
 
 VAR
 
-    byte _temp_scale, _addr_bits
+    byte _addr_bits
 
 OBJ
 
@@ -241,17 +231,17 @@ PUB Powered(state): curr_state
     state := ((curr_state & core#SHDN_MASK) | state)
     writereg(core#CONFIG, 2, @state)
 
+PUB RHData{}
+' dummy method
+
+PUB RHWord2Pct(rh_word)
+' dummy method
+
 PUB TempData{}: temp_adc
 ' Read temperature ADC data
 '   Returns: s13
     temp_adc := 0
     readreg(core#TEMP, 2, @temp_adc)
-
-PUB Temperature{}: temp
-' Current Temperature, in hundredths of a degree
-'   Returns: Integer
-'   (e.g., 2105 is equivalent to 21.05 deg C)
-    return tempword2deg(tempdata{})
 
 PUB TempRes(deg_c): curr_res
 ' Set temperature resolution, in degrees Celsius (fractional)
@@ -270,18 +260,6 @@ PUB TempRes(deg_c): curr_res
             curr_res := 0
             readreg(core#RESOLUTION, 1, @curr_res)
             return lookupz(curr_res: 0_5000, 0_2500, 0_1250, 0_0625)
-
-PUB TempScale(scale): curr_scale
-' Set temperature scale used by Temperature method
-'   Valid values:
-'      *C (0): Celsius
-'       F (1): Fahrenheit
-'   Any other value returns the current setting
-    case scale
-        C, F:
-            _temp_scale := scale
-        other:
-            return _temp_scale
 
 PUB TempWord2Deg(temp_word): temp | whole, part
 ' Convert temperature ADC word to temperature
