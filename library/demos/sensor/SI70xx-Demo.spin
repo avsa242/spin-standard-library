@@ -3,9 +3,9 @@
     Filename: SI70xx-Demo.spin
     Author: Jesse Burt
     Description: Demo of the SI70xx driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Aug 9, 2020
-    Updated Jan 3, 2021
+    Updated Mar 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -58,7 +58,7 @@ PUB Main{}
         ser.newline{}
 
         ser.str(string("Relative humidity: "))
-        decimaldot(si70xx.humidity{}, 100)
+        decimaldot(si70xx.rh{}, 100)
 
         time.msleep(100)
 
