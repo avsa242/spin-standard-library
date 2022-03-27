@@ -3,34 +3,20 @@
     Filename: sensor.temperature.mlx90614.i2c.spin
     Author: Jesse Burt
     Description: Driver for the Melexis MLX90614 IR thermometer
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Mar 17, 2019
-    Updated Aug 4, 2021
+    Updated Mar 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+{ pull in methods common to all Temp/RH drivers }
+#include "sensor.temp_rh.common.spinh"
 
 CON
-
-    SLAVE_WR        = core#SLAVE_ADDR
-    SLAVE_RD        = core#SLAVE_ADDR|1
-
-    DEF_SCL         = 28
-    DEF_SDA         = 29
-    DEF_HZ          = 100_000
 
     MSB             = 0
     LSB             = 1
     PEC             = 2
-
-' Temperature scales
-    C               = 0
-    F               = 1
-    K               = 2
-
-VAR
-
-    byte _temp_scale
 
 OBJ
 
@@ -106,18 +92,11 @@ PUB ObjTemp(channel): temp
 '       using the chosen scale
     return tempword2deg(objtempdata(channel))
 
-PUB TempScale(scale): curr_scl
-' Set scale of temperature data returned by AmbientTemp and ObjTemp methods
-'   Valid values:
-'      *C (0): Celsius
-'       F (1): Fahrenheit
-'       K (2): Kelvin
-'   Any other value returns the current setting
-    case scale
-        C, F, K:
-            _temp_scale := scale
-        other:
-            return _temp_scale
+PUB RHData{}
+' dummy method
+
+PUB RHWord2Pct(rh_word)
+' dummy method
 
 PUB TempWord2Deg(temp_word): temp
 ' Convert temperature ADC word to temperature
