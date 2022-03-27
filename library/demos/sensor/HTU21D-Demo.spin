@@ -3,9 +3,9 @@
     Filename: HTU21D-Demo.spin
     Author: Jesse Burt
     Description: Demo of the HTU21D driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jun 16, 2021
-    Updated Aug 15, 2021
+    Updated Mar 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -27,6 +27,7 @@ CON
 ' Temperature scales
     C           = 0
     F           = 1
+    K           = 2
 
 OBJ
 
@@ -40,7 +41,7 @@ PUB Main{}
 
     setup{}
 
-    sens.tempscale(C)                           ' C (0) or F (1)
+    sens.tempscale(C)                           ' C (0), F (1), K (2)
     sens.crccheckenabled(true)                  ' TRUE, FALSE
 
     repeat
@@ -53,7 +54,7 @@ PUB Main{}
 
         ser.newline{}
         ser.str(string("Humidity: "))
-        int2dp(sens.humidity{}, 100)
+        int2dp(sens.rh{}, 100)
         ser.str(string("  (CRC valid: "))
         ser.str(lookupz(||(sens.lastrhvalid{}): string("No "), string("Yes")))
         ser.char(")")
