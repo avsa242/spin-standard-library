@@ -17,7 +17,6 @@ CON
 
     '' Control Character Constants
 
-    ESC             = 27
     CS              = 16  ' Clear Screen
 
 

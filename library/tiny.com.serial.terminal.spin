@@ -117,8 +117,8 @@ PUB Char(txbyte) | t
         txbyte := ((txbyte | $100) << 2) ^ _inverted    ' add stop bit, set mode
         t := cnt                                        ' sync
         repeat 10                                       ' start + 8 data + stop
-                waitcnt(t += _bit_time)                 ' wait bit time
-                outa[_tx_pin] := (txbyte >>= 1) & 1     ' output bit (true mode)
+            waitcnt(t += _bit_time)                 ' wait bit time
+            outa[_tx_pin] := (txbyte >>= 1) & 1     ' output bit (true mode)
 
         if _tx_pin == _rx_pin
             dira[_tx_pin] := 0                          ' float tx pin

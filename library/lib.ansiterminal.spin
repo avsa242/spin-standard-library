@@ -5,12 +5,12 @@
         terminal driver
     Requires: Terminal driver that provides the following methods:
         Char(ch)    - Output one character to terminal
-        CharIn      - Read one character from terminal
+        CharIn()    - Read one character from terminal
         Dec(num)    - Output a decimal number to terminal
     Author: Jesse Burt
-    Copyright (c) 2020
+    Copyright (c) 2022
     Created: Jun 18, 2019
-    Updated: Oct 25, 2020
+    Updated: Apr 18, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -49,7 +49,7 @@ CON
     SGR_CONCEAL         = 8     ' Concealed text
     SGR_REVEAL          = 28
 
-    SGR_STRIKETHRU      = 9     ' Strike-through text
+    SGR_STRIKETHRU      = 9     ' strike-through text
     SGR_STRIKETHRU_OFF  = 29
 
     SGR_PRI_FONT        = 10    ' Select primary font
@@ -95,18 +95,18 @@ CON
 
 PUB BGColor(bcolor)
 ' Set background color
-    CSI
-    Char(";")
-    Dec(BG + bcolor)
-    Char("m")
+    csi{}
+    char(";")
+    dec(BG + bcolor)
+    char("m")
 
 PUB Blink(mode)
 ' Set Blink attribute
-    SGR(mode)
+    sgr(mode)
 
 PUB Bold(mode)
 ' Set Bold attribute
-    SGR(mode)
+    sgr(mode)
 
 PUB Box(x0, y0, x1, y1, brd_fg, brd_bg, filled) | inwidth, inheight, inbot, intop, x, y
 ' Draw a box, using semigraphics characters
@@ -169,95 +169,95 @@ PUB Box(x0, y0, x1, y1, brd_fg, brd_bg, filled) | inwidth, inheight, inbot, into
             char(LOWRT)
             semigfx(false)                      ' done. turn off semigfx mode
 
-PUB Clear
+PUB Clear{}
+' Clear the terminal
+    clearmode(CLR_ALL_HOME)
 
-    ClearMode(CLR_ALL_HOME)
-
-PUB ClearLine
-
+PUB ClearLine{}
+' Clear current line of terminal
     clearlinex(CLR_CUR_TO_END)
 
 PUB ClearLineX(mode)
-' Clear line
-    CSI
-    Dec(mode)
-    Char("K")
+' Clear line using explicitly set mode
+    csi{}
+    dec(mode)
+    char("K")
 
 PUB ClearMode(mode)
-' Clear screen
-    CSI
-    Dec(mode)
-    Char("J")
-    if mode == 2
-        Position (0, 0)
+' Clear screen using explicitly set mode
+    csi{}
+    dec(mode)
+    char("J")
+    if (mode == 2)
+        position (0, 0)
 
 PUB Color(fcolor, bcolor)
 ' Set foreground and background colors
-    CSI
-    Dec(fcolor)
-    Char(";")
-    Dec(bcolor)
-    Char("m")
+    csi{}
+    dec(fcolor)
+    char(";")
+    dec(bcolor)
+    char("m")
 
 PUB Conceal(mode)
 ' Set Conceal attribute
-    SGR(mode)
+    sgr(mode)
 
-PUB CursorPositionReporting(enabled)
+PUB CursorpositionReporting(enabled)
 ' Enable/disable mouse cursor position reporting
-    CSI
+    csi{}
     case enabled
         FALSE:
-            Str(string("?1000;1006;1015l"))
+            str(string("?1000;1006;1015l"))
         OTHER:
-            Str(string("?1000;1006;1015h"))
+            str(string("?1000;1006;1015h"))
 
 PUB CursorNextLine(rows)
 ' Move cursor to beginning of next row, or 'rows' number of rows down
-    CSI
-    Dec(rows)
-    Char("E")
+    csi{}
+    dec(rows)
+    char("E")
 
 PUB CursorPrevLine(rows)
 ' Move cursor to beginning of previous row, or 'rows' number of rows up
-    CSI
-    Dec(rows)
-    Char("F")
+    csi{}
+    dec(rows)
+    char("F")
 
-PUB Encircle
+PUB Encircle{}
 ' Set Encircle attribute
-    SGR(SGR_ENCIRCLED)
+    sgr(SGR_ENCIRCLED)
 
 PUB FGColor(fcolor)
 ' Set foreground color
-    CSI
-    Dec(FG + fcolor)
-    Char("m")
+    csi{}
+    dec(FG + fcolor)
+    char("m")
 
-PUB Framed
+PUB Framed{}
 ' Set framed attribute
-    SGR(SGR_FRAMED)
+    sgr(SGR_FRAMED)
 
-PUB HideCursor
+PUB HideCursor{}
 ' Hide cursor
-    CSI
-    Char("?")
-    Dec(25)
-    Char("l")
+    csi{}
+    char("?")
+    dec(25)
+    char("l")
     
-PUB Home
+PUB Home{}
 ' Move cursor to home/upper-left position
-    Position(0, 0)
+    position(0, 0)
 
 PUB Inverse(mode)
 ' Set inverse attribute
-    SGR(mode)
+    sgr(mode)
 
-PUB Italic
+PUB Italic{}
 ' Set italicized attribute
-    SGR(SGR_ITALIC)
+    sgr(SGR_ITALIC)
 
-PUB MouseCursorPosition | b, x, y
+PUB MouseCursorposition{} | b, x, y
 ' Report Current mouse position (press mouse button to update)
 '   Returns: Button pressed, X, Y coordinates (packed into long)
 '       byte 0: X coordinate
@@ -270,9 +270,9 @@ PUB MouseCursorPosition | b, x, y
 '           64- Mouse wheel up
 '           65- Mouse wheel down
 '   NOTE: The position is only updated when a mouse button is pressed or wheel is moved
-    if CharIn == ESC
-        if CharIn == LBRACKET
-            if CharIn == "M"
+    if charin{} == ESC
+        if charin{} == LBRACKET
+            if charin{} == "M"
 '               If we made it this far, it's a mouse position event
             else
                 return 0
@@ -288,71 +288,71 @@ PUB MouseCursorPosition | b, x, y
 
 PUB MoveDown(rows)
 ' Move cursor down 1 or more rows
-    CSI
-    Dec(rows)
-    Char("B")
+    csi{}
+    dec(rows)
+    char("B")
 
 PUB MoveLeft(columns)
 ' Move cursor back/left 1 or more columns
-    CSI
-    Dec(columns)
-    Char("D")
+    csi{}
+    dec(columns)
+    char("D")
 
 PUB MoveRight(columns)
 ' Move cursor forward/right 1 or more columns
-    CSI
-    Dec(columns)
-    Char("C")
+    csi{}
+    dec(columns)
+    char("C")
 
 PUB MoveUp(rows)
 ' Move cursor up 1 or more rows
-    CSI
-    Dec(rows)
-    Char("A")
+    csi{}
+    dec(rows)
+    char("A")
 
-PUB Overline
+PUB Overline{}
 ' Set Overline attribute
-    SGR(SGR_OVERLINED)
+    sgr(SGR_OVERLINED)
 
 PUB Position(x, y)
-' Position cursor at column x, row y (from top-left)
+' position cursor at column x, row y (from top-left)
     y++                                             ' Need to add 1 because the coords
     x++                                             ' are not 0-based, but 1-based
-    CSI
-    Dec(y)
-    Char(";")
-    Dec(x)
-    Char("f")
+    csi{}
+    dec(y)
+    char(";")
+    dec(x)
+    char("f")
 
 PUB PositionX(column)
 ' Set horizontal position of cursor
-    CSI
-    Dec(column+1)
-    Char("G")
+    csi{}
+    dec(column+1)
+    char("G")
 
-PUB PositionY(y)                                                                                                 
+PUB PositionY(y)
 ' Set vertical position of cursor
     y++                                             ' Need to add 1 because the coords
     CSI                                             ' are not 0-based, but 1-based
-    Dec(y)
-    Char("d")
+    dec(y)
+    char("d")
 
-PUB Reset
+PUB Reset{}
 ' Reset terminal attributes
-    CSI
-    Char("m")
+    csi{}
+    char("m")
 
 PUB ScrollDown(lines)
 ' Scroll display down 1 or more lines
-    CSI
-    Dec(lines)
-    Char("T")
+    csi{}
+    dec(lines)
+    char("T")
 
 PUB ScrollUp(lines)
 ' Scroll display up 1 or more lines
-    CSI
-    Dec(lines)
-    Char("S")
+    csi{}
+    dec(lines)
+    char("S")
 
 PUB SemiGfx(enabled)
 ' Enable semi-graphics (e.g., line-drawing) mode
@@ -362,16 +362,16 @@ PUB SemiGfx(enabled)
         0:
             str(string(ESC, "(", "B"))
 
-PUB ShowCursor
+PUB ShowCursor{}
 ' Show cursor
-    CSI
-    Char("?")
-    Dec(25)
-    Char("h")
+    csi{}
+    char("?")
+    dec(25)
+    char("h")
 
 PUB Strikethrough(mode)
-' Set Strike-through attribute
-    SGR(mode)
+' Set strike-through attribute
+    sgr(mode)
 
 PUB TextWindow(ptr_titlestr, x, y, w, h, brd_fg, brd_bg, ttl_fg)
 ' Draw a window with title string and border
@@ -388,18 +388,18 @@ PUB TextWindow(ptr_titlestr, x, y, w, h, brd_fg, brd_bg, ttl_fg)
 
 PUB Underline(mode)
 ' Set Underline attribute
-    SGR(mode)
+    sgr(mode)
 
-PRI CSI
+PRI CSI{}
 ' Command Sequence Introducer
-    Char(ESC)
-    Char(LBRACKET)
+    char(ESC)
+    char(LBRACKET)
 
 PRI SGR(mode)
 ' Select Graphic Rendition
-    CSI
-    Dec(mode)
-    Char("m")
+    csi{}
+    dec(mode)
+    char("m")
 
 DAT
 {
