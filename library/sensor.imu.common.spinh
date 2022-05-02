@@ -5,7 +5,7 @@
     Description: Routines common to all sensor.imu device drivers
     Copyright (c) 2022
     Started Sep 24, 2021
-    Updated Apr 20, 2022
+    Updated May 2, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -13,6 +13,10 @@
         #include preprocessor directive, _outside_ of any existing
         block designators (CON, VAR, OBJ, PUB, PRI, DAT)
 }
+
+OBJ
+
+    math : "math.int"
 
 PUB AccelG(ax, ay, az) | tmp[ACCEL_DOF]
 ' Read the Accelerometer data and scale the outputs to
@@ -147,6 +151,17 @@ PUB MagTesla(ptr_x, ptr_y, ptr_z) | tmp[MAG_DOF]
     long[ptr_x] := magword2tesla(tmp[X_AXIS])
     long[ptr_y] := magword2tesla(tmp[Y_AXIS])
     long[ptr_z] := magword2tesla(tmp[Z_AXIS])
+
+PUB Pitch{} | x, y, z
+' Get pitch angle of accelerometer, in degrees
+    acceldata(@x, @y, @z)
+    return math.atan2(y, z)
+
+PUB Roll{} | x, y, z
+' Get roll angle of accelerometer, in degrees
+    acceldata(@x, @y, @z)
+    return math.atan2(-x, z)
+
 
 {
 TERMS OF USE: MIT License
