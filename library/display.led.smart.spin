@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated Feb 6, 2022
+    Updated May 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -190,7 +190,7 @@ PUB Address(addr, count, pin, bits) : c
         c |= |<31                                               ' set bit 31 for 32-bit pixels
 
     _connection := c                                            ' set new connection
-    result := _ptr_framebuffer
+    return _ptr_framebuffer
 
 PUB Clear{}
 ' Clear the display buffer

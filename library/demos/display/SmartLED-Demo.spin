@@ -42,6 +42,7 @@ OBJ
     disp: "display.led.smart.spin"
     int : "string.integer"
     fnt : "font.5x8"
+    math: "math.int"
 
 VAR
 
@@ -54,57 +55,57 @@ VAR
 PUB Main{} | time_ms
 
     setup{}
-    disp.clearall{}
+    disp.clear{}
 
     demo_greet{}
     time.sleep(5)
-    disp.clearall{}
+    disp.clear{}
 
     time_ms := 5_000
 
     ser.position(0, 3)
 
     demo_sinewave(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_triwave(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_memscroller(time_ms, $0000, $FFFF-BUFFSZ)
-    disp.clearall{}
+    disp.clear{}
 
     demo_bitmap(time_ms, $8000)
-    disp.clearall{}
+    disp.clear{}
 
     demo_box(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_boxfilled(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_linesweepx(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_linesweepy(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_line(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_plot(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_bouncingball(time_ms, 5)
-    disp.clearall{}
+    disp.clear{}
 
     demo_circle(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_wander(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_seqtext(time_ms)
-    disp.clearall{}
+    disp.clear{}
 
     demo_rndtext(time_ms)
 
@@ -126,10 +127,10 @@ PUB Demo_Bitmap(testtime, ptr_bitmap) | iteration
 PUB Demo_BouncingBall(testtime, radius) | iteration, bx, by, dx, dy
 ' Draws a simple ball bouncing off screen edges
 ' Pick a random screen location to start from, and a random direction
-    bx := (rnd(XMAX) // (WIDTH - radius * 4)) + radius * 2
-    by := (rnd(YMAX) // (HEIGHT - radius * 4)) + radius * 2
-    dx := rnd(4) // 2 * 2 - 1
-    dy := rnd(4) // 2 * 2 - 1
+    bx := (math.rndi(XMAX) // (WIDTH - radius * 4)) + radius * 2
+    by := (math.rndi(YMAX) // (HEIGHT - radius * 4)) + radius * 2
+    dx := math.rndi(4) // 2 * 2 - 1
+    dy := math.rndi(4) // 2 * 2 - 1
 
     ser.str(string("Demo_BouncingBall - "))
     _timer_set := testtime
@@ -159,8 +160,8 @@ PUB Demo_Box(testtime) | iteration, c
     iteration := 0
 
     repeat while _timer_set
-        c := rnd(disp#MAX_COLOR)
-        disp.box(rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), c, FALSE)
+        c := math.rndi(disp#MAX_COLOR)
+        disp.box(math.rndi(XMAX), math.rndi(YMAX), math.rndi(XMAX), math.rndi(YMAX), c, FALSE)
         disp.update{}
         iteration++
 
@@ -173,8 +174,8 @@ PUB Demo_BoxFilled(testtime) | iteration, c
     iteration := 0
 
     repeat while _timer_set
-        c := rnd(disp#MAX_COLOR)
-        disp.box(rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), c, TRUE)
+        c := math.rndi(disp#MAX_COLOR)
+        disp.box(math.rndi(XMAX), math.rndi(YMAX), math.rndi(XMAX), math.rndi(YMAX), c, TRUE)
         disp.update{}
         iteration++
 
@@ -187,10 +188,10 @@ PUB Demo_Circle(testtime) | iteration, x, y, r
     iteration := 0
 
     repeat while _timer_set
-        x := rnd(XMAX)
-        y := rnd(YMAX)
-        r := rnd(YMAX/2)
-        disp.circle(x, y, r, rnd(disp#MAX_COLOR), false)
+        x := math.rndi(XMAX)
+        y := math.rndi(YMAX)
+        r := math.rndi(YMAX/2)
+        disp.circle(x, y, r, math.rndi(disp#MAX_COLOR), false)
         disp.update{}
         iteration++
 
@@ -214,7 +215,7 @@ PUB Demo_Line(testtime) | iteration
     iteration := 0
 
     repeat while _timer_set
-        disp.line(rnd(XMAX), rnd(YMAX), rnd(XMAX), rnd(YMAX), rnd(disp#MAX_COLOR))
+        disp.line(math.rndi(XMAX), math.rndi(YMAX), math.rndi(XMAX), math.rndi(YMAX), math.rndi(disp#MAX_COLOR))
         disp.update{}
         iteration++
 
@@ -283,7 +284,7 @@ PUB Demo_Plot(testtime) | iteration, x, y
     iteration := 0
 
     repeat while _timer_set
-        disp.plot(rnd(XMAX), rnd(YMAX), rnd(disp#MAX_COLOR))
+        disp.plot(math.rndi(XMAX), math.rndi(YMAX), math.rndi(disp#MAX_COLOR))
         disp.update{}
         iteration++
 
@@ -348,9 +349,9 @@ PUB Demo_RndText(testtime) | iteration
     iteration := 0
 
     repeat while _timer_set
-        disp.fgcolor(rnd(disp#MAX_COLOR))
-        disp.bgcolor(rnd(disp#MAX_COLOR))
-        disp.char(32 #> rnd(127))
+        disp.fgcolor(math.rndi(disp#MAX_COLOR))
+        disp.bgcolor(math.rndi(disp#MAX_COLOR))
+        disp.char(32 #> math.rndi(127))
         disp.update{}
         iteration++
 
@@ -390,7 +391,7 @@ PUB Demo_Wander(testtime) | iteration, x, y, d
     iteration := 0
 
     repeat while _timer_set
-        case d := rnd(4)                        ' which way to move?
+        case d := math.rndi(4)                        ' which way to move?
             1:                                  ' wander right
                 x += 2
                 if x > XMAX                     ' wrap around at the edge
@@ -407,7 +408,7 @@ PUB Demo_Wander(testtime) | iteration, x, y, d
                 y -= 2
                 if y < 0
                     y := YMAX
-        disp.plot(x, y, rnd(disp#MAX_COLOR))
+        disp.plot(x, y, math.rndi(disp#MAX_COLOR))
         disp.update{}
         iteration++
 
@@ -477,7 +478,7 @@ PUB Setup{}
         disp.drawto(@_offscreen)
         disp.fontaddress(fnt.baseaddr{})
         disp.fontsize(6, 8)
-        disp.clearall{}
+        disp.clear{}
     else
         ser.strln(string("SmartLED driver failed to start - halting"))
         repeat
