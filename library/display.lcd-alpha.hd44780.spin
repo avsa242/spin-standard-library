@@ -3,9 +3,9 @@
     Filename: display.lcd.hd44780.spin
     Author: Jesse Burt
     Description: Driver for HD44780 alphanumeric LCDs
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 06, 2021
-    Updated Oct 12, 2021
+    Updated May 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -38,7 +38,7 @@ VAR
 
 OBJ
 
-    ioexp:  "io.expander.pcf8574.i2c"           ' 8-bit I/O expander driver
+    ioexp:  "io.expander.pcf8574"               ' 8-bit I/O expander driver
     core:   "core.con.hd44780"                  ' hw-specific low-level const's
     time:   "time"                              ' basic timing functions
 
