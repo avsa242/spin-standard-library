@@ -4,16 +4,12 @@
     Author: Jesse Burt
     Description: Simple serial terminal-based demo of the MAX9744
         audio amp driver.
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jul 7, 2018
-    Updated Aug 15, 2021
+    Updated May 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the below lines to start the driver with the
-'   PASM I2C engine (1 additional cog) or SPIN I2C engine (no additional cog)
-#define MAX9744_PASM
-'#define MAX9744_SPIN
 
 CON
 
