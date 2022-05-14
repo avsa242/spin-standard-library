@@ -2,7 +2,7 @@
 
 if [ -z "$SPINC" ]
 then
-    SPINC="openspin"
+    SPINC="flexspin --interp=rom"
 fi
 
 if [ "$1" == "clean" ]
