@@ -154,9 +154,9 @@ PRI Pack(pointer): single | sign, exp, mant
     longmove(@sign, pointer, 3)             ' get (s,x,m) structure into locals
 
     if mant                                 ' if mantissa 0, result 0
-        result := 33 - >|mant               ' determine magnitude of mantissa
-        mant <<= result                     ' msb-justify mantissa without leading 1
-        exp += 3 - result                   ' adjust exponent
+        single := 33 - >|mant               ' determine magnitude of mantissa
+        mant <<= single                     ' msb-justify mantissa without leading 1
+        exp += 3 - single                   ' adjust exponent
 
         mant += $00000100                   ' round up mantissa by 1/2 lsb
         if not mant & $FFFFFF00             ' if rounding overflow,
