@@ -32,7 +32,7 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    imu     : "sensor.imu.9dof.lsm9ds1.spi"
+    imu     : "sensor.imu.9dof.lsm9ds1"
     int     : "string.integer"
     math    : "math.float.extended"
     fs      : "string.float"
@@ -42,7 +42,7 @@ PUB Main{} | ax, ay, az, dx, dy
     setup
 
     ' set the accelerometer to a lower, less noisy data rate
-    imu.preset_xl_g_m_3wspi{}
+    imu.preset_active{}
     imu.acceldatarate(14)
     imu.accelhighres(true)
 
