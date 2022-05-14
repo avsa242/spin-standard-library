@@ -3,9 +3,9 @@
     Filename: LIS3DH-Demo.spin
     Author: Jesse Burt
     Description: Demo of the LIS3DH driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Aug 12, 2017
-    Updated Apr 29, 2021
+    Updated Apr 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -25,6 +25,9 @@ CON
     SDO_PIN     = 3                             ' SPI
     I2C_HZ      = 400_000                       ' I2C
     SLAVE_OPT   = 0                             ' I2C
+
+'   NOTE: If LIS3DH_SPI is #defined, and SDA_PIN and SDO_PIN are the same,
+'   the driver will attempt to start in 3-wire SPI mode.
 ' --
 
     DAT_X_COL   = 20
@@ -114,9 +117,6 @@ PUB Setup{}
 #endif
     else
         ser.strln(string("LIS3DH driver failed to start - halting"))
-        accel.stop{}
-        time.msleep(5)
-        ser.stop{}
         repeat
 
 DAT

@@ -3,12 +3,13 @@
     Filename: sensor.accel.3dof.mma8452q.i2c.spin
     Author: Jesse Burt
     Description: Driver for the MMA8452Q 3DoF accelerometer
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started May 9, 2021
-    Updated Nov 20, 2021
+    Updated May 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "sensor.imu.common.spinh"
 
 CON
 
@@ -194,17 +195,17 @@ PUB AccelBias(bias_x, bias_y, bias_z, rw) | tmp
         W:
             case bias_x
                 -128..127:
-                    _abiasraw[X_AXIS] := bias_x
+                    _abiasraw[X_AXIS] := -bias_x
                 other:
                     return
             case bias_y
                 -128..127:
-                    _abiasraw[Y_AXIS] := bias_y
+                    _abiasraw[Y_AXIS] := -bias_y
                 other:
                     return
             case bias_z
                 -128..127:
-                    _abiasraw[Z_AXIS] := bias_z
+                    _abiasraw[Z_AXIS] := -bias_z
                 other:
                     return
             cacheopmode{}                       ' switch to stdby to mod regs
@@ -250,14 +251,6 @@ PUB AccelDataReady{}: flag
     flag := 0
     readreg(core#STATUS, 1, @flag)
     return ((flag & core#ZYX_DR) <> 0)
-
-PUB AccelG(ptr_x, ptr_y, ptr_z) | tmp[ACCEL_DOF]
-' Read the Accelerometer data and scale the outputs to
-'   micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
-    acceldata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[ptr_x] := tmp[X_AXIS] * _ares
-    long[ptr_y] := tmp[Y_AXIS] * _ares
-    long[ptr_z] := tmp[Z_AXIS] * _ares
 
 PUB AccelHPFEnabled(state): curr_state
 ' Enable accelerometer data high-pass filter
@@ -584,36 +577,6 @@ PUB AutoSleepDataRate(rate): curr_rate
     writereg(core#CTRL_REG1, 1, @rate)
     restoreopmode{}
 
-PUB CalibrateAccel{} | acceltmp[ACCEL_DOF], axis, x, y, z, samples, scale_orig, drate_orig
-' Calibrate the accelerometer
-    longfill(@acceltmp, 0, 10)                  ' init variables to 0
-    drate_orig := acceldatarate(-2)             ' store user-set data rate
-    scale_orig := accelscale(-2)                '   and scale
-
-    accelbias(0, 0, 0, W)                       ' clear existing bias offsets
-
-    acceldatarate(CAL_XL_DR)                    ' set data rate and scale to
-    accelscale(CAL_XL_SCL)                      '   device-specific settings
-    samples := CAL_XL_DR                        ' samples = DR for approx 1sec
-                                                '   worth of data
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@x, @y, @z)                   ' throw out first set of samples
-
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@x, @y, @z)                   ' accumulate samples to be
-        acceltmp[X_AXIS] -= x                   '   averaged
-        acceltmp[Y_AXIS] -= y
-        acceltmp[Z_AXIS] -= z - (1_000_000 / _ares)
-
-    ' write the updated offsets
-    accelbias(acceltmp[X_AXIS] / samples, acceltmp[Y_AXIS] / samples, {
-}   acceltmp[Z_AXIS] / samples, W)
-
-    acceldatarate(drate_orig)                   ' restore user settings
-    accelscale(scale_orig)
-
 PUB ClickAxisEnabled(mask): curr_mask
 ' Enable click detection per axis, and per click type
 '   Valid values:
@@ -917,6 +880,27 @@ PUB FreeFallTime(fftime): curr_time | odr, time_res, max_dur
             readreg(core#FF_MT_CNT, 1, @curr_time)
             return (curr_time * time_res)
 
+PUB GyroAxisEnabled(xyzmask)
+' Dummy method
+
+PUB GyroBias(x, y, z, rw)
+' Dummy method
+
+PUB GyroData(x, y, z)
+' Dummy method
+
+PUB GyroDataRate(hz)
+' Dummy method
+
+PUB GyroDataReady
+' Dummy method
+
+PUB GyroOpMode(mode)
+' Dummy method
+
+PUB GyroScale(scale)
+' Dummy method
+
 PUB InactInt(mask): curr_mask
 ' Set inactivity interrupt mask
 '   Valid values:
@@ -1066,6 +1050,24 @@ PUB IntRouting(mask): curr_mask
         other:
             readreg(core#CTRL_REG5, 1, @curr_mask)
             return
+
+PUB MagBias(x, y, z, rw)
+' Dummy method
+
+PUB MagData(x, y, z)
+' Dummy method
+
+PUB MagDataRate(hz)
+' Dummy method
+
+PUB MagDataReady{}
+' Dummy method
+
+PUB MagOpMode(mode)
+' Dummy method
+
+PUB MagScale(scale)
+' Dummy method
 
 PUB Orientation{}: curr_or
 ' Current orientation

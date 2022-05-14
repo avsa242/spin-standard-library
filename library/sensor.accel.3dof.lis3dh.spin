@@ -3,12 +3,13 @@
     Filename: sensor.accel.3dof.lis3dh.spi.spin
     Author: Jesse Burt
     Description: Driver for the ST LIS3DH 3DoF accelerometer
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Mar 15, 2020
-    Updated Dec 24, 2021
+    Updated May 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "sensor.imu.common.spinh"
 
 CON
 
@@ -66,6 +67,7 @@ CON
 
 VAR
 
+    long _CS
     long _ares
     long _abias[3], _abiasraw[3]
     byte _sa0
@@ -73,15 +75,14 @@ VAR
 OBJ
 
 #ifdef LIS3DH_SPI
-    spi : "com.spi.bitbang"                     ' PASM SPI engine
+    spi : "com.spi.bitbang-nocs"                ' PASM SPI engine
 #elseifdef LIS3DH_I2C
     i2c : "com.i2c"                             ' PASM I2C engine
 #else
 #error "One of LIS3DH_SPI or LIS3DH_I2C must be defined"
 #endif
-    core: "core.con.lis3dh"
+    core: "core.con.lis3dh"                     ' HW-specific constants
     time: "time"                                ' Basic timing functions
-    io  : "io"
 
 PUB Null{}
 ' This is not a top-level object
@@ -92,9 +93,15 @@ PUB Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
 ' Start using custom I/O pins
     if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
 }   lookdown(SDA_PIN: 0..31) and lookdown(SDO_PIN: 0..31)
-        if (status := spi.init(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN, {
-}       core#SPI_MODE))
+        if (status := spi.init(SCL_PIN, SDA_PIN, SDO_PIN, core#SPI_MODE))
+            outa[CS_PIN] := 1
+            dira[CS_PIN] := 1
+            _CS := CS_PIN
             time.msleep(core#TPOR)
+            { if SDA_PIN and SDO_PIN are the same, }
+            { assume 3-wire SPI mode is wanted }
+            if (SDA_PIN == SDO_PIN)
+                spimode(3)
             if deviceid{} == core#WHO_AM_I_RESP
                 return status
     ' if this point is reached, something above failed
@@ -294,13 +301,6 @@ PUB AccelDataReady{}: flag
     readreg(core#STATUS_REG, 1, @flag)
     return (((flag >> core#ZYXDA) & 1) == 1)
 
-PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpx, tmpy, tmpz
-' Reads the Accelerometer output registers and scales the outputs to micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
-    acceldata(@tmpx, @tmpy, @tmpz)
-    long[ptr_x] := tmpx * _ares
-    long[ptr_y] := tmpy * _ares
-    long[ptr_z] := tmpz * _ares
-
 PUB AccelOpMode(mode)
 ' Dummy method
 
@@ -321,64 +321,6 @@ PUB AccelScale(scale): curr_scl
 
     scale := ((curr_scl & core#FS_MASK) | scale)
     writereg(core#CTRL_REG4, 1, @scale)
-{
-PUB AccelSelfTest(enabled) | tmp
-' Enable self-test mode
-'   Valid values: TRUE (-1 or 1), FALSE (0)
-'   Any other value polls the chip and returns the current setting
-    tmp := 0
-    readreg(core#ST_REG, 1, @tmp)
-    case ||(enabled)
-        0, 1:
-            enabled := ||(enabled) << core#
-        other:
-            tmp >>= core#
-            return (tmp & 1) == 1
-
-    tmp &= core#
-    tmp := (tmp | enabled) & core#ST_REG_MASK
-    writereg(core#ST_REG, 1, @tmp)
-}
-
-PUB CalibrateAccel{} | acceltmp[ACCEL_DOF], axis, x, y, z, samples, scale_orig, drate_orig
-' Calibrate the accelerometer
-    longfill(@acceltmp, 0, 10)                  ' init variables to 0
-    drate_orig := acceldatarate(-2)             ' store user-set data rate
-    scale_orig := accelscale(-2)                '   and scale
-
-    accelbias(0, 0, 0, W)                       ' clear existing bias offsets
-
-    acceldatarate(CAL_XL_DR)                    ' set data rate and scale to
-    accelscale(CAL_XL_SCL)                      '   device-specific settings
-    samples := CAL_XL_DR                        ' samples = DR for approx 1sec
-                                                '   worth of data
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@x, @y, @z)                   ' throw out first set of samples
-
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@x, @y, @z)                   ' accumulate samples to be
-        acceltmp[X_AXIS] -= x                   '   averaged
-        acceltmp[Y_AXIS] -= y
-        acceltmp[Z_AXIS] -= z - (1_000_000 / _ares)
-
-    ' write the updated offsets
-    accelbias(acceltmp[X_AXIS] / samples, acceltmp[Y_AXIS] / samples, {
-}   acceltmp[Z_AXIS] / samples, W)
-
-    acceldatarate(drate_orig)                   ' restore user settings
-    accelscale(scale_orig)
-
-PUB CalibrateGyro{}
-' Dummy method
-
-PUB CalibrateXLG{}
-
-    calibrateaccel{}
-
-PUB CalibrateMag(samples)
-' Dummy method
 
 PUB ClickAxisEnabled(mask): curr_mask
 ' Enable click detection per axis, and per click type
@@ -644,9 +586,6 @@ PUB GyroDataRate(hz)
 PUB GyroDataReady
 ' Dummy method
 
-PUB GyroDPS(x, y, z)
-' Dummy method
-
 PUB GyroOpMode(mode)
 ' Dummy method
 
@@ -793,9 +732,6 @@ PUB MagDataRate(hz)
 PUB MagDataReady{}
 ' Dummy method
 
-PUB MagGauss(x, y, z)
-' Dummy method
-
 PUB MagOpMode(mode)
 ' Dummy method
 
@@ -817,10 +753,10 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 #ifdef LIS3DH_SPI
     reg_nr |= core#R
-    spi.deselectafter(false)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr)
-    spi.deselectafter(true)
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
 #elseifdef LIS3DH_I2C
     cmd_pkt.byte[0] := SLAVE_WR | _sa0
     cmd_pkt.byte[1] := reg_nr
@@ -833,6 +769,14 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     i2c.stop{}                                  ' P
 #endif
 
+PRI spiMode(mode) | tmp
+' Set SPI interface to 3 or 4-wire mode
+    if (mode == 3)
+        tmp := core#SPI_3W
+    elseif (mode == 4)
+        tmp := 0
+    writereg(core#CTRL_REG4, 1, @tmp)
+
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to slave device
     case reg_nr
@@ -840,10 +784,10 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return FALSE
 #ifdef LIS3DH_SPI
-    spi.deselectafter(false)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr)
-    spi.deselectafter(true)
     spi.wrblock_lsbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
 #elseifdef LIS3DH_I2C
     cmd_pkt.byte[0] := SLAVE_WR | _sa0
     cmd_pkt.byte[1] := reg_nr

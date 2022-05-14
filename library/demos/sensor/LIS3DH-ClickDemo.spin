@@ -26,6 +26,8 @@ CON
     SDO_PIN     = 3                             ' SPI
     I2C_HZ      = 400_000                       ' I2C
     SLAVE_OPT   = 0                             ' I2C
+'   NOTE: If LIS3DH_SPI is #defined, and SDA_PIN and SDO_PIN are the same,
+'   the driver will attempt to start in 3-wire SPI mode.
 ' --
 
 OBJ

@@ -3,12 +3,13 @@
     Filename: sensor.imu.6dof.lsm6dsl.spi.spin
     Author: Jesse Burt
     Description: Driver for the ST LSM6DSL 6DoF IMU
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Feb 18, 2021
-    Updated Dec 27, 2021
+    Updated May 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "sensor.imu.common.spinh"
 
 CON
 
@@ -309,14 +310,6 @@ PUB AccelDataSource(src): curr_src
     else
         return _adata_src
 
-PUB AccelG(ptr_x, ptr_y, ptr_z) | tmp[ACCEL_DOF]
-' Read the Accelerometer data and scale the outputs to
-'   micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
-    acceldata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[ptr_x] := tmp[X_AXIS] * _ares
-    long[ptr_y] := tmp[Y_AXIS] * _ares
-    long[ptr_z] := tmp[Z_AXIS] * _ares
-
 PUB AccelInt{}: flag
 ' Flag indicating accelerometer interrupt asserted
 
@@ -381,70 +374,6 @@ PUB AutoSleepDataRate(rate): curr_rate
 '   NOTE: Read-only; provided for API-compatibility only
 '   Returns: 12
     return 12
-
-PUB CalibrateAccel{} | axis, scl_orig, dr_orig, tmpx, tmpy, tmpz, tmp[ACCEL_DOF], samples, scale
-' Calibrate the accelerometer
-'   NOTE: The accelerometer must be oriented with the package top facing up
-'       for this method to be successful
-    longfill(@axis, 0, 11)                      ' initialize vars to 0
-    samples := CAL_XL_DR                        ' samples = DR, for 1 sec time
-    scl_orig := accelscale(-2)                  ' save user's current settings
-    dr_orig := acceldatarate(-2)
-    accelbias(0, 0, 0, W)                       ' clear existing bias offsets
-
-    case accelbiasres(-2)                       ' set scaling divisor for
-        0_000977:                               '   offset regs, depending
-            scale := 16                         '   on AccelBiasRes()
-        0_015625:
-            scale := 128
-
-    ' set sensor to CAL_XL_SCL range, CAL_XL_DR Hz data rate
-    accelscale(CAL_XL_SCL)
-    acceldatarate(samples)
-
-    ' accumulate and average approx. 1sec worth of samples
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@tmpx, @tmpy, @tmpz)
-        tmp[X_AXIS] += -tmpx
-        tmp[Y_AXIS] += -tmpy
-        tmp[Z_AXIS] += tmpz-(1_000_000 / _ares) ' negate 1g pull on Z-axis
-
-    repeat axis from X_AXIS to Z_AXIS           ' calc avg and scale down
-        tmp[axis] /= samples
-        tmp[axis] /= scale
-
-    accelbias(tmp[X_AXIS], tmp[Y_AXIS], tmp[Z_AXIS], W)
-
-    accelscale(scl_orig)                        ' restore user's settings
-    acceldatarate(dr_orig)
-
-PUB CalibrateGyro{} | axis, tmpx, tmpy, tmpz, tmp[GYRO_DOF], samples
-' Calibrate the gyroscope
-    longfill(@axis, 0, 11)                      ' initialize vars to 0
-    samples := gyrodatarate(-2)                 ' samples = DR, for 1 sec time
-    gyrobias(0, 0, 0, W)                        ' clear existing bias offsets
-
-    ' accumulate and average approx. 1sec worth of samples
-    repeat samples
-        repeat until gyrodataready{}            ' wait for new gyro data
-        gyrodata(@tmpx, @tmpy, @tmpz)
-        tmp[X_AXIS] += tmpx
-        tmp[Y_AXIS] += tmpy
-        tmp[Z_AXIS] += tmpz
-
-    repeat axis from X_AXIS to Z_AXIS           ' calc avg
-        tmp[axis] /= samples
-
-    gyrobias(tmp[X_AXIS], tmp[Y_AXIS], tmp[Z_AXIS], W)
-
-PUB CalibrateMag{} | magtmp[MAG_DOF], axis, x, y, z, samples, scale_orig, drate_orig, fifo_orig, scl
-' Calibrate the magnetometer
-
-PUB CalibrateXLG{}
-' Calibrate accelerometer and gyroscope
-    calibrateaccel{}
-    calibrategyro{}
 
 PUB ClickAxisEnabled(mask): curr_mask
 ' Enable click detection per axis
@@ -839,13 +768,6 @@ PUB GyroDataSource(src): curr_src
     else
         return _gdata_src
 
-PUB GyroDPS(ptr_x, ptr_y, ptr_z) | tmp[GYRO_DOF]
-' Read the Gyroscope output registers and scale the outputs to micro
-    gyrodata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[ptr_x] := tmp[X_AXIS] * _gres
-    long[ptr_y] := tmp[Y_AXIS] * _gres
-    long[ptr_z] := tmp[Z_AXIS] * _gres
-
 PUB GyroHighPass(freq): curr_freq
 ' Set Gyroscope high
 
@@ -1071,9 +993,6 @@ PUB MagDataReady{}: flag
 PUB MagFastRead(state): curr_state
 ' Enable reading of only the MSB of data to increase reading efficiency, at the cost of precision and accuracy
 
-PUB MagGauss(ptr_x, ptr_y, ptr_z) | tmp[MAG_DOF]
-' Magnetometer data scaled to micro
-
 PUB MagInt{}: src
 ' Magnetometer interrupt source(s)
 
@@ -1118,9 +1037,6 @@ PUB MagSelfTest(state): curr_state
 
 PUB MagSoftreset{}
 ' Perform soft-reset
-
-PUB MagTesla(ptr_x, ptr_y, ptr_z) | tmp[2]
-' Magnetometer data scaled to micro-Teslas
 
 PUB MagThreshDebounce(nr_samples)
 ' Set number of debounce samples required before magnetometer threshold

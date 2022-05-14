@@ -3,12 +3,13 @@
     Filename: sensor.imu.6dof.icm20649.i2c.spin
     Author: Jesse Burt
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Aug 28, 2020
-    Updated Jan 31, 2021
+    Updated May 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "sensor.imu.common.spinh"
 
 CON
 
@@ -30,6 +31,14 @@ CON
     MAG_DOF                 = 0
     BARO_DOF                = 0
     DOF                     = ACCEL_DOF + GYRO_DOF + MAG_DOF + BARO_DOF
+
+' Scales and data rates used during calibration/bias/offset process
+    CAL_XL_SCL              = 4
+    CAL_G_SCL               = 500
+    CAL_M_SCL               = 0
+    CAL_XL_DR               = 200
+    CAL_G_DR                = 200
+    CAL_M_DR                = 0
 
 ' Bias adjustment (AccelBias(), GyroBias()) read or write
     R                       = 0
@@ -67,6 +76,7 @@ CON
 VAR
 
     word _abiasraw[ACCEL_DOF], _gbiasraw[GYRO_DOF]
+    word _abias_fact[ACCEL_DOF]
     word _ares, _gres, _temp_scale
     byte _roomtemp_offs
     byte _addr
@@ -92,6 +102,8 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
         if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
             time.usleep(core#G_START_COLD)      ' wait for device startup
             if deviceid{} == core#DEVID_RESP    ' validate device
+                { read the factory accel bias }
+                accelbias(@_abias_fact[X_AXIS], @_abias_fact[Y_AXIS], @_abias_fact[Z_AXIS], R)
                 return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
@@ -183,15 +195,15 @@ PUB AccelBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3], tc_bit[3]
     readreg(core#ZA_OFFS_H, 2, @tmp[Z_AXIS])
 
     case rw
-         W:
+        W:
             ' preserve temperature compensation bit
             tc_bit[X_AXIS] := tmp[X_AXIS] & 1
             tc_bit[Y_AXIS] := tmp[Y_AXIS] & 1
             tc_bit[Z_AXIS] := tmp[Z_AXIS] & 1
 
-            ptr_x := (ptr_x & $FFFE) | tc_bit[X_AXIS]
-            ptr_y := (ptr_y & $FFFE) | tc_bit[Y_AXIS]
-            ptr_z := (ptr_z & $FFFE) | tc_bit[Z_AXIS]
+            ptr_x := (_abias_fact[X_AXIS]-((ptr_x / 8) & $FFFE)) | tc_bit[X_AXIS]
+            ptr_y := (_abias_fact[Y_AXIS]-((ptr_y / 8) & $FFFE)) | tc_bit[Y_AXIS]
+            ptr_z := (_abias_fact[Z_AXIS]-((ptr_z / 8) & $FFFE)) | tc_bit[Z_AXIS]
 
             writereg(core#XA_OFFS_H, 2, @ptr_x)
             writereg(core#YA_OFFS_H, 2, @ptr_y)
@@ -239,14 +251,6 @@ PUB AccelDataReady{}: flag
 ' Flag indicating new accelerometer data available
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
     return xlgdataready{}
-
-PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpx, tmpy, tmpz
-' Read the Accelerometer data and scale the outputs to micro-g's
-'   (1_000_000 = 1.000000 g = 9.8 m/s/s)
-    acceldata(@tmpx, @tmpy, @tmpz)
-    long[ptr_x] := tmpx * _ares
-    long[ptr_y] := tmpy * _ares
-    long[ptr_z] := tmpz * _ares
 
 PUB AccelInt{}: flag
 ' Flag indicating accelerometer interrupt asserted
@@ -311,78 +315,6 @@ PUB AccelScale(scale): curr_scl
 
     scale := ((curr_scl & core#ACCEL_FS_SEL_MASK) | scale) & core#ACCEL_CFG_MASK
     writereg(core#ACCEL_CFG, 1, @scale)
-
-PUB CalibrateAccel{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, factory_bias[3], orig_scale, orig_datarate, orig_lpf
-' Calibrate the accelerometer
-'   NOTE: The accelerometer must be oriented with the package top facing up
-'   for this method to be successful
-    longfill(@tmpx, 0, 14)                      ' Initialize variables to 0
-    orig_scale := accelscale(-2)                ' Preserve original settings
-    orig_datarate := acceldatarate(-2)
-    orig_lpf := accellowpassfilter(-2)
-
-    accelscale(4)                               ' Set accel to most sensitive scale,
-    acceldatarate(1172)                         '   fastest sample rate,
-    accellowpassfilter(111)                     '   and a LPF of 111Hz
-
-                                                ' ICM20649 accel has factory bias offsets,
-                                                '   so read them in first
-    accelbias(@factory_bias[X_AXIS], @factory_bias[Y_AXIS], @factory_bias[Z_AXIS], 0)
-
-    samples := 40                               ' # samples to use for averaging
-
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@tmpx, @tmpy, @tmpz)
-        tmpbias[X_AXIS] += tmpx
-        tmpbias[Y_AXIS] += tmpy
-        tmpbias[Z_AXIS] += tmpz - (1_000_000 / _ares)
-
-    repeat axis from X_AXIS to Z_AXIS
-        tmpbias[axis] /= samples
-        tmpbias[axis] := (factory_bias[axis] - (tmpbias[axis]/8))
-
-    accelbias(tmpbias[X_AXIS], tmpbias[Y_AXIS], tmpbias[Z_AXIS], W)
-
-    accelscale(orig_scale)                      ' Restore user settings
-    acceldatarate(orig_datarate)
-    accellowpassfilter(orig_lpf)
-
-PUB CalibrateGyro{} | tmpx, tmpy, tmpz, tmpbias[3], axis, samples, orig_scl, orig_drate, orig_lpf
-' Calibrate the gyroscope
-    longfill(@tmpx, 0, 8)                       ' Initialize variables to 0
-    orig_scl := gyroscale(-2)                   ' Preserve original settings
-    orig_drate := gyrodatarate(-2)
-    orig_lpf := gyrolowpassfilter(-2)
-
-    gyroscale(500)                              ' Set gyro to most sensitive scale,
-    gyrodatarate(1100)                          '   fastest sample rate,
-    gyrolowpassfilter(197)                      '   and a low-pass filter of 197Hz
-    gyrobias(0, 0, 0, W)                        ' Reset gyroscope bias offsets
-    samples := 40                               ' # samples to use for average
-
-    repeat samples                              ' Accumulate samples to be averaged
-        repeat until gyrodataready{}
-        gyrodata(@tmpx, @tmpy, @tmpz)
-        tmpbias[X_AXIS] -= tmpx                 ' offsets are _added_ by the
-        tmpbias[Y_AXIS] -= tmpy                 ' chip, so negate the samples
-        tmpbias[Z_AXIS] -= tmpz
-
-                                                ' Write offsets to sensor (scaled to expected range)
-    gyrobias((tmpbias[X_AXIS]/samples) / 4, (tmpbias[Y_AXIS]/samples) / 4,{
-}   (tmpbias[Z_AXIS]/samples) / 4, W)
-
-    gyroscale(orig_scl)                         ' Restore user settings
-    gyrodatarate(orig_drate)
-    gyrolowpassfilter(orig_lpf)
-
-PUB CalibrateMag{}
-' dummy method
-
-PUB CalibrateXLG{}
-
-    calibrateaccel{}
-    calibrategyro{}
 
 PUB ClockSource(src): curr_src
 ' Set sensor clock source
@@ -524,6 +456,10 @@ PUB GyroBias(ptr_x, ptr_y, ptr_z, rw) | tmp[3]
 '               Pointers to variables to hold current settings for respective axes
     case rw
          W:
+            ptr_x := -(ptr_x / 4)
+            ptr_y := -(ptr_y / 4)
+            ptr_z := -(ptr_z / 4)
+
             writereg(core#XG_OFFS_USRH, 2, @ptr_x)
             writereg(core#YG_OFFS_USRH, 2, @ptr_y)
             writereg(core#ZG_OFFS_USRH, 2, @ptr_z)
@@ -572,15 +508,6 @@ PUB GyroDataReady{}: flag
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
     flag := 0
     return xlgdataready{}
-
-PUB GyroDPS(ptr_x, ptr_y, ptr_z) | tmp[3]
-' Read the Gyroscope output registers and scale the outputs to micro-degrees
-'   per second (1_000_000 = 1.000000 deg/sec)
-    tmp := 0
-    gyrodata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[ptr_x] := tmp[X_AXIS] * _gres
-    long[ptr_y] := tmp[Y_AXIS] * _gres
-    long[ptr_z] := tmp[Z_AXIS] * _gres
 
 PUB GyroInt{}: flag
 ' Flag indicating gyroscope interrupt asserted
@@ -676,9 +603,6 @@ PUB MagDataRate(rate)
 ' dummy method
 
 PUB MagDataReady{}
-' dummy method
-
-PUB MagGauss(x, y, z)
 ' dummy method
 
 PUB MagScale(scale)
@@ -813,7 +737,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
             i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.start{}
             i2c.wr_byte(SLAVE_RD | _addr)
-            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c.NAK)
             i2c.stop{}
 #endif
             return
@@ -838,7 +762,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
 
             i2c.start{}
             i2c.wr_byte(SLAVE_RD | _addr)
-            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
+            i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c.NAK)
             i2c.stop{}
 #endif
             banksel(0)

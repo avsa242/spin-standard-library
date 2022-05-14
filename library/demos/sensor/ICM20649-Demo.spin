@@ -3,9 +3,9 @@
     Filename: ICM20649-Demo.spin
     Author: Jesse Burt
     Description: Demo of the ICM20649 driver
-    Copyright (c) 2020
+    Copyright (c) 2022
     Started Aug 28, 2020
-    Updated Oct 31, 2020
+    Updated Apr 23, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -90,7 +90,8 @@ PUB Calibrate{}
 
     ser.position(0, 7)
     ser.str(string("Calibrating..."))
-    imu.calibratexlg{}
+    imu.calibrateaccel{}
+    imu.calibrategyro{}
     ser.positionx(0)
     ser.clearline{}
 

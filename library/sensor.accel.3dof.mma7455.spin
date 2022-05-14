@@ -3,12 +3,13 @@
     Filename: sensor.accel.3dof.mma7455.i2c.spin
     Author: Jesse Burt
     Description: Driver for the NXP/Freescale MMA7455 3-axis accelerometer
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 27, 2019
-    Updated Dec 28, 2021
+    Updated May 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "sensor.imu.common.spinh"
 
 CON
 
@@ -129,17 +130,17 @@ PUB AccelBias(bias_x, bias_y, bias_z, rw) | tmp[2]
         W:
             case bias_x
                 -512..511:
-                    bias_x *= 2
+                    bias_x *= -2
                 other:
                     return                      ' out of range
             case bias_y
                 -512..511:
-                    bias_y *= 2
+                    bias_y *= -2
                 other:
                     return                      ' out of range
             case bias_z
                 -512..511:
-                    bias_z *= 2
+                    bias_z *= -2
                 other:
                     return                      ' out of range
             writereg(core#XOFFL, 2, @bias_x)
@@ -191,13 +192,6 @@ PUB AccelDataReady{}: flag
     readreg(core#STATUS, 1, @flag)
     return ((flag & 1) == 1)
 
-PUB AccelG(ptr_x, ptr_y, ptr_z) | tmpx, tmpy, tmpz
-' Reads the Accelerometer output registers and scales the outputs to micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
-    acceldata(@tmpx, @tmpy, @tmpz)
-    long[ptr_x] := tmpx * _ares
-    long[ptr_y] := tmpy * _ares
-    long[ptr_z] := tmpz * _ares
-
 PUB AccelIntClear(mask)
 ' Clear accelerometer interrupts
 '   Bits: 1..0
@@ -209,10 +203,7 @@ PUB AccelIntClear(mask)
             writereg(core#INTRST, 1, @mask)     ' clear interrupts
             mask := 0
             writereg(core#INTRST, 1, @mask)     ' reset bits (not cleared
-        other:                                  '   automatically)
-            result := 0
-            readreg(core#INTRST, 1, @result)
-            return
+                                                '   automatically)
 
 PUB AccelInt{}: int_src
 ' Accelerometer interrupt source(s)
@@ -367,40 +358,49 @@ PUB AccelSelfTest(state) | curr_state
     state := ((curr_state & core#STON_MASK) | state)
     writereg(core#MCTL, 1, @state)
 
-PUB CalibrateAccel{} | acceltmp[ACCEL_DOF], axis, x, y, z, samples, scale_orig, drate_orig
-' Calibrate the accelerometer
-    longfill(@acceltmp, 0, 10)                  ' init variables to 0
-    drate_orig := acceldatarate(-2)             ' store user-set data rate
-    scale_orig := accelscale(-2)                '   and scale
-
-    accelbias(0, 0, 0, W)                       ' clear existing bias offsets
-
-    acceldatarate(CAL_XL_DR)                    ' set data rate and scale to
-    accelscale(CAL_XL_SCL)                      '   device-specific settings
-    samples := CAL_XL_DR                        ' samples = DR for approx 1sec
-                                                '   worth of data
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@x, @y, @z)                   ' throw out first set of samples
-
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@x, @y, @z)                   ' accumulate samples to be
-        acceltmp[X_AXIS] -= x                   '   averaged
-        acceltmp[Y_AXIS] -= y
-        acceltmp[Z_AXIS] -= z - (1_000_000 / _ares)
-
-    ' write the updated offsets
-    accelbias(acceltmp[X_AXIS] / samples, acceltmp[Y_AXIS] / samples, {
-}   acceltmp[Z_AXIS] / samples, W)
-
-    acceldatarate(drate_orig)                   ' restore user settings
-    accelscale(scale_orig)
-
 PUB DeviceID{}
 ' Get chip/device ID
 '   Known values: $55
     readreg(core#WHOAMI, 1, @result)
+
+PUB GyroAxisEnabled(xyzmask)
+' Dummy method
+
+PUB GyroBias(x, y, z, rw)
+' Dummy method
+
+PUB GyroData(x, y, z)
+' Dummy method
+
+PUB GyroDataRate(hz)
+' Dummy method
+
+PUB GyroDataReady
+' Dummy method
+
+PUB GyroOpMode(mode)
+' Dummy method
+
+PUB GyroScale(scale)
+' Dummy method
+
+PUB MagBias(x, y, z, rw)
+' Dummy method
+
+PUB MagData(x, y, z)
+' Dummy method
+
+PUB MagDataRate(hz)
+' Dummy method
+
+PUB MagDataReady{}
+' Dummy method
+
+PUB MagOpMode(mode)
+' Dummy method
+
+PUB MagScale(scale)
+' Dummy method
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from slave device into ptr_buff

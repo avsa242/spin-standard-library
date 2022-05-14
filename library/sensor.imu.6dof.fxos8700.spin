@@ -3,12 +3,13 @@
     Filename: sensor.imu.6dof.fxos8700.i2c.spin
     Author: Jesse Burt
     Description: Driver for the FXOS8700 6DoF IMU
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 19, 2020
-    Updated Nov 18, 2021
+    Updated May 12, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "sensor.imu.common.spinh"
 
 CON
 
@@ -40,9 +41,9 @@ CON
     CAL_XL_SCL      = 2
     CAL_G_SCL       = 0
     CAL_M_SCL       = 12
-    CAL_XL_DR       = 800
+    CAL_XL_DR       = 200
     CAL_G_DR        = 0
-    CAL_M_DR        = 800
+    CAL_M_DR        = CAL_XL_DR                 ' locked to accel data rate
 
 ' Axis-specific constants
     X_AXIS          = 0
@@ -119,7 +120,7 @@ OBJ
 VAR
 
     long _ares, _abiasraw[ACCEL_DOF]
-    long _mres, _mbiasraw[MAG_DOF]
+    long _mres[MAG_DOF], _mbiasraw[MAG_DOF]
     byte _addr_bits, _temp_scale
     byte _opmode_orig
     byte _RES
@@ -174,6 +175,7 @@ PUB Preset_Active{}
     opmode(BOTH)
     accelscale(2)
     acceldatarate(50)
+    magscale(12)
 
 PUB Preset_ClickDet{}
 ' Preset settings for click detection
@@ -228,6 +230,10 @@ PUB AccelBias(bias_x, bias_y, bias_z, rw) | tmp
             long[bias_y] := ~tmp.byte[1]
             long[bias_z] := ~tmp.byte[0]
         W:
+            { scale ADC words down to bias reg range }
+            bias_x /= 512
+            bias_y /= 512
+            bias_z /= 512
             tmp.byte[2] := bias_x := -128 #> bias_x <# 127
             tmp.byte[1] := bias_y := -128 #> bias_y <# 127
             tmp.byte[0] := bias_z := -128 #> bias_z <# 127
@@ -277,13 +283,6 @@ PUB AccelDataReady{}: flag
     flag := 0
     readreg(core#STATUS, 1, @flag)
     return ((flag & core#ZYX_DR) <> 0)
-
-PUB AccelG(ptr_x, ptr_y, ptr_z) | tmp[ACCEL_DOF]
-' Reads the Accelerometer output registers and scales the outputs to micro-g's (1_000_000 = 1.000000 g = 9.8 m/s/s)
-    acceldata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[ptr_x] := tmp[X_AXIS] * _ares
-    long[ptr_y] := tmp[Y_AXIS] * _ares
-    long[ptr_z] := tmp[Z_AXIS] * _ares
 
 PUB AccelHPFEnabled(state): curr_state
 ' Enable accelerometer data high-pass filter
@@ -635,55 +634,6 @@ PUB AutoSleepDataRate(rate): curr_rate
     writereg(core#CTRL_REG1, 1, @rate)
     restoreopmode{}
 
-PUB CalibrateAccel{} | acceltmp[3], axis, ax, ay, az, samples, scale_orig, drate_orig, fifo_orig, scl
-' Calibrate the accelerometer
-'   NOTE: The accelerometer must be oriented with the package top facing up
-'       for this method to be successful
-    longfill(@acceltmp, 0, 12)
-    accelbias(0, 0, 0, W)
-    scale_orig := accelscale(-2)                ' Preserve user's original
-    drate_orig := acceldatarate(-2)             '   settings
-    fifo_orig := fifomode(-2)
-
-    fifomode(BYPASS)                            ' Bypass FIFO, set accel
-    accelscale(CAL_XL_SCL)                      ' to most sensitive scale
-    acceldatarate(CAL_XL_DR)                    ' and 100Hz data rate
-    scl := _ares / 2                            ' Scale down to 2mg/LSB
-    samples := CAL_XL_DR
-    repeat samples
-        repeat until acceldataready{}
-        acceldata(@ax, @ay, @az)
-        acceltmp[X_AXIS] -= (ax / scl)          ' Accumulate samples
-        acceltmp[Y_AXIS] -= (ay / scl)
-        acceltmp[Z_AXIS] -= (az - (1_000_000 / _ares)) / scl
-
-    repeat axis from X_AXIS to Z_AXIS           '   then average them
-        acceltmp[axis] /= samples
-
-    accelbias(acceltmp[X_AXIS], acceltmp[Y_AXIS], acceltmp[Z_AXIS], W)
-
-    accelscale(scale_orig)
-    acceldatarate(drate_orig)
-    fifomode(fifo_orig)
-
-PUB CalibrateMag{} | magtmp[3], axis, mx, my, mz, samples
-' Calibrate the magnetometer
-    longfill(@magtmp, 0, 8)                     ' Initialize vars to 0
-    magbias(0, 0, 0, W)                         ' Clear out existing bias
-
-    samples := 32
-    repeat samples
-        repeat until magdataready{}
-        magdata(@mx, @my, @mz)
-        magtmp[X_AXIS] += mx                    ' Accumulate samples
-        magtmp[Y_AXIS] += my
-        magtmp[Z_AXIS] += mz
-
-    repeat axis from X_AXIS to Z_AXIS           '   then average them
-        magtmp[axis] /= samples
-
-    magbias(magtmp[X_AXIS], magtmp[Y_AXIS], magtmp[Z_AXIS], W)
-
 PUB ClickAxisEnabled(mask): curr_mask
 ' Enable click detection per axis, and per click type
 '   Valid values:
@@ -702,7 +652,7 @@ PUB ClickAxisEnabled(mask): curr_mask
     mask := ((curr_mask & core#PEFE_MASK) | mask)
     writereg(core#PULSE_CFG, 1, @mask)
 
-pUB Clicked{}: flag
+PUB Clicked{}: flag
 ' Flag indicating the sensor was single or double-clicked
 '   Returns: TRUE (-1) if sensor was single-clicked or double-clicked
 '            FALSE (0) otherwise
@@ -1075,6 +1025,21 @@ PUB FreeFallTime(fftime): curr_time | odr, time_res, max_dur
             readreg(core#FFMT_CNT, 1, @curr_time)
             return (curr_time * time_res)
 
+PUB GyroBias(x, y, z, rw)
+' dummy method
+
+PUB GyroData(x, y, z)
+' dummy method
+
+PUB GyroDataRate(rate)
+' dummy method
+
+PUB GyroDataReady{}
+' dummy method
+
+PUB GyroScale(scale)
+' dummy method
+
 PUB InactInt(mask): curr_mask
 ' Set inactivity interrupt mask
 '   Valid values:
@@ -1383,13 +1348,6 @@ PUB MagDataReady{}: flag
     readreg(core#M_DR_STATUS, 1, @flag)
     return ((flag & core#ZYX_DR) <> 0)
 
-PUB MagGauss(ptr_x, ptr_y, ptr_z) | tmp[3]
-' Magnetometer data scaled to micro-Gauss (1_000_000 = 1.000000 Gs)
-    magdata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[ptr_x] := tmp[X_AXIS] * MRES_GAUSS
-    long[ptr_y] := tmp[Y_AXIS] * MRES_GAUSS
-    long[ptr_z] := tmp[Z_AXIS] * MRES_GAUSS
-
 PUB MagInt{}: magintsrc
 ' Magnetometer interrupt source(s)
 '   Returns: Interrupts that are currently asserted, as a bitmask
@@ -1504,14 +1462,8 @@ PUB MagScale(scale): curr_scl
 '   Valid values: N/A (fixed at 12Gs, 1200uT)
 '   Returns: 12
 '   NOTE: For API-compatibility only
+    longfill(@_mres, MRES_GAUSS, MAG_DOF)
     return 12
-
-PUB MagTesla(ptr_x, ptr_y, ptr_z) | tmp[3] 'XXX not overflow protected
-' Magnetometer data scaled to micro-Teslas (1_000_000 = 1.000000 uT)
-    magdata(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
-    long[ptr_x] := tmp[X_AXIS] * MRES_MICROTESLA
-    long[ptr_y] := tmp[Y_AXIS] * MRES_MICROTESLA
-    long[ptr_z] := tmp[Z_AXIS] * MRES_MICROTESLA
 
 PUB MagThreshInt{}: int_src
 ' Magnetometer threshold-related interrupt source(s)
