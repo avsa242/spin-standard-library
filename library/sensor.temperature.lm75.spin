@@ -6,20 +6,27 @@
         Digital Temperature Sensor
     Copyright (c) 2022
     Started May 19, 2019
-    Updated Mar 27, 2022
+    Updated May 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-{ pull in methods common to all Temp/RH drivers }
-#include "sensor.temp_rh.common.spinh"
+{ pull in methods common to all Temp drivers }
+#include "sensor.temp-common.spinh"
 
 CON
 
-    DEF_ADDR            = %000
+    { I2C }
+    SLAVE_WR    = core#SLAVE_ADDR
+    SLAVE_RD    = core#SLAVE_ADDR | 1
+    DEF_SCL     = 28
+    DEF_SDA     = 29
+    DEF_HZ      = 100_000
+
+    DEF_ADDR    = %000
 
 ' Overtemperature alarm (OS) output pin active state
-    ACTIVE_LO           = 0
-    ACTIVE_HI           = 1
+    ACTIVE_LO   = 0
+    ACTIVE_HI   = 1
 
 VAR
 

@@ -9,9 +9,6 @@
     See end of file for terms of use.
     --------------------------------------------
 }
-' Uncomment one of the below to choose the SPIN or PASM I2C engine
-#define LM75_SPIN
-'#define LM75_PASM
 
 CON
 
