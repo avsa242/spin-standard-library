@@ -5,7 +5,7 @@
     Description: Driver for AHT20 temperature/RH sensors
     Copyright (c) 2022
     Started Mar 26, 2022
-    Updated Mar 27, 2022
+    Updated May 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -14,13 +14,19 @@
 
 CON
 
+    { I2C }
+    SLAVE_WR    = core#SLAVE_ADDR
+    SLAVE_RD    = core#SLAVE_ADDR | 1
+    DEF_SCL     = 28
+    DEF_SDA     = 29
+    DEF_HZ      = 100_000
+
     FP_SCALE    = 10_000
     TWO20       = (1 << 20)                     ' 2^20
 
 OBJ
 
     i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
-'    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~40kHz)
     core: "core.con.aht20"                      ' AHT20-specific constants
     time: "time"                                ' basic timing functions
     u64 : "math.unsigned64"                     ' unsigned 64-bit math

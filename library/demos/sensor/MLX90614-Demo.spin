@@ -3,9 +3,9 @@
     Filename: MLX90614-Demo.spin
     Author: Jesse Burt
     Description: Demo for the MLX90614 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Mar 17, 2019
-    Updated May 19, 2021
+    Updated May 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -43,9 +43,10 @@ PUB Main{} | Tobj, Tamb
     setup{}
 
     mlx.tempscale(TEMP_SCALE)
+    mlx.tempchannel(1)                          ' 1 or 2 (device-dependent)
 
     repeat
-        Tobj := mlx.objtemp(1)
+        Tobj := mlx.temperature{}
         time.usleep(1)                          ' wait for reading to be ready
         Tamb := mlx.ambienttemp{}
 
@@ -94,8 +95,6 @@ PUB Setup{}
         ser.str(string("MLX90614 driver started"))
     else
         ser.str(string("MLX90614 driver failed to start - halting"))
-        time.msleep(30)
-        ser.stop{}
         repeat
 
 DAT

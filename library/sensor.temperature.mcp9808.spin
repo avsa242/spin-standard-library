@@ -5,14 +5,21 @@
     Description: Driver for Microchip MCP9808 temperature sensors
     Copyright (c) 2022
     Started Jul 26, 2020
-    Updated Mar 27, 2022
+    Updated May 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-{ pull in methods common to all Temp/RH drivers }
-#include "sensor.temp_rh.common.spinh"
+{ pull in methods common to all Temp drivers }
+#include "sensor.temp-common.spinh"
 
 CON
+
+    { I2C }
+    SLAVE_WR    = core#SLAVE_ADDR
+    SLAVE_RD    = core#SLAVE_ADDR | 1
+    DEF_SCL     = 28
+    DEF_SDA     = 29
+    DEF_HZ      = 100_000
 
 ' Interrupt active states
     LOW             = 0
@@ -230,12 +237,6 @@ PUB Powered(state): curr_state
 
     state := ((curr_state & core#SHDN_MASK) | state)
     writereg(core#CONFIG, 2, @state)
-
-PUB RHData{}
-' dummy method
-
-PUB RHWord2Pct(rh_word)
-' dummy method
 
 PUB TempData{}: temp_adc
 ' Read temperature ADC data

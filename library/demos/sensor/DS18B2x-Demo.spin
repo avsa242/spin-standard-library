@@ -19,10 +19,10 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    OW_PIN      = 5
+    OW_PIN      = 0
     SCALE       = C
 
-    NR_DEVICES  = 2
+    NR_DEVICES  = 1
     BITS        = 12                            ' ADC res (9..12 bits)
 ' --
 

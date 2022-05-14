@@ -6,12 +6,19 @@
         Temperature/Relative Humidity sensors
     Copyright (c) 2022
     Started Nov 19, 2017
-    Updated Mar 27, 2022
+    Updated May 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 #include "sensor.temp_rh.common.spinh"
 CON
+
+    { I2C }
+    SLAVE_WR        = core#SLAVE_ADDR
+    SLAVE_RD        = core#SLAVE_ADDR | 1
+    DEF_SCL         = 28
+    DEF_SDA         = 29
+    DEF_HZ          = 100_000
 
     MSB             = 1
     LSB             = 0
