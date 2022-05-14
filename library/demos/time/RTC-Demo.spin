@@ -3,17 +3,12 @@
     Filename: RTC-Demo.spin
     Author: Jesse Burt
     Description: RTC date/time set/display demo
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 18, 2020
-    Updated Mar 21, 2021
+    Updated May 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-
-' Uncomment one of the following:
-#define PCF8563
-'#define DS3231
-'#define RV3028
 
 CON
 
@@ -40,11 +35,11 @@ OBJ
     time    : "time"
     int     : "string.integer"
 #ifdef PCF8563
-    rtc     : "time.rtc.pcf8563.i2c"
+    rtc     : "time.rtc.pcf8563"
 #elseifdef DS3231
-    rtc     : "time.rtc.ds3231.i2c"
+    rtc     : "time.rtc.ds3231"
 #elseifdef RV3028
-    rtc     : "time.rtc.rv3028.i2c"
+    rtc     : "time.rtc.rv3028"
 #else
 #error "No RTC defined!"
 #endif
