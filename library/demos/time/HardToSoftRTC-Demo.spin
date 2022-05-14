@@ -6,7 +6,7 @@
         sets the software RTC by it, and continuously
         displays the date and time from the software RTC
     Started Sep 7, 2020
-    Updated Mar 23, 2021
+    Updated May 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -35,11 +35,11 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
 #ifdef PCF8563
-    hardrtc : "time.rtc.pcf8563.i2c"
+    hardrtc : "time.rtc.pcf8563"
 #elseifdef DS3231
-    hardrtc : "time.rtc.ds3231.i2c"
+    hardrtc : "time.rtc.ds3231"
 #elseifdef RV3028
-    hardrtc : "time.rtc.rv3028.i2c"
+    hardrtc : "time.rtc.rv3028"
 #else
 #error "No RTC defined!"
 #endif
@@ -119,9 +119,6 @@ PUB Setup{}
     else
         ser.strln(string("RV3028 driver failed to start - halting"))
 #endif
-        softrtc.stop{}
-        time.msleep(50)
-        ser.stop{}
         repeat
 
 DAT
