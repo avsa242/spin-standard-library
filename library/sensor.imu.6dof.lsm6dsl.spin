@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: sensor.imu.6dof.lsm6dsl.spi.spin
+    Filename: sensor.imu.6dof.lsm6dsl.spin
     Author: Jesse Burt
     Description: Driver for the ST LSM6DSL 6DoF IMU
     Copyright (c) 2022

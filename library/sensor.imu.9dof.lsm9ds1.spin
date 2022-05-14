@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: sensor.imu.9dof.lsm9ds1.spi.spin
+    Filename: sensor.imu.9dof.lsm9ds1.spin
     Author: Jesse Burt
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
     Copyright (c) 2022

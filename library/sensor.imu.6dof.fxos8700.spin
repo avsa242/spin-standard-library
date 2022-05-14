@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: sensor.imu.6dof.fxos8700.i2c.spin
+    Filename: sensor.imu.6dof.fxos8700.spin
     Author: Jesse Burt
     Description: Driver for the FXOS8700 6DoF IMU
     Copyright (c) 2022

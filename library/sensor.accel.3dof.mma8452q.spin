@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: sensor.accel.3dof.mma8452q.i2c.spin
+    Filename: sensor.accel.3dof.mma8452q.spin
     Author: Jesse Burt
     Description: Driver for the MMA8452Q 3DoF accelerometer
     Copyright (c) 2022
