@@ -3,9 +3,9 @@
     Filename: MPU9250-Demo.spin
     Author: Jesse Burt
     Description: Demo of the MPU9250 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 2, 2019
-    Updated Jan 23, 2021
+    Updated May 20, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -33,7 +33,7 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
-    imu     : "sensor.imu.9dof.mpu9250.i2c"
+    imu     : "sensor.imu.9dof.mpu9250"
 
 PUB Main{}
 
@@ -139,8 +139,6 @@ PUB Setup{}
         ser.strln(string("MPU9250 driver started (I2C)"))
     else
         ser.strln(string("MPU9250 driver failed to start - halting"))
-        imu.stop{}
-        time.msleep(5)
         repeat
 
 DAT
