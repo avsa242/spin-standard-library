@@ -6,7 +6,7 @@
         Indoor Air Quality sensor
     Copyright (c) 2022
     Started Nov 20, 2020
-    Updated Jan 2, 2022
+    Updated May 23, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -26,7 +26,11 @@ VAR
 
 OBJ
 
+#ifdef SGP30_I2C_BC
+    i2c : "tiny.com.i2c"                        ' Bytecode I2C engine
+#else
     i2c : "com.i2c"                             ' PASM I2C engine
+#endif
     core: "core.con.sgp30"                      ' HW-specific constants
     time: "time"                                ' timekeeping methods
     crc : "math.crc"                            ' CRC routines
