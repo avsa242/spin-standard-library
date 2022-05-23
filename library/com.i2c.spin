@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: PASM I2C Engine
     Started Mar 9, 2019
-    Updated Jul 18, 2021
+    Updated May 23, 2022
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -326,8 +326,10 @@ cmd_write_le            mov     t1, par                         ' Address of com
                         andn    dira, sdamask                   ' Make SDA input
                         call    #hdelay
                         andn    dira, sclmask                   ' SCL high
+#ifdef QUIRK_SCD30
 :wrle_waitack           test    sclmask, ina            wz      ' wait: clock stretch
         if_z            jmp     #:wrle_waitack
+#endif
                         call    #hdelay
                         test    sdamask, ina            wc      ' Test ackbit
         if_c            mov     tackbit, #NAK                   ' Mark if NAK
@@ -369,8 +371,10 @@ cmd_write_be            mov     t1, par                         ' Address of com
                         andn    dira, sdamask                   ' Make SDA input
                         call    #hdelay
                         andn    dira, sclmask                   ' SCL high
+#ifdef QUIRK_SCD30
 :wrbe_waitack           test    sclmask, ina            wz      ' wait: clock stretch
         if_z            jmp     #:wrbe_waitack
+#endif
                         call    #hdelay
                         test    sdamask, ina            wc      ' Test ackbit
         if_c            mov     tackbit, #NAK                   ' Mark if NAK

@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: SPIN I2C Engine
     Started Jun 9, 2019
-    Updated Oct 6, 2021
+    Updated May 23, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -213,7 +213,9 @@ PUB Write(i2cbyte): ackbit
         dira[_SCL] := 1                         ' SCL low
 
     dira[_SDA] := 0                             ' float SDA
+#ifdef QUIRK_SCD30
     waitclockstretch{}
+#endif
     ackbit := ina[_SDA]
     dira[_SCL] := 1                             ' SCL low
     return ackbit
