@@ -1,13 +1,13 @@
 {
     --------------------------------------------
-    Filename: tiny.com.serial.terminal.spin
+    Filename: com.serial.terminal.nocog.spin
     Author: Jesse Burt
     Description: UART/serial engine (SPIN-based)
         with extended terminal I/O
         (based on Simple_Serial.spin, originally by
         Chip Gracey, Phil Pilgrim, Jon Williams, Jeff Martin)
     Started May 31, 2021
-    Updated May 31, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 
