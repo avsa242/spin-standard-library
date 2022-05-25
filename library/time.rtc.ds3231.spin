@@ -3,9 +3,9 @@
     Filename: time.rtc.ds3231.i2c.spin
     Author: Jesse Burt
     Description: Driver for the DS3231 Real-Time Clock
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 17, 2020
-    Updated Aug 15, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -42,7 +42,7 @@ VAR
 OBJ
 
 #ifdef DS3231_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine (~30kHz)
 #elseifdef DS3231_PASM
     i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
 #else

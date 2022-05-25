@@ -1,10 +1,10 @@
 {
     --------------------------------------------
-    Filename: tiny.com.i2c.spin
+    Filename: com.i2c.nocog.spin
     Author: Jesse Burt
     Description: SPIN I2C Engine
     Started Jun 9, 2019
-    Updated May 23, 2022
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 

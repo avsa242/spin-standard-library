@@ -5,7 +5,7 @@
     Description: Driver for Microchip MCP9808 temperature sensors
     Copyright (c) 2022
     Started Jul 26, 2020
-    Updated May 14, 2022
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,9 +36,9 @@ VAR
 OBJ
 
 #ifdef MCP9808_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
 #elseifdef MCP9808_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
+    i2c : "com.i2c"                             ' PASM I2C engine
 #else
 #error "One of MCP9808_SPIN or MCP9808_PASM must be defined"
 #endif

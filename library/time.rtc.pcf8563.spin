@@ -3,9 +3,9 @@
     Filename: time.rtc.pcf8563.i2c.spin
     Author: Jesse Burt
     Description: Driver for the PCF8563 Real Time Clock
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 6, 2020
-    Updated Aug 15, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,9 +34,9 @@ VAR
 OBJ
 
 #ifdef PCF8563_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
 #elseifdef PCF8563_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine (400kHz)
+    i2c : "com.i2c"                             ' PASM I2C engine
 #endif
     core: "core.con.pcf8563"                    ' HW-specific constants
     time: "time"                                ' timekeeping functions
