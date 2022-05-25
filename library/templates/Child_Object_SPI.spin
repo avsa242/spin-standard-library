@@ -23,9 +23,8 @@ OBJ
 '    spi : "com.spi"                             ' PASM SPI engine (20MHz W/10R)
 '    spi : "com.spi.4w"                          ' PASM SPI engine (up to 1MHz)
 '    spi : "com.spi.bitbang"                     ' PASM SPI engine (~4MHz)
-'    spi : "tiny.com.spi"                        ' SPIN SPI engine (TBD kHz)
+'    spi : "com.spi.nocog"                       ' SPIN SPI engine (TBD kHz)
     core: "core.con.your_spi_device_here"       ' hw-specific low-level const's
-    io  : "io"                                  ' i/o pin convenience methods
     time: "time"                                ' Basic timing functions
 
 PUB Null{}

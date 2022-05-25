@@ -1,12 +1,12 @@
 {
     --------------------------------------------
-    Filename: tiny.com.spi.spin
+    Filename: com.spi.nocog.spin
     Author: Jesse Burt
     Description: SPI engine (SPIN-based)
         (based on SPI_Spin.spin, originally by
         Beau Schwabe)
     Started 2009
-    Updated Jun 27, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
