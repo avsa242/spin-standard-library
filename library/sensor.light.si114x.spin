@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Driver for the Silicon Labs Si114[5|6|7] series
         Proximity/UV/Amblient light sensor IC
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jun 01, 2019
-    Updated Aug 15, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -53,9 +53,9 @@ VAR
 OBJ
 
 #ifdef SI114X_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
 #elseifdef SI114X_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine (~800kHz)
+    i2c : "com.i2c"                             ' PASM I2C engine
 #else
 #error "One of SI114X_SPIN or SI114X_PASM must be defined"
 #endif

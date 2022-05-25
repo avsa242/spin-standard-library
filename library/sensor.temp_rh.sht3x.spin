@@ -6,7 +6,7 @@
         Temperature/Relative Humidity sensors
     Copyright (c) 2022
     Started Nov 19, 2017
-    Updated May 13, 2022
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -43,9 +43,9 @@ VAR
 OBJ
 
 #ifdef SHT3X_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
 #elseifdef SHT3X_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine (~800kHz)
+    i2c : "com.i2c"                             ' PASM I2C engine
 #else
 #error "One of SHT3X_SPIN or SHT3X_PASM must be defined"
 #endif

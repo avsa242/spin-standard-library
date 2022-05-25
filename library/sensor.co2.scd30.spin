@@ -3,9 +3,9 @@
     Filename: sensor.co2.scd30.i2c.spin
     Author: Jesse Burt
     Description: Driver for the Sensirion SCD30 CO2 sensor
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jul 10, 2021
-    Updated Sep 1, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -43,9 +43,9 @@ VAR
 OBJ
 
 #ifdef SCD30_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
+    i2c : "com.i2c"                             ' PASM I2C engine
 #elseifdef SCD30_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~40kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
 #else
 #error "One of SCD30_PASM or SCD30_SPIN must be defined"
 #endif

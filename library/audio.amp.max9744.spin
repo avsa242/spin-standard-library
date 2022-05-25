@@ -3,9 +3,9 @@
     Filename: signal.audio.amp.max9744.i2c.spin
     Author: Jesse Burt
     Description: Driver for the MAX9744 20W audio amplifier IC
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jul 7, 2018
-    Updated Aug 15, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -32,9 +32,9 @@ VAR
 OBJ
 
 #ifdef MAX9744_PASM
-    i2c     : "com.i2c"                         ' MAX9744_PASM I2C engine (~400kHz)
+    i2c     : "com.i2c"                         ' PASM I2C engine
 #elseifdef MAX9744_SPIN
-    i2c     : "tiny.com.i2c"                    ' MAX9744_SPIN I2C engine (~30kHz)
+    i2c     : "com.i2c.nocog"                   ' SPIN I2C engine
 #else
 #error "One of MAX9744_PASM or MAX9744_SPIN must be defined"
 #endif

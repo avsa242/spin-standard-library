@@ -6,7 +6,7 @@
         Digital Temperature Sensor
     Copyright (c) 2022
     Started May 19, 2019
-    Updated May 14, 2022
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -35,7 +35,7 @@ VAR
 OBJ
 
 #ifdef LM75_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine (~30kHz)
 #elseifdef LM75_PASM
     i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
 #else

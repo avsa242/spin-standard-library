@@ -5,7 +5,7 @@
     Description: Driver for the HTU21D Temp/RH sensor
     Copyright (c) 2022
     Started Jun 16, 2021
-    Updated May 13, 2022
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -29,7 +29,7 @@ VAR
 OBJ
 
 #ifdef HTU21D_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine (~30kHz)
 #elseifdef HTU21D_PASM
     i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
 #else

@@ -5,7 +5,7 @@
     Description: Driver for the ST L3G4200D 3-axis gyroscope
     Copyright (c) 2022
     Started Nov 27, 2019
-    Updated May 12, 2022
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -85,7 +85,7 @@ OBJ
 #elseifdef L3G4200D_I2C_PASM
     i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
 #elseifdef L3G4200D_I2C_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~30kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine (~30kHz)
 #else
 #error "One of L3G4200D_SPI, L3G4200D_I2C_PASM or L3G4200D_I2C_SPIN must be defined"
 #endif

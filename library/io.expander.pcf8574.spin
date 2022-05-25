@@ -3,9 +3,9 @@
     Filename: io.expander.pcf8574.i2c.spin
     Author: Jesse Burt
     Description: Driver for the PCF8574 I2C I/O expander
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 06, 2021
-    Updated Oct 12, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -24,9 +24,9 @@ CON
 OBJ
 
 #ifdef PCF8574_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
+    i2c : "com.i2c"                             ' PASM I2C engine
 #elseifdef PCF8574_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~40kHz)
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
 #else
 #error "One of PCF8574_PASM or PCF8574_SPIN must be defined"
 #endif

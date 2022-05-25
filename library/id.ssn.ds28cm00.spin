@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Driver for the DS28CM00
      64-bit I2C Silicon Serial Number
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Oct 27, 2019
-    Updated Oct 18, 2021
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This driver will start successfully if the Propeller's EEPROM is on
@@ -30,7 +30,7 @@ OBJ
 #ifdef DS28CM00_PASM
     i2c : "com.i2c"                             ' PASM I2C engine
 #elseifdef DS28CM00_SPIN
-    i2c : "tiny.com.i2c"                        ' SPIN I2C engine
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
 #else
 #error "One of DS28CM00_PASM or DS28CM00_SPIN must be defined"
 #endif
