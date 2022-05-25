@@ -1,12 +1,12 @@
 {
     --------------------------------------------
-    Filename: tiny.com.serial.spin
+    Filename: com.serial.nocog.spin
     Author: Jesse Burt
     Description: UART/serial engine (SPIN-based)
         (based on Simple_Serial.spin, originally by
         Chip Gracey, Phil Pilgrim, Jon Williams, Jeff Martin)
     Started 2006
-    Updated Sep 12, 2020
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
