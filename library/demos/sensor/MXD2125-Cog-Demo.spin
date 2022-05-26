@@ -6,7 +6,7 @@
     Description: Demo of the new cog and same cog
         functionality of the MXD2125 driver
     Started 2007
-    Updated Apr 30, 2021
+    Updated May 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,7 +34,7 @@ OBJ
 
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
-    accel   : "tiny.sensor.accel.2dof.mxd2125"
+    accel   : "sensor.accel.2dof.mxd2125.nocog"
     time    : "time"
 
 PUB Main{} | x, y
