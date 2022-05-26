@@ -5,7 +5,7 @@
     Description: Driver for the Sensirion SCD30 CO2 sensor
     Copyright (c) 2022
     Started Jul 10, 2021
-    Updated May 25, 2022
+    Updated May 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -52,7 +52,7 @@ OBJ
     core: "core.con.scd30"                      ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
     crc : "math.crc"                            ' CRC routines
-    fm  : "tiny.math.float"                     ' IEEE-754 float functions
+    fm  : "math.float.nocog"                    ' IEEE-754 float functions
 
 PUB Null{}
 ' This is not a top-level object

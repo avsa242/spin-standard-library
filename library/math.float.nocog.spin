@@ -1,12 +1,12 @@
 {
     --------------------------------------------
-    Filename: tiny.math.float
+    Filename: math.float.nocog.spin
     Description: Floating-point math routines
         Single-precision, IEEE-754 (SPIN-based)
         (based on FloatMath.spin, originally by
         Chip Gracey)
     Started 2006
-    Updated Sep 12, 2020
+    Updated May 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }

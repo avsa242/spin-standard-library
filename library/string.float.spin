@@ -15,7 +15,7 @@ VAR
 
 OBJ
 
-  math : "tiny.math.float"
+  math : "math.float.nocog"
 
 PUB StringToFloat( strptr ) : f | int, sign, dmag, mag, get_exp, b
 {{
