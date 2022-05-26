@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: tiny.signal.dac.ad8803.spi.spin
+    Filename: signal.dac.ad8803.spi.nocog.spin
     Author: Beau Schwabe
     Modified by: Jesse Burt
     Description: Driver for the AD8803 Octal 8-bit trim DAC
