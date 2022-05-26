@@ -27,7 +27,7 @@ OBJ
 
 ' choose an I2C engine below
 '    i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
-'    i2c : "tiny.com.i2c"                        ' SPIN I2C engine (~40kHz)
+'    i2c : "com.i2c.nocog"                       ' SPIN I2C engine (~40kHz)
     core: "core.con.your_i2c_device_here"       ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
 
