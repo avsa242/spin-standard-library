@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Apr 26, 2018
-    Updated: Feb 16, 2022
+    Updated: May 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -69,7 +69,7 @@ PUB Startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT, ptr_disp
             time.usleep(core#TPOR)              ' wait for device startup
             _addr_bits := ||(ADDR_BITS == 1) << 1 ' slave address bit option
             _RES := RES_PIN                     ' -1 to disable
-
+            reset{}
             if i2c.present(SLAVE_WR | _addr_bits) ' test device bus presence
                 _disp_width := width
                 _disp_height := height
@@ -101,6 +101,7 @@ PUB Startx(CS_PIN, SCK_PIN, SDIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbu
             time.usleep(core#TPOR)              ' wait for device startup
             _DC := DC_PIN
             _RES := RES_PIN                     ' -1 to disable
+            reset{}
 
             outa[_DC] := 0
             dira[_DC] := 1
