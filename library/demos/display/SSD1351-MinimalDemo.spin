@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: SSD1331-MinimalDemo.spin
+    Filename: SSD1351-MinimalDemo.spin
     Description: Graphics demo using minimal code
     Author: Jesse Burt
     Copyright (c) 2022
@@ -16,8 +16,8 @@ CON
 
 ' -- User-modifiable constants:
     { display size, in pixels }
-    WIDTH       = 96
-    HEIGHT      = 64
+    WIDTH       = 128
+    HEIGHT      = 128
 
     { SPI-connected displays }
     CS_PIN      = 0
@@ -39,27 +39,17 @@ CON
 OBJ
 
     fnt     : "font.5x8"
-    disp    : "display.oled.ssd1331"
-
-VAR
-
-#ifndef GFX_DIRECT
-    { memory for the display buffer }
-    word _framebuff[BUFFSZ]
-#else
-    { or just a placeholder, if drawing directly to the display }
-    word _framebuff
-#endif
+    disp    : "display.oled.ssd1351"
 
 PUB Main{}
 
     { start the driver }
-    disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+    disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, 0)
 
     { configure the display with the minimum required setup:
         1. Use a common settings preset for 96x# displays
         2. Tell the driver the size of the font }
-    disp.preset_96x64{}
+    disp.preset_128x{}
     disp.fontspacing(1, 1)
     disp.fontscale(1)
     disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
