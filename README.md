@@ -19,6 +19,13 @@ At the time of this writing, they are:
 * [time](api/time.md): Timekeeping device drivers (hardware and emulated), e.g.: RTC
 * [wireless.transceiver](api/wireless.transceiver.md): RF Packet radios for sending and receiving data wirelessly
 
+## Directory structure
+
+* [api/](api/): Descriptions of the Application Programming Interface for each category of object.
+* [library/](library/): The library itself - this should be added to the compiler's library path (e.g. `flexspin -I/path/to/spin-standard-library/library`).
+* [library/demos/](library/demos/): Basic demonstrations of drivers and other objects. Utilizes only what's necessary to demonstrate the core functionality of a driver (such as a serial terminal object to display the data). Example: a demo of a sensor will display sensor data on the terminal.
+* [library/examples/](library/examples): More complex demonstrations, forming rudimentary but specific applications. May utilize more objects as needed to demonstrate specific functionality (such as an OLED or LCD). For example: using accelerometer data to produce an inclinometer.
+* [library/templates/](library/templates): "Skeletons" of source code that can be used as a template for an application, or object.
 
 ## Intended audience
 
