@@ -631,11 +631,11 @@ PUB FAdd(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
   if sb
     -mb
 
-  result := ||(xa - xb) <# 31   'get exponent difference
+  single := ||(xa - xb) <# 31   'get exponent difference
   if xa > xb                    'shift lower-exponent mantissa down
-    mb ~>= result
+    mb ~>= single
   else
-    ma ~>= result
+    ma ~>= single
     xa := xb
 
   ma += mb                      'add mantissas
@@ -739,9 +739,9 @@ pri Pack(pointer) : single | s, x, m
 
   if m                          'if mantissa 0, result 0
   
-    result := 33 - >|m          'determine magnitude of mantissa
-    m <<= result                'msb-justify mantissa without leading 1
-    x += 3 - result             'adjust exponent
+    single := 33 - >|m          'determine magnitude of mantissa
+    m <<= single                'msb-justify mantissa without leading 1
+    x += 3 - single             'adjust exponent
 
     m += $00000100              'round up mantissa by 1/2 lsb
     if not m & $FFFFFF00        'if rounding overflow,
@@ -773,4 +773,5 @@ pri Pack(pointer) : single | s, x, m
 │COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   │
 │ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-}}    
+}}
+
