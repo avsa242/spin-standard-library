@@ -43,7 +43,11 @@ OBJ
 
 PUB Main{}
 
-    { start the driver }
+    { start the driver
+    NOTE: The Propeller 1 doesn't have enough RAM to buffer a typically sized
+    ST7735 panel (e.g., 128x128), so drawing directly to display is the best
+    mode of operation.
+    Define the preprocessor symbol GFX_DIRECT when building. }
     disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, 0)
 
     { configure the display with the minimum required setup:
@@ -60,17 +64,14 @@ PUB Main{}
     disp.position(0, 0)
     disp.fgcolor($ffff)
     disp.strln(string("Testing 12345"))
-    disp.update{}                               ' send the buffer to the display
 
     { draw one pixel at the center of the screen }
     { disp.plot(x, y, color) }
     disp.plot(CENTERX, CENTERY, $ffff)
-    disp.update{}
 
     { draw a box at the screen edges }
     { disp.box(x_start, y_start, x_end, y_end, color, filled) }
     disp.box(0, 0, XMAX, YMAX, $ffff, false)
-    disp.update{}
 
     repeat
 
