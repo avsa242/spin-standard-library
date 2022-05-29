@@ -5,7 +5,7 @@
     Description: Routines common to all sensor.imu device drivers
     Copyright (c) 2022
     Started Sep 24, 2021
-    Updated May 12, 2022
+    Updated May 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -187,13 +187,20 @@ PUB MagZWord2Tesla(mag_word): mag_tesla
 PUB Pitch{} | x, y, z
 ' Get pitch angle of accelerometer, in degrees
     acceldata(@x, @y, @z)
+#ifdef PITCH_INV
+    return math.atan2(-y, z)
+#else
     return math.atan2(y, z)
+#endif
 
 PUB Roll{} | x, y, z
 ' Get roll angle of accelerometer, in degrees
     acceldata(@x, @y, @z)
+#ifdef ROLL_INV
     return math.atan2(-x, z)
-
+#else
+    return math.atan2(x, z)
+#endif
 
 {
 TERMS OF USE: MIT License
