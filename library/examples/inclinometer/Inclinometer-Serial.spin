@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Simple inclinometer using an LSM9DS1 IMU
         (serial display)
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Jan 29, 2020
-    Updated Jun 1, 2021
+    Updated May 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,68 +19,48 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_M_PIN    = 3
-    CS_AG_PIN   = 2
-    SCL_PIN     = 0
-    SDIO_PIN    = 1
+    { I2C & SPI configuration }
+    CS_M_PIN    = 0                             ' SPI
+    CS_AG_PIN   = 1                             ' SPI
+    SCL_PIN     = 2                             ' I2C, SPI
+    SDA_PIN     = 3                             ' I2C, SPI
+    SDO_PIN     = 4                             ' SPI
+                                                ' (define same as SDA_PIN for 3-wire SPI)
+    I2C_HZ      = 400_000
 ' --
-
-    R2D         = 180.0 / PI
 
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
+    ser     : "com.serial.terminal.ansi-new"
     time    : "time"
     imu     : "sensor.imu.9dof.lsm9ds1"
-    int     : "string.integer"
-    math    : "math.float.extended"
-    fs      : "string.float"
 
-PUB Main{} | ax, ay, az, dx, dy
+PUB Main{} | pitch, roll
 
-    setup
+    setup{}
 
-    ' set the accelerometer to a lower, less noisy data rate
+    { set the accelerometer to a lower, less noisy data rate }
     imu.preset_active{}
-    imu.acceldatarate(14)
+    imu.acceldatarate(59)
     imu.accelhighres(true)
-
+    imu.fifoenabled(false)
     repeat
-        imu.acceldata(@ax, @ay, @az)
-
-        ' convert accelerometer data to degrees
-        dx := math.fmul(R2D, math.atan2(math.ffloat(ay), math.ffloat(az)))
-        dy := math.fmul(R2D, math.atan2(math.ffloat(ax), math.ffloat(az)))
-
-        ' clamp values to within -90.0 to 90.0deg
-        if math.fcmp(dx, -90.0) == -1
-            dx := -90.0
-        if math.fcmp(dx, 90.0) == 1
-            dx := 90.0
-        if math.fcmp(dy, -90.0) == -1
-            dy := -90.0
-        if math.fcmp(dy, 90.0) == 1
-            dy := 90.0
-
+        repeat until imu.acceldataready{}
         ser.position(0, 3)
-        setrange(dx)
-        ser.printf1(string("Pitch: %s    \n"), fs.floattostring(dx))
 
-        setrange(dy)
-        ser.printf1(string("Roll: %s    \n"), fs.floattostring(dy))
+        { clamp angles to +/- 90deg }
+        pitch := -90_00 #> imu.pitch{} <# 90_00
+        roll := -90_00 #> imu.roll{} <# 90_00
 
-        if ser.rxcheck{} == "z"                 ' press 'z' to reset the
-            setzero{}                           '   inclinometer's 'zero'
+        ser.printf2(@("Pitch: %d.%1.1d    \n\r"), pitch/100, ||(pitch//100)/10)
+        ser.printf2(@("Roll: %d.%1.1d    \n\r"), roll/100, ||(roll//100)/10)
 
-PRI setRange(val)
-' Based on the current measurements,
-' keep number of fractional digits displayed at 1
-'   (total digits 2 or 3 - includes whole)
-    if (math.fcmp(val, 9.9) == -1) or (math.fcmp(val, -9.9) == 1)
-        fs.setprecision(2)                  ' if -9.9..9.9, 2 digits
-    if (math.fcmp(val, 9.9) == 1) or (math.fcmp(val, -9.9) == -1)
-        fs.setprecision(3)                  ' if > 9.9 or < -9.9, 3 digits
+        { Press 'z' to reset the inclinometer's 'zero'
+          Ensure the chip is lying on a flat surface and the package top
+          is facing up }
+        if (ser.rxcheck{} == "z")
+            setzero{}
 
 PRI setZero{}
 ' Re-set the 'zero' of the inclinometer (set accelerometer bias offsets)
@@ -97,7 +77,11 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if imu.startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDIO_PIN)
+#ifdef LSM9DS1_SPI
+    if imu.startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+#else
+    if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ)
+#endif
         ser.strln(string("LSM9DS1 driver started"))
     else
         ser.strln(string("LSM9DS1 driver failed to start - halting"))
