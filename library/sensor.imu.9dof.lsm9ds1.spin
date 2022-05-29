@@ -5,15 +5,10 @@
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
     Copyright (c) 2022
     Started Aug 12, 2017
-    Updated May 12, 2022
+    Updated May 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-#ifdef LSM9DS1_SPI3W
-#define LSM9DS1_SPI
-#elseifdef LSM9DS1_SPI4W
-#define LSM9DS1_SPI
-#endif
 #include "sensor.imu.common.spinh"
 
 CON
@@ -126,12 +121,24 @@ CON
 
 OBJ
 
-#ifdef LSM9DS1_I2C
-    i2c     : "com.i2c"
-#elseifdef LSM9DS1_SPI
-    spi     : "com.spi.4w"
+{ SPI? }
+#ifdef LSM9DS1_SPI
+{ decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef LSM9DS1_SPI_BC
+    spi : "com.spi.nocog"                       ' BC SPI engine
 #else
-#error "One of LSM9DS1_I2C, LSM9DS1_SPI3W, or LSM9DS1_SPI4W must be defined"
+    spi : "com.spi.4w"                          ' PASM SPI engine
+#endif
+#else
+{ no, not SPI - default to I2C }
+#define LSM9DS1_I2C
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef LSM9DS1_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
+
 #endif
     core    : "core.con.lsm9ds1"
     time    : "time"
@@ -143,6 +150,7 @@ VAR
     long _mres[MAG_DOF]
     long _CS_AG, _CS_M
     byte _temp_scale
+    byte _spi_wire_md
 
 PUB Null{}
 ' This is not a top-level object
@@ -163,30 +171,9 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
-#elseifdef LSM9DS1_SPI3W
-PUB Startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDIO_PIN): status
-' Start using custom I/O pins
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDIO_PIN: 0..31) and {
-}   lookdown(CS_AG_PIN: 0..31) and lookdown(CS_M_PIN: 0..31)
-        if (status := spi.init(SCL_PIN, SDIO_PIN, SDIO_PIN, core#SPI_MODE))
-            longmove(@_CS_AG, @CS_AG_PIN, 2)
-            outa[_CS_AG] := 1                   ' make sure CS starts
-            outa[_CS_M] := 1                    '   high
-            dira[_CS_AG] := 1
-            dira[_CS_M] := 1
-            time.usleep(core#TPOR)              ' startup time
 
-            spimode(3)
+#elseifdef LSM9DS1_SPI
 
-            if deviceid{} == core#WHOAMI_BOTH_RESP
-                xlgsoftreset{}                  ' reset/initialize to
-                magsoftreset{}                  ' POR defaults
-                return status                   ' validate device
-    ' if this point is reached, something above failed
-    ' Double check I/O pin assignments, connections, power
-    ' Lastly - make sure you have at least one free core/cog
-    return FALSE
-#elseifdef LSM9DS1_SPI4W
 PUB Startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
 ' Start using custom I/O pins
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
@@ -200,12 +187,19 @@ PUB Startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
             dira[_CS_M] := 1
             time.usleep(core#TPOR)              ' startup time
 
-            spimode(4)
+            { if SDA_PIN and SDO_PIN are the same, }
+            { assume 3-wire SPI mode is wanted }
+            if (SDA_PIN == SDO_PIN)
+                _spi_wire_md := 3
+                spimode(3)
+            else
+                _spi_wire_md := 4
+                spimode(4)
 
             xlgsoftreset{}                      ' reset/initialize to
             magsoftreset{}                      ' POR defaults
 
-            if deviceid{} == core#WHOAMI_BOTH_RESP
+            if (deviceid{} == core#WHOAMI_BOTH_RESP)
                 xlgsoftreset{}                  ' reset/initialize to
                 magsoftreset{}                  ' POR defaults
                 return status                   ' validate device
@@ -1144,11 +1138,7 @@ PUB MagSoftreset{} | tmp
 
     tmp := 0                                    ' clear reset bit manually
     writereg(MAG, core#CTRL_REG2_M, 1, @tmp)    ' to come out of reset
-#ifdef LSM9DS1_SPI3W
-    spimode(3)
-#elseifdef LSM9DS1_SPI4W
-    spimode(4)
-#endif
+    spimode(_spi_wire_md)
 
 PUB Temperature{}: temp
 ' Get temperature from chip
@@ -1400,10 +1390,10 @@ PRI writeReg(device, reg_nr, nr_bytes, ptr_buff) | cmd_pkt
                 core#CTRL_REG8:
                     outa[_CS_AG] := 0
                     spi.wr_byte(reg_nr)
-#ifdef LSM9DS1_SPI3W
-                    ' enforce 3-wire SPI mode
-                    byte[ptr_buff][0] := byte[ptr_buff][0] | (1 << core#SIM)
-#endif
+
+                    { enforce 3-wire SPI mode }
+                    if (_spi_wire_md == 3)
+                        byte[ptr_buff][0] := byte[ptr_buff][0] | (1 << core#SIM)
                     spi.wrblock_lsbf(ptr_buff, nr_bytes)
                     outa[_CS_AG] := 1
 #endif
@@ -1431,10 +1421,10 @@ PRI writeReg(device, reg_nr, nr_bytes, ptr_buff) | cmd_pkt
                     reg_nr |= WRITE
                     outa[_CS_M] := 0
                     spi.wr_byte(reg_nr)
-#ifdef LSM9DS1_SPI3W
-                    ' enforce 3-wire SPI mode
-                    byte[ptr_buff][0] := byte[ptr_buff][0] | (1 << core#M_SIM)
-#endif
+
+                    { enforce 3-wire SPI mode }
+                    if (_spi_wire_md == 3)
+                        byte[ptr_buff][0] := byte[ptr_buff][0] | (1 << core#M_SIM)
                     spi.wrblock_lsbf(ptr_buff, nr_bytes)
                     outa[_CS_M] := 1
 #endif
