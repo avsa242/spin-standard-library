@@ -5,12 +5,12 @@
     Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2022
     Started May 19, 2019
-    Updated Jan 30, 2022
+    Updated May 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
-#include "lib.terminal.spin"                    ' for PrintF(), Str(), etc
+#include "terminal-common.spinh"                ' for PrintF(), Str(), etc
 
 VAR
 
