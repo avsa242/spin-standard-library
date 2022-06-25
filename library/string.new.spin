@@ -5,7 +5,7 @@
     Description: String processing and formatting
     Copyright (c) 2022
     Started May 29, 2022
-    Updated May 29, 2022
+    Updated Jun 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -250,6 +250,17 @@ PUB HexCase(hcase)
 '       zero: lower-case
     _caps := hcase
 
+PUB Hexs(val, digits) | idx
+' Convert hexadecimal value to string representation (small/standalone implementation)
+'   Returns: pointer to string
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
+    idx := 0
+    digits := 1 #> digits <# 8
+    val <<= (8 - digits) << 2                   ' prep most significant digit
+    repeat digits
+        _tmp_buff[idx++] := lookupz((val <-= 4) & $F : "0".."9", "A".."F")
+    return @_tmp_buff
+
 PUB IsAlpha(ptr_str): flag
 ' Flag indicating entire string is alphabetic
 '   Returns:
@@ -449,7 +460,7 @@ PUB Right(ptr_dest, ptr_src, count): ptr_right
 '   Returns: pointer to resulting string
     return mid(ptr_dest, ptr_src, strsize(ptr_src) - count, count)
 
-PUB SPrintF(ptr_str, fmt, ptr_args): index | pad, len, maxlen, minlen, bi, left, strtype, sorg, arg
+PUB SPrintF(ptr_str, fmt, ptr_args): index | pad, len, maxlen, minlen, bi, leftj, strtype, sorg, arg
 ' Print string to buffer, with specified formatting
 '   ptr_str: string to copy format to
 '   fmt: formatting specification
@@ -518,11 +529,11 @@ PUB SPrintF(ptr_str, fmt, ptr_args): index | pad, len, maxlen, minlen, bi, left,
         if (byte[fmt] == "%")
             byte[ptr_str++] := byte[fmt++]      ' % (literal)
             next
-        if (byte[fmt] == "-")                   ' left-justify
-            left := true
+        if (byte[fmt] == "-")                   ' leftj-justify
+            leftj := true
             ++fmt                               ' skip -
         else
-            left := false
+            leftj := false
         if (byte[fmt] == "0")                   ' set pad char to '0'
             pad := "0"
         else
@@ -585,7 +596,7 @@ PUB SPrintF(ptr_str, fmt, ptr_args): index | pad, len, maxlen, minlen, bi, left,
         else
             minlen := 0
         bi := 0
-        if (left == false)
+        if (leftj == false)
             if (_tmp_buff[bi] == "-") and (pad == "0")
                 byte[ptr_str++] := _tmp_buff[bi++]
                 len--
@@ -602,7 +613,7 @@ PUB SPrintF(ptr_str, fmt, ptr_args): index | pad, len, maxlen, minlen, bi, left,
                     quit
                 { copy string argument }
                 byte[ptr_str++] := byte[arg++]
-        if (left == true)
+        if (leftj == true)
             repeat while (minlen > 0)
                 minlen--
                 byte[ptr_str++] := pad

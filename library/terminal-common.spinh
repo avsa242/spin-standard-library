@@ -6,7 +6,7 @@
         standard terminal routines
     Copyright (c) 2022
     Started Dec 14, 2019
-    Updated Jun 1, 2022
+    Updated Jun 25, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is a derivative of std_text_routines.spinh, by Eric Smith.
@@ -58,6 +58,11 @@ PUB Hex(val, digits)
 '   of digits; 0 means just use as many as we need
     stl.itoab(val, @_tmp, stl#IHEX)
     str(@_tmp)
+
+PUB Hexs(val, digits)
+' Print a hex number with the specified number (small implementation)
+'   of digits; 0 means just use as many as we need
+    str(stl.hexs(val, digits))
 
 #ifndef _HAS_NEWLINE_
 PUB NewLine

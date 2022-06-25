@@ -3,9 +3,9 @@
     Filename: lib.termwidgets.spin
     Author: Jesse Burt
     Description: Library of terminal widgets
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Dec 14, 2019
-    Updated Jul 4, 2021
+    Updated Jun 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -32,11 +32,11 @@ PUB HexDump(ptr_buff, base_addr, adr_digits, nr_bytes, columns) | hex_offs, asc_
     hex_offs := asc_offs := 0                   ' initialize offsets to base
                                                 '   address
     repeat while hex_offs < nr_bytes
-        hex(base_addr+hex_offs, adr_digits)     ' show memory offset of line
+        hexs(base_addr+hex_offs, adr_digits)    ' show memory offset of line
         str(string(": "))
 
         repeat while col < columns              ' display data in hex
-            hex(byte[ptr_buff+hex_offs], 2)
+            hexs(byte[ptr_buff+hex_offs], 2)
             char(" ")                           ' space between each byte
             col++
             hex_offs++
