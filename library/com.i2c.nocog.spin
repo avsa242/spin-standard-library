@@ -203,15 +203,50 @@ PUB Wr_Byte(b): ackbit
 ' Write byte to I2C bus
     return wrblock_lsbf(@b, 1)
 
-PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit | bytenum
+PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit | bnum, lastb, tmp
 ' Write nr_bytes to I2C bus from ptr_buff, LSByte-first
-    repeat bytenum from 0 to nr_bytes-1
-        ackbit := write(byte[ptr_buff][bytenum])
+'   ptr_buff: pointer to buffer of data to write to bus
+'   nr_bytes: number of bytes to write
+'   Returns: ACK/NAK bit from device
+    tmp := 0
+    lastb := (nr_bytes-1)
+    { LSB-first byte loop }
+    repeat bnum from 0 to lastb
+        tmp := (byte[ptr_buff][bnum] ^ $FF) << 24
+
+        { bit loop }
+        repeat 8
+            dira[_SDA] := tmp <-= 1             ' MSBit first
+            dira[_SCL] := 0                     ' float SCL
+            dira[_SCL] := 1                     ' SCL low
+
+        { read ACK bit }
+        dira[_SDA] := 0                         ' float SDA
+        waitclockstretch{}
+        ackbit := ina[_SDA]
+        dira[_SCL] := 1                         ' SCL low
+    return ackbit
 
 PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit | bytenum
 ' Write nr_bytes to I2C bus from ptr_buff, MSByte-first
-    repeat bytenum from nr_bytes-1 to 0
-        ackbit := write(byte[ptr_buff][bytenum])
+    tmp := 0
+    lastb := (nr_bytes-1)
+    { MSB-first byte loop }
+    repeat bnum from lastb to 0
+        tmp := (byte[ptr_buff][bnum] ^ $FF) << 24
+
+        { bit loop }
+        repeat 8
+            dira[_SDA] := tmp <-= 1             ' MSBit first
+            dira[_SCL] := 0                     ' float SCL
+            dira[_SCL] := 1                     ' SCL low
+
+        { read ACK bit }
+        dira[_SDA] := 0                         ' float SDA
+        waitclockstretch{}
+        ackbit := ina[_SDA]
+        dira[_SCL] := 1                         ' SCL low
+    return ackbit
 
 PUB WrLong_LSBF(long2i2c): ackbit
 ' Write long to I2C bus, least-significant byte first
@@ -235,17 +270,7 @@ PUB Write(i2cbyte): ackbit
 '       1: NAK or no response from device
 '       0: ACK from device
 '   NOTE: This method leaves SCL low, when returning
-    i2cbyte := (i2cbyte ^ $FF) << 24            ' MSB (bit7) to bit31
-    repeat 8                                    ' Output eight bits
-        dira[_SDA] := i2cbyte <-= 1             ' Send msb first
-        dira[_SCL] := 0                         ' float SCL to p/u
-        dira[_SCL] := 1                         ' SCL low
-
-    dira[_SDA] := 0                             ' float SDA
-    waitclockstretch{}
-    ackbit := ina[_SDA]
-    dira[_SCL] := 1                             ' SCL low
-    return ackbit
+    return wrblock_lsbf(@i2cbyte, 1)
 
 {
     --------------------------------------------------------------------------------------------------------
