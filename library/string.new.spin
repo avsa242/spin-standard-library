@@ -5,7 +5,7 @@
     Description: String processing and formatting
     Copyright (c) 2022
     Started May 29, 2022
-    Updated Jun 25, 2022
+    Updated Jun 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -683,29 +683,30 @@ PUB Strip(ptr_str): ptr_new
             other:
                 quit
 
-PUB StripChar(ptr_str, stripchr): matchcnt | chr, idx, sz, nextchr, lastchr, movecnt
+PUB StripChar(ptr_str, stripchr): newstr | chr, idx, sz, nextchr, lastchr, movecnt, mcnt
 ' Strip all occurrences of stripchr from string
 '   ptr_str: string to remove characters from
 '   stripchr: character to remove from string
-'   Returns: number of matches found/stripped, or 0
-    matchcnt := 0
+'   Returns: pointer to modified string
+    mcnt := 0
     longfill(@chr, 0, 6)
     sz := strsize(ptr_str)
     repeat idx from 0 to sz-1
         chr := ptr_str+idx                      ' current working char
         case byte[chr]
             stripchr:                           ' matches char to strip
-                matchcnt++                      ' count matches found
+                mcnt++                          ' count matches found
                 nextchr := chr+1                ' start pos of string to move
                 lastchr := sz-1                 ' offset of very last char
                 movecnt := (lastchr-idx)        ' = # bytes in string to move
                 { starting with the next character, move the remains left,
                    over the the matched stripchr }
                 bytemove(chr, nextchr, movecnt)
-                { clear out after the end of the newly modified string }
-                bytefill(ptr_str+sz-matchcnt, 0, matchcnt)
             other:                              ' some other char? skip it
                 next
+    { clear out after the end of the newly modified string }
+    bytefill(ptr_str+sz-mcnt, 0, mcnt)
+    return ptr_str
 
 PUB Tokenize(ptr_str): ptr_strtok
 ' Remove white space and new lines around the inside of string at ptr_str
