@@ -370,13 +370,12 @@ PUB ItoAb(num, ptr_str, base) | lowbit, sorg
     byte[ptr_str] := NUL                        ' trailing null
     reverse(sorg)
 
-PUB Left(ptr_dest, ptr_src, count): ptr_left
+PUB Left(ptr_str, count): ptr_new
 ' Copy left-most characters
-'   ptr_dest: destination string
-'   ptr_src: source string
+'   ptr_str: source string
 '   count: left-most number of chars from source to copy
-'   Returns: pointer to destination
-    return mid(ptr_dest, ptr_src, 0, count)
+'   Returns: pointer to substring
+    return mid(ptr_str, 0, count)
 
 PUB Match(ptr_str1, ptr_str2): ismatch
 ' Flag indicating strings match
@@ -385,16 +384,16 @@ PUB Match(ptr_str1, ptr_str2): ismatch
 '       TRUE (-1) if string match, FALSE (0) otherwise
     return (compare(ptr_str1, ptr_str2, true) == 0)
 
-PUB Mid(ptr_dest, ptr_src, start, count)
+PUB Mid(ptr_str, start, count): ptr_new
 ' Copy substring of characters
-'   ptr_dest: destination string
-'   ptr_src: source string
+'   ptr_str: source string
 '   start: offset within source string to start copying
 '   count: number of chars from ptr_src to copy
-'   Returns: pointer to destination
-    bytemove(ptr_dest, ptr_src + start, count)
-    byte[ptr_dest + count] := 0
-    return ptr_dest
+'   Returns: pointer to substring
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)        ' clear working buffer
+    bytemove(@_tmp_buff, (ptr_str + start), count)
+    _tmp_buff[count] := 0
+    return @_tmp_buff
 
 PUB Replace(ptr_str, ptr_substr, ptr_newsubstr): ptr_next | size
 ' Replace the first occurrence of a string
@@ -452,13 +451,12 @@ PUB Reverse(ptr_str) | c, k
         byte[ptr_str++] := byte[k]
         byte[k--] := c
 
-PUB Right(ptr_dest, ptr_src, count): ptr_right
+PUB Right(ptr_str, count): ptr_new
 ' Copy rightmost characters
-'   ptr_dest: destination string
-'   ptr_src: source string
+'   ptr_str: source string
 '   count: right-most number of chars from source to copy
-'   Returns: pointer to resulting string
-    return mid(ptr_dest, ptr_src, strsize(ptr_src) - count, count)
+'   Returns: pointer to substring
+    return mid(ptr_str, strsize(ptr_str) - count, count)
 
 PUB SPrintF(ptr_str, fmt, ptr_args): index | pad, len, maxlen, minlen, bi, leftj, strtype, sorg, arg
 ' Print string to buffer, with specified formatting
