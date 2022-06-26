@@ -69,15 +69,55 @@ PUB Rd_Byte(ackbit): i2cbyte
 ' Read byte from I2C bus
     rdblock_lsbf(@i2cbyte, 1, ackbit)
 
-PUB RdBlock_LSBF(ptr_buff, nr_bytes, ack_last) | bytenum
+PUB RdBlock_LSBF(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
 ' Read nr_bytes from I2C bus into ptr_buff, LSByte-first
-    repeat bytenum from 0 to nr_bytes-1
-        byte[ptr_buff][bytenum] := read(((bytenum == nr_bytes-1) & ack_last))
+'   ptr_buff: pointer to buffer to read data into
+'   nr_bytes: number of bytes to read from bus
+'   ackbit: what the acknowledge bit for the last byte should be (ACK or NAK)
+    tmp := 0
+    lastb := (nr_bytes-1)
+    { LSB-first byte loop }
+    repeat bnum from 0 to lastb
+        dira[_SDA] := 0
+        waitclockstretch{}
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last) | bytenum
+        { bit loop }
+        repeat 8
+            dira[_SCL] := 0                     ' SCL high
+            tmp := (tmp << 1) | ina[_SDA]       ' read the bit
+            dira[_SCL] := 1                     ' SCL low
+
+        { output ACK bit }
+        dira[_SDA] := !((bnum == lastb) & ackbit)
+        dira[_SCL] := 0
+        dira[_SCL] := 1
+
+        byte[ptr_buff][bnum] := tmp             ' copy to dest
+
+PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last) | tmp, lastb, bnum
 ' Read nr_bytes from I2C bus into ptr_buff, MSByte-first
-    repeat bytenum from nr_bytes-1 to 0
-        byte[ptr_buff][bytenum] := read(((bytenum == 0) & ack_last))
+'   ptr_buff: pointer to buffer to read data into
+'   nr_bytes: number of bytes to read from bus
+'   ackbit: what the acknowledge bit for the last byte should be (ACK or NAK)
+    tmp := 0
+    lastb := (nr_bytes-1)
+    { MSB-first byte loop }
+    repeat bnum from lastb to 0
+        dira[_SDA] := 0
+        waitclockstretch{}
+
+        { bit loop }
+        repeat 8
+            dira[_SCL] := 0                     ' SCL high
+            tmp := (tmp << 1) | ina[_SDA]       ' read the bit
+            dira[_SCL] := 1                     ' SCL low
+
+        { output ACK bit }
+        dira[_SDA] := !((bnum == 0) & ackbit)
+        dira[_SCL] := 0
+        dira[_SCL] := 1
+
+        byte[ptr_buff][bnum] := tmp             ' copy to dest
 
 PUB RdLong_LSBF(ackbit): i2c2long
 ' Read long from I2C bus, least-significant byte first
@@ -100,18 +140,7 @@ PUB Read(ackbit): i2cbyte
 '   Valid values (ackbit):
 '       NAK (1): Send NAK to slave device after reading
 '       ACK (0): Send ACK to slave device after reading
-    dira[_SDA] := 0                             ' Make SDA input
-    waitclockstretch{}
-
-    repeat 8
-        dira[_SCL] := 0                         ' SCL high (float to p/u)
-        i2cbyte := (i2cbyte << 1) | ina[_SDA]   ' Read the bit
-        dira[_SCL] := 1                         ' SCL low
-
-    dira[_SDA] := !ackbit                       ' Output ack bit
-    dira[_SCL] := 0                             ' Clock it
-    dira[_SCL] := 1
-    return (i2cbyte & $FF)
+    return (rdblock_lsbf(@i2cbyte, 1, ackbit) & $FF)
 
 PUB Reset{}
 ' Reset I2C bus
