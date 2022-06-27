@@ -3,8 +3,21 @@
     Filename: com.i2c.spin
     Author: Jesse Burt
     Description: PASM I2C Engine
+        @ 80MHz Fsys, native code:
+        100kHz:
+        Write speed: 91.964kHz actual (48% duty - 5.2uS H : 5.6uS L)
+        Read speed: 90.908kHz actual (47% duty - 5.2uS H : 5.7uS L)
+
+        400kHz:
+        Write speed: 312.422kHz actual (35% duty - 1.1uS H : 2.0 uS L)
+        Read speed: 277.699kHz actual (45% duty - 1.6uS H : 1.9 uS L)
+
+        1MHz:
+        Write speed: 554.923kHz actual (35% duty - 0.6uS H : 1.1 uS L)
+        Read speed: 454.483kHz actual (36% duty - 0.8uS H : 1.4 uS L)
+
     Started Mar 9, 2019
-    Updated May 23, 2022
+    Updated Jun 27, 2022
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -71,16 +84,6 @@ PUB DeInit
 
     longfill(@_i2c_cmd, 0, 4)
 
-PUB Present(slave_addr): status
-' Check for slave device presence on bus
-'   Returns:
-'       FALSE (0): Device not acknowledging or in error state
-'       TRUE (-1): Device acknowledges
-    _i2c_cmd := I2C_START
-    repeat while (_i2c_cmd <> 0)
-
-    return (wrblock_lsbf(@slave_addr, 1) == ACK)
-
 PUB RdBlock_LSBF(ptr_buff, nr_bytes, ack_last)
 ' Read nr_bytes from I2C bus to ptr_buff
 '   Least-significant byte first
@@ -115,32 +118,6 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last)
     _i2c_cmd := I2C_READ_BE | ack_last
     repeat while (_i2c_cmd <> 0)
 
-PUB Rd_Byte(ackbit): i2cbyte
-' Read byte from I2C bus
-    rdblock_lsbf(@i2cbyte, 1, ackbit)
-    return i2cbyte & $FF
-
-PUB RdLong_LSBF(ackbit): i2c2long
-' Read long from I2C bus, least-significant byte first
-    rdblock_lsbf(@i2c2long, 4, ackbit)
-
-PUB RdLong_MSBF(ackbit): i2c2long
-' Read long from I2C bus, least-significant byte first
-    rdblock_msbf(@i2c2long, 4, ackbit)
-
-PUB RdWord_LSBF(ackbit): i2c2word
-' Read word from I2C bus, least-significant byte first
-    rdblock_lsbf(@i2c2word, 2, ackbit)
-
-PUB RdWord_MSBF(ackbit): i2c2word
-' Read word from I2C bus, least-significant byte first
-    rdblock_msbf(@i2c2word, 2, ackbit)
-
-PUB Read(ackbit): i2cbyte
-' Read byte from I2C bus
-    rdblock_lsbf(@_i2c_result, 1, ackbit)
-    return _i2c_result & $FF
-
 PUB Start
 ' Create I2C start/restart condition (S, Sr)
 '   NOTE: This method supports clock stretching;
@@ -155,32 +132,6 @@ PUB Stop
     _i2c_cmd := I2C_STOP
     repeat while (_i2c_cmd <> 0)
 
-PUB Wait(slave_addr)
-' Waits for I2C device to be ready for new command
-'   NOTE: This method will wait indefinitely,
-'   if the device doesn't respond
-    repeat
-        if (present(slave_addr))
-            quit
-
-    return ACK
-
-PUB Waitx(slaveid, ms): ackbit | tmp
-' Wait ms milliseconds for I2C device to be ready for new command
-'   Returns:
-'       ACK(0): device responded within specified time
-'       NAK(1): device didn't respond
-    ms *= clkfreq / 1000                        ' ms in Propeller system clocks
-
-    tmp := cnt                                  ' timestamp before wait loop
-    repeat
-        if (present(slaveid))                   ' if the device responds,
-            quit                                '   exit immediately
-        if ((cnt - tmp) => ms)                  ' if time limit elapses,
-            return NAK                          '   exit and return No-ACK
-
-    return ACK
-
 PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit
 ' Write block of nr_bytes bytes from ptr_buff to I2C bus,
 '   Least-Significant byte first
@@ -190,7 +141,7 @@ PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit
     _i2c_cmd := I2C_WRITE_LE
     repeat while (_i2c_cmd <> 0)
 
-    return _i2c_result                            ' Return ACK or NAK
+    return _i2c_result                          ' Return ACK or NAK
 
 PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit
 ' Write block of nr_bytes bytes from ptr_buff to I2C bus,
@@ -201,31 +152,9 @@ PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit
     _i2c_cmd := I2C_WRITE_BE
     repeat while (_i2c_cmd <> 0)
 
-    return _i2c_result                            ' Return ACK or NAK
+    return _i2c_result                          ' Return ACK or NAK
 
-PUB Wr_Byte(byte2i2c): ackbit
-' Write byte to I2C bus
-    return wrblock_lsbf(@byte2i2c, 1)
-
-PUB WrLong_LSBF(long2i2c): ackbit
-' Write long to I2C bus, least-significant byte first
-    return wrblock_lsbf(@long2i2c, 4)
-
-PUB WrLong_MSBF(long2i2c): ackbit
-' Write long to I2C bus, most-significant byte first
-    return wrblock_msbf(@long2i2c, 4)
-
-PUB WrWord_LSBF(word2i2c): ackbit
-' Write word to I2C bus, least-significant byte first
-    return wrblock_lsbf(@word2i2c, 2)
-
-PUB WrWord_MSBF(word2i2c): ackbit
-' Write word to I2C bus, most-significant byte first
-    return wrblock_msbf(@word2i2c, 2)
-
-PUB Write(b): ackbit
-' Write byte to I2C bus
-    return wrblock_lsbf(@b, 1)
+#include "com.i2c-common.spinh"                 ' R/W methods common to all I2C engines
 
 DAT
 
@@ -527,22 +456,24 @@ tbits                   res     1
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
