@@ -3,8 +3,11 @@
     Filename: com.i2c.nocog.spin
     Author: Jesse Burt
     Description: SPIN I2C Engine
+        @ 80MHz Fsys, interpreted:
+        Write speed: 27.472kHz (19% duty - 7.2H:29.2L uS)
+        Read speed: 29.411kHz (69% duty - 23.6H:10.4L uS)
     Started Jun 9, 2019
-    Updated Jun 26, 2022
+    Updated Jun 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -203,6 +206,14 @@ PUB Wr_Byte(b): ackbit
 ' Write byte to I2C bus
     return wrblock_lsbf(@b, 1)
 
+PUB Wr_ByteX(b, nr_bytes): ackbit
+' Repeatedly write byte to bus
+'   b: byte to write
+'   nr_bytes: number of bytes to write
+'   Returns: ACK/NAK bit from device
+    repeat nr_bytes
+        ackbit := wrblock_lsbf(@b, 1)
+
 PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit | bnum, lastb, tmp
 ' Write nr_bytes to I2C bus from ptr_buff, LSByte-first
 '   ptr_buff: pointer to buffer of data to write to bus
@@ -227,7 +238,7 @@ PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit | bnum, lastb, tmp
         dira[_SCL] := 1                         ' SCL low
     return ackbit
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit | bytenum
+PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit | tmp, lastb, bnum
 ' Write nr_bytes to I2C bus from ptr_buff, MSByte-first
     tmp := 0
     lastb := (nr_bytes-1)
@@ -256,6 +267,22 @@ PUB WrLong_MSBF(long2i2c): ackbit
 ' Write long to I2C bus, most-significant byte first
     return wrblock_msbf(@long2i2c, 4)
 
+PUB WrLongX_LSBF(l, nr_longs): ackbit
+' Repeatedly write LSB-first long to bus
+'   l: long to write
+'   nr_longs: number of longs to write
+'   Returns: ACK/NAK bit from device
+    repeat nr_longs
+        ackbit := wrblock_lsbf(@l, 4)
+
+PUB WrLongX_MSBF(l, nr_longs): ackbit
+' Repeatedly write MSB-first long to bus
+'   l: long to write
+'   nr_longs: number of longs to write
+'   Returns: ACK/NAK bit from device
+    repeat nr_longs
+        ackbit := wrblock_msbf(@l, 4)
+
 PUB WrWord_LSBF(word2i2c): ackbit
 ' Write word to I2C bus, least-significant byte first
     return wrblock_lsbf(@word2i2c, 2)
@@ -263,6 +290,22 @@ PUB WrWord_LSBF(word2i2c): ackbit
 PUB WrWord_MSBF(word2i2c): ackbit
 ' Write word to I2C bus, most-significant byte first
     return wrblock_msbf(@word2i2c, 2)
+
+PUB WrWordX_LSBF(w, nr_words): ackbit
+' Repeatedly write LSB-first word to bus
+'   w: word to write
+'   nr_words: number of words to write
+'   Returns: ACK/NAK bit from device
+    repeat nr_words
+        ackbit := wrblock_lsbf(@w, 2)
+
+PUB WrWordX_MSBF(w, nr_words): ackbit
+' Repeatedly write MSB-first word to bus
+'   w: word to write
+'   nr_words: number of words to write
+'   Returns: ACK/NAK bit from device
+    repeat nr_words
+        ackbit := wrblock_msbf(@w, 2)
 
 PUB Write(i2cbyte): ackbit
 ' Write byte to I2C bus
