@@ -3,9 +3,15 @@
     Filename: com.spi.fast.spin
     Author: Timothy D. Swieter
     Modified by: Jesse Burt
-    Description: Fast PASM SPI driver (20MHz W, 10MHz R)
+    Description: Fast PASM SPI engine (20MHz W, 10MHz R)
+        @80MHz Fsys:
+            Write speed: 20MHz, exact timings vary:
+                19.23MHz actual (53% duty - 0.028uS H : 0.024uS L) 52ns
+                20.83MHz actual (50% duty - 0.024uS H : 0.024uS L) 48ns
+            Read speed: 10MHz:
+                9.99MHz actual (52% duty - 0.052uS H : 0.048uS L) 100ns
     Started Oct 13, 2012
-    Updated Oct 5, 2021
+    Updated Jun 28, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -27,7 +33,6 @@ CON
 VAR
 
     long _cog, _dsel_after
-    long _cpol, _spi_mode
 
 OBJ
 
@@ -92,51 +97,15 @@ PUB DeselectAfter(state)
 '   NOTE: Transitional method for temporary compatibility with interface to PASM engine
     _dsel_after := (state <> 0)
 
-PUB Mode(mode_nr): curr_mode
-' Set SPI mode
-'   Valid values: 0..3  XXX CURRENTLY ONLY MODE 0 SUPPORTED
-'   Any other value returns the current setting
-    case mode_nr
-        0, 1:
-            _cpol := 0
-        2, 3:
-            _cpol := 1
-        other:
-            return _spi_mode
-
-    _spi_mode := mode_nr
-
 PUB RdBlock_LSBF(ptr_buff, nr_bytes)
 ' Read nr_bytes from slave device into ptr_buff
     _command := CMD_READ + @ptr_buff
-
     repeat while _command
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes)    'XXX not yet functional
+PUB RdBlock_MSBF(ptr_buff, nr_bytes) | i
 ' Read nr_bytes from slave device into ptr_buff
-    _command := CMD_READ + @ptr_buff
-
-    repeat while _command
-
-PUB Rd_Byte{}: spi2byte
-' Read byte from SPI bus
-    rdblock_lsbf(@spi2byte, 1)
-
-PUB RdLong_LSBF{}: spi2long
-' Read long from SPI bus, least-significant byte first
-    rdblock_lsbf(@spi2long, 4)
-
-PUB RdLong_MSBF{}: spi2long 'XXX non-functional, for now
-' Read long from SPI bus, least-significant byte first
-    rdblock_msbf(@spi2long, 4)
-
-PUB RdWord_LSBF{}: spi2word
-' Read word from SPI bus, least-significant byte first
-    rdblock_lsbf(@spi2word, 2)
-
-PUB RdWord_MSBF{}: spi2word 'XXX non-functional, for now
-' Read word from SPI bus, least-significant byte first
-    rdblock_msbf(@spi2word, 2)
+    repeat i from nr_bytes-1 to 0
+        rdblock_lsbf(ptr_buff+i, 1)
 
 PUB WrBlock_LSBF(ptr_buff, nr_bytes) | dsel_after
 ' Write nr_bytes from ptr_buff into slave device
@@ -148,45 +117,28 @@ PUB WrBlock_LSBF(ptr_buff, nr_bytes) | dsel_after
 '       nr_bytes: Number of bytes to write
     dsel_after := ||(_dsel_after)
     _command := CMD_WRITE + @ptr_buff
-
     repeat while _command
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
+PUB WrBlock_MSBF(ptr_buff, nr_bytes) | i
 ' Write block of data to SPI bus from ptr_buff, most-significant byte first
-    tmp := _dsel_after
-    _command := CMD_WRITE + @ptr_buff
+    repeat i from nr_bytes-1 to 0
+        wrblock_lsbf(ptr_buff+i, 1)
 
-    repeat while _command
-
-PUB Wr_Byte(byte2spi)
-' Write byte to SPI bus
-    wrblock_lsbf(@byte2spi, 1)
-
-PUB WrByteX(byte2spi, nr_bytes)
+#define HAS_WR_BYTEX
+' Normally the common code #included provides this, but this engine has native support
+PUB Wr_ByteX(byte2spi, nr_bytes)
 ' Write byte2spi repeatedly to SPI bus, nr_bytes times
     _command := CMD_WR8_X + @byte2spi
     repeat while _command
 
-PUB WrLong_LSBF(long2spi)
-' Write long to SPI bus, least-significant byte first
-    wrblock_lsbf(@long2spi, 4)
-
-PUB WrLong_MSBF(long2spi)   'XXX non-functional, for now
-' Write long to SPI bus, most-significant byte first
-    wrblock_msbf(@long2spi, 4)
-
-PUB WrWord_LSBF(word2spi)
-' Write word to SPI bus, least-significant byte first
-    wrblock_lsbf(@word2spi, 2)
-
+#define HAS_WRWORDX_MSBF
+' Normally the common code #included provides this, but this engine has native support
 PUB WrWordX_MSBF(word2spi, nr_words)
 ' Repeatedly write word2spi to SPI bus, nr_words times
     _command := CMD_WR16_X_MSBF + @word2spi
     repeat while _command
 
-PUB WrWord_MSBF(word2spi)   'XXX non-functional, for now
-' Write word to SPI bus, most-significant byte first
-    wrblock_msbf(@word2spi, 2)
+#include "com.spi-common.spinh"                 ' R/W methods common to all SPI engines
 
 DAT
                 org

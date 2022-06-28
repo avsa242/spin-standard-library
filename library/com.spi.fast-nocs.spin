@@ -2,7 +2,7 @@
     --------------------------------------------
     Filename: com.spi.fast-nocs.spin
     Author: Jesse Burt
-    Description: Fast PASM SPI driver (20MHz W, 10MHz R)
+    Description: Fast PASM SPI engine (20MHz W, 10MHz R)
         (_no builtin-Chip Select support_)
         @80MHz Fsys:
             Write speed: 20MHz, exact timings vary:

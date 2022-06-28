@@ -2,7 +2,7 @@
     --------------------------------------------
     Filename: com.spi.bitbang.spin
     Author: Jesse Burt
-    Description: PASM SPI driver (~4MHz)
+    Description: PASM SPI engine (~4MHz)
         @80MHz Fsys:
             Write speed: 4.16MHz actual - exact timings vary:
                 (16% duty - 0.04uS H : 0.2uS L) 240ns
