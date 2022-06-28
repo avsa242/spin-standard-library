@@ -3,8 +3,15 @@
     Filename: com.spi.4w.spin
     Author: Jesse Burt
     Description: 1MHz SPI engine (PASM core)
+        @80MHz Fsys:
+            Write speed: 1MHz actual (40% duty - 0.4uS H : 0.6uS L)
+            Read speed: 1.052MHz actual (31% duty - 0.3uS H : 0.65 L)
+        Inter-byte times:
+            WrBlock(), Wr_Word(), Wr_Long(): 61uS
+            Wr_ByteX(): 88uS
+            Read: 72uS
     Started 2009
-    Updated Oct 6, 2021
+    Updated Jun 28, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -14,7 +21,7 @@
 
 VAR
 
-    long _SCK, _MOSI, _MISO, _spi_mode, _cpol
+    long _SCK, _MOSI, _MISO
     long _cog, _command
 
 PUB Null{}
@@ -58,21 +65,6 @@ PUB DeInit{}
     dira[_MOSI] := 0
     dira[_MISO] := 0
 
-PUB Mode(mode_nr): curr_mode
-' Set SPI mode
-'   Valid values: 0..3
-'   Any other value returns the current setting
-    case mode_nr
-        0, 1:
-            _cpol := 0
-        2, 3:
-            _cpol := 1
-        other:
-            return _spi_mode
-
-    _spi_mode := mode_nr
-    clkstate := _cpol
-
 PUB RdBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Read block of data from SPI bus, least-significant byte first
     longmove(@SCK, @_SCK, 3)
@@ -95,26 +87,6 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
             repeat b_num from nr_bytes-1 to 0
                 byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
 
-PUB Rd_Byte{}: spi2byte
-' Read byte from SPI bus
-    rdblock_lsbf(@spi2byte, 1)
-
-PUB RdLong_LSBF{}: spi2long
-' Read long from SPI bus, least-significant byte first
-    rdblock_lsbf(@spi2long, 4)
-
-PUB RdLong_MSBF{}: spi2long
-' Read long from SPI bus, least-significant byte first
-    rdblock_msbf(@spi2long, 4)
-
-PUB RdWord_LSBF{}: spi2word
-' Read word from SPI bus, least-significant byte first
-    rdblock_lsbf(@spi2word, 2)
-
-PUB RdWord_MSBF{}: spi2word
-' Read word from SPI bus, least-significant byte first
-    rdblock_msbf(@spi2word, 2)
-
 PUB WrBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Write block of data to SPI bus from ptr_buff, least-significant byte first
     longmove(@SCK, @_SCK, 3)
@@ -126,26 +98,6 @@ PUB WrBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
     longmove(@SCK, @_SCK, 3)
     repeat b_num from nr_bytes-1 to 0
         shiftout(MOSI, SCK, MSBFIRST, 8, byte[ptr_buff][b_num])
-
-PUB Wr_Byte(byte2spi)
-' Write byte to SPI bus
-    wrblock_lsbf(@byte2spi, 1)
-
-PUB WrLong_LSBF(long2spi)
-' Write long to SPI bus, least-significant byte first
-    wrblock_lsbf(@long2spi, 4)
-
-PUB WrLong_MSBF(long2spi)
-' Write long to SPI bus, most-significant byte first
-    wrblock_msbf(@long2spi, 4)
-
-PUB WrWord_LSBF(word2spi)
-' Write word to SPI bus, least-significant byte first
-    wrblock_lsbf(@word2spi, 2)
-
-PUB WrWord_MSBF(word2spi)
-' Write word to SPI bus, most-significant byte first
-    wrblock_msbf(@word2spi, 2)
 
 PRI setCommand(cmd, argptr)
     _command := cmd << 16 + argptr              ' write cmd and pointer
@@ -190,6 +142,8 @@ PUB SHIFTIN(Dpin, Cpin, rdmode, Bits) | Value, Flag
     repeat until Flag == 0                      ' Wait for Flag to clear ... data is ready
 
     Result := Value
+
+#include "com.spi-common.spinh"                 ' R/W methods common to all SPI engines
 
 DAT
                 org
