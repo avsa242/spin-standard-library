@@ -53,12 +53,14 @@ PUB Wr_Byte(byte2spi)
 ' Write byte to SPI bus
     wrblock_lsbf(@byte2spi, 1)
 
+#ifndef HAS_WR_BYTEX
 PUB Wr_ByteX(b, nr_bytes)
 ' Repeatedly write byte to bus
 '   b: byte to write
 '   nr_bytes: number of bytes to write
     repeat nr_bytes
         wrblock_lsbf(@b, 1)
+#endif
 
 PUB WrLong_LSBF(long2spi)
 ' Write long to SPI bus, least-significant byte first
@@ -90,19 +92,23 @@ PUB WrWord_MSBF(word2spi)
 ' Write word to SPI bus, most-significant byte first
     wrblock_msbf(@word2spi, 2)
 
+#ifndef HAS_WRWORDX_LSBF
 PUB WrWordX_LSBF(w, nr_words)
 ' Repeatedly write LSB-first word to bus
 '   w: word to write
 '   nr_words: number of words to write
     repeat nr_words
         wrblock_lsbf(@w, 2)
+#endif
 
+#ifndef HAS_WRWORDX_MSBF
 PUB WrWordX_MSBF(w, nr_words)
 ' Repeatedly write MSB-first word to bus
 '   w: word to write
 '   nr_words: number of words to write
     repeat nr_words
         wrblock_msbf(@w, 2)
+#endif
 
 {
 TERMS OF USE: MIT License
