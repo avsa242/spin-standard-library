@@ -1,16 +1,20 @@
 {
     --------------------------------------------
     Filename: com.spi.bitbang.spin
-    Author: Mark Tillotson
-    Modified by: Jesse Burt
+    Author: Jesse Burt
     Description: PASM SPI driver (~4MHz)
+        @80MHz Fsys:
+            Write speed: 4.16MHz actual - exact timings vary:
+                (16% duty - 0.04uS H : 0.2uS L) 240ns
+                (23% duty - 0.06uS H : 0.2uS L) 260ns
+            Read speed: 4.16MHz actual (41% duty - 0.1uS H : 0.14uS L) 240
     Started Jul 19, 2011
     Updated Oct 16, 2021
     See end of file for terms of use.
     --------------------------------------------
 
-    NOTE: This is based on nRF24L01P.spin,
-        originally by Mark Tillotson
+    NOTE: This is based on excerpts of nRF24L01P.spin,
+        originally by Mark Tillotson.
 }
 
 CON
@@ -23,7 +27,7 @@ CON
 
 VAR
 
-    long _spi_mode, _cpol, _des_after
+    long _des_after
     long _command
     byte _cog
 
@@ -71,20 +75,6 @@ PUB DeselectAfter(state)
 '   NOTE: Transitional method for temporary compatibility with interface to PASM engine
     _des_after := (state <> 0)
 
-PUB Mode(mode_nr): curr_mode    ' XXX non-functional, for now
-' Set SPI mode
-'   Valid values: 0..3
-'   Any other value returns the current setting
-    case mode_nr
-        0, 1:
-            _cpol := 0
-        2, 3:
-            _cpol := 1
-        other:
-            return _spi_mode
-
-    _spi_mode := mode_nr
-
 PUB RdBlock_LSBF(ptr_buff, nr_bytes) | tmp
 ' Read block of data from SPI bus, least-significant byte first
     tmp := _des_after
@@ -93,63 +83,19 @@ PUB RdBlock_LSBF(ptr_buff, nr_bytes) | tmp
 
 PUB RdBlock_MSBF(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
 ' Read block of data from SPI bus, most-significant byte first
-    tmp := _des_after
-    _command := CMD_READ + @ptr_buff
-    repeat while _command
-
-PUB Rd_Byte{}: spi2byte
-' Read byte from SPI bus
-    rdblock_lsbf(@spi2byte, 1)
-
-PUB RdLong_LSBF{}: spi2long
-' Read long from SPI bus, least-significant byte first
-    rdblock_lsbf(@spi2long, 4)
-
-PUB RdLong_MSBF{}: spi2long 'XXX non-functional, for now
-' Read long from SPI bus, least-significant byte first
-    rdblock_msbf(@spi2long, 4)
-
-PUB RdWord_LSBF{}: spi2word
-' Read word from SPI bus, least-significant byte first
-    rdblock_lsbf(@spi2word, 2)
-
-PUB RdWord_MSBF{}: spi2word 'XXX non-functional, for now
-' Read word from SPI bus, least-significant byte first
-    rdblock_msbf(@spi2word, 2)
+    repeat tmp from nr_bytes-1 to 0
+        rdblock_lsbf(ptr_buff+tmp, 1)
 
 PUB WrBlock_LSBF(ptr_buff, nr_bytes) | dsel_after
 ' Write block of data to SPI bus from ptr_buff, least-significant byte first
     dsel_after := ||(_des_after)
     _command := CMD_WRITE + @ptr_buff
-
     repeat while _command
 
 PUB WrBlock_MSBF(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
 ' Write block of data to SPI bus from ptr_buff, most-significant byte first
-    tmp := _des_after
-    _command := CMD_WRITE + @ptr_buff
-
-    repeat while _command
-
-PUB Wr_Byte(byte2spi)
-' Write byte to SPI bus
-    wrblock_lsbf(@byte2spi, 1)
-
-PUB WrLong_LSBF(long2spi)
-' Write long to SPI bus, least-significant byte first
-    wrblock_lsbf(@long2spi, 4)
-
-PUB WrLong_MSBF(long2spi)   'XXX non-functional, for now
-' Write long to SPI bus, most-significant byte first
-    wrblock_msbf(@long2spi, 4)
-
-PUB WrWord_LSBF(word2spi)
-' Write word to SPI bus, least-significant byte first
-    wrblock_lsbf(@word2spi, 2)
-
-PUB WrWord_MSBF(word2spi)   'XXX non-functional, for now
-' Write word to SPI bus, most-significant byte first
-    wrblock_msbf(@word2spi, 2)
+    repeat tmp from nr_bytes-1 to 0
+        wrblock_lsbf(ptr_buff+tmp, 1)
 
 PUB XDeselect
 ' Explicitly deselect/raise CS
@@ -158,6 +104,8 @@ PUB XDeselect
 '       based on the result of a Read()
     _command := CMD_DESELECT
     repeat while _command
+
+#include "com.spi-common.spinh"                 ' R/W methods common to all SPI engines
 
 DAT
 

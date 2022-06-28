@@ -1,7 +1,7 @@
 {
     --------------------------------------------
     Filename: com.spi.bitbang-nocs.spin
-    Modified by: Jesse Burt
+    Author: Jesse Burt
     Description: PASM SPI engine (~4MHz)
         (no chip-select handling)
         @80MHz Fsys:
