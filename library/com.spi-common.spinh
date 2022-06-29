@@ -27,7 +27,6 @@ PUB Mode(mode_nr): curr_mode
             return _spi_mode
 
     _spi_mode := mode_nr
-    clkstate := _cpol
 
 PUB Rd_Byte{}: spi2byte
 ' Read byte from SPI bus

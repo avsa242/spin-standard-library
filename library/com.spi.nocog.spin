@@ -3,46 +3,20 @@
     Filename: com.spi.nocog.spin
     Author: Jesse Burt
     Description: SPI engine (SPIN-based)
-        (based on SPI_Spin.spin, originally by
-        Beau Schwabe)
+        @80MHz Fsys:
+            Write speed: 25.641kHz actual (25% duty - 10uS H : 29uS L)
+            Read speed: 26.315kHz actual (26% duty - 10uS H : 28uS L)
     Started 2009
-    Updated May 25, 2022
+    Updated Jun 29, 2022
     See end of file for terms of use.
     --------------------------------------------
+
+    NOTE: This is based on SPI_Spin.spin,
+        originally by Beau Schwabe
 }
-{{
-************************************************
-* Propeller SPI Engine  ... Spin Version  v1.0 *
-* Author: Beau Schwabe                         *
-* Copyright (c) 2009 Parallax                  *
-* See end of file for terms of use.            *
-************************************************
-
-Revision History:
-         V1.0   - original program
-
-}}
-CON
-
-    #0, MSBPRE, LSBPRE, MSBPOST, LSBPOST                ' Used for ShiftIn{}
-'       =0      =1      =2       =3
-'
-' MSBPRE   - Most Significant Bit first ; data is valid before the clock
-' LSBPRE   - Least Significant Bit first ; data is valid before the clock
-' MSBPOST  - Most Significant Bit first ; data is valid after the clock
-' LSBPOST  - Least Significant Bit first ; data is valid after the clock
-
-
-    #4, LSBFIRST, MSBFIRST                              ' Used for ShiftOut{}
-'       =4        =5
-'
-' LSBFIRST - Least Significant Bit first ; data is valid after the clock
-' MSBFIRST - Most Significant Bit first ; data is valid after the clock
-
-
 VAR
 
-    long _SCK, _MOSI, _MISO, _spi_mode, _cpol
+    long _SCK, _MOSI, _MISO
     long _sck_delay
 
 PUB Null{}
@@ -73,6 +47,7 @@ PUB Init(SCK, MOSI, MISO, SPI_MODE): status
 
     mode(SPI_MODE)
 
+    outa[SCK] := _cpol
     dira[SCK] := 1
     outa[MOSI] := 0
     dira[MOSI] := 1
@@ -89,21 +64,6 @@ PUB DeInit
     dira[_MOSI] := 0
     dira[_MISO] := 0
     longfill(@_SCK, 0, 6)
-
-PUB Mode(mode_nr): curr_mode
-' Set SPI mode
-'   Valid values: 0..3 (default: 0)
-'   Any other value returns the current setting
-    case mode_nr
-        0, 1:
-            _cpol := 0
-        2, 3:
-            _cpol := 1
-        other:
-            return _spi_mode
-
-    _spi_mode := mode_nr
-    outa[_SCK] := _cpol
 
 PUB RdBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Read block of data from SPI bus, least-significant byte first
@@ -147,26 +107,6 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
                     !outa[SCK]
                 byte[ptr_buff][b_num] := tmp    ' copy working byte
 
-PUB Rd_Byte{}: spi2byte
-' Read byte from SPI bus
-    rdblock_lsbf(@spi2byte, 1)
-
-PUB RdLong_LSBF{}: spi2long
-' Read long from SPI bus, least-significant byte first
-    rdblock_lsbf(@spi2long, 4)
-
-PUB RdLong_MSBF{}: spi2long
-' Read long from SPI bus, least-significant byte first
-    rdblock_msbf(@spi2long, 4)
-
-PUB RdWord_LSBF{}: spi2word
-' Read word from SPI bus, least-significant byte first
-    rdblock_lsbf(@spi2word, 2)
-
-PUB RdWord_MSBF{}: spi2word
-' Read word from SPI bus, least-significant byte first
-    rdblock_msbf(@spi2word, 2)
-
 PUB WrBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Write block of data to SPI bus from ptr_buff, least-significant byte first
     longmove(@SCK, @_SCK, 4)                ' copy pins from hub
@@ -208,97 +148,7 @@ PUB WrBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
                     !outa[SCK]
                     outa[MOSI] := (tmp <-= 1) & 1   ' next bit into pos and isolate it
 
-PUB Wr_Byte(byte2spi)
-' Write byte to SPI bus
-    wrblock_lsbf(@byte2spi, 1)
-
-PUB WrLong_LSBF(long2spi)
-' Write long to SPI bus, least-significant byte first
-    wrblock_lsbf(@long2spi, 4)
-
-PUB WrLong_MSBF(long2spi)
-' Write long to SPI bus, most-significant byte first
-    wrblock_msbf(@long2spi, 4)
-
-PUB WrWord_LSBF(word2spi)
-' Write word to SPI bus, least-significant byte first
-    wrblock_lsbf(@word2spi, 2)
-
-PUB WrWord_MSBF(word2spi)
-' Write word to SPI bus, most-significant byte first
-    wrblock_msbf(@word2spi, 2)
-
-'-- Legacy methods below
-
-PUB Start(SCK_DELAY, CPOL)
-
-    _cpol := CPOL
-    _sck_delay := ((clkfreq / 100000 * SCK_DELAY) - 4296) #> 381
-
-PUB ShiftOut(mosi, sck, bitorder, nr_bits, val)
-
-    dira[mosi] := 1                                     ' make data pin output
-    outa[sck] := _cpol                                  ' initial clock state
-    dira[sck] := 1                                      ' make clock pin output
-
-    if bitorder == LSBFIRST
-        val <-= 1                                       ' pre-align lsb
-        repeat nr_bits
-            outa[mosi] := (val ->= 1) & 1               ' output data bit
-            postclock(sck)
-
-    if bitorder == MSBFIRST
-        val <<= (32 - nr_bits)                          ' pre-align msb
-        repeat nr_bits
-            outa[mosi] := (val <-= 1) & 1               ' output data bit
-            postclock(sck)
-
-PUB ShiftIn(miso, sck, bitorder, nr_bits): val
-
-    dira[miso] := 0                                     ' make dpin input
-    outa[sck] := _cpol                                  ' initial clock state
-    dira[sck] := 1                                      ' make cpin output
-
-    val := 0                                            ' clear output
-
-    if bitorder == MSBPRE
-        repeat nr_bits
-            val := (val << 1) | ina[miso]
-            postclock(sck)
-
-    if bitorder == LSBPRE
-        repeat (nr_bits + 1)
-            val := (val >> 1) | (ina[miso] << 31)
-            postclock(sck)
-        val >>= (32 - nr_bits)
-
-    if bitorder == MSBPOST
-        repeat nr_bits
-            preclock(sck)
-            val := (val << 1) | ina[miso]
-
-    if bitorder == LSBPOST
-        repeat (nr_bits + 1)
-            preclock(sck)
-            val := (val >> 1) | (ina[miso] << 31)
-        val >>= (32 - nr_bits)
-
-    return val
-
-PRI PostClock(sck)
-
-    waitcnt(cnt+_sck_delay)
-    !outa[sck]
-    waitcnt(cnt+_sck_delay)
-    !outa[sck]
-
-PRI PreClock(sck)
-
-    !outa[sck]
-    waitcnt(cnt+_sck_delay)
-    !outa[sck]
-    waitcnt(cnt+_sck_delay)
-
+#include "com.spi-common.spinh"                 ' R/W methods common to all SPI engines
 
 DAT
 {
