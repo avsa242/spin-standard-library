@@ -6,7 +6,7 @@
         standard terminal routines
     Copyright (c) 2022
     Started Dec 14, 2019
-    Updated Jun 25, 2022
+    Updated Jun 30, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is a derivative of std_text_routines.spinh, by Eric Smith.
@@ -146,6 +146,13 @@ PUB StrLn(s)
 ' Output a string, with a newline appended
     str(s)
     newline{}
+
+PUB Wr_ByteX(b, bcnt)
+' Repeatedly write byte to terminal
+'   b: byte to write
+'   bcnt: number of bytes to write
+    repeat bcnt
+        char(b)
 
 DAT
 {
