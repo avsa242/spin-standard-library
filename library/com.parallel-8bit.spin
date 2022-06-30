@@ -3,9 +3,9 @@
     Filename: com.parallel-8bit.spin
     Author: Jesse Burt
     Description: 8-bit parallel I/O engine for LCDs
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Oct 13, 2021
-    Updated Oct 16, 2021
+    Updated Jun 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,7 +17,8 @@ CON
     DATA        = 2
     BLKDAT      = 3
     BLKWDMSBF   = 4
-    REPDAT      = 5
+    BYTEX       = 5
+    WORDX       = 6
 
 VAR
 
@@ -36,7 +37,7 @@ PUB Init(D_BASEPIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN): status
 '   WR_PIN: WR / WRX (write clock)
 '   RD_PIN: RD / RDX (read clock)
     deinit{}                                    ' stop engine, if started
-    _DATA := $FF << D_BASEPIN                   ' 8 pins starting at D_BASEPIN
+    _DATA := D_BASEPIN                          ' 8 pins starting at D_BASEPIN
     _CS := |< CS_PIN                            ' create masks for control pins
     _DC := |< DC_PIN
     _WR := |< WR_PIN
@@ -85,7 +86,7 @@ PUB WrBlkWord_MSBF(ptr_buff, nr_words)
 PUB WrWordX_DAT(dw, nr_words)
 ' Repeatedly write word dw, nr_words times
     longmove(@_ptr_buff, @dw, 2)
-    _io_cmd := REPDAT
+    _io_cmd := WORDX
     repeat until (_io_cmd == IDLE)
 
 DAT
@@ -103,9 +104,11 @@ initio
             add     ptrbuff, #4
             mov     ptr_xcnt, iolink            ' get ptr to spin nr_bytes
             add     ptr_xcnt, #8
-            mov     tmp0, iolink                ' get D7..0 pins mask
+            mov     tmp0, iolink
             add     tmp0, #12
-            rdlong  DATMASK, tmp0
+            rdlong  DBASE, tmp0                 ' get data basepin and
+            mov     DATMASK, #$FF               '   create mask
+            shl     DATMASK, DBASE
             add     tmp0, #4
             rdlong  CS, tmp0
             add     tmp0, #4
@@ -139,7 +142,9 @@ cmdloop
     if_e    jmp     #wrblk_data
             cmp     tmp0, #BLKWDMSBF wz
     if_e    jmp     #wrblkwd_msbf
-            cmp     tmp0, #REPDAT   wz
+            cmp     tmp0, #BYTEX   wz
+    if_e    jmp     #wrwordx_data
+            cmp     tmp0, #WORDX   wz
     if_e    jmp     #wrwordx_data
 
 
@@ -153,6 +158,7 @@ wr_cmd
 ' Write command
             andn    outa, DC                    ' DC low: command
             rdbyte  cmdbyte, ptrbuff            ' get cmd from hub
+            shl     cmdbyte, DBASE
             andn    outa, DATMASK               ' D7..0 low
             or      outa, cmdbyte               ' write cmd to D7..D0
             or      outa, WRC                   ' clock out byte
@@ -164,13 +170,12 @@ wr_dat
 ' Write byte of data
             or      outa, DC                    ' DC high: data
             rdbyte  dbyte, ptrbuff              ' get data from hub
+            shl     dbyte, DBASE
             andn    outa, DATMASK               ' D7..0 low
             or      outa, dbyte                 ' write data to D7..D0
             or      outa, WRC                   ' clock out byte
             andn    outa, WRC
             jmp     #cmdexit                    ' return
-
-
 wrblk_data
 ' Write block of bytes
             or      outa, DC                    ' DC high: data
@@ -178,6 +183,7 @@ wrblk_data
             rdlong  xcnt, ptr_xcnt              '   and number of bytes
 :dbyteloop
             rdbyte  dbyte, ptr_data             ' get next byte of data
+            shl     dbyte, DBASE
             andn    outa, DATMASK               ' D7..0 low
             or      outa, dbyte                 ' write byte to D7..0
             or      outa, WRC                   ' clock out byte
@@ -185,6 +191,7 @@ wrblk_data
             add     ptr_data, #1                ' advance ptr to next byte
             djnz    xcnt, #:dbyteloop           ' loop if more bytes
             jmp     #cmdexit                    ' return
+
 
 wrblkwd_msbf
 ' Write block of words, MSByte-first
@@ -194,21 +201,38 @@ wrblkwd_msbf
 
 :dwordloop
             rdword  dword, ptr_data             ' get next word of data
-            mov     hbyte, dword
-            shr     hbyte, #8
-            mov     lbyte, dword
-            and     lbyte, #$FF
+            mov     byte1, dword
+            shr     byte1, #8
+            shl     byte1, DBASE
+            mov     byte0, dword
+            and     byte0, #$FF
+            shl     byte0, DBASE
 
             andn    outa, DATMASK               ' D7..0 low
-            or      outa, hbyte                 ' write MSB
+            or      outa, byte1                 ' write MSB
             or      outa, WRC                   ' clock it out
             andn    outa, WRC
             andn    outa, DATMASK               ' D7..0 low
-            or      outa, lbyte                 ' write LSB
+            or      outa, byte0                 ' write LSB
             or      outa, WRC                   ' clock it out
             andn    outa, WRC
             add     ptr_data, #2                ' advance ptr to next word
             djnz    xcnt, #:dwordloop           ' loop if more bytes
+            jmp     #cmdexit                    ' return
+
+
+wrbytex_data
+' Repeatedly write the same byte of data, xcnt times
+            or      outa, DC                    ' DC high: data
+            rdlong  dbyte, ptrbuff              ' get pointer to word of data
+            shl     dbyte, DBASE
+            rdlong  xcnt, ptr_xcnt              '   and number of words
+:repdloop
+            andn    outa, DATMASK               ' D7..0 low
+            or      outa, dbyte                 ' write MSB
+            or      outa, WRC                   ' clock it out
+            andn    outa, WRC
+            djnz    xcnt, #:repdloop            ' loop if more words
             jmp     #cmdexit                    ' return
 
 wrwordx_data
@@ -216,17 +240,19 @@ wrwordx_data
             or      outa, DC                    ' DC high: data
             rdlong  dword, ptrbuff              ' get pointer to word of data
             rdlong  xcnt, ptr_xcnt              '   and number of words
-            mov     hbyte, dword                ' isolate MSB of word
-            shr     hbyte, #8
-            mov     lbyte, dword                '   and LSB
-            and     lbyte, #$FF
+            mov     byte1, dword                ' isolate MSB of word
+            shr     byte1, #8
+            shl     byte1, DBASE
+            mov     byte0, dword                '   and LSB
+            and     byte0, #$FF
+            shl     byte0, DBASE
 :repdloop
             andn    outa, DATMASK               ' D7..0 low
-            or      outa, hbyte                 ' write MSB
+            or      outa, byte1                 ' write MSB
             or      outa, WRC                   ' clock it out
             andn    outa, WRC
             andn    outa, DATMASK               ' D7..0 low
-            or      outa, lbyte                 ' write LSB
+            or      outa, byte0                 ' write LSB
             or      outa, WRC                   ' clock it out
             andn    outa, WRC
             djnz    xcnt, #:repdloop            ' loop if more words
@@ -234,6 +260,7 @@ wrwordx_data
 
 
 DATMASK     long    0
+DBASE       long    0
 CS          long    0
 WRC         long    0
 DC          long    0
@@ -248,6 +275,6 @@ clrcmd      long    IDLE
 ptrbuff     long    0
 ptr_xcnt    long    0
 xcnt        long    0
-hbyte       long    0
-lbyte       long    0
+byte1       long    0
+byte0       long    0
 
