@@ -5,7 +5,7 @@
     Description: Routines common to all sensor.imu device drivers
     Copyright (c) 2022
     Started Sep 24, 2021
-    Updated May 29, 2022
+    Updated Jul 1, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -17,6 +17,14 @@
 OBJ
 
     math : "math.int"
+
+VAR
+
+    long _ax, _ay, _az
+
+PUB AccelDataCache{}
+' Cache an accelerometer data sample
+    acceldata(@_ax, @_ay, @_az)
 
 PUB AccelG(ax, ay, az) | tmp[ACCEL_DOF]
 ' Read the Accelerometer data and scale the outputs to
@@ -184,22 +192,20 @@ PUB MagZWord2Tesla(mag_word): mag_tesla
 ' Convert magnetometer Z-axis ADC word to Teslas
     return (mag_word * _mres[Z_AXIS]) / 10_000
 
-PUB Pitch{} | x, y, z
+PUB Pitch{}
 ' Get pitch angle of accelerometer, in degrees
-    acceldata(@x, @y, @z)
 #ifdef PITCH_INV
-    return math.atan2(-y, z)
+    return math.atan2(-_ay, _az)
 #else
-    return math.atan2(y, z)
+    return math.atan2(_ay, _az)
 #endif
 
-PUB Roll{} | x, y, z
+PUB Roll{}
 ' Get roll angle of accelerometer, in degrees
-    acceldata(@x, @y, @z)
 #ifdef ROLL_INV
-    return math.atan2(-x, z)
+    return math.atan2(-_ax, _az)
 #else
-    return math.atan2(x, z)
+    return math.atan2(_ax, _az)
 #endif
 
 {
