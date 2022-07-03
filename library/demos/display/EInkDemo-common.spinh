@@ -21,7 +21,7 @@ CON
 
 OBJ
 
-    ser     : "com.serial.terminal.ansi-new"
+    ser     : "com.serial.terminal.ansi"
     time    : "time"
     fnt     : "font.5x8"
 
