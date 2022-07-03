@@ -5,7 +5,7 @@
     Description: Demo of the MCP320x driver
     Copyright (c) 2022
     Started Nov 26, 2019
-    Updated Feb 3, 2022
+    Updated Jul 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -31,42 +31,17 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     adc     : "signal.adc.mcp320x"
-    int     : "string.integer"
 
-PUB Main{}
+PUB Main{} | mv
 
     setup
+    adc.defaults{}
     adc.adcchannel(0)                           ' 0..1 (MCP3202)
 
     repeat
         ser.position(0, 3)
-        ser.str(string("ADC: "))
-        decimaldot(adc.volts{}, 1000)
-
-PRI DecimalDot(scaled, divisor) | whole[4], part[4], places, tmp, sign
-' Display a scaled up number as a decimal
-'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
-    whole := scaled / divisor
-    tmp := divisor
-    places := 0
-    part := 0
-    sign := 0
-    if scaled < 0
-        sign := "-"
-    else
-        sign := " "
-
-    repeat
-        tmp /= 10
-        places++
-    until tmp == 1
-    scaled //= divisor
-    part := int.deczeroed(||(scaled), places)
-
-    ser.char(sign)
-    ser.dec(||(whole))
-    ser.char(".")
-    ser.str(part)
+        mv := adc.volts{}
+        ser.printf2(@"ADC: %0d.%03.3dv", (mv / 1000), (mv // 1000))
 
 PUB Setup{}
 
@@ -74,7 +49,7 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if adc.start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if adc.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
         ser.strln(string("MCP320x driver started"))
     else
         ser.strln(string("MCP320x driver failed to start - halting"))

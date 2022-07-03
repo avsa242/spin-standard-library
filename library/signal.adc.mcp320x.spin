@@ -1,19 +1,19 @@
 {
     --------------------------------------------
-    Filename: signal.adc.mcp320x.spi.spin
+    Filename: signal.adc.mcp320x.spin
     Author: Jesse Burt
     Description: Driver for Microchip MCP320x
         Analog to Digital Converters
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 26, 2019
-    Updated Jan 3, 2021
+    Updated Jul 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
 VAR
 
-    long _CS, _SCK, _MOSI, _MISO
+    long _CS
     word _adc_ref
     byte _ch
 
@@ -22,28 +22,31 @@ OBJ
     spi : "com.spi.4w"
     core: "core.con.mcp320x"
     time: "time"
-    io  : "io"
 
 PUB Null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): okay
+PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 
-    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and{
+    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if okay := spi.start(core#CLK_DELAY, core#CPOL)
+        if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
             time.msleep(1)
-            longmove(@_CS, @CS_PIN, 4)
-
-            io.high(_CS)
-            io.output(_CS)
-            defaults{}
-            return okay
-    return FALSE                                ' something above failed
+            _CS := CS_PIN
+            outa[_CS] := 1
+            dira[_CS] := 1
+            return status
+    ' if this point is reached, something above failed
+    ' Double check I/O pin assignments, connections, power
+    ' Lastly - make sure you have at least one free core/cog
+    return FALSE
 
 PUB Stop{}
 
-    spi.stop{}
+    spi.deinit{}
+    _CS := 0
+    _adc_ref := 0
+    _ch := 0
 
 PUB Defaults{}
 ' Factory defaults
@@ -69,10 +72,10 @@ PUB ADCData{}: adc_word | cfg
         other:
             return
 
-    io.low(_CS)
-    spi.shiftout(_MOSI, _SCK, core#MOSI_BITORDER, 4, cfg | core#START_MEAS)
-    adc_word := spi.shiftin(_MISO, _SCK, core#MISO_BITORDER, 13)
-    io.high(_CS)
+    outa[_CS] := 0
+    spi.wrbits_msbf((core.START_MEAS | cfg), 4)
+    adc_word := (spi.rdbits_msbf(13) & $fff)    ' 1 null bit + 12 data bits
+    outa[_CS] := 1
 
 PUB RefVoltage(v): curr_v
 ' Set ADC reference/supply voltage (Vdd), in millivolts
