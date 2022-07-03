@@ -11,7 +11,7 @@
             Wr_ByteX(): 88uS
             Read: 72uS
     Started 2009
-    Updated Jun 28, 2022
+    Updated Jul 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -65,6 +65,28 @@ PUB DeInit{}
     dira[_MOSI] := 0
     dira[_MISO] := 0
 
+PUB RdBits_LSBF(nr_bits): val | SCK, MOSI, MISO
+' Read arbitrary number of bits from SPI bus, least-significant bit first
+'   nr_bits: 1 to 32
+    longmove(@SCK, @_SCK, 3)
+    val := 0
+    case _spi_mode
+        0, 2:
+            val := shiftin(MISO, SCK, LSBPRE, nr_bits)
+        1, 3:
+            val := shiftin(MISO, SCK, LSBPOST, nr_bits)
+
+PUB RdBits_MSBF(nr_bits): val | SCK, MOSI, MISO
+' Read arbitrary number of bits from SPI bus, most-significant bit first
+'   nr_bits: 1 to 32
+    longmove(@SCK, @_SCK, 3)
+    val := 0
+    case _spi_mode
+        0, 2:
+            val := shiftin(MISO, SCK, MSBPRE, nr_bits)
+        1, 3:
+            val := shiftin(MISO, SCK, MSBPOST, nr_bits)
+
 PUB RdBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Read block of data from SPI bus, least-significant byte first
     longmove(@SCK, @_SCK, 3)
@@ -86,6 +108,18 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
         1, 3:
             repeat b_num from nr_bytes-1 to 0
                 byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
+
+PUB WrBits_LSBF(val, nr_bits) | SCK, MOSI, MISO
+' Write arbitrary number of bits to SPI bus, least-significant byte first
+'   nr_bits: 1 to 32
+    longmove(@SCK, @_SCK, 4)
+        shiftout(MOSI, SCK, LSBFIRST, nr_bits, val)
+
+PUB WrBits_MSBF(val, nr_bits) | SCK, MOSI, MISO
+' Write arbitrary number of bits to SPI bus, most-significant byte first
+'   nr_bits: 1 to 32
+    longmove(@SCK, @_SCK, 4)
+        shiftout(MOSI, SCK, MSBFIRST, nr_bits, val)
 
 PUB WrBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Write block of data to SPI bus from ptr_buff, least-significant byte first
