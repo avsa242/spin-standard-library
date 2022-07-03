@@ -7,7 +7,7 @@
             Write speed: 25.641kHz actual (25% duty - 10uS H : 29uS L)
             Read speed: 26.315kHz actual (26% duty - 10uS H : 28uS L)
     Started 2009
-    Updated Jun 29, 2022
+    Updated Jul 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -65,6 +65,46 @@ PUB DeInit
     dira[_MISO] := 0
     longfill(@_SCK, 0, 6)
 
+PUB RdBits_LSBF(nr_bits): val | SCK, MOSI, MISO, clk_delay, b
+' Read arbitrary number of bits from SPI bus, least-significant bit first
+'   nr_bits: 1 to 32
+    ifnot (lookdown(nr_bits: 1..32))            ' reject invalid # bits
+        return
+    longmove(@SCK, @_SCK, 4)
+    val := 0
+    dira[MISO] := 0
+    case _spi_mode
+        0, 2:
+            repeat b from 0 to (nr_bits-1)
+                val |= (ina[MISO] << b)
+                !outa[SCK]
+                !outa[SCK]
+        1, 3:
+            repeat b from 0 to (nr_bits-1)
+                !outa[SCK]
+                val |= (ina[MISO] << b)
+                !outa[SCK]
+
+PUB RdBits_MSBF(nr_bits): val | SCK, MOSI, MISO, clk_delay, b
+' Read arbitrary number of bits from SPI bus, most-significant bit first
+'   nr_bits: 1 to 32
+    ifnot (lookdown(nr_bits: 1..32))            ' reject invalid # bits
+        return
+    longmove(@SCK, @_SCK, 4)
+    val := 0
+    dira[MISO] := 0
+    case _spi_mode
+        0, 2:
+            repeat b from (nr_bits-1) to 0
+                val |= (ina[MISO] << b)
+                !outa[SCK]
+                !outa[SCK]
+        1, 3:
+            repeat b from (nr_bits-1) to 0
+                !outa[SCK]
+                val |= (ina[MISO] << b)
+                !outa[SCK]
+
 PUB RdBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Read block of data from SPI bus, least-significant byte first
     longmove(@SCK, @_SCK, 4)                    ' copy pins from hub
@@ -106,6 +146,30 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
                     tmp := (tmp << 1) | ina[MISO]   ' sample bit
                     !outa[SCK]
                 byte[ptr_buff][b_num] := tmp    ' copy working byte
+
+PUB WrBits_LSBF(val, nr_bits) | SCK, MOSI, MISO, clk_delay, b
+' Write arbitrary number of bits to SPI bus, least-significant byte first
+'   nr_bits: 1 to 32
+    ifnot (lookdown(nr_bits: 1..32))            ' reject invalid # bits
+        return
+    longmove(@SCK, @_SCK, 4)
+    outa[MOSI] := 0
+    repeat b from 0 to (nr_bits-1)
+        outa[MOSI] := (val >> b)
+        !outa[SCK]
+        !outa[SCK]
+
+PUB WrBits_MSBF(val, nr_bits) | SCK, MOSI, MISO, clk_delay, b
+' Write arbitrary number of bits to SPI bus, most-significant byte first
+'   nr_bits: 1 to 32
+    ifnot (lookdown(nr_bits: 1..32))            ' reject invalid # bits
+        return
+    longmove(@SCK, @_SCK, 4)
+    outa[MOSI] := 0
+    repeat b from (nr_bits-1) to 0
+        outa[MOSI] := (val >> b)
+        !outa[SCK]
+        !outa[SCK]
 
 PUB WrBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Write block of data to SPI bus from ptr_buff, least-significant byte first
