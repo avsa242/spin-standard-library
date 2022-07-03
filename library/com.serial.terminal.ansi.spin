@@ -1,193 +1,150 @@
-' Original Authors: Jeff Martin, Andy Lindsay, Chip Gracey
+{
+    --------------------------------------------
+    Filename: com.serial.terminal.ansi.spin
+    Author: Jesse Burt
+    Description: ANSI-compatible serial terminal
+    Started Nov 9, 2020
+    Updated May 29, 2022
+    See end of file for terms of use.
+    --------------------------------------------
 
-{{
-    This object adds extra features specific to Parallax serial terminals.
-
-    This object is heavily based on FullDuplexSerialPlus (by Andy Lindsay), which is itself
-    heavily based on FullDuplexSerial (by Chip Gracey).
-
-    # Usage
-
-    -   Call Start, or StartRxTx, first.
-    -   Be sure to set the Parallax Serial Terminal software to the baudrate specified in Start, and the proper COM port.
-    -   At 80 MHz, this object properly receives/transmits at up to 250 Kbaud, or performs transmit-only at up to 1 Mbaud.
-}}
+    Fsys        RX max br   TX max br
+    80MHz       250kbps     250kbps
+    80MHz       ---         1Mbps
+    NOTE: This is based on code originally written by the following sources:
+        Parallax, inc. (Jeff Martin, Andy Lindsay, Chip Gracey)
+}
+#ifndef TERMCODES_H
+#include "termcodes.spinh"
+#endif
 
 CON
 
-    '' Control Character Constants
-
-    CS              = 16  ' Clear Screen
-
-
-    MAXSTR_LENGTH   = 49                                   ' Maximum length of received numerical string (not including zero terminator).
+    MAXSTR_LENGTH   = 49                        ' max len of received numerical
+                                                ' string (not including zero terminator)
 
 OBJ
 
-    ser : "com.serial"
-    int : "string.integer"
+    ser : "com.serial"                          ' UART/async serial engine
+    time: "time"                                ' time delay routines
 
 VAR
 
-    byte    str_buffer[MAXSTR_LENGTH+1]                     ' String buffer for numerical strings
+    byte _str_buff[MAXSTR_LENGTH+1]             ' buffer for numerical strings
 
-PUB Start(baudrate) : okay
-{{
-    Start communication with the Parallax Serial Terminal using the Propeller's programming connection.
-    Waits 1 second for connection, then clears screen.
+PUB Start(BPS): status
+' Start UART/serial engine using default I/O pins
+'   BPS: serial bitrate (bits per second)
+'       (max TX/RX: 250_000; max TX only: 1_000_000)
+'   Returns: cog ID+1 of engine (if started), FALSE otherwise
+    status := ser.start(BPS)
+    time.msleep(10)
+    return
 
-    Parameters:
-        baudrate -  bits per second.  Make sure it matches the Parallax Serial Terminal's
-                    Baud Rate field.
+PUB StartRxTx(RX_PIN, TX_PIN, MODE, BPS): status
+' Start UART/serial engine using custom I/O pins and mode
+'   RX_PIN: input pin (receive from external device's TX pin)
+'   TX_PIN: output pin (send to external device's RX pin)
+'   MODE: signaling mode (bits 3..0)
+'       3 - ignore tx echo on rx
+'       2 - open drain/source tx
+'       1 - invert TX
+'       0 - invert RX
+'   BPS: serial bitrate (bits per second)
+'   Returns: cog ID+1 of engine (if started), FALSE otherwise
+    return ser.startrxtx(RX_PIN, TX_PIN, MODE, BPS)
 
-    Returns True (non-zero) if cog started, or False (0) if no cog is available.
-}}
+PUB Stop{}
+' Stop serial engine
+    ser.stop{}
 
-    okay := ser.Start(baudrate)
-    Clear
-    return okay
-
-PUB StartRxTx(rxpin, txpin, mode, baudrate)
-{{
-    Start serial communication with designated pins, mode, and baud.
-
-    Parameters:
-        rxpin - input pin; receives signals from external device's TX pin.
-        txpin - output pin; sends signals to  external device's RX pin.
-        mode  - signaling mode (4-bit pattern).
-                   bit 0 - inverts rx.
-                   bit 1 - inverts tx.
-                   bit 2 - open drain/source tx.
-                   bit 3 - ignore tx echo on rx.
-        baudrate - bits per second.
-
-    Returns    : True (non-zero) if cog started, or False (0) if no cog is available.
-}}
-
-    return ser.StartRxTx(rxpin, txpin, mode, baudrate)
-
-PUB Stop
-{{
-    Stop serial communication; frees a cog.
-}}
-
-    ser.Stop
-
-PUB BinIn
-{{
-    Receive carriage return terminated string of characters representing a binary value.
-
-    Returns: the corresponding binary value.
-}}
-
-    StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return int.StrToBase(@str_buffer, 2)
+PUB BinIn{}: b
+' Receive CR-terminated string representing a binary value
+'   Returns: the corresponding binary value
+    strinmax(@_str_buff, MAXSTR_LENGTH)
+    return stl.atoib(@_str_buff, stl#IBIN)
 
 PUB Char(ch)
-{{
-    Send single-byte character.  Waits for room in transmit buffer if necessary.
-}}
+' Send single-byte character
+'   NOTE: Waits for room in transmit buffer if necessary
+    ser.char(ch)
 
-    ser.Char(ch)
+PUB CharIn{}: c
+' Receive single-byte character (blocks)
+    return ser.charin{}
 
-PUB CharIn
-{{
-    Receive single-byte character.  Waits until character received.
-}}
+PUB Chars(ch, nr_ch)
+' Send nr_ch number of character ch
+    repeat nr_ch
+        ser.char(ch)
 
-    return ser.CharIn
+PUB Count{}: c
+' Count of characters in receive buffer
+    return ser.count{}
 
-PUB Chars(ch, size)
-{{
-    Send string of size `size` filled with `bytechr`.
-}}
+PUB DecIn{}: d
+' Receive CR-terminated string representing a decimal value
+'   Returns: the corresponding decimal value
+    strinmax(@_str_buff, MAXSTR_LENGTH)
+    return stl.atoib(@_str_buff, stl#IDEC)
 
-    repeat size
-        ser.Char(ch)
+PUB Flush{}
+' Flush receive buffer
+    ser.flush{}
 
-PUB Count
-{{
-    Get count of characters in receive buffer.
-}}
+PUB HexIn{}: h
+' Receive CR-terminated string representing a hexadecimal value
+'   Returns: the corresponding hexadecimal value
+    strinmax(@_str_buff, MAXSTR_LENGTH)
+    return stl.atoib(@_str_buff, stl#IHEX)
 
-    return ser.Count
-
-PUB DecIn
-{{
-    Receive carriage return terminated string of characters representing a decimal value.
-
-    Returns: the corresponding decimal value.
-}}
-
-    StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return int.StrToBase(@str_buffer, 10)
-
-PUB Flush
-{{
-    Flush receive buffer.
-}}
-
-    ser.Flush
-
-PUB HexIn
-{{
-    Receive carriage return terminated string of characters representing a hexadecimal value.
-
-    Returns: the corresponding hexadecimal value.
-}}
-
-    StrInMax(@str_buffer, MAXSTR_LENGTH)
-    return int.StrToBase(@str_buffer, 16)
-
-PUB ReadLine(line, maxline) : size | c
-
+PUB ReadLine(ptr_str, max_len): size | c
+' Read a CR-terminated string up to max_len chars into ptr_str
+'   Returns: number of characters received
+    size := 0
     repeat
-        case c := CharIn
-            BS:     if size
-                        size--
-                        Char(c)
-            CR, LF: byte[line][size] := 0
-                    Char(c)
+        case (c := charin{})
+            BS:
+                if (size)
+                    size--
+            CR, LF:
+                byte[ptr_str][size] := NUL
+                quit
+            other:
+                if (size < max_len)
+                    byte[ptr_str][size++] := c
+                else
                     quit
-            other:  if size < maxline
-                        byte[line][size++] := c
-                        Char(c)
 
-PUB RxCheck
-' Check if character received; return immediately.
-'   Returns: -1 if no byte received, $00..$FF if character received.
-    return ser.RxCheck
+PUB RxCheck{}: ch
+' Check if character received (does not block)
+'   Returns:
+'       -1 if no byte received
+'       $00..$FF if character received
+    return ser.rxcheck{}
 
-PUB StrIn(stringptr)
-{{
-    Receive a string (carriage return terminated) and stores it (zero terminated) starting at stringptr.
-    Waits until full string received.
+PUB StrIn(ptr_buff)
+' Receive a CR-terminated string into ptr_str
+'   ptr_str: pointer to buffer in which to store received string
+'   NOTE: ptr_str must point to a large enough buffer for entire string
+'       plus a zero terminator
+    strinmax(ptr_buff, -1)
 
-    Parameter:
-        stringptr - pointer to memory in which to store received string characters.
-                    Memory reserved must be large enough for all string characters plus a zero terminator.
-}}
+PUB StrInMax(ptr_buff, max_len)
+' Receive a CR-terminated string (or max_len size; whichever is first)
+'   into ptr_buff
+'   ptr_str: pointer to buffer in which to store received string
+'   max_len: maximum length of string to receive, or -1 for unlimited
 
-    StrInMax(stringptr, -1)
-
-PUB StrInMax(stringptr, maxcount)
-{{
-    Receive a string of characters (either carriage return terminated or maxcount in
-    length) and stores it (zero terminated) starting at stringptr.  Waits until either
-    full string received or maxcount characters received.
-
-    Parameters:
-        stringptr - pointer to memory in which to store received string characters.
-                    Memory reserved must be large enough for all string characters plus a zero terminator (maxcount + 1).
-        maxcount  - maximum length of string to receive, or -1 for unlimited.
-}}
-
-    repeat while (maxcount--)                                                     'While maxcount not reached
-        if (byte[stringptr++] := ser.CharIn) == CR                                      'Get chars until NL
+    { get up to max_len chars, or until CR received }
+    repeat while (max_len--)
+        if ((byte[ptr_buff++] := ser.charin{}) == CR)
             quit
-    byte[stringptr+(byte[stringptr-1] == CR)]~                                    'Zero terminate string; overwrite NL or append 0 char
 
-#include "lib.terminal.spin"
+    { zero terminate string; overwrite CR or append 0 char }
+    byte[ptr_buff+(byte[ptr_buff-1] == CR)] := NUL
+
+#include "terminal-common.spinh"
 #include "lib.ansiterminal.spin"
 #include "lib.termwidgets.spin"
 
