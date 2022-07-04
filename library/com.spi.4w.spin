@@ -11,7 +11,7 @@
             Wr_ByteX(): 88uS
             Read: 72uS
     Started 2009
-    Updated Jul 3, 2022
+    Updated Jul 4, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -50,6 +50,7 @@ PUB Init(SCK, MOSI, MISO, SPI_MODE): status
 '   NOTE: CS must be handled by the parent object
     longmove(@_SCK, @SCK, 3)
     mode(SPI_MODE)
+    clkstate := _cpol
 
     clkdelay := 1                               ' = ~ 1MHz
     status := _cog := cognew(@entry, @_command) + 1
