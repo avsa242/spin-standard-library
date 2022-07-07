@@ -6,7 +6,7 @@
         standard terminal routines
     Copyright (c) 2022
     Started Dec 14, 2019
-    Updated Jun 30, 2022
+    Updated Jul 7, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is a derivative of std_text_routines.spinh, by Eric Smith.
@@ -19,10 +19,10 @@
         An object with a Char(param) method
 }
 
-{ if a maximum buffer size isn't defined at build-time, go with the default of 33 bytes
-    (enough for a 32-bit binary number output + trailing null character) }
+{ if a maximum buffer size isn't defined at build-time, go with the default of 100 bytes
+    increase if program behavior is odd (e.g., visible string corruption) }
 #ifndef TMPBUFF_SZ
-#define TMPBUFF_SZ 33
+#define TMPBUFF_SZ 100
 #endif
 
 #ifndef TERMCODES_H
