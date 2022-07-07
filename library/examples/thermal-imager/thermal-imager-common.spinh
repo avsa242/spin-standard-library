@@ -94,7 +94,7 @@ PUB DrawScaleH(y, h) | x, reflvl
     reflvl := (_coffs / constant(disp#MAX_COLOR/WIDTH))
     disp.line(reflvl, y, reflvl, (y+h), disp#MAX_COLOR)
 
-PUB UpdateSettings{} | reftmp
+PUB UpdateSettings{} | reftmp, cscl
 ' Settings have been changed by the user - update the sensor and the displayed settings
     sens.adcres(_sens_adcres)                     ' Update sensor with current
     sens.refreshrate(_sens_rate)                  '   settings
@@ -105,7 +105,8 @@ PUB UpdateSettings{} | reftmp
     disp.position(0, disp.textrows{}/2)
     disp.box(0, CENTERY, XMAX, YMAX, 0, true)   ' erase prev text
     if (_show_scl)
-        drawscaleh(YMAX-5, 5)
+        cscl := (5*HEIGHT)/100                  ' scale is 5% of display height
+        drawscaleh(YMAX-cscl, cscl)
     if (_show_sets)
         disp.printf1(string("X %s  "), lookupz(_inv_x: string("Norm"), string("Inv ")))
         disp.printf1(string("%dHz   \n\r"), sens.refreshrate(-2))
