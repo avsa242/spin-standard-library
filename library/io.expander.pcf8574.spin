@@ -5,7 +5,7 @@
     Description: Driver for the PCF8574 I2C I/O expander
     Copyright (c) 2022
     Started Sep 06, 2021
-    Updated May 25, 2022
+    Updated Jul 8, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -23,12 +23,11 @@ CON
 
 OBJ
 
-#ifdef PCF8574_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine
-#elseifdef PCF8574_SPIN
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef PCF8574_SPIN
     i2c : "com.i2c.nocog"                       ' SPIN I2C engine
 #else
-#error "One of PCF8574_PASM or PCF8574_SPIN must be defined"
+    i2c : "com.i2c"                             ' PASM I2C engine
 #endif
     core: "core.con.pcf8574"                    ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
