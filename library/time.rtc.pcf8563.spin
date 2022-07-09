@@ -5,7 +5,7 @@
     Description: Driver for the PCF8563 Real Time Clock
     Copyright (c) 2022
     Started Sep 6, 2020
-    Updated May 25, 2022
+    Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -24,6 +24,10 @@ CON
     WHEN_TF_ACTIVE      = 0
     INT_PULSES          = 1 << core#TI_TP
 
+' Operating modes
+    CLKRUN              = 0
+    CLKSTOP             = 1
+
 VAR
 
     byte _secs, _mins, _hours                   ' Vars to hold time
@@ -33,9 +37,10 @@ VAR
 
 OBJ
 
-#ifdef PCF8563_SPIN
-    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
-#elseifdef PCF8563_PASM
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef PCF8563_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
     i2c : "com.i2c"                             ' PASM I2C engine
 #endif
     core: "core.con.pcf8563"                    ' HW-specific constants
@@ -164,6 +169,21 @@ PUB Month{}: curr_month
 PUB Minutes{}: curr_min
 ' Get current minute
     return bcd2int(_mins & core#MINUTES_MASK)
+
+PUB OpMode(mode): curr_mode
+' Set RTC internal operating mode
+'   CLKRUN (0): normal operation; RTC source clock runs
+'   CLKSTOP (1): RTC clock is stopped (32.768kHz CLKOUT still available)
+    curr_mode := 0
+    readreg(core#CTRLSTAT1, 1, @curr_mode)
+    case mode
+        CLKRUN, CLKSTOP:
+            mode <<= core#STOP
+        other:
+            return ((curr_mode >> core#STOP) & 1)
+
+    mode := ((curr_mode & core#STOP_MASK) | mode)
+    writereg(core#CTRLSTAT1, 1, @mode)
 
 PUB PollRTC{}
 ' Read the time data from the RTC and store it in hub RAM
@@ -359,22 +379,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
