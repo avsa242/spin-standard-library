@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Demonstrate the functionality of
         the printf() method variants
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 9, 2020
-    Updated May 8, 2021
+    Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -82,10 +82,10 @@ PUB Main{} | sz, format, str1, str2
     ser.position(0, 0)
 
     ' You can specify the format inline:
-    ser.printf(string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\nnext line\n\n\n"), "A", -1000, $DEADBEEF, str1, str2, 0)
+    ser.printf6(string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\nnext line\n\n\n"), "A", -1000, $DEADBEEF, str1, str2, 0)
 
     '   or use a pre-defined format:
-    ser.printf(format, "A", -1000, $DEADBEEF, str1, str2, 0)
+    ser.printf6(format, "A", -1000, $DEADBEEF, str1, str2, 0)
 
     ' Print to a buffer (for use in e.g., a file written to SD, or
     '   other external memory, etc)
