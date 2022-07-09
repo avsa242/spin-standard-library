@@ -92,7 +92,7 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
 
     if sens.startx(SCL_PIN, SDA_PIN, I2C_HZ)
-        ser.strln(string("HTU21D driver started (I2C-SPIN)"))
+        ser.strln(string("HTU21D driver started"))
     else
         ser.strln(string("HTU21D driver failed to start - halting"))
         repeat
