@@ -35,12 +35,11 @@ VAR
 
 OBJ
 
-#ifdef MCP9808_SPIN
-    i2c : "com.i2c.nocog"                       ' SPIN I2C engine
-#elseifdef MCP9808_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine
+#ifdef MCP9808_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
 #else
-#error "One of MCP9808_SPIN or MCP9808_PASM must be defined"
+#define MCP9808_I2C
+    i2c : "com.i2c"                             ' PASM I2C engine
 #endif
     core: "core.con.mcp9808"                    ' HW-specific constants
     time: "time"                                ' timekeeping methods
