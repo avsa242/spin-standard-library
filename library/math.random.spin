@@ -73,7 +73,7 @@ entry                   movi        ctra,#%00001_111                    ' set ct
                         movi        vcfg,#$040                          ' set vcfg to discrete output, but without pins
                         mov         vscl,#70                            ' set vscl to 70 pixel clocks per waitvid
 
-:twobits                waitvid     0,0                                 ' wait for next 70-pixel mark ± jitter time
+:twobits                waitvid     0,0-0                               ' wait for next 70-pixel mark ± jitter time
                         test        phsa,#%10111            wc          ' pseudo-randomly sequence phase to induce jitter
                         rcr         phsa,#1                             ' (c holds random bit #1)
                         add         phsa,cnt                            ' mix PLL jitter back into phase
@@ -81,7 +81,7 @@ entry                   movi        ctra,#%00001_111                    ' set ct
                         rcl         par,#1                  wz, nr      ' transfer c into nz (par shadow register = 0)
                         wrlong      _random_value,par                   ' write random value back to spin variable
 
-                        waitvid     0,0                                 ' wait for next 70-pixel mark ± jitter time
+                        waitvid     0,0-0                               ' wait for next 70-pixel mark ± jitter time
                         test        phsa,#%10111            wc          ' pseudo-randomly sequence phase to induce jitter
                         rcr         phsa,#1                             ' (c holds random bit #2)
                         add         phsa,cnt                            ' mix PLL jitter back into phase
