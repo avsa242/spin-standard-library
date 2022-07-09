@@ -5,7 +5,7 @@
     Description: Driver for the ST LSM6DSL 6DoF IMU
     Copyright (c) 2022
     Started Feb 18, 2021
-    Updated May 12, 2022
+    Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -100,19 +100,31 @@ CON
 
 VAR
 
+    long _CS
     long _ares, _gres
     long _abias[ACCEL_DOF], _gbias[GYRO_DOF]
     byte _adata_src, _gdata_src
 
 OBJ
 
-' choose an SPI engine below
-#ifdef LSM6DSL_I2C
-    i2c : "com.i2c"                             ' PASM I2C engine (~1MHz)
-#elseifdef LSM6DSL_SPI
-    spi : "com.spi.bitbang"                     ' PASM SPI engine (~4MHz)
+{ SPI? }
+#ifdef LSM6DSL_SPI
+{ decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef LSM6DSL_SPI_BC
+    spi : "com.spi.nocog"                       ' BC SPI engine
 #else
-#error "One of LSM6DSL_I2C or LSM6DSL_SPI must be defined"
+    spi : "com.spi.bitbang-nocs"                ' PASM SPI engine
+#endif
+#else
+{ no, not SPI - default to I2C }
+#define LSM6DSL_I2C
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef LSM6DSL_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
+
 #endif
     core: "core.con.lsm6dsl"                    ' hw-specific low-level const's
     time: "time"                                ' Basic timing functions
@@ -138,8 +150,11 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 ' Start using custom IO pins
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, 0))
+        if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
             time.usleep(core#T_POR)             ' wait for device startup
+            _CS := CS_PIN
+            outa[_CS] := 1
+            dira[_CS] := 1
             if deviceid{} == core#DEVID_RESP    ' validate device
                 return
     ' if this point is reached, something above failed
@@ -1124,12 +1139,12 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
     i2c.stop{}
 #elseifdef LSM6DSL_SPI
-    spi.deselectafter(false)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr | core#READ)
 
     ' read LSByte to MSByte
-    spi.deselectafter(true)
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
 #endif
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
@@ -1150,32 +1165,33 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     i2c.wrblock_lsbf(ptr_buff, nr_bytes)
     i2c.stop{}
 #elseifdef LSM6DSL_SPI
-    spi.deselectafter(false)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr)
 
     ' write LSByte to MSByte
-    spi.deselectafter(true)
     spi.wrblock_lsbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
 #endif
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
