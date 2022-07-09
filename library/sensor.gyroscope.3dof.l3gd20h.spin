@@ -5,7 +5,7 @@
     Description: Driver for the ST L3GD20H 3DoF gyroscope
     Copyright (c) 2022
     Started Jul 11, 2020
-    Updated May 12, 2022
+    Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -71,18 +71,31 @@ CON
 
 VAR
 
+    long _CS
     long _gres
     long _gbiasraw[3]
     byte _addr_bits
 
 OBJ
 
-#ifdef L3GD20H_I2C
-    i2c : "com.i2c"                             ' PASM I2C engine
-#elseifdef L3GD20H_SPI
-    spi : "com.spi.bitbang"                     ' PASM SPI engine (~4MHz)
+{ SPI? }
+#ifdef L3GD20H_SPI
+{ decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef L3GD20H_SPI_BC
+    spi : "com.spi.nocog"                       ' BC SPI engine
 #else
-#error "One of L3GD20H_I2C or L3GD20H_SPI must be defined"
+    spi : "com.spi.bitbang-nocs"                ' PASM SPI engine
+#endif
+#else
+{ no, not SPI - default to I2C }
+#define L3GD20H_I2C
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef L3GD20H_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
+
 #endif
     core: "core.con.l3gd20h"
     time: "time"
@@ -114,8 +127,10 @@ PUB Startx(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN): status
 ' Start using custom I/O pins
     if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if (status := spi.init(CS_PIN, SCL_PIN, MOSI_PIN, MISO_PIN, {
-}       core#SPI_MODE))
+        if (status := spi.init(SCL_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+            _CS := CS_PIN
+            outa[_CS] := 1
+            dira[_CS] := 1
             time.msleep(1)
             if deviceid{} == core#DEVID_RESP
                 return status
@@ -632,10 +647,10 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 #ifdef L3GD20H_SPI
     reg_nr |= core#R
     ' request read from reg_nr
-    spi.deselectafter(false)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr)
-    spi.deselectafter(true)
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
 #elseifdef L3GD20H_I2C
     cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
     cmd_pkt.byte[1] := reg_nr
@@ -653,10 +668,10 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         $20..$25, $2E, $30, $32..$39:
 #ifdef L3GD20H_SPI
             ' request read from reg_nr
-            spi.deselectafter(false)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
-            spi.deselectafter(true)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
+            outa[_CS] := 1
 #elseifdef L3GD20H_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
             cmd_pkt.byte[1] := reg_nr
@@ -671,22 +686,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
