@@ -58,9 +58,12 @@ PUB Minutes{}: m
 ' Get current minute
     return _mm
 
-PUB Months{}: m
+PUB Month{}: m
 ' Get current month
     return _mo
+
+PUB PollRTC{}
+' Dummy method
 
 PUB Seconds{}: s
 ' Get current second
