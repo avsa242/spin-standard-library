@@ -12,16 +12,16 @@
 
 CON
 
-  fntsc         = 3_579_545     'NTSC color frequency
-  lntsc         = 3640          'NTSC color cycles per line * 16
-  sntsc         = 624           'NTSC color cycles per sync * 16
+  FNTSC         = 3_579_545     'NTSC color frequency
+  LNTSC         = 3640          'NTSC color cycles per line * 16
+  SNTSC         = 624           'NTSC color cycles per sync * 16
 
-  fpal          = 4_433_618     'PAL color frequency
-  lpal          = 4540          'PAL color cycles per line * 16
-  spal          = 848           'PAL color cycles per sync * 16
+  FPAL          = 4_433_618     'PAL color frequency
+  LPAL          = 4540          'PAL color cycles per line * 16
+  SPAL          = 848           'PAL color cycles per sync * 16
 
-  paramcount    = 14
-  colortable    = $180          'start of colortable inside cog
+  PARAM_CNT    = 14
+  COLOR_TBL    = $180          'start of COLOR_TBL inside cog
 
 
 VAR
@@ -98,7 +98,7 @@ field                   mov     x,vinv                  'do invisible back porch
                         call    #hsync                  'do hsync
 
                         mov     vscl,hb                 'do visible back porch pixels
-                        xor     tile,colortable
+                        xor     tile,COLOR_TBL-0
                         waitvid tile,#0
 
                         mov     x,_ht                   'set horizontal tiles
@@ -112,7 +112,7 @@ field                   mov     x,vinv                  'do invisible back porch
                         movs    :color,tile
                         add     screen,#2               'point to next tile
                         mov     tile,phaseflip
-:color                  xor     tile,colortable
+:color                  xor     tile,COLOR_TBL-0
                         waitvid tile,pixels             'pass colors and pixels to video
                         djnz    x,#:tile                'another tile?
 
@@ -120,7 +120,7 @@ field                   mov     x,vinv                  'do invisible back porch
 
                         mov     vscl,hf                 'do visible front porch pixels
                         mov     tile,phaseflip
-                        xor     tile,colortable
+                        xor     tile,COLOR_TBL-0
                         waitvid tile,#0
 
 :skip                   djnz    vx,#:vert               'vertical expand?
@@ -164,7 +164,7 @@ field                   mov     x,vinv                  'do invisible back porch
 '
 blank_lines             call    #hsync                  'do hsync
 
-                        xor     tile,colortable         'do background
+                        xor     tile,COLOR_TBL-0         'do background
                         waitvid tile,#0
 
                         djnz    x,#blank_lines
@@ -210,7 +210,7 @@ vsync_high_ret          ret
 '
 tasks                   mov     t1,par                  'load parameters
                         movd    :par,#_enable           '(skip _status)
-                        mov     t2,#paramcount - 1
+                        mov     t2,#PARAM_CNT - 1
 :load                   add     t1,#4
 :par                    rdlong  0,t1
                         add     :par,d0
@@ -243,7 +243,7 @@ tasks                   mov     t1,par                  'load parameters
                         movd    :wr,#hvis
                         mov     t1,#wtabx - wtab
                         test    _mode,#%0001    wc
-:rd                     mov     t2,0
+:rd                     mov     t2,0-0
                         add     :rd,#1
         if_nc           shl     t2,#16
                         shr     t2,#16
@@ -255,7 +255,7 @@ tasks                   mov     t1,par                  'load parameters
         if_c            movs    :ltab,#ltab+1
                         movd    :ltab,#fcolor
                         mov     t1,#(ltabx - ltab) >> 1
-:ltab                   mov     0,0
+:ltab                   mov     0,0-0
                         add     :ltab,d0s1
                         djnz    t1,#:ltab               '+17
 
@@ -345,12 +345,12 @@ tasks                   mov     t1,par                  'load parameters
 
 :colors                 jmpret  taskptr,taskret         '+1=117/160, break and return later
 
-                        mov     t1,#13                  'load next 13 colors into colortable
+                        mov     t1,#13                  'load next 13 colors into COLOR_TBL
 :colorloop              mov     t2,:colorreg            '5 times = 65 (all 64 colors loaded)
                         shr     t2,#9-2
                         and     t2,#$FC
                         add     t2,_colors
-:colorreg               rdlong  colortable,t2
+:colorreg               rdlong  COLOR_TBL,t2
                         add     :colorreg,d0
                         andn    :colorreg,d6
                         djnz    t1,#:colorloop          '+158
@@ -426,20 +426,20 @@ sync_low2               long    %01_101010101010101010101010101010
 ' NTSC/PAL metrics tables
 '                               ntsc                    pal
 '                               ----------------------------------------------
-wtab                    word    lntsc - sntsc,          lpal - spal     'hvis
-                        word    lntsc / 2 - sntsc,      lpal / 2 - spal 'hrest
-                        word    lntsc / 2,              lpal / 2        'hhalf
+wtab                    word    LNTSC - SNTSC,          LPAL - SPAL     'hvis
+                        word    LNTSC / 2 - SNTSC,      LPAL / 2 - SPAL 'hrest
+                        word    LNTSC / 2,              LPAL / 2        'hhalf
                         word    243,                    286             'vvis
                         word    10,                     18              'vinv
                         word    6,                      5               'vrep
                         word    $02_8A,                 $02_AA          'burst
 wtabx
-ltab                    long    fntsc                                   'fcolor
-                        long    fpal
-                        long    sntsc >> 4 << 12 + sntsc                'sync_scale1
-                        long    spal >> 4 << 12 + spal
-                        long    67 << 12 + lntsc / 2 - sntsc            'sync_scale2
-                        long    79 << 12 + lpal / 2 - spal
+ltab                    long    FNTSC                                   'fcolor
+                        long    FPAL
+                        long    SNTSC >> 4 << 12 + SNTSC                'sync_scale1
+                        long    SPAL >> 4 << 12 + SPAL
+                        long    67 << 12 + LNTSC / 2 - SNTSC            'sync_scale2
+                        long    79 << 12 + LPAL / 2 - SPAL
                         long    %0101_00000000_01_10101010101010_0101   'sync_normal
                         long    %010101_00000000_01_101010101010_0101
 ltabx
@@ -498,7 +498,7 @@ _vo                     res     1       '0+-            read-only
 _broadcast              res     1       '0+             read-only
 _auralcog               res     1       '0-7            read-only
 
-                        fit     colortable              'fit underneath colortable ($180-$1BF)
+                        fit     COLOR_TBL              'fit underneath COLOR_TBL ($180-$1BF)
 ''
 ''___
 ''VAR                   'TV parameters - 14 contiguous longs
