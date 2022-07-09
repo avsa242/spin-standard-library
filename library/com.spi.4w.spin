@@ -11,7 +11,7 @@
             Wr_ByteX(): 88uS
             Read: 72uS
     Started 2009
-    Updated Jul 4, 2022
+    Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -200,7 +200,7 @@ loop            rdlong  ptr_params, par wz      ' wait for command
                 movs    :table,     ptr_params
                 rol     ptr_params, #2
                 shl     ptr_params, #3
-:table          mov     t2,         0
+:table          mov     t2,         0-0
                 shr     t2,         ptr_params
                 and     t2,         #$FF
                 jmp     t2                      ' jump to command
