@@ -5,7 +5,7 @@
     Description: RTC date/time set/display demo
     Copyright (c) 2022
     Started Nov 18, 2020
-    Updated May 14, 2022
+    Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -62,7 +62,7 @@ PUB Main{} | wkday, month, date, yr
 
         ser.position(0, 3)
         ser.str(wkday)
-        ser.printf(string(" %s %s 20%d "), date, month, yr, 0, 0, 0)
+        ser.printf3(string(" %s %s 20%d "), date, month, yr)
 
         ser.str(int.deczeroed(rtc.hours{}, 2))    ' Discrete statements
         ser.char(":")                               ' due to a bug in
@@ -101,9 +101,7 @@ PUB Setup{}
     else
         ser.strln(string("RV3028 driver failed to start - halting"))
 #endif
-        rtc.stop{}
-        time.msleep(50)
-        ser.stop{}
+        repeat
 
 DAT
 ' Tables for mapping numbers to weekday and month names
