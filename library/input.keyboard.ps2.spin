@@ -306,7 +306,7 @@ look
                         add     :reg, #table
                         shr     data, #27
                         mov     x, data
-:reg                    mov     data, 0
+:reg                    mov     data, 0-0
                         shr     data, x
 
                         jmp     #rand                   'isolate byte
