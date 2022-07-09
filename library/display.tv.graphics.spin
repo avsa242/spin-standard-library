@@ -909,7 +909,7 @@ loop                    rdlong  t1,par          wz      'wait for command
                         movs    :table,t1
                         rol     t1,#2
                         shl     t1,#3
-:table                  mov     t2,0
+:table                  mov     t2,0-0
                         shr     t2,t1
                         and     t2,#$FF
                         jmp     t2                      'jump to command
