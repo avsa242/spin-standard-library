@@ -75,6 +75,7 @@ CON
 
 VAR
 
+    long _CS
     word _abiasraw[ACCEL_DOF], _gbiasraw[GYRO_DOF]
     word _abias_fact[ACCEL_DOF]
     word _ares, _gres, _temp_scale
@@ -83,11 +84,26 @@ VAR
 
 OBJ
 
+{ SPI? }
 #ifdef ICM20649_SPI
-    spi : "com.spi.bitbang"                     ' PASM SPI engine
-#elseifdef ICM20649_I2C
+{ decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef ICM20649_SPI_BC
+    spi : "com.spi.nocog"                       ' BC SPI engine
+#else
+    spi : "com.spi.bitbang-nocs"                ' PASM SPI engine
+#endif
+#else
+{ no, not SPI - default to I2C }
+#define ICM20649_I2C
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef ICM20649_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
     i2c : "com.i2c"                             ' PASM I2C engine
 #endif
+
+#endif
+
     core: "core.con.icm20649"                   ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
 
@@ -99,7 +115,8 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 ' Start using custom I/O pin settings
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+        if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+            _CS := CS_PIN
             time.usleep(core#G_START_COLD)      ' wait for device startup
             if deviceid{} == core#DEVID_RESP    ' validate device
                 { read the factory accel bias }
@@ -707,8 +724,9 @@ PRI bankSel(bank_nr) | cmd_pkt
 #ifdef ICM20649_SPI
         cmd_pkt.byte[0] := core#REG_BANK_SEL
         cmd_pkt.byte[1] := bank_nr << core#USER_BANK
-        spi.deselectafter(true)
+        outa[_CS] := 0
         spi.wrblock_lsbf(@cmd_pkt, 2)
+        outa[_CS] := 1
 #elseifdef ICM20649_I2C
         cmd_pkt.byte[0] := SLAVE_WR
         cmd_pkt.byte[1] := core#REG_BANK_SEL
@@ -724,10 +742,10 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
         core#ACCEL_XOUT_H..core#TEMP_OUT_H:     ' prioritize output data regs
 #ifdef ICM20649_SPI
             cmd_pkt.byte[0] := reg_nr | core#R
-            spi.deselectafter(false)
+            outa[_CS] := 0
             spi.wr_byte(cmd_pkt)
-            spi.deselectafter(true)
             spi.rdblock_lsbf(@tmp, nr_bytes)
+            outa[_CS] := 1
             repeat i from 0 to nr_bytes-1
                 byte[ptr_buff][i] := tmp.byte[nr_bytes-1-i]
 #elseifdef ICM20649_I2C
@@ -748,10 +766,10 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
             banksel(reg_nr.byte[1])
 #ifdef ICM20649_SPI
             cmd_pkt.byte[0] := reg_nr.byte[0] | core#R
-            spi.deselectafter(false)
+            outa[_CS] := 0
             spi.wr_byte(cmd_pkt)
-            spi.deselectafter(true)
             spi.rdblock_lsbf(@tmp, nr_bytes)
+            outa[_CS] := 1
             repeat i from 0 to nr_bytes-1
                 byte[ptr_buff][i] := tmp.byte[nr_bytes-1-i]
 #elseifdef ICM20649_I2C
@@ -781,10 +799,10 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
                 tmp.byte[i] := byte[ptr_buff][nr_bytes-1-i]
 
             cmd_pkt.byte[0] := reg_nr.byte[0]
-            spi.deselectafter(false)
+            outa[_CS] := 0
             spi.wr_byte(cmd_pkt)
-            spi.deselectafter(true)
             spi.wrblock_lsbf(@tmp, nr_bytes)
+            outa[_CS] := 1
 #elseifdef ICM20649_I2C
             cmd_pkt.byte[0] := SLAVE_WR | _addr
             cmd_pkt.byte[1] := reg_nr.byte[0]   ' Actual reg # is lower 8 bits
@@ -799,22 +817,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
