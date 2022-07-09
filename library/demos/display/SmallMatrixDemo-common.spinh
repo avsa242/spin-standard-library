@@ -16,7 +16,7 @@
 
 OBJ
 
-    ser     : "com.serial.terminal.ansi-new"
+    ser     : "com.serial.terminal.ansi"
     time    : "time"
     int     : "string.integer"
     math    : "math.int"
