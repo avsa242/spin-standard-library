@@ -1,24 +1,14 @@
 {
     --------------------------------------------
-    Filename: sensor.accel.3dof.adxl345.i2cspi.spin
+    Filename: sensor.accel.3dof.adxl345.spin
     Author: Jesse Burt
     Description: Driver for the Analog Devices ADXL345 3DoF Accelerometer
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Mar 14, 2020
-    Updated Nov 12, 2021
+    Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-
-' preprocessor doesn't support AND/OR, so workaround this by defining an SPI
-'   symbol generic to either the 3-wire or 4-wire variant, to simplify the
-'   #ifdef'd code in the driver
-#ifdef ADXL345_SPI3W
-#define ADXL345_SPI
-#endif
-#ifdef ADXL345_SPI4W
-#define ADXL345_SPI
-#endif
 
 CON
 
@@ -96,16 +86,27 @@ VAR
 
 OBJ
 
-#ifdef ADXL345_I2C
-    i2c : "com.i2c"                             ' PASM I2C engine (~800kHz)
-#elseifdef ADXL345_SPI
-    spi : "com.spi.4w"                          ' PASM SPI engine (~1MHz)
+{ SPI? }
+#ifdef ADXL345_SPI
+{ decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef ADXL345_SPI_BC
+    spi : "com.spi.nocog"                       ' BC SPI engine
 #else
-#error "One of ADXL345_I2C, ADXL345_SPI3W, or ADXL345_SPI4W must be defined"
+    spi : "com.spi.4w"                          ' PASM SPI engine
+#endif
+#else
+{ no, not SPI - default to I2C }
+#define ADXL345_I2C
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef ADXL345_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
+
 #endif
     core: "core.con.adxl345"                    ' HW-specific constants
     time: "time"                                ' timekeeping methods
-    io  : "io"                                  ' I/O pin abstraction methods
 
 PUB Null{}
 ' This is not a top-level object
@@ -127,25 +128,7 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
-#elseifdef ADXL345_SPI3W
-PUB Startx(CS_PIN, SCL_PIN, SDIO_PIN): status
-' Start using custom I/O pin settings (SPI-3 wire)
-    if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
-}   lookdown(SDIO_PIN: 0..31)
-        if (status := spi.init(SCL_PIN, SDIO_PIN, SDIO_PIN, core#SPI_MODE))
-            time.msleep(1)
-            _CS := CS_PIN
-
-            io.high(_CS)                        ' ensure CS starts high
-            io.output(_CS)
-            spimode(3)
-            if deviceid{} == core#DEVID_RESP
-                return status
-    ' if this point is reached, something above failed
-    ' Double check I/O pin assignments, connections, power
-    ' Lastly - make sure you have at least one free core/cog
-    return FALSE
-#elseifdef ADXL345_SPI4W
+#elseifdef ADXL345_SPI
 PUB Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
 ' Start using custom I/O pin settings (SPI-4 wire)
     if lookdown(CS_PIN: 0..31) and lookdown(SCL_PIN: 0..31) and {
@@ -154,9 +137,12 @@ PUB Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
             time.msleep(1)
             _CS := CS_PIN
 
-            io.high(_CS)                        ' ensure CS starts high
-            io.output(_CS)
-            spimode(4)
+            outa[_CS] := 1                      ' ensure CS starts high
+            dira[_CS] := 1
+            if (SDA_PIN == SDO_PIN)
+                spimode(3)
+            else
+                spimode(4)
             if deviceid{} == core#DEVID_RESP
                 return status
     ' if this point is reached, something above failed
@@ -164,8 +150,8 @@ PUB Startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN): status
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 #endif
-PUB Stop{}
 
+PUB Stop{}
 #ifdef ADXL345_I2C
     i2c.deinit{}
 #elseifdef ADXL345_SPI
@@ -913,10 +899,10 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
     i2c.stop{}
 #elseifdef ADXL345_SPI
-    io.low(_CS)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr | core#R)
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
-    io.high(_CS)
+    outa[_CS] := 1
 #endif
 
 PRI spiMode(mode): curr_mode
@@ -945,32 +931,34 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
             i2c.wrblock_lsbf(ptr_buff, nr_bytes)
             i2c.stop{}
 #elseifdef ADXL345_SPI
-            io.low(_CS)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
-            io.high(_CS)
+            outa[_CS] := 1
 #endif
         other:
             return
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
