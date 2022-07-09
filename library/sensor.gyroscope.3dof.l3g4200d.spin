@@ -5,7 +5,7 @@
     Description: Driver for the ST L3G4200D 3-axis gyroscope
     Copyright (c) 2022
     Started Nov 27, 2019
-    Updated May 25, 2022
+    Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -43,10 +43,7 @@ CON
 
 #ifdef L3G4200D_SPI
     MS                  = 1 << 6                ' auto address increment
-#elseifdef L3G4200D_I2C_PASM
-#define L3G4200D_I2C
-    MS                  = 1 << 7                ' auto address increment
-#elseifdef L3G4200D_I2C_SPIN
+#else
 #define L3G4200D_I2C
     MS                  = 1 << 7                ' auto address increment
 #endif
@@ -80,14 +77,24 @@ VAR
 
 OBJ
 
+{ SPI? }
 #ifdef L3G4200D_SPI
-    spi : "com.spi.4w"                          ' PASM SPI engine (1MHz)
-#elseifdef L3G4200D_I2C_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
-#elseifdef L3G4200D_I2C_SPIN
-    i2c : "com.i2c.nocog"                       ' SPIN I2C engine (~30kHz)
+{ decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef L3G4200D_SPI_BC
+    spi : "com.spi.nocog"                       ' BC SPI engine
 #else
-#error "One of L3G4200D_SPI, L3G4200D_I2C_PASM or L3G4200D_I2C_SPIN must be defined"
+    spi : "com.spi.4w"                          ' PASM SPI engine
+#endif
+#else
+{ no, not SPI - default to I2C }
+#define L3G4200D_I2C
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef L3G4200D_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
+
 #endif
     core: "core.con.l3g4200d"                   ' HW-specific constants
     time: "time"                                ' timekeeping methods
@@ -101,7 +108,7 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
     if (lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31))
         if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
-            longmove(@_CS, @CS_PIN, 4)          ' copy pins to hub vars
+            _CS := CS_PIN
             outa[_CS] := 1
             dira[_CS] := 1
             time.usleep(core#T_POR)             ' wait for device startup
@@ -642,22 +649,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
