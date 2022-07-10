@@ -22,9 +22,9 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    I2C_SCL     = 0
-    I2C_SDA     = 1
-    I2C_HZ      = 400_000
+    SCL_PIN     = 0
+    SDA_PIN     = 1
+    I2C_FREQ    = 400_000
 ' --
 
 OBJ
@@ -65,7 +65,7 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if ssn.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+    if ssn.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
         ser.strln(string("DS28CM00 driver started (I2C)"))
     else
         ser.strln(string("DS28CM00 driver failed to start - halting"))
