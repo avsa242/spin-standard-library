@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: sensor.thermal-array.mlx90621.i2c.spin
+    Filename: sensor.thermal-array.mlx90621.spin
     Author: Jesse Burt
     Description: Driver for the Melexis MLX90621
         16x4 IR array
@@ -191,7 +191,7 @@ PUB EEPROM(state): curr_state
 
 PUB GetColumn(ptr_buff, col) | tmpframe[2], tmp, offs, line
 ' Read a single column of pixels from the sensor into ptr_buff
-'   NOTE This buffer must be at least 4 words
+'   NOTE This buffer must be at least 4 longs
     if not lookdown(col: 0..15)
         return
 
@@ -202,14 +202,14 @@ PUB GetColumn(ptr_buff, col) | tmpframe[2], tmp, offs, line
 
 PUB GetFrame(ptr_buff) | tmpframe[32], offs
 ' Read entire frame from sensor and store it in buffer at ptr_buff
-'   NOTE: This buffer must be at least 64 words
+'   NOTE: This buffer must be at least 64 longs
     readreg(0, 64, 1, @tmpframe)
     repeat offs from 0 to 63
         long[ptr_buff][offs] := ~~tmpframe.word[offs]
 
 PUB GetFrameExt(ptr_buff) | tmpframe[33], offs, line, col
 ' Read entire frame, as well as PTAT and compensation pixel data from sensor and stores it in buffer at ptr_buff
-'   NOTE: This buffer must be at least 66 words
+'   NOTE: This buffer must be at least 66 longs
     readreg(0, 66, 1, @tmpframe)
     repeat offs from 0 to 65
         long[ptr_buff][offs] := ~~tmpframe.word[offs]
@@ -217,7 +217,7 @@ PUB GetFrameExt(ptr_buff) | tmpframe[33], offs, line, col
 
 PUB GetLine(ptr_buff, line) | tmpframe[8], offs, col
 ' Read a single line of pixels from the sensor into ptr_buff
-'   NOTE: This buffer must be at least 16 words
+'   NOTE: This buffer must be at least 16 longs
     if not lookdown(line: 0..3)
         return
     readreg(line, 16, 4, @tmpframe)
@@ -228,7 +228,7 @@ PUB GetLine(ptr_buff, line) | tmpframe[8], offs, col
 PUB GetPixel(ptr_buff, col, line): pix_word | tmpframe, offs
 ' Read a single pixel from the sensor into ptr_buff
 '   Returns: pixel value
-'   NOTE: This buffer must be at least 1 word
+'   NOTE: This buffer must be at least 1 long
     case col
         0..XMAX:
         other:
@@ -352,7 +352,7 @@ PUB RefreshRate(rate): curr_rate
     rate := ((curr_rate & core#REFRATE_MASK) | rate) & core#CONFIG_MASK
     writereg(core#CONFIG, rate)
 
-PUB Reset(set): flag
+PUB Reset(set): flag    ' XXX should be renamed - doesn't do what 'Reset()' normally does
 ' Set sensor reset flag
 '   Valid values: TRUE (-1 or 1)
 '   Any other value polls the chip and returns the current setting
