@@ -3,9 +3,9 @@
     Filename: CC2500-SimpleTX.spin
     Author: Jesse Burt
     Description: Simple transmit demo of the cc2500 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 29, 2020
-    Updated May 16, 2021
+    Updated Jul 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -35,12 +35,12 @@ CON
 
 OBJ
 
-    ser         : "com.serial.terminal.ansi"
-    cfg         : "core.con.boardcfg.flip"
-    time        : "time"
-    int         : "string.integer"
-    cc2500      : "wireless.transceiver.cc2500"
-    sf          : "string.format"
+    ser     : "com.serial.terminal.ansi"
+    cfg     : "core.con.boardcfg.flip"
+    time    : "time"
+    int     : "string.integer"
+    cc2500  : "wireless.transceiver.cc2500"
+    sf      : "string.format"
 
 VAR
 
@@ -63,7 +63,7 @@ PUB Main{} | counter, str_counter, i, pktlen
 
     ser.clear{}
     ser.position(0, 0)
-    ser.printf1(string("Transmit mode - %dkHz\n"), cc2500.carrierfreq(-2))
+    ser.printf1(string("Transmit mode - %dkHz\n\r"), cc2500.carrierfreq(-2))
 
     counter := 0
     repeat
@@ -81,7 +81,7 @@ PUB Main{} | counter, str_counter, i, pktlen
         sf.sprintf2(@_pkt_tmp[POS_PAYLD], string("%s%s"), _user_str, str_counter)
 
         ser.position(0, 3)
-        ser.printf2(string("Sending (%d): %s\n"), pktlen, @_pkt_tmp[POS_PAYLD])
+        ser.printf2(string("Sending (%d): %s\n\r"), pktlen, @_pkt_tmp[POS_PAYLD])
 
         repeat i from 0 to pktlen               ' show the packet sent as
             ser.hex(_pkt_tmp[i], 2)             '   a simple hex dump
@@ -115,23 +115,24 @@ PUB Setup{}
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
 
