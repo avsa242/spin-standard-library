@@ -97,11 +97,16 @@ VAR
 
 OBJ
 
-    spi     : "com.spi.4w"
-    core    : "core.con.cc1101"
-    time    : "time"
-    u64     : "math.unsigned64"
-    io      : "io"
+{ SPI? }
+{ decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef CC1101_SPI_BC
+    spi : "com.spi.nocog"                       ' BC SPI engine
+#else
+    spi : "com.spi.4w"                          ' PASM SPI engine
+#endif
+    core: "core.con.cc1101"
+    time: "time"
+    u64 : "math.unsigned64"
 
 PUB Null{}
 ' This is not a top-level object
@@ -114,8 +119,8 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
             time.usleep(core#T_POR)
             _CS := CS_PIN
 
-            io.high(_CS)
-            io.output(_CS)
+            outa[_CS] := 1
+            dira[_CS] := 1
             if lookdown(deviceid{}: $04, $14..$FE) ' validate device
                 reset{}
                 return
@@ -1070,16 +1075,16 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff)
                     reg_nr |= core#BURST
                 0:
                     return
-            io.low(_CS)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr | core#R)
             spi.rdblock_lsbf(ptr_buff, nr_bytes)
-            io.high(_CS)
+            outa[_CS] := 1
             return
 
-    io.low(_CS)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr | core#R)
     spi.rdblock_msbf(ptr_buff, nr_bytes)
-    io.high(_CS)
+    outa[_CS] := 1
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to device from ptr_buff
@@ -1093,16 +1098,16 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff)
                     reg_nr |= core#BURST
                 other:
                     return
-            io.low(_CS)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
             spi.wrblock_msbf(ptr_buff, nr_bytes)
-            io.high(_CS)
+            outa[_CS] := 1
             return
         core#CS_SRES..core#CS_SNOP:             ' Command strobes
-            io.low(_CS)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
             _status := spi.rd_byte{}
-            io.high(_CS)
+            outa[_CS] := 1
             return
         core#FIFO:
             case nr_bytes
@@ -1111,32 +1116,34 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff)
                     reg_nr |= core#BURST
                 0:
                     return
-            io.low(_CS)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
-            io.high(_CS)
+            outa[_CS] := 1
             return
         other:                                  ' Invalid reg - ignore
             return
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
