@@ -6,7 +6,7 @@
         VGA display
     Copyright (c) 2022
     Started: Jun 27, 2020
-    Updated: Feb 3, 2022
+    Updated: Jul 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,9 +20,9 @@ CON
     SER_BAUD        = 115_200
 
 ' MLX90621
-    I2C_SCL         = 16
-    I2C_SDA         = 17
-    I2C_HZ          = 1_000_000
+    SCL_PIN         = 16
+    SDA_PIN         = 17
+    I2C_FREQ        = 1_000_000
 
     VGA_PINGROUP    = 1                         ' 0, 1, 2, 3
 ' --
@@ -190,7 +190,7 @@ PUB Setup{}
         vga.fontsize(6, 8)
         vga.clear{}
 
-    if mlx.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+    if mlx.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
         ser.strln(string("MLX90621 driver started"))
         mlx.defaults{}
         mlx.opmode(mlx#CONT)
