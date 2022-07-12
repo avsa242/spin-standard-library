@@ -5,7 +5,7 @@
     Description: String processing and formatting
     Copyright (c) 2022
     Started May 29, 2022
-    Updated Jun 26, 2022
+    Updated Jul 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -16,10 +16,9 @@
         Peter Verkaik
 }
 
-{ if a maximum buffer size isn't defined at build-time, go with the default of 33 bytes
-    (enough for a 32-bit binary number output + trailing null character) }
+{ if a maximum buffer size isn't defined at build-time, default to 100 bytes }
 #ifndef FIELDSZ_MAX
-#define FIELDSZ_MAX 33
+#define FIELDSZ_MAX 100
 #endif
 
 #include "termcodes.spinh"
@@ -327,22 +326,31 @@ PUB IsUpper(ptr_str): flag
 
     return true
 
-PUB ItoA(num, ptr_str) | sign, sorg
+PUB ItoA(num, ptr_str) | str0, dvsr, temp
 ' Convert number (signed) to string representation
 '   num: integer value to convert
 '   ptr_str: string to copy output to
-    sorg := ptr_str
-    sign := num                                 ' record sign
+    str0 := ptr_str
     if (num < 0)
-        num := -num                             ' make n positive
-    repeat                                      ' generate digits in reverse order
-        byte[ptr_str++] := ((num // 10) + "0")  ' get next digit
-        num := (num / 10)
-    until (num == 0)
-    if (sign < 0)
-        byte[ptr_str++] := "-"                  ' sign character only if negative
-    byte[ptr_str] := NUL                        ' null-terminate
-    reverse(sorg)
+        byte[ptr_str++] := "-"
+        if (num == $80000000)
+            byte[ptr_str++] := "2"
+            num += 2_000_000_000
+        num := -num
+    elseif (num == 0)
+        byte[ptr_str++] := "0"
+        byte[ptr_str] := 0
+        return 1
+    dvsr := 1_000_000_000
+    repeat while (dvsr > num)
+        dvsr /= 10
+    repeat while (dvsr > 0)
+        temp := num / dvsr
+        byte[ptr_str++] := temp + "0"
+        num -= temp * dvsr
+        dvsr /= 10
+    byte[ptr_str++] := 0
+    return ptr_str - str0 - 1
 
 PUB ItoAb(num, ptr_str, base) | lowbit, sorg
 ' Convert number (unsigned) in base to string representation
