@@ -5,7 +5,7 @@
     Description: Routines common to all sensor.imu device drivers
     Copyright (c) 2022
     Started Sep 24, 2021
-    Updated Jul 1, 2022
+    Updated Jul 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -20,6 +20,8 @@ OBJ
 
 VAR
 
+    long _ares, _gres, _mres
+    long _abias[ACCEL_DOF], _gbias[GYRO_DOF], _mbias[MAG_DOF]
     long _ax, _ay, _az
 
 PUB AccelDataCache{}
