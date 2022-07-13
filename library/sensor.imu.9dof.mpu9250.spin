@@ -5,7 +5,7 @@
     Description: Driver for the InvenSense MPU9250
     Copyright (c) 2022
     Started Sep 2, 2019
-    Updated Apr 24, 2021
+    Updated Jul 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -24,6 +24,7 @@ CON
     DEF_SCL             = 28
     DEF_SDA             = 29
     DEF_HZ              = 100_000
+    DEF_ADDR            = 0
     I2C_MAX_FREQ        = core#I2C_MAX_FREQ
 
     X_AXIS              = 0
@@ -93,15 +94,17 @@ CON
 
 VAR
 
-    long _mag_bias[MAG_DOF]
     long _abias_fact[ACCEL_DOF]
-    long _ares, _gres, _mres[MAG_DOF]
     byte _mag_sens_adj[MAG_DOF]
     byte _temp_scale
 
 OBJ
-
-    i2c : "com.i2c"
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef MPU9250_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
     core: "core.con.mpu9250"
     time: "time"
 
@@ -110,14 +113,15 @@ PUB Null{}
 
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom I/O pins and I2C bus speed
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#TREGRW)            ' startup time
+            _addr_bits := (ADDR_BITS << 1)
             ' setup to read the magnetometer from the same bus as XL & G
             disablei2cmaster{}
             if deviceid{} == core#DEVID_RESP
@@ -148,7 +152,7 @@ PUB Defaults{}
 '   DisableI2CMaster() _afterwards_ if you wish to read the magnetometer
 '   through the same I2C bus as the Accel & Gyro
 
-PUB Preset_XL_G_M{}
+PUB Preset_Active{}
 ' Like Defaults(), but
 '   * sets up the MPU9250 to pass the magnetometer data through the same
 '       I2C bus as the Accel and Gyro data
@@ -657,13 +661,13 @@ PUB MagBias(ptr_x, ptr_y, ptr_z, rw)
 '               Pointers to variables to hold current settings for respective axes
     case rw
         W:
-            _mag_bias[X_AXIS] := ptr_x
-            _mag_bias[Y_AXIS] := ptr_y
-            _mag_bias[Z_AXIS] := ptr_z
+            _mbias[X_AXIS] := ptr_x
+            _mbias[Y_AXIS] := ptr_y
+            _mbias[Z_AXIS] := ptr_z
         R:
-            long[ptr_x] := _mag_bias[X_AXIS]
-            long[ptr_y] := _mag_bias[Y_AXIS]
-            long[ptr_z] := _mag_bias[Z_AXIS]
+            long[ptr_x] := _mbias[X_AXIS]
+            long[ptr_y] := _mbias[Y_AXIS]
+            long[ptr_z] := _mbias[Z_AXIS]
         other:
             return
 
@@ -674,9 +678,9 @@ PUB MagData(ptr_x, ptr_y, ptr_z) | tmp[2]
                                                 ' an extra (required) read of
                                                 ' the status register
 
-    tmp.word[X_AXIS] -= _mag_bias[X_AXIS]
-    tmp.word[Y_AXIS] -= _mag_bias[Y_AXIS]
-    tmp.word[Z_AXIS] -= _mag_bias[Z_AXIS]
+    tmp.word[X_AXIS] -= _mbias[X_AXIS]
+    tmp.word[Y_AXIS] -= _mbias[Y_AXIS]
+    tmp.word[Z_AXIS] -= _mbias[Z_AXIS]
     long[ptr_x] := ~~tmp.word[X_AXIS] * _mag_sens_adj[X_AXIS]
     long[ptr_y] := ~~tmp.word[Y_AXIS] * _mag_sens_adj[Y_AXIS]
     long[ptr_z] := ~~tmp.word[Z_AXIS] * _mag_sens_adj[Z_AXIS]
@@ -843,6 +847,7 @@ PUB XLGDataRate(rate): curr_rate
 PUB XLGDataReady{}: flag
 ' Flag indicating new gyroscope/accelerometer data is ready to be read
 '   Returns: TRUE (-1) if new data available, FALSE (0) otherwise
+    flag := 0
     readreg(core#INT_STATUS, 1, @flag)
     return ((flag & 1) == 1)
 
@@ -870,16 +875,18 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 }       core#ZG_OFFS_USR, core#XA_OFFS_H, core#YA_OFFS_H, core#ZA_OFFS_H, {
 }       core#ACCEL_XOUT_H..core#ACCEL_ZOUT_L, {
 }       core#GYRO_XOUT_H..core#GYRO_ZOUT_L, core#TEMP_OUT_H:
-            cmd_pkt.byte[0] := SLAVE_XLG_WR     ' Accel/Gyro regs
+            { accel/gyro regs }
+            cmd_pkt.byte[0] := (SLAVE_XLG_WR | _addr_bits)
             cmd_pkt.byte[1] := reg_nr.byte[0]
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.start{}
-            i2c.write(SLAVE_XLG_RD)
+            i2c.write(SLAVE_XLG_RD | _addr_bits)
             i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
             i2c.stop{}
         core#HXL, core#HYL, core#HZL, core#WIA..core#ASTC, core#I2CDIS..core#ASAZ:
-            cmd_pkt.byte[0] := SLAVE_MAG_WR     ' Mag regs
+            { mag regs }
+            cmd_pkt.byte[0] := SLAVE_MAG_WR
             cmd_pkt.byte[1] := reg_nr.byte[0]
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
@@ -900,14 +907,16 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 }       core#I2C_SLV0_DO..core#PWR_MGMT_2, core#FIFO_COUNTH..core#FIFO_R_W,{
 }       core#XG_OFFS_USR, core#YG_OFFS_USR, core#ZG_OFFS_USR, core#XA_OFFS_H,{
 }       core#YA_OFFS_H, core#ZA_OFFS_H:
-            cmd_pkt.byte[0] := SLAVE_XLG_WR     ' Accel/Gyro regs
+            { accel/gyro regs }
+            cmd_pkt.byte[0] := (SLAVE_XLG_WR | _addr_bits)
             cmd_pkt.byte[1] := reg_nr.byte[0]
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.wrblock_msbf(ptr_buff, nr_bytes)
             i2c.stop{}
         core#CNTL1..core#ASTC, core#I2CDIS:
-            cmd_pkt.byte[0] := SLAVE_MAG_WR     ' Mag regs
+            { mag regs }
+            cmd_pkt.byte[0] := SLAVE_MAG_WR
             cmd_pkt.byte[1] := reg_nr.byte[0]
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
@@ -919,22 +928,23 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
