@@ -5,7 +5,7 @@
     Description: Driver for the ST LSM6DSL 6DoF IMU
     Copyright (c) 2022
     Started Feb 18, 2021
-    Updated Jul 9, 2022
+    Updated Jul 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -101,8 +101,6 @@ CON
 VAR
 
     long _CS
-    long _ares, _gres
-    long _abias[ACCEL_DOF], _gbias[GYRO_DOF]
     byte _adata_src, _gdata_src
 
 OBJ
@@ -1004,6 +1002,7 @@ PUB MagDataRate(rate): curr_rate
 
 PUB MagDataReady{}: flag
 ' Flag indicating new magnetometer data available
+    return true
 
 PUB MagFastRead(state): curr_state
 ' Enable reading of only the MSB of data to increase reading efficiency, at the cost of precision and accuracy
