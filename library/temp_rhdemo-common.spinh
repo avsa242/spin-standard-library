@@ -14,12 +14,11 @@ PUB RHData{} | rh
     rh := sensr.rh{}
     ser.printf2(string("Rel. humidity (%%): %3.3d.%02.2d\n\r"), (rh / 100), (rh // 100))
 
-
 PUB TempData{} | temp, tscl
 ' Display temperature sensor data
     temp := sensr.temperature{}
     tscl := lookupz(sensr.tempscale(-2): "C", "F", "K")
-    ser.printf3(string("Temp. (deg %c): %3.3d.%02.2d\n\r"), tscl, (temp / 100), (temp // 100))
+    ser.printf3(string("Temp. (deg %c): %3.3d.%02.2d\n\r"), tscl, (temp / 100), ||(temp // 100))
 
 PUB Demo{}
 
