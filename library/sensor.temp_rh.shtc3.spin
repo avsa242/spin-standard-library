@@ -33,7 +33,12 @@ VAR
 
 OBJ
 
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef SHTC3_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
     i2c : "com.i2c"                             ' PASM I2C engine
+#endif
     core: "core.con.shtc3"                      ' hw-specific constants
     time: "time"                                ' timekeeping methods
     crc : "math.crc"                            ' crc algorithms
