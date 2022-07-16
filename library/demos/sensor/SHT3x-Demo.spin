@@ -2,98 +2,59 @@
     --------------------------------------------
     Filename: SHT3x-Demo.spin
     Author: Jesse Burt
-    Description: Demo of the SHT3x driver
+    Description: SHT3x driver demo
+        * Temp/RH data output
     Copyright (c) 2022
     Started Mar 10, 2018
-    Updated Mar 27, 2022
+    Updated Jul 13, 2022
     See end of file for terms of use.
     --------------------------------------------
-}
 
+    Build-time symbols supported by driver:
+        -DSHT3x_I2C (default if none specified)
+        -DSHT3x_I2C_BC
+}
 CON
 
-    _clkmode        = cfg#_clkmode
-    _xinfreq        = cfg#_xinfreq
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED             = cfg#LED1
-    SER_BAUD        = 115_200
+    SER_BAUD    = 115_200
 
-    SCL_PIN         = 28
-    SDA_PIN         = 29
-    ADDR_BIT        = 0                         ' 0, 1: opt. slave address
-    I2C_HZ          = 1_000_000                 ' max is 1_000_000
-    RESET_PIN       = -1                        ' optional
+    { I2C configuration }
+    SCL_PIN     = 28
+    SDA_PIN     = 29
+    I2C_FREQ    = 1_000_000                     ' max is 1_000_000
+    ADDR_BITS   = 0                             ' 0, 1
+
+    RES_PIN     = -1                            ' optional
 ' --
-
-' Temperature scale
-    C               = 0
-    F               = 1
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    sht3x   : "sensor.temp_rh.sht3x"
-    int     : "string.integer"
-    time    : "time"
-
-PUB Main{} | temp, rh
-
-    setup{}
-
-    sht3x.tempscale(C)
-
-    repeat
-        ser.position(0, 3)
-
-        ser.str(string("Temperature: "))
-        decimal(sht3x.temperature{}, 100)
-        ser.newline{}
-
-        ser.str(string("Relative humidity: "))
-        decimal(sht3x.rh{}, 100)
-        ser.newline{}
-
-        time.msleep (1000)
-
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
-' Display a scaled up number as a decimal
-'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
-    whole := scaled / divisor
-    tmp := divisor
-    places := 0
-    part := 0
-    sign := 0
-    if scaled < 0
-        sign := "-"
-    else
-        sign := " "
-
-    repeat
-        tmp /= 10
-        places++
-    until tmp == 1
-    scaled //= divisor
-    part := int.deczeroed(||(scaled), places)
-
-    ser.char(sign)
-    ser.dec(||(whole))
-    ser.char(".")
-    ser.str(part)
+    cfg:    "core.con.boardcfg.flip"
+    sensr:  "sensor.temp_rh.sht3x"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
 
 PUB Setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(30)
+    time.msleep(10)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if sht3x.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BIT, RESET_PIN)
+    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS, RES_PIN))
         ser.strln(string("SHT3x driver started"))
     else
         ser.strln(string("SHT3x driver failed to start - halting"))
         repeat
+
+    sensr.tempscale(sensr#C)
+    demo{}
+
+#include "temp_rhdemo-common.spinh"             ' code common to all temp/RH demos
 
 DAT
 {
