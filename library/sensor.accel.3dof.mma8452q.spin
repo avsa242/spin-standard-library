@@ -5,7 +5,7 @@
     Description: Driver for the MMA8452Q 3DoF accelerometer
     Copyright (c) 2022
     Started May 9, 2021
-    Updated May 12, 2022
+    Updated Jul 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -92,10 +92,8 @@ CON
 
 VAR
 
-    long _ares
     long _abiasraw[ACCEL_DOF]
     byte _opmode_orig
-    byte _addr_bits
 
 OBJ
 
