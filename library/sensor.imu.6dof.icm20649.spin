@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2022
     Started Aug 28, 2020
-    Updated May 12, 2022
+    Updated Jul 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -76,11 +76,9 @@ CON
 VAR
 
     long _CS
-    word _abiasraw[ACCEL_DOF], _gbiasraw[GYRO_DOF]
     word _abias_fact[ACCEL_DOF]
-    word _ares, _gres, _temp_scale
+    word _temp_scale
     byte _roomtemp_offs
-    byte _addr
 
 OBJ
 
@@ -138,9 +136,9 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
-            _addr := (||(ADDR_BITS <> 0)) << 1  ' if not 0, then it's 1
+            _addr_bits := (||(ADDR_BITS <> 0)) << 1  ' if not 0, then it's 1
             time.usleep(core#G_START_COLD)      ' wait for device startup
-            if i2c.present(SLAVE_WR | _addr)    ' test device bus presence
+            if i2c.present(SLAVE_WR | _addr_bits)    ' test device bus presence
                 if deviceid{} == core#DEVID_RESP' validate device
                     return
     ' if this point is reached, something above failed
@@ -749,12 +747,12 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
             repeat i from 0 to nr_bytes-1
                 byte[ptr_buff][i] := tmp.byte[nr_bytes-1-i]
 #elseifdef ICM20649_I2C
-            cmd_pkt.byte[0] := SLAVE_WR | _addr
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
             i2c.start{}
-            i2c.wr_byte(SLAVE_RD | _addr)
+            i2c.wr_byte(SLAVE_RD | _addr_bits)
             i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c.NAK)
             i2c.stop{}
 #endif
@@ -773,13 +771,13 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp[2], i
             repeat i from 0 to nr_bytes-1
                 byte[ptr_buff][i] := tmp.byte[nr_bytes-1-i]
 #elseifdef ICM20649_I2C
-            cmd_pkt.byte[0] := SLAVE_WR | _addr
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
             cmd_pkt.byte[1] := reg_nr.byte[0]   ' Actual reg # is lower 8 bits
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
 
             i2c.start{}
-            i2c.wr_byte(SLAVE_RD | _addr)
+            i2c.wr_byte(SLAVE_RD | _addr_bits)
             i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c.NAK)
             i2c.stop{}
 #endif
@@ -804,7 +802,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
             spi.wrblock_lsbf(@tmp, nr_bytes)
             outa[_CS] := 1
 #elseifdef ICM20649_I2C
-            cmd_pkt.byte[0] := SLAVE_WR | _addr
+            cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
             cmd_pkt.byte[1] := reg_nr.byte[0]   ' Actual reg # is lower 8 bits
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
