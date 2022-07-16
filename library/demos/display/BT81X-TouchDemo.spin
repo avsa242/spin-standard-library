@@ -5,7 +5,7 @@
     Description: Demo of the BT81x driver touchscreen functionality
     Copyright (c) 2022
     Started Sep 30, 2019
-    Updated Feb 13, 2022
+    Updated Apr 11, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,10 +19,10 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 3
-    SCK_PIN     = 0
+    CS_PIN      = 0
+    SCK_PIN     = 1
     MOSI_PIN    = 2
-    MISO_PIN    = 1
+    MISO_PIN    = 3
 
     BRIGHTNESS  = 100                           ' Initial brightness (0..128)
 
@@ -123,7 +123,7 @@ PUB UpdateButton(state) | btn_cx, btn_cy
     btn_cx := CENTERX - (BUTTON_W / 2)
     btn_cy := CENTERY - (BUTTON_H / 2)
 
-    eve.waitidle{}                              ' wait for EVE to be ready
+    eve.waitready{}                              ' wait for EVE to be ready
     eve.dlstart{}                               ' begin list of graphics cmds
     eve.clearcolor(0, 0, 0)
     eve.clear{}
@@ -147,7 +147,7 @@ PUB UpdateScrollbar(val) | w, h, x, y, sz
     x := 0+sz
     y := HEIGHT-h-1
 
-    eve.waitidle{}
+    eve.waitready{}
     eve.dlstart{}
     eve.clearcolor(0, 0, 0)
     eve.clear{}
@@ -164,7 +164,7 @@ PUB UpdateToggle(t1, t2, t3, t4) | tag, tmp, x, y, w, sw, h
     x := CENTERX-(w/2)                          ' x and y
     y := CENTERY-(h*4)                          '   coords
 
-    eve.waitidle{}
+    eve.waitready{}
     eve.dlstart{}
     eve.clearcolor(0, 0, 0)
     eve.clear{}
@@ -180,6 +180,19 @@ PUB UpdateToggle(t1, t2, t3, t4) | tag, tmp, x, y, w, sw, h
     eve.toggle(x, y + (4 * (h*2)), w, h, 0, t4, string("OFF", $FF, "ON"))
     eve.dlend{}
 
+PRI TS_Cal{}
+' Calibrate the touchscreen (resistive only)
+    eve.touchsens(1200)                         ' typical value, per BRT_AN_033
+    eve.waitready{}
+    eve.dlstart{}
+    eve.clear{}
+    eve.str(80, 30, 27, eve#OPT_CENTER, string("Please tap on the dot"))
+    eve.touchcal{}
+    eve.dlend{}
+    eve.waitready{}
+    ser.str(string("Press any key to continue, once touchscreen calibration is complete"))
+    ser.charin{}
+
 PUB Setup{}
 
     ser.start(SER_BAUD)
@@ -191,6 +204,9 @@ PUB Setup{}
     else
         ser.str(string("BT81x driver failed to start - halting"))
         repeat
+
+    if (eve.modelid{} == eve#BT816)             ' resistive TS?
+        ts_cal{}
 
 DAT
 {
