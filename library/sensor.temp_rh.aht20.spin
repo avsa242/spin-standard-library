@@ -5,7 +5,7 @@
     Description: Driver for AHT20 temperature/RH sensors
     Copyright (c) 2022
     Started Mar 26, 2022
-    Updated May 13, 2022
+    Updated Jul 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -26,7 +26,12 @@ CON
 
 OBJ
 
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef AHT20_I2C_BC
+    i2c : "com.i2c.nocog"                       ' SPIN I2C engine (~25kHz)
+#else
     i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
+#endif
     core: "core.con.aht20"                      ' AHT20-specific constants
     time: "time"                                ' basic timing functions
     u64 : "math.unsigned64"                     ' unsigned 64-bit math
@@ -84,6 +89,7 @@ PUB Reset{}
 PUB RHData{}: rhword
 ' Relative humidity ADC word
 '   Returns: u20
+    measure{}
     readreg(core#GET_MEAS, 0, 0)
     return _last_rh
 
@@ -112,6 +118,7 @@ PUB TempRHDataReady{}: flag
 PUB TempData{}: tword
 ' Temperature ADC word
 '   Returns: s20
+    measure{}
     readreg(core#GET_MEAS, 0, 0)
     return _last_temp
 
