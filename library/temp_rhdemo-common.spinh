@@ -5,7 +5,7 @@
     Description: Temperature/RH sensor demo - code common to all drivers
     Copyright (c) 2022
     Started Jul 14, 2022
-    Updated Jul 14, 2022
+    Updated Jul 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -27,6 +27,13 @@ PUB Demo{}
         tempdata{}
         rhdata{}
         time.msleep(250)
+
+CON
+
+    { temperature scales }
+    C   = sensr#C
+    F   = sensr#F
+    K   = sensr#K
 
 DAT
 {
