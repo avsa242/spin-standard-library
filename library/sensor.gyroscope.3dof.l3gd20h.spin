@@ -72,9 +72,6 @@ CON
 VAR
 
     long _CS
-    long _gres
-    long _gbiasraw[3]
-    byte _addr_bits
 
 OBJ
 
@@ -168,7 +165,7 @@ PUB Defaults{}
 }'  but to save code space, just soft-reset, instead:
     reset{}
 
-PUB Preset_Normal{}
+PUB Preset_Active{}
 ' Like Defaults(), but
 '   * Normal (active) operating mode
     reset{}
@@ -333,24 +330,24 @@ PUB Gyrobias(gxbias, gybias, gzbias, rw)
 '   NOTE: When rw is set to READ, gxbias, gybias and gzbias must be addresses of respective variables to hold the returned calibration offset values.
     case rw
         R:
-            long[gxbias] := _gbiasraw[X_AXIS]
-            long[gybias] := _gbiasraw[Y_AXIS]
-            long[gzbias] := _gbiasraw[Z_AXIS]
+            long[gxbias] := _gbias[X_AXIS]
+            long[gybias] := _gbias[Y_AXIS]
+            long[gzbias] := _gbias[Z_AXIS]
 
         W:
             case gxbias
                 -32768..32767:
-                    _gbiasraw[X_AXIS] := gxbias
+                    _gbias[X_AXIS] := gxbias
                 other:
 
             case gybias
                 -32768..32767:
-                    _gbiasraw[Y_AXIS] := gybias
+                    _gbias[Y_AXIS] := gybias
                 other:
 
             case gzbias
                 -32768..32767:
-                    _gbiasraw[Z_AXIS] := gzbias
+                    _gbias[Z_AXIS] := gzbias
                 other:
 
 PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
@@ -358,9 +355,9 @@ PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
     bytefill(@tmp, 0, 8)
     readreg(core#OUT_X_L, 6, @tmp)
 
-    long[ptr_x] := (~~tmp.word[X_AXIS]) - _gbiasraw[X_AXIS]
-    long[ptr_y] := (~~tmp.word[Y_AXIS]) - _gbiasraw[Y_AXIS]
-    long[ptr_z] := (~~tmp.word[Z_AXIS]) - _gbiasraw[Z_AXIS]
+    long[ptr_x] := (~~tmp.word[X_AXIS]) - _gbias[X_AXIS]
+    long[ptr_y] := (~~tmp.word[Y_AXIS]) - _gbias[Y_AXIS]
+    long[ptr_z] := (~~tmp.word[Z_AXIS]) - _gbias[Z_AXIS]
 
 PUB GyroDataOverrun{}: flag
 ' Indicates previously acquired data has been overwritten
