@@ -9,6 +9,12 @@
     Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
+
+    Build-time symbols supported by driver:
+        -DLIS3DH_SPI
+        -DLIS3DH_SPI_BC
+        -DLIS3DH_I2C (default if none specified)
+        -DLIS3DH_I2C_BC
 }
 
 CON
@@ -20,13 +26,17 @@ CON
     LED1        = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 0                             ' SPI
-    SCL_PIN     = 28                            ' SPI, I2C
-    SDA_PIN     = 29                            ' SPI, I2C
-    SDO_PIN     = 3                             ' SPI
-    I2C_HZ      = 400_000                       ' I2C
-    I2C_ADDR    = 0                             ' I2C
+    { I2C configuration }
+    SCL_PIN     = 28
+    SDA_PIN     = 29
+    I2C_FREQ    = 400_000                       ' max is 400_000
+    ADDR_BITS   = 0                             ' 0, 1
 
+    { SPI configuration }
+    CS_PIN      = 0
+    SCK_PIN     = 1                             ' SCL
+    MOSI_PIN    = 2                             ' SDA
+    MISO_PIN    = 3                             ' SDO
     INT1        = 24
 
 '   NOTE: If LIS3DH_SPI is #defined, and SDA_PIN and SDO_PIN are the same,
@@ -115,10 +125,10 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 #ifdef LIS3DH_SPI
-    if accel.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+    if accel.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
         ser.strln(string("LIS3DH driver started (SPI)"))
 #else
-    if accel.startx(SCL_PIN, SDA_PIN, I2C_HZ, I2C_ADDR)
+    if accel.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
         ser.strln(string("LIS3DH driver started (I2C)"))
 #endif
     else

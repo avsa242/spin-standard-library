@@ -68,9 +68,6 @@ CON
 VAR
 
     long _CS
-    long _ares
-    long _abias[3], _abiasraw[3]
-    byte _sa0
 
 OBJ
 
@@ -127,12 +124,12 @@ PUB Start{}: okay
 ' Start using "standard" Propeller I2C pins, and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ, 0)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, SA0_BIT): status
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom IO pins and I2C bus frequency
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ)
-            _sa0 := (||(SA0_BIT <> 0)) << 1     ' If SA0_BIT is nonzero, it's 1
+            _addr_bits := (||(ADDR_BITS <> 0)) << 1
             time.msleep (core#TPOR)
             if deviceid{} == core#WHO_AM_I_RESP
                 return status
@@ -243,24 +240,24 @@ PUB AccelBias(axbias, aybias, azbias, rw)
 '       to respective variables to hold the returned calibration offset values
     case rw
         R:
-            long[axbias] := _abiasraw[X_AXIS]
-            long[aybias] := _abiasraw[Y_AXIS]
-            long[azbias] := _abiasraw[Z_AXIS]
+            long[axbias] := _abias[X_AXIS]
+            long[aybias] := _abias[Y_AXIS]
+            long[azbias] := _abias[Z_AXIS]
 
         W:
             case axbias
                 -32768..32767:
-                    _abiasraw[X_AXIS] := axbias
+                    _abias[X_AXIS] := axbias
                 other:
 
             case aybias
                 -32768..32767:
-                    _abiasraw[Y_AXIS] := aybias
+                    _abias[Y_AXIS] := aybias
                 other:
 
             case azbias
                 -32768..32767:
-                    _abiasraw[Z_AXIS] := azbias
+                    _abias[Z_AXIS] := azbias
                 other:
 
 PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
@@ -272,9 +269,9 @@ PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_y] := ~~tmp.word[Y_AXIS]
     long[ptr_z] := ~~tmp.word[Z_AXIS]
 
-    long[ptr_x] -= _abiasraw[X_AXIS]
-    long[ptr_y] -= _abiasraw[Y_AXIS]
-    long[ptr_z] -= _abiasraw[Z_AXIS]
+    long[ptr_x] -= _abias[X_AXIS]
+    long[ptr_y] -= _abias[Y_AXIS]
+    long[ptr_z] -= _abias[Z_AXIS]
 
 PUB AccelDataOverrun{}: flag
 ' Flag indicating previously acquired data has been overwritten
@@ -770,13 +767,13 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
     outa[_CS] := 1
 #elseifdef LIS3DH_I2C
-    cmd_pkt.byte[0] := SLAVE_WR | _sa0
+    cmd_pkt.byte[0] := (SLAVE_WR | _addr_bits)
     cmd_pkt.byte[1] := reg_nr
 
     i2c.start{}                                 ' S
     i2c.wrblock_lsbf(@cmd_pkt, 2)               ' W [SL|W] [REG]
     i2c.start{}                                 ' Rs
-    i2c.wr_byte(SLAVE_RD | _sa0)                ' W [SL|R]
+    i2c.wr_byte(SLAVE_RD | _addr_bits)          ' W [SL|R]
     i2c.rdblock_lsbf(ptr_buff, nr_bytes, TRUE)  ' R ...
     i2c.stop{}                                  ' P
 #endif
@@ -801,7 +798,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     spi.wrblock_lsbf(ptr_buff, nr_bytes)
     outa[_CS] := 1
 #elseifdef LIS3DH_I2C
-    cmd_pkt.byte[0] := SLAVE_WR | _sa0
+    cmd_pkt.byte[0] := (SLAVE_WR | _addr_bits)
     cmd_pkt.byte[1] := reg_nr
 
     i2c.start{}

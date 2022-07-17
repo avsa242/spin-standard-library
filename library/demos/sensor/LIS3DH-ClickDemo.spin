@@ -9,6 +9,12 @@
     Updated Jul 9, 2022
     See end of file for terms of use.
     --------------------------------------------
+
+    Build-time symbols supported by driver:
+        -DLIS3DH_SPI
+        -DLIS3DH_SPI_BC
+        -DLIS3DH_I2C (default if none specified)
+        -DLIS3DH_I2C_BC
 }
 
 CON
@@ -17,16 +23,21 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
+    LED1        = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 0                             ' SPI
-    SCL_PIN     = 1                             ' SPI, I2C
-    SDA_PIN     = 2                             ' SPI, I2C
-    SDO_PIN     = 3                             ' SPI
-    I2C_HZ      = 400_000                       ' I2C
-    SLAVE_OPT   = 0                             ' I2C
-'   NOTE: If LIS3DH_SPI is #defined, and SDA_PIN and SDO_PIN are the same,
+    { I2C configuration }
+    SCL_PIN     = 28
+    SDA_PIN     = 29
+    I2C_FREQ    = 400_000                       ' max is 400_000
+    ADDR_BITS   = 0                             ' 0, 1
+
+    { SPI configuration }
+    CS_PIN      = 0
+    SCK_PIN     = 1                             ' SCL
+    MOSI_PIN    = 2                             ' SDA
+    MISO_PIN    = 3                             ' SDO
+'   NOTE: If LIS3DH_SPI is #defined, and MOSI_PIN and MISO_PIN are the same,
 '   the driver will attempt to start in 3-wire SPI mode.
 ' --
 
@@ -55,12 +66,12 @@ PUB Main{} | click_src, int_act, dclicked, sclicked, z_clicked, y_clicked, x_cli
         y_clicked := ((click_src >> 1) & 1)
         x_clicked := (click_src & 1)
         ser.position(0, 3)
-        ser.printf1(string("Click interrupt: %s (%d)\n"), yesno(int_act))
-        ser.printf1(string("Double-clicked:  %s (%d)\n"), yesno(dclicked))
-        ser.printf1(string("Single-clicked:  %s (%d)\n"), yesno(sclicked))
-        ser.printf1(string("Z-axis clicked:  %s\n"), yesno(z_clicked))
-        ser.printf1(string("Y-axis clicked:  %s\n"), yesno(y_clicked))
-        ser.printf1(string("X-axis clicked:  %s\n"), yesno(x_clicked))
+        ser.printf1(string("Click interrupt: %s\n\r"), yesno(int_act))
+        ser.printf1(string("Double-clicked:  %s\n\r"), yesno(dclicked))
+        ser.printf1(string("Single-clicked:  %s\n\r"), yesno(sclicked))
+        ser.printf1(string("Z-axis clicked:  %s\n\r"), yesno(z_clicked))
+        ser.printf1(string("Y-axis clicked:  %s\n\r"), yesno(y_clicked))
+        ser.printf1(string("X-axis clicked:  %s\n\r"), yesno(x_clicked))
 
     ser.showcursor{}                            ' restore terminal cursor
     repeat
@@ -80,10 +91,10 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 #ifdef LIS3DH_SPI
-    if accel.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
+    if accel.startx(CS_PIN, SCK_PIN, MOSI_PIN, MOSI_PIN)
         ser.strln(string("LIS3DH driver started (SPI)"))
 #else
-    if accel.startx(SCL_PIN, SDA_PIN, I2C_HZ, SLAVE_OPT)
+    if accel.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
         ser.strln(string("LIS3DH driver started (I2C)"))
 #endif
     else
