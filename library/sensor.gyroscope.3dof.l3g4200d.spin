@@ -5,7 +5,7 @@
     Description: Driver for the ST L3G4200D 3-axis gyroscope
     Copyright (c) 2022
     Started Nov 27, 2019
-    Updated Jul 9, 2022
+    Updated Jul 17, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,6 +20,7 @@ CON
     DEF_SCL             = 28
     DEF_SDA             = 29
     DEF_HZ              = 100_000
+    DEF_ADDR            = 0
     I2C_MAX_FREQ        = core#I2C_MAX_FREQ
 
 { Indicate to user apps how many Degrees of Freedom each sub-sensor has }
@@ -71,9 +72,7 @@ CON
 
 VAR
 
-    long _gres
     long _CS
-    long _gyro_bias[GYRO_DOF]
 
 OBJ
 
@@ -123,14 +122,15 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 #elseifdef L3G4200D_I2C
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins, and 100kHz bus speed
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom I/O settings and bus speed
     if (lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   (I2C_HZ =< core#I2C_MAX_FREQ))
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#T_POR)             ' wait for device startup
+            _addr_bits := (ADDR_BITS << 1)
             if (deviceid{} == core#DEVID_RESP)    ' validate device
                 return
     { if this point is reached, something above failed }
@@ -279,19 +279,19 @@ PUB GyroBias(x, y, z, rw)
 '       variables to hold the returned calibration offset values.
     case rw
         R:
-            longmove(x, @_gyro_bias[0], 3)
+            longmove(x, @_gbias[0], 3)
         W:
             case x
                 -32768..32767:
-                    _gyro_bias[X_AXIS] := x
+                    _gbias[X_AXIS] := x
                 other:
             case y
                 -32768..32767:
-                    _gyro_bias[Y_AXIS] := y
+                    _gbias[Y_AXIS] := y
                 other:
             case z
                 -32768..32767:
-                    _gyro_bias[Z_AXIS] := z
+                    _gbias[Z_AXIS] := z
                 other:
 
 PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
@@ -299,9 +299,9 @@ PUB GyroData(ptr_x, ptr_y, ptr_z) | tmp[2]
     bytefill(@tmp, 0, 8)
     readreg(core#OUT_X_L, 6, @tmp)
 
-    long[ptr_x] := (~~tmp.word[X_AXIS] - _gyro_bias[X_AXIS])
-    long[ptr_y] := (~~tmp.word[Y_AXIS] - _gyro_bias[Y_AXIS])
-    long[ptr_z] := (~~tmp.word[Z_AXIS] - _gyro_bias[Z_AXIS])
+    long[ptr_x] := (~~tmp.word[X_AXIS] - _gbias[X_AXIS])
+    long[ptr_y] := (~~tmp.word[Y_AXIS] - _gbias[Y_AXIS])
+    long[ptr_z] := (~~tmp.word[Z_AXIS] - _gbias[Z_AXIS])
 
 PUB GyroDataOverrun{}: flag
 ' Flag indicating previously acquired data has been overwritten
@@ -614,14 +614,14 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
     outa[_CS] := 1
 #elseifdef L3G4200D_I2C
-    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[0] := (SLAVE_WR | _addr_bits)
     cmd_pkt.byte[1] := reg_nr
     i2c.start{}
     i2c.wrblock_lsbf(@cmd_pkt, 2)
     i2c.stop{}
 
     i2c.start{}
-    i2c.write(SLAVE_RD)
+    i2c.write(SLAVE_RD | _addr_bits)
     i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
     i2c.stop{}
 #endif
@@ -639,7 +639,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     spi.wrblock_lsbf(ptr_buff, nr_bytes)
     outa[_CS] := 1
 #elseifdef L3G4200D_I2C
-    cmd_pkt.byte[0] := SLAVE_WR
+    cmd_pkt.byte[0] := (SLAVE_WR | _addr_bits)
     cmd_pkt.byte[1] := reg_nr
     i2c.start{}
     i2c.wrblock_lsbf(@cmd_pkt, 2)

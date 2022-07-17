@@ -2,121 +2,70 @@
     --------------------------------------------
     Filename: L3G4200D-Demo.spin
     Author: Jesse Burt
-    Description: Simple demo of the L3G4200D driver
+    Description: L3G4200D driver demo
+        * 3DoF data output
     Copyright (c) 2022
     Started Nov 27, 2019
-    Updated Jul 5, 2022
+    Updated Jul 17, 2022
     See end of file for terms of use.
     --------------------------------------------
-}
 
+    Build-time symbols supported by driver:
+        -DL3G4200D_SPI
+        -DL3G4200D_SPI_BC
+        -DL3G4200D_I2C (default if none specified)
+        -DL3G4200D_I2C_BC
+}
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 0                             ' SPI
-    SCL_PIN     = 1                             ' SPI, I2C
-    SDA_PIN     = 2                             ' SPI, I2C
-    SDO_PIN     = 3                             ' SPI
-
+    { I2C configuration }
+    SCL_PIN     = 28
+    SDA_PIN     = 29
     I2C_FREQ    = 400_000                       ' max is 400_000
-' --
+    ADDR_BITS   = 0                             ' 0, 1
 
-    DAT_X_COL   = 15
-    DAT_Y_COL   = DAT_X_COL + 15
-    DAT_Z_COL   = DAT_Y_COL + 15
+    { SPI configuration }
+    CS_PIN      = 0
+    SCK_PIN     = 1
+    MOSI_PIN    = 2
+    MISO_PIN    = 3
+' --
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    gyro    : "sensor.gyroscope.3dof.l3g4200d"
-    int     : "string.integer"
-
-PUB Main{}
-
-    setup{}
-    gyro.preset_active{}                        ' default settings, but enable
-                                                ' measurements, and set scale
-                                                ' factor
-    repeat
-        ser.position(0, 3)
-        gyrocalc{}
-
-        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
-            calibrate{}                         ' to calibrate sensor offsets
-
-PUB GyroCalc{} | gx, gy, gz
-
-    repeat until gyro.gyrodataready{}           ' wait for new sensor data set
-    gyro.gyrodps(@gx, @gy, @gz)                 ' read calculated sensor data
-    ser.str(string("Gyro (dps):"))
-    ser.positionx(DAT_X_COL)
-    decimal(gx, 1000000)                        ' data is in micro-dps; display
-    ser.positionx(DAT_Y_COL)                    ' it as if it were a float
-    decimal(gy, 1000000)
-    ser.positionx(DAT_Z_COL)
-    decimal(gz, 1000000)
-    ser.clearline{}
-    ser.newline{}
-
-PUB Calibrate{}
-
-    ser.position(0, 7)
-    ser.str(string("Calibrating..."))
-    gyro.calibrategyro{}
-    ser.positionx(0)
-    ser.clearline{}
-
-PRI Decimal(scaled, divisor) | whole, part, places, tmp, sign
-' Display a scaled up number as a decimal
-'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
-    whole := scaled / divisor                   ' separate the whole part
-    tmp := divisor                              ' temp/working copy of divisor
-    places := 0
-    part := 0
-    sign := 0
-    if scaled < 0                               ' determine sign character
-        sign := "-"
-    else
-        sign := " "
-
-    repeat                                      ' how many places to display:
-        tmp /= 10                               ' increment every divide-by-10
-        places++                                '   until we're left with 1
-    until tmp == 1
-    scaled //= divisor                          ' separate the fractional part
-    part := int.deczeroed(||(scaled), places)   ' convert to string
-
-    ser.char(sign)                              ' display it
-    ser.dec(||(whole))
-    ser.char(".")
-    ser.str(part)
-    ser.chars(32, 5)                            ' erase trailing chars
+    cfg: "core.con.boardcfg.flip"
+    imu: "sensor.gyroscope.3dof.l3g4200d"
+    ser: "com.serial.terminal.ansi"
+    time: "time"
 
 PUB Setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(30)
+    time.msleep(10)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
 #ifdef L3G4200D_SPI
-    if gyro.startx(CS_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
-        ser.strln(string("L3G4200D driver started (SPI)"))
-#else                                           ' default to I2C
-    if gyro.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
-        ser.strln(string("L3G4200D driver started (I2C)"))
+    if (imu.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
+#else
+    if (imu.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
 #endif
+        ser.strln(string("L3G4200D driver started"))
     else
         ser.strln(string("L3G4200D driver failed to start - halting"))
         repeat
+
+    imu.preset_active{}
+
+    demo{}
+
+#include "imudemo-common.spinh"                 ' code common to all IMU demos
 
 DAT
 {
