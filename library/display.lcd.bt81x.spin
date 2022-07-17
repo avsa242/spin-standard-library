@@ -6,7 +6,7 @@
         Advanced Embedded Video Engine (EVE) Graphic controller
     Copyright (c) 2022
     Started Sep 25, 2019
-    Updated May 21, 2022
+    Updated Jul 17, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -103,6 +103,8 @@ CON
 
 VAR
 
+    long _RST
+
     long _disp_width, _disp_height, _disp_xmax, _disp_ymax, _cent_x, _cent_y
     long _hcyc_clks, _hoffs_cyc, _hsync0_cyc, _hsync1_cyc, _vcyc_clks
     long _voffs_lns, _vsync0_cyc, _vsync1_cyc, _clkdiv, _swiz_md, _pclk_pol
@@ -117,12 +119,13 @@ OBJ
 PUB Null{}
 ' This is not a top-level object
 
-PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, PTR_DISP): status
+PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, RST_PIN, PTR_DISP): status
 ' Start the driver using custom I/O settings
 '   CS_PIN: SPI Chip Select
 '   SCK_PIN: SPI Clock
 '   MOSI_PIN: Master-Out Slave-In
 '   MISO_PIN: Master-In Slave-Out
+'   RST_PIN: Reset pin (optional; specify outside of the range 0..31 to ignore)
 '   PTR_DISP: pointer to display setup
 '       Structure (18 longs):
 '       WIDTH, HEIGHT, XMAX, YMAX, HCYCLE_CLKS, HOFFSET_CYCS, HSYNC0_CYCS,
@@ -132,7 +135,8 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, PTR_DISP): status
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
         if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, {
 }       core#SPI_MODE))
-            softreset{}
+            _RST := RST_PIN
+            reset{}
             extclock{}
             clockfreq(DEF)                      ' set clock to default (59MHz)
             repeat until deviceid{} == core#CHIPID_VALID
@@ -745,6 +749,16 @@ PUB ReadErr(ptr_buff)
 '   NOTE: ptr_buff must be at least 128 bytes long
     readreg(core#EVE_ERR, 128, ptr_buff)
 
+PUB Reset{}
+' Reset the display controller
+    if (lookdown(_RST: 0..31))
+        outa[_RST] := 0
+        dira[_RST] := 1
+        time.msleep(core#T_PDN_RES)
+        outa[_RST] := 1
+    else
+        softreset{}
+
 PUB ResetCoPro{} | ptr_tmp, tmp
 ' Reset the Coprocessor
 '   NOTE: To be used after the coprocessor generates a fault
@@ -1185,22 +1199,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
