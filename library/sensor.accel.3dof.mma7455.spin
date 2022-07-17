@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: sensor.accel.3dof.mma7455.i2c.spin
+    Filename: sensor.accel.3dof.mma7455.spin
     Author: Jesse Burt
     Description: Driver for the NXP/Freescale MMA7455 3-axis accelerometer
     Copyright (c) 2022
     Started Nov 27, 2019
-    Updated May 12, 2022
+    Updated Jul 17, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,6 +19,7 @@ CON
     DEF_SCL     = 28
     DEF_SDA     = 29
     DEF_HZ      = 100_000
+    DEF_ADDR    = 0
     I2C_MAX_FREQ= core#I2C_MAX_FREQ
 
 ' Indicate to user apps how many Degrees of Freedom each sub-sensor has
@@ -66,11 +67,16 @@ CON
 
 VAR
 
-    long _ares, _ascl
+    long _ascl
 
 OBJ
 
-    i2c : "com.i2c"
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef MMA7455_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
     core: "core.con.mma7455"
     time: "time"
 
@@ -79,17 +85,17 @@ PUB Null{}
 
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.msleep(1)
-            if i2c.present(SLAVE_WR)        ' check device bus presence
-                if deviceid{} == core#DEVID_RESP
-                    return
+            _addr_bits := (ADDR_BITS << 1)
+            if (deviceid{} == core#DEVID_RESP)
+                return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -406,13 +412,13 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from slave device into ptr_buff
     case reg_nr
         $00..$0B, $0D..$1E:
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := (SLAVE_WR | _addr_bits)
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
 
             i2c.start{}
-            i2c.write(SLAVE_RD)
+            i2c.write(SLAVE_RD | _addr_bits)
             i2c.rdblock_lsbf(ptr_buff, nr_bytes, TRUE)
             i2c.stop{}
         other:
@@ -422,7 +428,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to slave device
     case reg_nr
         $10..$1E:
-            cmd_pkt.byte[0] := SLAVE_WR
+            cmd_pkt.byte[0] := (SLAVE_WR | _addr_bits)
             cmd_pkt.byte[1] := reg_nr
             i2c.start{}
             i2c.wrblock_lsbf(@cmd_pkt, 2)
@@ -433,22 +439,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
