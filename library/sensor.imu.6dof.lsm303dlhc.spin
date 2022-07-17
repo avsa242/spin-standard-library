@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: sensor.imu.6dof.lsm303dlhc.i2c.spin
+    Filename: sensor.imu.6dof.lsm303dlhc.spin
     Author: Jesse Burt
     Description: Driver for the ST LSM303DLHC 6DoF IMU
     Copyright (c) 2022
     Started Jul 29, 2020
-    Updated May 12, 2022
+    Updated Jul 17, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -63,13 +63,14 @@ CON
     SINGLE          = 1
     SLEEP           = 2
 
-VAR
-
-    long _abiasraw[ACCEL_DOF], _mbiasraw[MAG_DOF], _ares, _mres[MAG_DOF]
-
 OBJ
 
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef LSM303DLHC_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
     i2c : "com.i2c"                             ' PASM I2C engine
+#endif
     core: "core.con.lsm303dlhc"                 ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
 
@@ -185,21 +186,21 @@ PUB AccelBias(axbias, aybias, azbias, rw)
 '   NOTE: When rw is set to READ, axbias, aybias and azbias must be addresses of respective variables to hold the returned calibration offset values.
     case rw
         R:
-            long[axbias] := _abiasraw[X_AXIS]
-            long[aybias] := _abiasraw[Y_AXIS]
-            long[azbias] := _abiasraw[Z_AXIS]
+            long[axbias] := _abias[X_AXIS]
+            long[aybias] := _abias[Y_AXIS]
+            long[azbias] := _abias[Z_AXIS]
         W:
             case axbias
                 -1024..1023:
-                    _abiasraw[X_AXIS] := axbias
+                    _abias[X_AXIS] := axbias
                 other:
             case aybias
                 -1024..1023:
-                    _abiasraw[Y_AXIS] := aybias
+                    _abias[Y_AXIS] := aybias
                 other:
             case azbias
                 -1024..1023:
-                    _abiasraw[Z_AXIS] := azbias
+                    _abias[Z_AXIS] := azbias
                 other:
 
 PUB AccelData(ax, ay, az) | tmp[2]
@@ -209,9 +210,9 @@ PUB AccelData(ax, ay, az) | tmp[2]
 
     ' accel data is 12bit, left-justified in a 16bit word
     '   extend sign, then right-justify
-    long[ax] := (~~tmp.word[X_AXIS] ~> 4) - _abiasraw[X_AXIS]
-    long[ay] := (~~tmp.word[Y_AXIS] ~> 4) - _abiasraw[Y_AXIS]
-    long[az] := (~~tmp.word[Z_AXIS] ~> 4) - _abiasraw[Z_AXIS]
+    long[ax] := (~~tmp.word[X_AXIS] ~> 4) - _abias[X_AXIS]
+    long[ay] := (~~tmp.word[Y_AXIS] ~> 4) - _abias[Y_AXIS]
+    long[az] := (~~tmp.word[Z_AXIS] ~> 4) - _abias[Z_AXIS]
 
 PUB AccelDataOverrun{}: flag
 ' Flag indicating previously acquired data has been overwritten
@@ -259,6 +260,7 @@ PUB AccelInt{}: curr_state
 '       2: Y-axis low event
 '       1: X-axis high event
 '       0: X-axis low event
+    curr_state := 0
     readreg(core#INT1_SRC, 1, @curr_state)
 
 PUB AccelIntMask(mask): curr_mask
@@ -354,6 +356,7 @@ PUB ClickedInt{}: int_src
 '       2: Z-axis clicked
 '       1: Y-axis clicked
 '       0: X-axis clicked
+    int_src := 0
     readreg(core#CLICK_SRC, 1, @int_src)
 
 PUB ClickIntEnabled(state): curr_state
@@ -490,12 +493,14 @@ PUB FIFOEnabled(state): curr_state
 PUB FIFOEmpty{}: flag
 ' Flag indicating FIFO is empty
 '   Returns: FALSE (0): FIFO contains at least one sample, TRUE(-1): FIFO is empty
+    flag := 0
     readreg(core#FIFO_SRC_REG, 1, @flag)
     return (((flag >> core#EMPTY) & 1) == 1)
 
 PUB FIFOFull{}: flag
 ' Flag indicating FIFO is full
 '   Returns: FALSE (0): FIFO contains less than 32 samples, TRUE(-1): FIFO contains 32 samples
+    flag := 0
     readreg(core#FIFO_SRC_REG, 1, @flag)
     return (((flag >> core#OVRN_FIFO) & 1) == 1)
 
@@ -536,6 +541,7 @@ PUB FIFOThreshold(thresh): curr_thr
 PUB FIFOUnreadSamples{}: nr_samples
 ' Number of unread samples stored in FIFO
 '   Returns: 1..32
+    nr_samples := 0
     readreg(core#FIFO_SRC_REG, 1, @nr_samples)
     return ((nr_samples & core#FSS_BITS) + 1)
 
@@ -554,8 +560,9 @@ PUB GyroData(x, y, z)
 PUB GyroDataOverrun{}
 ' dummy method
 
-PUB GyroDataReady{}
+PUB GyroDataReady{}: flag
 ' dummy method
+    return true
 
 PUB GyroScale(scale)
 ' dummy method
@@ -571,33 +578,30 @@ PUB MagBias(mxbias, mybias, mzbias, rw)
 '       to respective variables to hold the returned offset values.
     case rw
         R:
-            long[mxbias] := _mbiasraw[X_AXIS]
-            long[mybias] := _mbiasraw[Y_AXIS]
-            long[mzbias] := _mbiasraw[Z_AXIS]
-
+            long[mxbias] := _mbias[X_AXIS]
+            long[mybias] := _mbias[Y_AXIS]
+            long[mzbias] := _mbias[Z_AXIS]
         W:
             case mxbias
                 -2048..2047:
-                    _mbiasraw[X_AXIS] := mxbias
+                    _mbias[X_AXIS] := mxbias
                 other:
-
             case mybias
                 -2048..2047:
-                    _mbiasraw[Y_AXIS] := mybias
+                    _mbias[Y_AXIS] := mybias
                 other:
-
             case mzbias
                 -2048..2047:
-                    _mbiasraw[Z_AXIS] := mzbias
+                    _mbias[Z_AXIS] := mzbias
                 other:
 
 PUB MagData(mx, my, mz) | tmp[2]
 ' Read the Magnetometer output registers
     longfill(@tmp, 0, 2)
     readreg(core#OUT_X_H_M, 6, @tmp)
-    long[mx] := ~~tmp.word[0] - _mbiasraw[X_AXIS]
-    long[my] := ~~tmp.word[2] - _mbiasraw[Y_AXIS]
-    long[mz] := ~~tmp.word[1] - _mbiasraw[Z_AXIS]
+    long[mx] := ~~tmp.word[0] - _mbias[X_AXIS]
+    long[my] := ~~tmp.word[2] - _mbias[Y_AXIS]
+    long[mz] := ~~tmp.word[1] - _mbias[Z_AXIS]
 
 PUB MagDataOverrun{}: flag
 ' Flag indicating magnetometer data has overrun
@@ -622,6 +626,7 @@ PUB MagDataRate(rate): curr_rate
 PUB MagDataReady{}: flag
 '   Flag indicating new magnetometer data available
 '       Returns: TRUE(-1) if data available, FALSE otherwise
+    flag := 0
     readreg(core#SR_REG_M, 1, @flag)
     return ((flag & core#DRDY_BITS) == 0)
 
@@ -751,22 +756,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
