@@ -2,91 +2,60 @@
     --------------------------------------------
     Filename: MCP9808-Demo.spin
     Author: Jesse Burt
-    Description: Demo of the MCP9808 driver
+    Description: MCP9808 driver demo
+        * Temp data output
     Copyright (c) 2022
     Started Jul 26, 2020
-    Updated Jul 9, 2022
+    Updated Jul 20, 2022
     See end of file for terms of use.
     --------------------------------------------
-}
 
+    Build-time symbols supported by driver:
+        -DMCP9808_I2C (default if none specified)
+        -DMCP9808_I2C_BC
+}
 CON
 
-    _xinfreq    = cfg#_xinfreq
     _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    I2C_SCL     = 28
-    I2C_SDA     = 29
-    I2C_HZ      = 400_000                       ' max is 400_000
-    ADDR_BITS   = %000                          ' %000..%111
+    { I2C configuration }
+    SCL_PIN     = 28
+    SDA_PIN     = 29
+    I2C_FREQ    = 400_000                       ' max is 400_000
+    ADDR_BITS   = 0                             ' %000..%111 (0..7)
 ' --
-
-    C           = mcp9808#C
-    F           = mcp9808#F
 
 OBJ
 
-    ser         : "com.serial.terminal.ansi"
-    cfg         : "core.con.boardcfg.flip"
-    time        : "time"
-    int         : "string.integer"
-    mcp9808     : "sensor.temperature.mcp9808"
-
-PUB Main{} | t
-
-    setup{}
-    mcp9808.tempscale(C)                        ' C (0), F (1)
-    mcp9808.tempres(0_0625)                     ' 0_0625, 0_1250, 0_2500, 0_5000
-'                                               (Res: 0.0625C, 0.125, 0.25, 0.5)
-    repeat
-        t := mcp9808.temperature{}
-        ser.position(0, 5)
-        ser.str(string("Temperature: "))
-        decimal(t, 100)
-        ser.char(lookupz(mcp9808.tempscale(-2): "C", "F"))
-
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
-' Display a scaled up number as a decimal
-'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
-    whole := scaled / divisor
-    tmp := divisor
-    places := 0
-    part := 0
-    sign := 0
-    if scaled < 0
-        sign := "-"
-    else
-        sign := " "
-
-    repeat
-        tmp /= 10
-        places++
-    until tmp == 1
-    scaled //= divisor
-    part := int.deczeroed(||(scaled), places)
-
-    ser.char(sign)
-    ser.dec(||(whole))
-    ser.char(".")
-    ser.str(part)
+    cfg:    "core.con.boardcfg.flip"
+    sensr:  "sensor.temperature.mcp9808"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
 
 PUB Setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(30)
+    time.msleep(10)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if mcp9808.startx(I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS)
-        mcp9808.defaults{}
+
+    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
         ser.strln(string("MCP9808 driver started"))
     else
         ser.strln(string("MCP9808 driver failed to start - halting"))
         repeat
 
+    sensr.tempscale(sensr#C)
+    sensr.tempres(0_0625)                       ' 0_0625, 0_1250, 0_2500, 0_5000
+    demo{}
+
+#include "tempdemo-common.spinh"                ' code common to all temp/RH demos
+
+DAT
 {
 TERMS OF USE: MIT License
 
