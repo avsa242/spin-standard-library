@@ -5,7 +5,7 @@
     Description: Driver for the MMA8452Q 3DoF accelerometer
     Copyright (c) 2022
     Started May 9, 2021
-    Updated Jul 16, 2022
+    Updated Jul 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -92,7 +92,6 @@ CON
 
 VAR
 
-    long _abiasraw[ACCEL_DOF]
     byte _opmode_orig
 
 OBJ
@@ -191,30 +190,30 @@ PUB AccelBias(bias_x, bias_y, bias_z, rw) | tmp
     case rw
         R:
             readreg(core#OFF_X, 3, @tmp)
-            _abiasraw[X_AXIS] := long[bias_x] := ~tmp.byte[X_AXIS]
-            _abiasraw[Y_AXIS] := long[bias_y] := ~tmp.byte[Y_AXIS]
-            _abiasraw[Z_AXIS] := long[bias_z] := ~tmp.byte[Z_AXIS]
+            _abias[X_AXIS] := long[bias_x] := ~tmp.byte[X_AXIS]
+            _abias[Y_AXIS] := long[bias_y] := ~tmp.byte[Y_AXIS]
+            _abias[Z_AXIS] := long[bias_z] := ~tmp.byte[Z_AXIS]
             return
         W:
             case bias_x
                 -128..127:
-                    _abiasraw[X_AXIS] := -bias_x
+                    _abias[X_AXIS] := -bias_x
                 other:
                     return
             case bias_y
                 -128..127:
-                    _abiasraw[Y_AXIS] := -bias_y
+                    _abias[Y_AXIS] := -bias_y
                 other:
                     return
             case bias_z
                 -128..127:
-                    _abiasraw[Z_AXIS] := -bias_z
+                    _abias[Z_AXIS] := -bias_z
                 other:
                     return
             cacheopmode{}                       ' switch to stdby to mod regs
-            writereg(core#OFF_X, 1, @_abiasraw[X_AXIS])
-            writereg(core#OFF_Y, 1, @_abiasraw[Y_AXIS])
-            writereg(core#OFF_Z, 1, @_abiasraw[Z_AXIS])
+            writereg(core#OFF_X, 1, @_abias[X_AXIS])
+            writereg(core#OFF_Y, 1, @_abias[Y_AXIS])
+            writereg(core#OFF_Z, 1, @_abias[Z_AXIS])
             restoreopmode{}                     ' restore original opmode
 
 PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
