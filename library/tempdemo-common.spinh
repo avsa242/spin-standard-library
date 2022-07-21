@@ -5,7 +5,7 @@
     Description: Temperature sensor demo - code common to all drivers
     Copyright (c) 2022
     Started Jul 19, 2022
-    Updated Jul 19, 2022
+    Updated Jul 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,12 +15,15 @@ PUB TempData{} | temp, tscl
     tscl := lookupz(sensr.tempscale(-2): "C", "F", "K")
     ser.printf3(string("Temp. (deg %c): %3.3d.%02.2d\n\r"), tscl, (temp / 100), ||(temp // 100))
 
+{ define Demo() only if something #including this file doesn't already provide one }
+#ifndef HAS_DEMO
 PUB Demo{}
 
     repeat
         ser.position(0, 3)
         tempdata{}
         time.msleep(250)
+#endif
 
 CON
 
