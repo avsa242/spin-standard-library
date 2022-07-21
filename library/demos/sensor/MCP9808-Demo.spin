@@ -53,7 +53,7 @@ PUB Setup{}
     sensr.tempres(0_0625)                       ' 0_0625, 0_1250, 0_2500, 0_5000
     demo{}
 
-#include "tempdemo-common.spinh"                ' code common to all temp/RH demos
+#include "tempdemo.common.spinh"                ' code common to all temp/RH demos
 
 DAT
 {

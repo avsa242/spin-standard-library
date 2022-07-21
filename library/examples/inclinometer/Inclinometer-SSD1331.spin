@@ -6,7 +6,7 @@
         (SSD1331 OLED display)
     Copyright (c) 2022
     Started May 29, 2022
-    Updated May 30, 2022
+    Updated Jul 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -29,6 +29,7 @@ CON
     MOSI_PIN    = 2
     DC_PIN      = 3
     RES_PIN     = 4
+    ADDR_BITS   = 0                             ' 0, 1
 
     { I2C & SPI configuration }
     CS_M_PIN    = 0                             ' SPI
@@ -130,7 +131,7 @@ PUB Setup{}
 #ifdef LSM9DS1_SPI
     if imu.startx(CS_AG_PIN, CS_M_PIN, SCL_PIN, SDA_PIN, SDO_PIN)
 #else
-    if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ)
+    if imu.startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS)
 #endif
         ser.strln(string("LSM9DS1 driver started"))
     else

@@ -55,7 +55,7 @@ PUB Setup{}
 
     demo{}
 
-#include "imudemo-common.spinh"                 ' code common to all IMU demos
+#include "imudemo.common.spinh"                 ' code common to all IMU demos
 
 DAT
 {

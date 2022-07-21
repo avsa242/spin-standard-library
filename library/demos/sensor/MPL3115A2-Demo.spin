@@ -53,7 +53,7 @@ PUB Setup{}
                                                 '   sensor power
     demo{}
 
-#include "pressdemo-common.spinh"               ' code common to all pressure demos
+#include "pressdemo.common.spinh"               ' code common to all pressure demos
 
 DAT
 {

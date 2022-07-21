@@ -10,7 +10,7 @@
     --------------------------------------------
 }
 { pull in methods common to all Temp drivers }
-#include "sensor.temp-common.spinh"
+#include "sensor.temp.common.spinh"
 
 CON
 

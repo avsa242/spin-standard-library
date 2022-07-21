@@ -10,7 +10,7 @@
     --------------------------------------------
 }
 #define HAS_DEMO
-#include "tempdemo-common.spinh"
+#include "tempdemo.common.spinh"
 
 PUB PressData{} | press
 ' Display presserature sensor data
