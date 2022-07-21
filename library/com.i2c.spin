@@ -154,7 +154,7 @@ PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit
 
     return _i2c_result                          ' Return ACK or NAK
 
-#include "com.i2c-common.spinh"                 ' R/W methods common to all I2C engines
+#include "com.i2c.common.spinh"                 ' R/W methods common to all I2C engines
 
 DAT
 

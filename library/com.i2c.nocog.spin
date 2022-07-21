@@ -187,7 +187,7 @@ PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit | tmp, lastb, bnum
         dira[_SCL] := 1                         ' SCL low
     return ackbit
 
-#include "com.i2c-common.spinh"                 ' R/W methods common to all I2C engines
+#include "com.i2c.common.spinh"                 ' R/W methods common to all I2C engines
 
 {
 TERMS OF USE: MIT License
