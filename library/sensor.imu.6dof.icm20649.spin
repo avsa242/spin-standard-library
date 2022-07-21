@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: sensor.imu.6dof.icm20649.i2c.spin
+    Filename: sensor.imu.6dof.icm20649.spin
     Author: Jesse Burt
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2022
