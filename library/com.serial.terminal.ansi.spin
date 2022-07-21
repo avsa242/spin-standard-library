@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: ANSI-compatible serial terminal
     Started Nov 9, 2020
-    Updated May 29, 2022
+    Updated Jul 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -144,7 +144,7 @@ PUB StrInMax(ptr_buff, max_len)
     { zero terminate string; overwrite CR or append 0 char }
     byte[ptr_buff+(byte[ptr_buff-1] == CR)] := NUL
 
-#include "terminal-common.spinh"
+#include "terminal.common.spinh"
 #include "lib.ansiterminal.spin"
 #include "lib.termwidgets.spin"
 
