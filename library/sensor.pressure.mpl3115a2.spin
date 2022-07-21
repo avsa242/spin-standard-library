@@ -4,12 +4,14 @@
     Author: Jesse Burt
     Description: Driver for MPL3115A2 Pressure
         sensor with altimetry
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Feb 01, 2021
-    Updated Aug 7, 2021
+    Updated Jul 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "sensor.pressure-common.spinh"
+#include "sensor.temp-common.spinh"
 
 CON
 
@@ -25,22 +27,18 @@ CON
     SINGLE          = 0
     CONT            = 1
 
-' Temperature scales
-    C               = 0
-    F               = 1
-
 ' Barometer/altitude modes
     BARO            = 0
     ALT             = 1
 
-VAR
-
-    long _temp_scale
-
 OBJ
 
-' choose an I2C engine below
-    i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef MPL3115A2_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
     core: "core.con.mpl3115a2"                  ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
     u64 : "math.unsigned64"                     ' 64-bit unsigned int math
@@ -207,11 +205,9 @@ PUB PressData{}: press_adc
     press_adc := 0
     readreg(core#OUT_P_MSB, 3, @press_adc)
 
-PUB PressPascals{}: press
-' Read pressure data, in tenths of a Pascal
-'   NOTE: This is valid as pressure data _only_ if AltBaroMode() is
-'       set to BARO (0)
-    return pressword2pa(pressdata{})
+PUB PressDataReady{}: flag
+' dummy method
+    return true
 
 PUB PressWord2Pa(p_word): p_pa
 ' Convert pressure ADC word to pressure in Pascals
@@ -256,24 +252,6 @@ PUB TempData{}: temp_adc
 '   Returns: s12 (Q8.4 fixed-point)
     temp_adc := 0
     readreg(core#OUT_T_MSB, 2, @temp_adc)
-
-PUB Temperature{}: temp
-' Current temperature, in hundredths of a degree
-'   Returns: Integer
-'   (e.g., 2105 is equivalent to 21.05 deg C)
-    return tempword2deg(tempdata{})
-
-PUB TempScale(scale): curr_scale
-' Set temperature scale used by Temperature method
-'   Valid values:
-'      *C (0): Celsius
-'       F (1): Fahrenheit
-'   Any other value returns the current setting
-    case scale
-        C, F:
-            _temp_scale := scale
-        other:
-            return _temp_scale
 
 PUB TempWord2Deg(temp_word): temp
 ' Calculate temperature in degrees Celsius, given ADC word
@@ -323,22 +301,24 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
