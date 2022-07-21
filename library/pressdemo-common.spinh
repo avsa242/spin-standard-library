@@ -12,7 +12,13 @@
 PUB PressData{} | press
 ' Display presserature sensor data
     press := sensr.presspascals{}
-    ser.printf2(string("Press (hPa/mbar): %4.4d.%02.2d"), (press / 1000), ||(press // 1000))
+    ser.printf2(string("Press (hPa/mbar): %4.4d.%02.2d\n\r"), (press / 1000), ||(press // 1000))
+
+PUB TempData{} | temp, tscl
+' Display temperature sensor data
+    temp := sensr.temperature{}
+    tscl := lookupz(sensr.tempscale(-2): "C", "F", "K")
+    ser.printf3(string("Temp. (deg %c): %3.3d.%02.2d\n\r"), tscl, (temp / 100), ||(temp // 100))
 
 PUB Demo{}
 
@@ -20,6 +26,7 @@ PUB Demo{}
         repeat until sensr.pressdataready{}
         ser.position(0, 3)
         pressdata{}
+        tempdata{}
         time.msleep(250)
 
 DAT
