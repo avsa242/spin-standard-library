@@ -5,20 +5,54 @@
     Description: Temperature sensor demo - code common to all drivers
     Copyright (c) 2022
     Started Jul 19, 2022
-    Updated Jul 21, 2022
+    Updated Jul 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#ifdef HAS_THERMCPL                             { thermocouple amplifier drivers }
+VAR
+
+    byte _tc_type
+
+PUB TempData{} | tscl, cj_temp, tc_temp
+' Display temperature sensor data
+    tscl := lookupz(sensr.tempscale(-2): "C", "F", "K")
+    cj_temp := sensr.cj_temp{}
+    tc_temp := sensr.tc_temp{}
+    ser.printf1(string("Temp (deg %c):\n\r"), tscl)
+    ser.printf2(string("Cold junction: %3.3d.%02.2d\n\r"), (cj_temp / 100), ||(cj_temp // 100))
+    ser.printf3(string("Thermocouple (%c): %3.3d.%02.2d\n\r"), tc_type(_tc_type), {
+}   (tc_temp / 100), ||(tc_temp // 100))
+
+PUB TC_Type(val): t
+' Return thermocouple type as ASCII character, given sensor-specific value for type
+    case val
+        sensr#TYPE_B: t := "B"
+        sensr#TYPE_E: t := "E"
+        sensr#TYPE_J: t := "J"
+        sensr#TYPE_K: t := "K"
+        sensr#TYPE_N: t := "N"
+        sensr#TYPE_R: t := "R"
+        sensr#TYPE_S: t := "S"
+        sensr#TYPE_T: t := "T"
+        other: t := "?"
+
+#else                                           { other temperature sensor drivers }
+
 PUB TempData{} | temp, tscl
 ' Display temperature sensor data
     temp := sensr.temperature{}
     tscl := lookupz(sensr.tempscale(-2): "C", "F", "K")
     ser.printf3(string("Temp. (deg %c): %3.3d.%02.2d\n\r"), tscl, (temp / 100), ||(temp // 100))
+#endif
 
 { define Demo() only if something #including this file doesn't already provide one }
 #ifndef HAS_DEMO
 PUB Demo{}
 
+#ifdef HAS_THERMCPL
+    _tc_type := sensr.tc_type(-2)               ' read back and cache it
+#endif
     repeat
         ser.position(0, 3)
         tempdata{}
