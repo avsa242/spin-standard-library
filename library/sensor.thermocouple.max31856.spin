@@ -1,14 +1,17 @@
 {
     --------------------------------------------
-    Filename: sensor.thermocouple.max31856.spi.spin
+    Filename: sensor.thermocouple.max31856.spin
     Author: Jesse Burt
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
-    Copyright (c) 2021
+    Copyright (c) 2022
     Created: Sep 30, 2018
-    Updated: Dec 28, 2021
+    Updated: Jul 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#define HAS_COLDJUNC
+#define HAS_THERMCPL
+#include "sensor.temp.common.spinh"
 
 CON
 
@@ -26,14 +29,14 @@ CON
     INTR            = 1                         ' interrupt mode
 
 ' Thermocouple types
-    B               = %0000
-    E               = %0001
-    J               = %0010
-    K               = %0011
-    N               = %0100
-    R               = %0101
-    S               = %0110
-    T               = %0111
+    TYPE_B          = %0000
+    TYPE_E          = %0001
+    TYPE_J          = %0010
+    TYPE_K          = %0011
+    TYPE_N          = %0100
+    TYPE_R          = %0101
+    TYPE_S          = %0110
+    TYPE_T          = %0111
     VOLTMODE_GAIN8  = %1000
     VOLTMODE_GAIN32 = %1100
 
@@ -52,7 +55,6 @@ CON
 VAR
 
     byte _CS
-    byte _temp_scale
 
 OBJ
 
@@ -85,7 +87,7 @@ PUB Stop{}
 
     spi.deinit{}
 
-PUB CJIntHighThresh(thresh): curr_thr
+PUB CJ_IntHighThresh(thresh): curr_thr
 ' Set Cold-Junction HIGH fault threshold
 '   Valid values: -128..127 (default: 127)
 '   Any other value polls the chip and returns the current setting
@@ -96,7 +98,7 @@ PUB CJIntHighThresh(thresh): curr_thr
             readreg(core#CJHF, 1, @curr_thr)
             return ~~curr_thr
 
-PUB CJIntLowThresh(thresh): curr_thr
+PUB CJ_IntLowThresh(thresh): curr_thr
 ' Set Cold-Junction LOW fault threshold
 '   Valid values: -128..127 (default: -64)
 '   Any other value polls the chip and returns the current setting
@@ -107,7 +109,7 @@ PUB CJIntLowThresh(thresh): curr_thr
             readreg(core#CJLF, 1, @curr_thr)
             return ~~curr_thr
 
-PUB CJSensorEnabled(state): curr_state
+PUB CJ_SensorEnabled(state): curr_state
 ' Enable the on-chip Cold-Junction temperature sensor
 '   Valid values: *TRUE (-1 or 1), FALSE
 '   Any other value polls the chip and returns the current setting
@@ -121,7 +123,7 @@ PUB CJSensorEnabled(state): curr_state
     state := ((curr_state & core#CJ_MASK) | state) & core#CR0_MASK
     writereg(core#CR0, 1, @state)
 
-PUB CJWord2Temp(cj_word): temp
+PUB CJ_Word2Temp(cj_word): temp
 ' Convert cold-junction ADC word to temperature, in hundredths of a degree
 '   in chosen scale
     temp := (cj_word * CJ_RES) / 10_000
@@ -130,7 +132,7 @@ PUB CJWord2Temp(cj_word): temp
         F:
             temp := ((temp * 90) / 50) + 32_00
 
-PUB ColdJuncBias(offset): curr_offs
+PUB CJ_Bias(offset): curr_offs
 ' Set Cold-Junction temperature sensor offset, in ten-thousandths of a degree C
 '   Valid values: -8_0000..7_9375 (default: 0)
 '   Any other value polls the chip and returns the current setting
@@ -142,7 +144,7 @@ PUB ColdJuncBias(offset): curr_offs
             readreg(core#CJTO, 1, @curr_offs)
             return (~curr_offs * 0_0625)
 
-PUB ColdJuncData{}: cj_word
+PUB CJ_Data{}: cj_word
 ' Read cold-junction data
 '   Returns: s16
     cj_word := 0
@@ -150,11 +152,6 @@ PUB ColdJuncData{}: cj_word
     ~~cj_word                                   ' extend sign from bit 15
     cj_word ~>= 2                               ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
-
-PUB ColdJuncTemp{}: cjtemp
-' Current cold-junction temperature
-'   Returns: temperature, in hundredths of a degree
-    return cjword2temp(coldjuncdata{})
 
 PUB IntClear{} | tmp
 ' Clear fault status
@@ -300,50 +297,7 @@ PUB OpMode(mode): curr_mode
     mode := ((curr_mode & core#CMODE_MASK) | mode) & core#CR0_MASK
     writereg(core#CR0, 1, @mode)
 
-PUB TCIntHighThresh(thresh): curr_thr
-' Set thermocouple interrupt high threshold
-'   Valid values: -32768..32767 (default: 32767)
-'   Any other value polls the chip and returns the current setting
-    case thresh
-        -32768..32767:
-            writereg(core#LTHFTH, 2, @thresh)
-        other:
-            readreg(core#LTHFTH, 2, @curr_thr)
-            return ~~curr_thr
-
-PUB TCIntLowThresh(thresh): curr_thr
-' Set thermocouple interrupt low threshold
-'   Valid values: -32768..32767 (default: -32768)
-'   Any other value polls the chip and returns the current setting
-    case thresh
-        -32768..32767:
-            writereg(core#LTLFTH, 2, @thresh)
-        other:
-            readreg(core#LTLFTH, 2, @curr_thr)
-            return ~~curr_thr
-
-PUB TCWord2Temp(tc_word): temp
-' Convert thermocouple ADC word to temperature, in hundredths of a degree
-'   in chosen scale
-    temp := (tc_word * TC_RES) / 1000
-    case _temp_scale
-        C:
-        F:
-            temp := ((temp * 90) / 50) + 32_00
-
-PUB TempScale(scale): curr_scl
-' Set temperature scale used by Temperature method
-'   Valid values:
-'      *C (0): Celsius
-'       F (1): Fahrenheit
-'   Any other value returns the current setting
-    case scale
-        C, F:
-            _temp_scale := scale
-        other:
-            return _temp_scale
-
-PUB ThermoCoupleAvg(samples): curr_smp
+PUB TC_Avg(samples): curr_smp
 ' Set number of samples averaged during thermocouple conversion
 '   Valid values: *1, 2, 4, 8, 16
 '   Any other value polls the chip and returns the current setting
@@ -358,7 +312,7 @@ PUB ThermoCoupleAvg(samples): curr_smp
     samples := ((curr_smp & core#AVGSEL_MASK) | samples) & core#CR1_MASK
     writereg(core#CR1, 1, @samples)
 
-PUB ThermocoupleData{}: temp_word
+PUB TC_Data{}: temp_word
 ' Read thermocouple data
 '   Returns: s19
     temp_word := 0
@@ -367,22 +321,54 @@ PUB ThermocoupleData{}: temp_word
     temp_word ~>= 13                            ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
 
-PUB ThermocoupleTemp{}: temp
-' Read the Thermocouple temperature
-    return tcword2temp(thermocoupledata{})
+PUB TC_IntHighThresh(thresh): curr_thr
+' Set thermocouple interrupt high threshold
+'   Valid values: -32768..32767 (default: 32767)
+'   Any other value polls the chip and returns the current setting
+    case thresh
+        -32768..32767:
+            writereg(core#LTHFTH, 2, @thresh)
+        other:
+            readreg(core#LTHFTH, 2, @curr_thr)
+            return ~~curr_thr
 
-PUB ThermoCoupleType(type): curr_type
+PUB TC_IntLowThresh(thresh): curr_thr
+' Set thermocouple interrupt low threshold
+'   Valid values: -32768..32767 (default: -32768)
+'   Any other value polls the chip and returns the current setting
+    case thresh
+        -32768..32767:
+            writereg(core#LTLFTH, 2, @thresh)
+        other:
+            readreg(core#LTLFTH, 2, @curr_thr)
+            return ~~curr_thr
+
+PUB TC_Type(type): curr_type
 ' Set type of thermocouple
-'   Valid values: B (0), E (1), J (2), *K (3), N (4), R (5), S (6), T (7)
+'   Valid values: TYPE_B (0), TYPE_E (1), TYPE_J (2), *TYPE_K (3), TYPE_N (4),
+'       TYPE_R (5), TYPE_S (6), TYPE_T (7)
 '   Any other value polls the chip and returns the current setting
     readreg(core#CR1, 1, @curr_type)
     case type
-        B, E, J, K, N, R, S, T:
+        TYPE_B, TYPE_E, TYPE_J, TYPE_K, TYPE_N, TYPE_R, TYPE_S, TYPE_T:
         other:
             return curr_type & core#TC_TYPE_BITS
 
     type := ((curr_type & core#TC_TYPE_MASK) | type) & core#CR1_MASK
     writereg(core#CR1, 1, @type)
+
+PUB TC_Word2Temp(tc_word): temp
+' Convert thermocouple ADC word to temperature, in hundredths of a degree
+'   in chosen scale
+    temp := (tc_word * TC_RES) / 1000
+    case _temp_scale
+        C:
+        F:
+            temp := ((temp * 90) / 50) + 32_00
+
+PUB TempWord2Deg(tword): temp
+' Alias for TCWord2Temp
+    return tc_word2temp(tword)
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
 ' Read nr_bytes from device into ptr_buff

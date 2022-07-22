@@ -1,106 +1,66 @@
 {
     --------------------------------------------
     Filename: MAX31856-Demo.spin
-    Description: Demo for the MAX31856 driver
     Author: Jesse Burt
+    Description: MAX31856 driver demo
+        * Temp data output
     Copyright (c) 2022
-    Created Sep 30, 2018
-    Updated Feb 3, 2022
+    Started Sep 30, 2018
+    Updated Jul 22, 2022
     See end of file for terms of use.
     --------------------------------------------
-}
 
+    Build-time symbols supported by driver:
+        -DMAX31856_SPI (default if none specified)
+        -DMAX31856_SPI_BC
+}
+#define HAS_THERMCPL
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
 
+    { SPI configuration }
     CS_PIN      = 0
     SCK_PIN     = 1
-    SDI_PIN     = 2
-    SDO_PIN     = 3
-
-    SCALE       = F
+    MOSI_PIN    = 2                             ' SDI
+    MISO_PIN    = 3                             ' SDO
 ' --
-
-' Temperature scale readings
-    C           = 0
-    F           = 1
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    max31856: "sensor.thermocouple.max31856"
-    int     : "string.integer"
-
-PUB Main{} | cj_temp, tc_temp
-
-    setup{}
-
-    max31856.coldjuncbias(0)                    ' -8_0000..7_9375 (= x.xxxx C)
-    max31856.notchfilter(60)                    ' 50, 60 (Hz)
-    max31856.opmode(max31856#CONT)
-    max31856.tempscale(C)
-
-    repeat
-        cj_temp := max31856.coldjunctemp{}
-        tc_temp := max31856.thermocoupletemp{}
-
-        ser.position(0, 3)
-        ser.str(string("Cold junction temp: "))
-        decimal(cj_temp, 100)
-        ser.char(lookupz(max31856.tempscale(-2): "C", "F"))
-        ser.clearline{}
-        ser.newline{}
-
-        ser.str(string("Thermocouple temp: "))
-        decimal(tc_temp, 100)
-        ser.char(lookupz(max31856.tempscale(-2): "C", "F"))
-        ser.clearline{}
-        time.msleep(100)
-
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
-' Display a scaled up number as a decimal
-'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
-    whole := scaled / divisor
-    tmp := divisor
-    places := 0
-    part := 0
-    sign := 0
-    if scaled < 0
-        sign := "-"
-    else
-        sign := " "
-
-    repeat
-        tmp /= 10
-        places++
-    until tmp == 1
-    scaled //= divisor
-    part := int.deczeroed(||(scaled), places)
-
-    ser.char(sign)
-    ser.dec(||(whole))
-    ser.char(".")
-    ser.str(part)
+    cfg:    "core.con.boardcfg.flip"
+    sensr:  "sensor.thermocouple.max31856"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
 
 PUB Setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(30)
+    time.msleep(10)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if max31856.startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN)
+
+    if (sensr.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
         ser.strln(string("MAX31856 driver started"))
     else
         ser.strln(string("MAX31856 driver failed to start - halting"))
         repeat
+
+    sensr.tempscale(sensr#C)                    ' C, F, K
+    sensr.tc_type(sensr#TYPE_K)
+    ' TYPE_B (0), TYPE_E (1), TYPE_J (2), TYPE_K (3)
+    ' TYPE_N (4), TYPE_R (5), TYPE_S (6), TYPE_T (7)
+
+    sensr.cj_bias(0)                            ' -8_0000..7_9375 (= x.xxxx C)
+    sensr.notchfilter(60)                       ' 50, 60 (Hz)
+    sensr.opmode(sensr.CONT)
+    demo{}
+
+#include "tempdemo.common.spinh"                ' code common to all temp demos
 
 DAT
 {
