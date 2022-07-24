@@ -1,99 +1,58 @@
 {
     --------------------------------------------
-    Filename: VCNL4200-Demo.spin
+    Filename: VCNL4200-LuxDemo.spin
     Author: Jesse Burt
-    Description: Demo of the VCNL4200 driver
+    Description: VCNL4200 driver demo
+        * Lux data output
     Copyright (c) 2022
-    Started Feb 07, 2021
-    Updated Jul 10, 2022
+    Started Jul 23, 2022
+    Updated Jul 23, 2022
     See end of file for terms of use.
     --------------------------------------------
+
+    Build-time symbols supported by driver:
+        -DVCNL4200_I2C (default if none specified)
+        -DVCNL4200_I2C_BC
 }
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-defined constants
+' -- User-modifiable constants
     SER_BAUD    = 115_200
-    LED         = cfg#LED1
 
-    SCL_PIN     = 28
-    SDA_PIN     = 29
+    { I2C configuration }
+    SCL_PIN     = 24
+    SDA_PIN     = 25
     I2C_FREQ    = 400_000                       ' max is 400_000
+    ADDR_BITS   = 0
 ' --
-
-    DAT_COL     = 20
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    int     : "string.integer"
-    vcnl    : "sensor.light.vcnl4200"
-
-PUB Main{}
-
-    setup{}
-
-    vcnl.preset_als_prox{}                      ' set to combined ALS and prox.
-                                                ' sensor operating mode
-
-    repeat
-        ser.position(0, 3)
-        ser.str(string("Lux: "))
-        ser.positionx(DAT_COL)
-        decimal(vcnl.lux{}, 1000)
-        ser.clearline{}
-        ser.newline{}
-
-        ser.str(string("White ADC: "))
-        ser.positionx(DAT_COL)
-        ser.hex(vcnl.whitedata{}, 4)
-        ser.newline{}
-
-        ser.str(string("Proximity ADC: "))
-        ser.positionx(DAT_COL)
-        ser.hex(vcnl.proxdata{}, 4)
-
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
-' Display a scaled up number as a decimal
-'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
-    whole := scaled / divisor
-    tmp := divisor
-    places := 0
-    part := 0
-    sign := 0
-    if scaled < 0
-        sign := "-"
-    else
-        sign := " "
-
-    repeat
-        tmp /= 10
-        places++
-    until tmp == 1
-    scaled //= divisor
-    part := int.deczeroed(||(scaled), places)
-
-    ser.char(sign)
-    ser.dec(||(whole))
-    ser.char(".")
-    ser.str(part)
+    cfg:    "core.con.boardcfg.flip"
+    sensr:  "sensor.light.vcnl4200"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
 
 PUB Setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(30)
+    time.msleep(10)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if vcnl.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
+    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
         ser.strln(string("VCNL4200 driver started"))
     else
         ser.strln(string("VCNL4200 driver failed to start - halting"))
         repeat
+
+    sensr.preset_als_prox{}
+    demo{}
+
+#include "luxdemo.common.spinh"                ' code common to all lux demos
 
 DAT
 {
