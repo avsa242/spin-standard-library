@@ -3,9 +3,9 @@
     Filename: sensor.light.tsl2591.spin
     Description: Driver for the TSL2591 I2C Light/lux sensor
     Author: Jesse Burt
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 23, 2019
-    Updated May 20, 2021
+    Updated Jul 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -41,9 +41,14 @@ VAR
 
 OBJ
 
-    i2c     : "com.i2c"
-    core    : "core.con.tsl2591"
-    time    : "time"
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef TSL2591_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
+    core: "core.con.tsl2591"
+    time: "time"
 
 PUB Null{}
 ' This is not a top-level object
@@ -76,7 +81,7 @@ PUB Defaults{}
 ' Factory default settings
     reset{}
 
-PUB Defaults_ALS{}
+PUB Preset_ALS{}
 ' Factory defaults, with sensor enabled
     reset{}
     powered(TRUE)
@@ -85,6 +90,15 @@ PUB Defaults_ALS{}
     glassattenuation(1)
     gain(1)
     integrationtime(100)
+
+PUB ALSData{}: als_adc
+' Read Ambient Light Sensor data
+'   Returns: u16:u16 [31..16]: IR, [15..0]: Full-spectrum (IR+Vis)
+    readreg(core#C0DATAL, 4, @als_adc)
+    _ir_adc := als_adc.word[1] & $FFFF
+    _full_adc := als_adc.word[0] & $FFFF
+    _ir_adc_scl := _ir_adc * FPSCALE
+    _full_adc_scl := _full_adc * FPSCALE
 
 PUB ClearAllInts{}
 ' Clears both ALS (persistent) and NPALS (non-persistent) Interrupts
@@ -228,35 +242,8 @@ PUB LastLux{}: l
 
 PUB Lux{}: l
 ' Return Lux from live measurement (scale = 1000x)
-    measure(BOTH)
+    alsdata{}                                   ' read ALS, but discard return val
     return ((_full_adc_scl - _ir_adc_scl) * (FPSCALE - (_ir_adc_scl / _full_adc_scl))) / _cpl
-
-PUB Measure(channel): lum_data
-' Get luminosity data from sensor
-'   Valid values:
-'       %00 - Full spectrum
-'       %01 - IR
-'       %10 - Visible
-'       %11 - Both (Returns: [31..16]: IR, [15..0]: Full-spectrum)
-'   Any other values ignored
-    lum_data := 0
-    readreg(core#C0DATAL, 4, @lum_data)
-    case channel
-        %00:
-            lum_data := lum_data.word[0] & $FFFF
-        %01:
-            lum_data := lum_data.word[1] & $FFFF
-        %10:
-            lum_data := (lum_data.word[0] - lum_data.word[1]) & $FFFF
-        %11:
-            lum_data := lum_data
-        other:
-            return
-
-    _ir_adc := lum_data.word[1] & $FFFF
-    _full_adc := lum_data.word[0] & $FFFF
-    _ir_adc_scl := _ir_adc * FPSCALE
-    _full_adc_scl := _full_adc * FPSCALE
 
 PUB PackageID{}: id
 ' Returns Package ID
@@ -438,22 +425,24 @@ PRI writeReg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+

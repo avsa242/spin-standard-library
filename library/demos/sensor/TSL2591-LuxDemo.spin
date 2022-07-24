@@ -1,64 +1,64 @@
 {
     --------------------------------------------
-    Filename: TSL2591-Demo.spin
-    Description: Demo of the TSL2591 driver
+    Filename: TSL2591-LuxDemo.spin
     Author: Jesse Burt
+    Description: TSL2591 driver demo
+        * Lux data output
     Copyright (c) 2022
-    Started Nov 23, 2019
-    Updated Jul 24, 2022
+    Started Jul 23, 2022
+    Updated Jul 23, 2022
     See end of file for terms of use.
     --------------------------------------------
-}
 
+    Build-time symbols supported by driver:
+        -DTSL2591_I2C (default if none specified)
+        -DTSL2591_I2C_BC
+}
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
 
+    { I2C configuration }
     SCL_PIN     = 28
     SDA_PIN     = 29
     I2C_FREQ    = 400_000                       ' max is 400_000
-' --
+    ADDR_BITS   = 0
 
-    DAT_COL     = 20
+    GA          = 1                             ' Glass attenuation factor
+    DF          = 408                           ' Device factor
+' --
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    tsl2591 : "sensor.light.tsl2591"
-
-PUB Main{} | tmp, ir, full
-
-    setup{}
-
-    tsl2591.preset_als{}                        ' set up for ambient light sensing
-
-    repeat
-        repeat until tsl2591.dataready{}
-        tmp := tsl2591.alsdata{}
-        ir := tmp.word[1]
-        full := tmp.word[0]                     ' full-spectrum: IR + visible
-        ser.position(0, 3)
-        ser.printf1(string("IR: %04.4x\n\r"), ir)
-        ser.printf1(string("Full: %04.4x"), full)
+    cfg:    "core.con.boardcfg.flip"
+    sensr:  "sensor.light.tsl2591"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
 
 PUB Setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(30)
+    time.msleep(10)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if tsl2591.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
+
+    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
         ser.strln(string("TSL2591 driver started"))
     else
         ser.strln(string("TSL2591 driver failed to start - halting"))
         repeat
+
+    sensr.preset_als{}
+
+    sensr.glassattenuation(GA)
+    sensr.devicefactor(DF)
+    demo{}
+
+#include "luxdemo.common.spinh"                ' code common to all lux demos
 
 DAT
 {
