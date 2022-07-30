@@ -1,38 +1,47 @@
 {
     --------------------------------------------
-    Filename: memory.sram.23xxxx.spi.spin
+    Filename: memory.sram.23xxxx.spin
     Author: Jesse Burt
-    Description: Driver for 23xxxx series
-        SPI SRAM
-    Copyright (c) 2021
+    Description: Driver for 23xxxx series SPI SRAM
+    Copyright (c) 2022
     Started May 20, 2019
-    Updated Mar 6, 2021
+    Updated Jul 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
+#include "memory.common.spinh"
+
 CON
 
-' Read/write operation modes
+    { R/W operation modes }
     ONEBYTE     = %00
     SEQ         = %01
     PAGE        = %10
 
+    ERASE_CELL  = $00
+
+VAR
+
+    long _CS
+
 OBJ
 
-    spi : "com.spi.fast"                        ' PASM SPI engine
+    spi : "com.spi.fast-nocs"                   ' PASM SPI engine
     core: "core.con.23xxxx"                     ' hw-specific constants
     time: "time"                                ' basic timekeeping functions
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
-
+PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
+' Start the driver using custom I/O settings
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, {
-}       core#SPI_MODE))
+        if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+            _CS := CS_PIN
+            outa[_CS] := 1
+            dira[_CS] := 1
             time.msleep(1)
             return status
     ' if this point is reached, something above failed
@@ -40,15 +49,16 @@ PUB Start(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     spi.deinit{}
+    _CS := 0
 
-PUB Defaults{}
+PUB defaults{}
 ' Factory default settings
     opmode(SEQ)
 
-PUB OpMode(mode): curr_mode
+PUB opmode(mode): curr_mode
 ' Set read/write operation mode
 '   Valid values:
 '       ONEBYTE (%00): Confine access to single address
@@ -68,84 +78,71 @@ PUB OpMode(mode): curr_mode
 
     writereg(core#WRMR, 1, @mode)
 
-PUB ReadByte(sram_addr): s_rdbyte
-' Read a single byte from SRAM
-'   Valid values:
-'       sram_addr: 0..$01_FF_FF
-'   Any other value is clamped to maximum address
-    readsram(sram_addr, 1, @s_rdbyte)
+PUB page_size{}: psz
+' Page size of SRAM
+    return 32
 
-PUB ReadBytes(sram_addr, nr_bytes, ptr_buff)
-' Read multiple bytes from SRAM
-'   Valid values:
-'       sram_addr: 0..$01_FF_FF
-'   Any other value is clamped to maximum address
-    readsram(sram_addr, nr_bytes, ptr_buff)
-
-PUB ReadPage(sram_page_nr, nr_bytes, ptr_buff)
-' Read up to 32 bytes from SRAM page
-'   Valid values:
-'       sram_page_nr: 0..4095
-'   Any other value is ignored
-    case sram_page_nr
-        0..4095:
-            readsram(sram_page_nr << 5, nr_bytes, ptr_buff)
-            return
-        other:
-            return
-
-PUB ResetIO{}
+PUB reset_io{}
 ' Reset to SPI mode
     writereg(core#RSTIO, 1, 0)
 
-PUB WriteByte(sram_addr, val)
-' Write a single byte to SRAM
-'   Valid values:
-'       sram_addr: 0..$01_FF_FF
-'   Any other value is clamped to maximum address
-    val &= $FF
-    writesram(sram_addr, 1, @val)
+PUB rd_block_lsbf(ptr_buff, addr, nr_bytes) | cmd_pkt
+' Read a block of data from memory starting at addr, LSB-first
+    cmd_pkt.byte[0] := core#READ
+    cmd_pkt.byte[1] := addr.byte[2] & 1
+    cmd_pkt.byte[2] := addr.byte[1]
+    cmd_pkt.byte[3] := addr.byte[0]
 
-PUB WriteBytes(sram_addr, nr_bytes, ptr_buff)
-' Write multiple bytes to SRAM
-'   Valid values:
-'       sram_addr: 0..$01_FF_FF
-'   Any other value is clamped to maximum address
-    writesram(sram_addr, nr_bytes, ptr_buff)
+    outa[_CS] := 0
+    spi.wrblock_lsbf(@cmd_pkt, 4)
+    spi.rdblock_lsbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
 
-PUB WritePage(sram_page_nr, nr_bytes, ptr_buff)
-' Write up to 32 bytes to SRAM page
-'   Valid values:
-'       sram_page_nr: 0..4095
-'   Any other value is ignored
-    case sram_page_nr
-        0..4095:
-            writesram(sram_page_nr << 5 {*32}, nr_bytes, ptr_buff)
-            return
-        other:
-            return
+PUB rd_block_msbf(ptr_buff, addr, nr_bytes) | cmd_pkt
+' Read a block of data from memory starting at addr, MSB-first
+    cmd_pkt.byte[0] := core#READ
+    cmd_pkt.byte[1] := addr.byte[2] & 1
+    cmd_pkt.byte[2] := addr.byte[1]
+    cmd_pkt.byte[3] := addr.byte[0]
+
+    outa[_CS] := 0
+    spi.wrblock_lsbf(@cmd_pkt, 4)
+    spi.rdblock_msbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
+
+PUB wr_block_lsbf(addr, ptr_buff, nr_bytes) | cmd_pkt
+' Write a block of data to memory starting at addr, LSB_first
+    cmd_pkt.byte[0] := core#WRITE
+    cmd_pkt.byte[1] := addr.byte[2] & 1
+    cmd_pkt.byte[2] := addr.byte[1]
+    cmd_pkt.byte[3] := addr.byte[0]
+
+    outa[_CS] := 0
+    spi.wrblock_lsbf(@cmd_pkt, 4)
+    spi.wrblock_lsbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
+
+PUB wr_block_msbf(addr, ptr_buff, nr_bytes) | cmd_pkt
+' Write a block of data to memory starting at addr, MSB-first
+    cmd_pkt.byte[0] := core#WRITE
+    cmd_pkt.byte[1] := addr.byte[2] & 1
+    cmd_pkt.byte[2] := addr.byte[1]
+    cmd_pkt.byte[3] := addr.byte[0]
+
+    outa[_CS] := 0
+    spi.wrblock_lsbf(@cmd_pkt, 4)
+    spi.wrblock_msbf(ptr_buff, nr_bytes)
+    outa[_CS] := 1
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff)
 ' Read nr_bytes from device into ptr_buff
     case reg_nr
         core#RDMR:
-            spi.deselectafter(false)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
-            spi.deselectafter(true)
             spi.rdblock_lsbf(ptr_buff, 1)
+            outa[_CS] := 1
             return
-
-PRI readSRAM(sram_addr, nr_bytes, ptr_buff) | cmd_pkt
-
-    cmd_pkt.byte[0] := core#READ
-    cmd_pkt.byte[1] := sram_addr.byte[2] & 1
-    cmd_pkt.byte[2] := sram_addr.byte[1]
-    cmd_pkt.byte[3] := sram_addr.byte[0]
-
-    spi.deselectafter(false)
-    spi.wrblock_lsbf(@cmd_pkt, 4)
-    spi.deselectafter(true)
-    spi.rdblock_lsbf(ptr_buff, nr_bytes)
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes to device from ptr_buff
@@ -153,46 +150,38 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         core#WRMR:
             cmd_pkt.byte[0] := reg_nr
             cmd_pkt.byte[1] := byte[ptr_buff][0]
-            spi.deselectafter(true)
+            outa[_CS] := 0
             spi.wrblock_lsbf(@cmd_pkt, 2)
+            outa[_CS] := 1
             return
         core#EQIO, core#EDIO, core#RSTIO:
-            spi.deselectafter(true)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
+            outa[_CS] := 1
             return
         other:
             return
 
-PRI writeSRAM(sram_addr, nr_bytes, ptr_buff) | cmd_pkt
-
-    cmd_pkt.byte[0] := core#WRITE
-    cmd_pkt.byte[1] := sram_addr.byte[2] & 1
-    cmd_pkt.byte[2] := sram_addr.byte[1]
-    cmd_pkt.byte[3] := sram_addr.byte[0]
-
-    spi.deselectafter(false)
-    spi.wrblock_lsbf(@cmd_pkt, 4)
-    spi.deselectafter(true)
-    spi.wrblock_lsbf(ptr_buff, nr_bytes)
-
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+TERMS OF USE: MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 }
+
