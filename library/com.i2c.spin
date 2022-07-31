@@ -17,7 +17,7 @@
         Read speed: 454.483kHz actual (36% duty - 0.8uS H : 1.4 uS L)
 
     Started Mar 9, 2019
-    Updated Jun 27, 2022
+    Updated Jul 31, 2022
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -45,10 +45,7 @@ VAR
     long  _i2c_cmd
     long  _i2c_params
     long  _i2c_result
-
-DAT
-
-    _cog long      0                            ' store cog # of running engine
+    long _cog
 
 PUB Null
 ' This is not a top-level object
