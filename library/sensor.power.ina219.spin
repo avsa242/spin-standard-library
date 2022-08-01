@@ -124,7 +124,7 @@ PUB preset_320S_2A_100mohm{}
 
 PUB adc2amps(adc_word): a
 ' Convert current ADC word to amperage
-    return (~~adc_word)
+    return (~~adc_word) * 1_00
 
 PUB adc2shunt_volts(adc_word): v
 ' Convert shunt voltage ADC word to voltage
@@ -133,11 +133,11 @@ PUB adc2shunt_volts(adc_word): v
 PUB adc2volts(adc_word): v
 ' Convert bus voltage ADC word to voltage
     { discard 3 LSBs (not part of the measurement), but preserve the sign }
-    return ((adc_word ~> 3) * 4)
+    return ((adc_word ~> 3) * 4_000)
 
 PUB adc2watts(adc_word): w
 ' Convert power ADC word to wattage
-    return (adc_word * 2)
+    return (adc_word * 20_00)
 
 PUB bus_adc_res(adcres): curr_res
 ' Set bus ADC resolution, in bits

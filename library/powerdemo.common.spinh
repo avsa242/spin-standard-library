@@ -8,16 +8,22 @@
     See end of file for terms of use.
     --------------------------------------------
 }
+CON
+
+    VF  = 1000000
+    CF  = 1000000
+    PF  = 1000000
+
 PUB power_data{}
 
-    ser.printf2(string("Voltage: %d.%03.3dv\n\r"), (pwr.voltage() / 1000), (pwr.voltage() // 1000))
-    ser.printf2(string("Current: %d.%03.3dA\n\r"), (pwr.current() / 10000), {
-}   ||(pwr.current() // 10000))
-    ser.printf2(string("Power: %d.%03.3dW\n\r"), (pwr.power() / 1000), (pwr.power() // 1000))
+    ser.printf2(string("Voltage: %d.%06.6dv\n\r"), (pwr.voltage{} / VF), (pwr.voltage{} // VF))
+    ser.printf2(string("Current: %d.%06.6dA\n\r"), (pwr.current{} / CF), {
+'}   ||(pwr.current{} // CF))
+    ser.printf2(string("Power: %d.%06.6dW\n\r"), (pwr.power{} / PF), (pwr.power{} // PF))
 
 { define demo() only if something #including this file doesn't already provide one }
 #ifndef HAS_DEMO
-PUB demo()
+PUB demo{}
 
     repeat
         ser.position(0, 3)
