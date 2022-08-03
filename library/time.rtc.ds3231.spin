@@ -5,10 +5,12 @@
     Description: Driver for the DS3231 Real-Time Clock
     Copyright (c) 2022
     Started Nov 17, 2020
-    Updated May 25, 2022
+    Updated Aug 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "time.rtc.common.spinh"
+#include "sensor.temp.common.spinh"
 
 CON
 
@@ -20,11 +22,7 @@ CON
     DEF_HZ              = 100_000
     I2C_MAX_FREQ        = core#I2C_MAX_FREQ
 
-' Temperature scales
-    C                   = 0
-    F                   = 1
-
-' Alarm1Rate() settings
+    { alarm1_rate() settings }
     ALM_1HZ             = 15
     ALM_SS              = 14
     ALM_MMSS            = 12
@@ -36,49 +34,47 @@ VAR
 
     byte _secs, _mins, _hours                   ' Vars to hold time
     byte _wkdays, _days, _months, _years        ' Order is important!
-    byte _temp_scale
     byte _clkdata_ok
 
 OBJ
 
 #ifdef DS3231_SPIN
     i2c : "com.i2c.nocog"                       ' SPIN I2C engine (~30kHz)
-#elseifdef DS3231_PASM
-    i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
 #else
-#error "One of DS3231_SPIN or DS3231_PASM must be defined"
+    i2c : "com.i2c"                             ' PASM I2C engine (~400kHz)
 #endif
     core: "core.con.ds3231"
     time: "time"
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start{}: status
+PUB start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom I2C pins and bus frequency
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#TPOR)          ' wait for device startup
-            if i2c.present(SLAVE_WR)        ' test device bus presence
+            if (i2c.present(SLAVE_WR))      ' test device bus presence
                 return status
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     i2c.deinit{}
+    bytefill(@_secs, 0, 8)
 
-PUB Defaults{}
+PUB defaults{}
 ' Set factory defaults
 
-PUB Alarm1Day(d): curr_day
+PUB alarm1_day(d): curr_day
 ' Set alarm #1 day
 '   Valid values: 1..31
 '   Any other value returns the current day of the month
@@ -92,7 +88,7 @@ PUB Alarm1Day(d): curr_day
         other:                                  '   the month
             return bcd2int(curr_day & core#DATE_MASK)
 
-PUB Alarm1Hours(h): curr_hr
+PUB alarm1_hours(h): curr_hr
 ' Set alarm #1 hours
 '   Valid values: 0..23
 '   Any other value returns the current second
@@ -106,7 +102,7 @@ PUB Alarm1Hours(h): curr_hr
         other:
             return bcd2int(curr_hr & core#HOURS_MASK)
 
-PUB Alarm1Minutes(m): curr_min
+PUB alarm1_minutes(m): curr_min
 ' Set alarm #1 minutes
 '   Valid values: 0..59
 '   Any other value returns the current second
@@ -120,7 +116,7 @@ PUB Alarm1Minutes(m): curr_min
         other:
             return bcd2int(curr_min & core#MINUTES_MASK)
 
-PUB Alarm1Rate(rate): curr_rate | a1m[4], tmp
+PUB alarm1_rate(rate): curr_rate | a1m[4], tmp
 ' Rate of alarm repetition
 '   Valid values:
 '       ALM_1HZ(15): alarm once per second
@@ -138,7 +134,7 @@ PUB Alarm1Rate(rate): curr_rate | a1m[4], tmp
             '   on the rate this method was called with
             repeat tmp from 0 to 3
                 readreg(core#ALM1_SEC + tmp, 1, @a1m[tmp])
-                if tmp == 3                     ' if this is the day/date reg,
+                if (tmp == 3)                   ' if this is the day/date reg,
                     a1m[tmp] &= core#DYDT_MASK  '   clear day/date bit (= date)
                 a1m[tmp] &= core#ALMX_MASK      ' clear the existing A1Mx bit
 
@@ -148,7 +144,7 @@ PUB Alarm1Rate(rate): curr_rate | a1m[4], tmp
         16:
             repeat tmp from 0 to 3
                 readreg(core#ALM1_SEC + tmp, 1, @a1m[tmp])
-                if tmp == 3
+                if (tmp == 3)
                     a1m[tmp] |= core#ALM_DAY    ' set day/date bit (= day)
                 a1m[tmp] &= core#ALMX_MASK      ' clear the existing A1Mx bit
                 a1m[tmp] |= (((rate >> tmp) & 1)) << core#ALMX
@@ -159,7 +155,7 @@ PUB Alarm1Rate(rate): curr_rate | a1m[4], tmp
                 curr_rate |= ((a1m[tmp] >> core#ALMX) & 1) << tmp
             curr_rate |= ((a1m[3] >> core#DYDT) & 1) << 4
 
-PUB Alarm1Seconds(s): curr_sec
+PUB alarm1_seconds(s): curr_sec
 ' Set alarm #1 seconds
 '   Valid values: 0..59
 '   Any other value returns the current second
@@ -173,7 +169,7 @@ PUB Alarm1Seconds(s): curr_sec
         other:
             return bcd2int(curr_sec & core#SECONDS_MASK)
 
-PUB Alarm1Wkday(d): curr_wkday
+PUB alarm1_wkday(d): curr_wkday
 ' Set alarm #1 week day
 '   Valid values: 1..7
 '   Any other value returns the current week day
@@ -188,7 +184,7 @@ PUB Alarm1Wkday(d): curr_wkday
         other:
             return bcd2int(curr_wkday & core#DAY_MASK)
 
-PUB ClockDataOk{}: flag
+PUB clk_data_ok{}: flag
 ' Flag indicating battery voltage ok/clock data integrity ok
 '   Returns:
 '       TRUE (-1): Clock data integrity guaranteed
@@ -201,7 +197,7 @@ PUB ClockDataOk{}: flag
     pollrtc{}
     return _clkdata_ok == 0
 
-PUB ClockOutFreq(freq): curr_freq
+PUB clkout_freq(freq): curr_freq
 ' Set frequency of SQW pin, in Hz
 '   Valid values: 0, 1, 1024, 4096, 8192
 '   Any other value polls the chip and returns the current setting
@@ -223,18 +219,10 @@ PUB ClockOutFreq(freq): curr_freq
                     curr_freq := (curr_freq >> core#RS) & core#RS_BITS
                     return lookupz(curr_freq: 1, 1024, 4096, 8192)
 
-    freq := ((curr_freq & core#RS_MASK) | freq) & core#CONTROL_MASK
+    freq := ((curr_freq & core#RS_MASK) | freq)
     writereg(core#CONTROL, 1, @freq)
 
-PUB Date{}: curr_date
-' Get current date/day of month
-    return bcd2int(_days & core#DATE_MASK)
-
-PUB Hours{}: curr_hr
-' Get current hour
-    return bcd2int(_hours & core#HOURS_MASK)
-
-PUB IntClear(mask) | tmp
+PUB int_clear(mask) | tmp
 ' Clear asserted interrupts
     tmp := 0
     readreg(core#CTRL_STAT, 1, @tmp)
@@ -244,15 +232,15 @@ PUB IntClear(mask) | tmp
         other:
             return
 
-    tmp := ((tmp & core#AXF_MASK) | tmp) & core#CTRL_STAT_MASK
+    tmp := ((tmp & core#AXF_MASK) | tmp)
     writereg(core#CTRL_STAT, 1, @tmp)
 
-PUB Interrupt{}: mask
+PUB interrupt{}: mask
 ' Mask indicating one or more interrupts are asserted
     readreg(core#CTRL_STAT, 1, @mask)
     return (mask & core#AXF_BITS)
 
-PUB IntMask(mask): curr_mask
+PUB int_mask(mask): curr_mask
 ' Set interrupt mask
 '   Bits %10
 '       1: Alarm 2 interrupt enable
@@ -265,18 +253,10 @@ PUB IntMask(mask): curr_mask
         other:
             return (curr_mask & core#AIE_MASK)
 
-    mask := ((curr_mask & core#AIE_MASK) | mask) & core#CONTROL_MASK
+    mask := ((curr_mask & core#AIE_MASK) | mask)
     writereg(core#CONTROL, 1, @mask)
 
-PUB Minutes{}: curr_min
-' Get current minute
-    return bcd2int(_mins & core#MINUTES_MASK)
-
-PUB Month{}: curr_month
-' Get current month
-    return bcd2int(_months & core#MONTH_MASK)
-
-PUB OscEnabled(state): curr_state
+PUB osc_enabled(state): curr_state
 ' Enable the on-chip oscillator
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -290,10 +270,10 @@ PUB OscEnabled(state): curr_state
         other:
             return ((curr_state >> core#EOSC) & 1) == 1
 
-    state := ((curr_state & core#EOSC_MASK) | state) & core#CONTROL_MASK
+    state := ((curr_state & core#EOSC_MASK) | state)
     writereg(core#CONTROL, 1, @state)
 
-PUB OscOffset(offs): curr_offs
+PUB osc_offset(offs): curr_offs
 ' Set oscillator aging offset, in 100's of ppb
 '   Valid values: -128 to 127
 '   Any other value polls the chip and returns the current setting
@@ -309,26 +289,29 @@ PUB OscOffset(offs): curr_offs
             readreg(core#AGE_OFFS, 1, @curr_offs)
             return ~curr_offs
 
-PUB PollRTC{}
+PUB poll_rtc{}
 ' Read the time data from the RTC and store it in hub RAM
     readreg(core#SECONDS, 7, @_secs)
     readreg(core#CTRL_STAT, 1, @_clkdata_ok)
     _clkdata_ok := (_clkdata_ok >> core#OSF) & 1
+    _secs &= core#SECONDS_MASK
+    _mins &= core#MINUTES_MASK
+    _hours &= core#HOURS_MASK
+    _days &= core#DATE_MASK
+    _wkdays &= core#DAY_MASK
+    _months &= core#MONTH_MASK
+    _years &= core#YEAR_MASK
 
-PUB Reset{} | tmp
+PUB reset{} | tmp
 ' Reset the device
 '   NOTE: This is used to clear the oscillator stopped flag, readable using
-'       ClockDataOk()
+'       clk_data_ok()
     tmp := 0
     readreg(core#CTRL_STAT, 1, @tmp)
     tmp &= core#OSF_MASK                        ' turn off the
     writereg(core#CTRL_STAT, 1, @tmp)           '   "oscillator-stopped" flag
 
-PUB Seconds{}: curr_sec
-' Get current second
-    return bcd2int(_secs & core#SECONDS_MASK)
-
-PUB SetDate(d)
+PUB set_date(d)
 ' Set day of month
 '   Valid values: 1..31
 '   Any other value is ignored
@@ -339,7 +322,7 @@ PUB SetDate(d)
         other:
             return
 
-PUB SetHours(h)
+PUB set_hours(h)
 ' Set hours
 '   Valid values: 0..23
 '   Any other value is ignored
@@ -350,7 +333,7 @@ PUB SetHours(h)
         other:
             return
 
-PUB SetMinutes(m)
+PUB set_minutes(m)
 ' Set minutes
 '   Valid values: 0..59
 '   Any other value is ignored
@@ -361,7 +344,7 @@ PUB SetMinutes(m)
         other:
             return
 
-PUB SetMonth(m)
+PUB set_month(m)
 ' Set month
 '   Valid values: 1..12
 '   Any other value is ignored
@@ -372,7 +355,7 @@ PUB SetMonth(m)
         other:
             return
 
-PUB SetSeconds(s)
+PUB set_seconds(s)
 ' Set seconds
 '   Valid values: 0..59
 '   Any other value is ignored
@@ -383,7 +366,7 @@ PUB SetSeconds(s)
         other:
             return
 
-PUB SetWeekday(w)
+PUB set_weekday(w)
 ' Set day of week
 '   Valid values: 1..7
 '   Any other value is ignored
@@ -394,7 +377,7 @@ PUB SetWeekday(w)
         other:
             return
 
-PUB SetYear(y)
+PUB set_year(y)
 ' Set 2-digit year
 '   Valid values: 0..99
 '   Any other value is ignored
@@ -405,22 +388,16 @@ PUB SetYear(y)
         other:
             return
 
-PUB TempData{}: temp
+PUB tempdata{}: temp
 ' Temperature ADC data
     readreg(core#TEMP_MSB, 2, @temp)
 
-PUB TempDataReady{}: flag
+PUB tempdataready{}: flag
 ' Flag indicating temperature data ready
     readreg(core#CTRL_STAT, 1, @flag)
     return ((flag >> core#BSY) & 1) == 0
 
-PUB Temperature{}: temp_cal
-' Read temperature
-'   Returns: Temperature in hundredths of a degree, in chosen scale
-'   Example: 2075 == 20.75C
-    return tempword2deg(tempdata{})
-
-PUB TempMeasure{} | tmp, meas
+PUB tempmeasure{} | tmp, meas
 ' Perform a manual temperature measurement
 '   NOTE: The RTC automatically performs temperature measurements
 '       every 64 seconds
@@ -429,19 +406,7 @@ PUB TempMeasure{} | tmp, meas
 
     writereg(core#CONTROL, 1, @tmp)
 
-PUB TempScale(scale): curr_scl
-' Set temperature scale used by Temperature method
-'   Valid values:
-'      *C (0): Celsius
-'       F (1): Fahrenheit
-'   Any other value returns the current setting
-    case scale
-        C, F:
-            _temp_scale := scale
-        other:
-            return _temp_scale
-
-PUB TempWord2Deg(temp_word): temp
+PUB tempword2deg(temp_word): temp
 ' Convert temperature ADC word to temperature
 '   Returns: temperature, in hundredths of a degree, in chosen scale
     temp := (temp_word >> 6) * 0_25
@@ -452,22 +417,6 @@ PUB TempWord2Deg(temp_word): temp
             return ((temp * 90) / 50) + 32_00
         other:
             return FALSE
-
-PUB Weekday{}: curr_wkday
-' Get current week day
-    return bcd2int(_wkdays & core#DAY_MASK) + 1
-
-PUB Year{}: curr_yr
-' Get current 2-digit year
-    return bcd2int(_years & core#YEAR_MASK)
-
-PRI bcd2int(bcd): int
-' Convert BCD (Binary Coded Decimal) to integer
-    return ((bcd >> 4) * 10) + (bcd // 16)
-
-PRI int2bcd(int): bcd
-' Convert integer to BCD (Binary Coded Decimal)
-    return ((int / 10) << 4) + (int // 10)
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Read nr_bytes from device into ptr_buff
@@ -482,7 +431,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
     i2c.wrblock_lsbf(@cmd_pkt, 2)
     i2c.start{}
     i2c.write(SLAVE_RD)
-    if reg_nr == core#TEMP_MSB
+    if (reg_nr == core#TEMP_MSB)
         i2c.rdblock_msbf(ptr_buff, nr_bytes, i2c#NAK)
     else
         i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
@@ -504,22 +453,21 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+

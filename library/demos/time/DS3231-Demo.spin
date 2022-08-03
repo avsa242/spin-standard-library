@@ -1,8 +1,8 @@
 {
     --------------------------------------------
-    Filename: PCF8563-Demo.spin
+    Filename: DS3231-Demo.spin
     Author: Jesse Burt
-    Description: Demo of the PCF8563 driver
+    Description: Demo of the DS3231 driver
         * Time/Date output
     Copyright (c) 2022
     Started Sep 6, 2020
@@ -34,9 +34,9 @@ OBJ
     cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    rtc     : "time.rtc.pcf8563"
+    rtc     : "time.rtc.ds3231"
 
-PUB Main{}
+PUB main{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -44,15 +44,15 @@ PUB Main{}
     ser.strln(string("Serial terminal started"))
 
     if rtc.startx(I2C_SCL, I2C_SDA, I2C_FREQ)
-        ser.strln(string("PCF8563 driver started"))
+        ser.strln(string("DS3231 driver started"))
     else
-        ser.strln(string("PCF8563 driver failed to start - halting"))
+        ser.strln(string("DS3231 driver failed to start - halting"))
         repeat
 
 ' Uncomment below to set date/time
 '   (only needs to be done once as long as RTC remains powered afterwards)
 '                hh, mm, ss, MMM, DD, WKDAY, YY
-'    set_date_time(18, 48, 00, AUG, 02, TUE, 22)
+'    set_date_time(16, 39, 00, AUG, 03, WED, 22)
 
     demo{}
 
