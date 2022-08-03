@@ -1,14 +1,15 @@
 {
     --------------------------------------------
-    Filename: time.rtc.rv3028.i2c.spin
+    Filename: time.rtc.rv3028.spin
     Author: Jesse Burt
     Description: Driver for the RV3028 RTC
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Mar 13, 2021
-    Updated Mar 21, 2021
+    Updated Aug 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+#include "time.rtc.common.spinh"
 
 CON
 
@@ -20,12 +21,12 @@ CON
     DEF_HZ          = 100_000
     I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
-' Automatic backup switchover modes
+    { Automatic backup switchover modes }
     SWO_DIS         = %00
     SWO_DIRECT      = %01
     SWO_LEVEL       = %11
 
-' Interrupt active state
+    { Interrupt active state }
     LOW             = 0
     HIGH            = 1
 
@@ -38,48 +39,54 @@ VAR
 
 OBJ
 
-' choose an I2C engine below
-    i2c : "com.i2c"                             ' PASM I2C engine (up to ~800kHz)
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef RV3028_I2C_BC
+    i2c : "com.i2c.nocog"                       ' BC I2C engine
+#else
+    i2c : "com.i2c"                             ' PASM I2C engine
+#endif
     core: "core.con.rv3028"                     ' hw-specific low-level const's
     time: "time"                                ' basic timing functions
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start{}: status
+PUB start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom IO pins and I2C bus frequency
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ                 ' validate pins and bus freq
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#T_POR)             ' wait for device startup
-            if i2c.present(SLAVE_WR)            ' test device bus presence
-                if deviceid{} == core#DEVID_RESP' validate device
-                    return
+            if (device_id{} == core#DEVID_RESP) ' validate device
+                return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
     ' Lastly - make sure you have at least one free core/cog 
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     i2c.deinit{}
+    bytefill(@_secs, 0, 7)
+    _clkdata_ok := 0
 
-PUB Defaults{}
+PUB defaults{}
 ' Set factory defaults
 
-PUB ClockDataOk{}: flag
+PUB clk_data_ok{}: flag
 ' Flag indicating supply voltage ok/clock data integrity ok
 '   Returns:
 '       TRUE (-1): Supply voltage ok, clock data integrity guaranteed
 '       FALSE (0): Supply voltage low, clock data integrity not guaranteed
+    flag := 0
     readreg(core#STATUS, 1, @flag)
     _clkdata_ok := flag := ((flag & 1) == 0)
 
-PUB BackupSwitchover(mode): curr_mode
+PUB backup_switchover(mode): curr_mode
 ' Set backup power supply automatic switchover function
 '  *SWO_DIS (0): Switchover disabled
 '   SWO_DIRECT (1): Switch when Vdd < Vbackup
@@ -98,7 +105,7 @@ PUB BackupSwitchover(mode): curr_mode
     mode := ((curr_mode & core#BSM_MASK) | mode)
     writereg(core#EE_BACKUP, 1, @mode)
 
-PUB ClockOutFreq(freq): curr_freq
+PUB clkout_freq(freq): curr_freq
 ' Set frequency of CLKOUT pin, in Hz
 '   Valid values: 0, 1, 32, 64, 1024, 8192, *32768
 '   Any other value polls the chip and returns the current setting
@@ -114,19 +121,12 @@ PUB ClockOutFreq(freq): curr_freq
     freq := ((curr_freq & core#FD_MASK & core#FD_MASK) | freq)
     writereg(core#EE_CLKOUT, 1, @freq)
 
-PUB Date{}: curr_day
-' Get current date/day of month
-    return bcd2int(_days)
-
-PUB DeviceID{}: id
+PUB device_id{}: id
 ' Read device identification
+    id := 0
     readreg(core#ID, 1, @id)
 
-PUB Hours{}: curr_hr
-' Get current hour
-    return bcd2int(_hours)
-
-PUB IntClear(mask) | tmp
+PUB int_clear(mask) | tmp
 ' Clear interrupts, using a bitmask
 '   Valid values:
 '       Bits: 5..0
@@ -148,7 +148,7 @@ PUB IntClear(mask) | tmp
         other:
             return
 
-PUB Interrupt{}: flags
+PUB interrupt{}: flags
 ' Flag indicating one or more interrupts asserted
 '   Bits: 5..0
 '       5: Clock output interrupt flag
@@ -160,7 +160,7 @@ PUB Interrupt{}: flags
     readreg(core#STATUS, 1, @flags)
     return (flags >> core#SINT) & core#SINT_BITS
 
-PUB IntMask(mask): curr_mask
+PUB int_mask(mask): curr_mask
 ' Set interrupt mask
 '   Valid values:
 '       Bits: 4..0
@@ -180,7 +180,7 @@ PUB IntMask(mask): curr_mask
     mask := ((curr_mask & core#IE_MASK) | mask)
     writereg(core#CTRL2, 1, @mask)
 
-PUB IntPinState(state): curr_state
+PUB int_pin_state(state): curr_state
 ' Set interrupt pin active state
 '   LOW (0): /INT is active low
 '   HIGH (1): /INT is active high
@@ -192,22 +192,14 @@ PUB IntPinState(state): curr_state
         other:
             return (curr_state >> core#EHL) & 1
 
-    state := ((curr_state & core#EHL_MASK) | state) & core#EVT_CTRL_MASK
+    state := ((curr_state & core#EHL_MASK) | state)
     writereg(core#EVT_CTRL, 1, @state)
 
-PUB Month{}: curr_month
-' Get current month
-    return bcd2int(_months)
-
-PUB Minutes{}: curr_min
-' Get current minute
-    return bcd2int(_mins)
-
-PUB PollRTC{}
+PUB poll_rtc{}
 ' Read the time data from the RTC and store it in hub RAM
     readreg(core#SECONDS, 7, @_secs)
 
-PUB Reset{} | tmp
+PUB reset{} | tmp
 ' Perform soft-reset
     tmp := 0
 
@@ -221,11 +213,7 @@ PUB Reset{} | tmp
     tmp &= core#PORF_MASK
     writereg(core#STATUS, 1, @tmp)
 
-PUB Seconds{}: curr_sec
-' Get current second
-    return bcd2int(_secs)
-
-PUB SetDate(d)
+PUB set_date(d)
 ' Set current date/day of month
 '   Valid values: 1..31
 '   Any other value is ignored
@@ -236,7 +224,7 @@ PUB SetDate(d)
         other:
             return
 
-PUB SetHours(h)
+PUB set_hours(h)
 ' Set current hour
 '   Valid values: 0..23
 '   Any other value is ignored
@@ -247,7 +235,7 @@ PUB SetHours(h)
         other:
             return
 
-PUB SetMinutes(m)
+PUB set_minutes(m)
 ' Set current minute
 '   Valid values: 0..59
 '   Any other value is ignored
@@ -258,7 +246,7 @@ PUB SetMinutes(m)
         other:
             return
 
-PUB SetMonth(m)
+PUB set_month(m)
 ' Set current month
 '   Valid values: 1..12
 '   Any other value is ignored
@@ -269,7 +257,7 @@ PUB SetMonth(m)
         other:
             return
 
-PUB SetSeconds(s)
+PUB set_seconds(s)
 ' Set current second
 '   Valid values: 0..59
 '   Any other value is ignored
@@ -280,7 +268,7 @@ PUB SetSeconds(s)
         other:
             return
 
-PUB SetWeekday(w)
+PUB set_weekday(w)
 ' Set day of week
 '   Valid values: 1..7
 '   Any other value is ignored
@@ -291,7 +279,7 @@ PUB SetWeekday(w)
         other:
             return
 
-PUB SetYear(y)
+PUB set_year(y)
 ' Set 2-digit year
 '   Valid values: 0..99
 '   Any other value is ignored
@@ -302,12 +290,12 @@ PUB SetYear(y)
         other:
             return
 
-PUB Timer(val): curr_val
+PUB timer(val): curr_val
 ' Set countdown timer value
 '   Valid values: 0..4095
 '   Any other value polls the chip and returns the current setting
 '   NOTE: Returned value when reading is the _set value_, not the current
-'   remaining time (for this, use TimerRemaining())
+'   remaining time (for this, use timer_remaining())
     case val
         0..4095:
             writereg(core#TIMER_LSB, 2, @val)
@@ -316,7 +304,7 @@ PUB Timer(val): curr_val
             readreg(core#TIMER_LSB, 2, @curr_val)
             return curr_val & core#TIMER_MASK
 
-PUB TimerClockFreq(freq): curr_freq
+PUB timer_clk_freq(freq): curr_freq
 ' Set timer source clock frequency, in Hz
 '   Valid values:
 '       1_60 (1/60Hz), 1, 64, *4096
@@ -333,7 +321,7 @@ PUB TimerClockFreq(freq): curr_freq
     freq := ((curr_freq & core#TD_MASK) | freq)
     writereg(core#CTRL1, 1, @freq)
 
-PUB TimerEnabled(state): curr_state
+PUB timer_enabled(state): curr_state
 ' Enable countdown timer
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -348,27 +336,11 @@ PUB TimerEnabled(state): curr_state
     state := ((curr_state & core#TE_MASK) | state)
     writereg(core#CTRL1, 1, @state)
 
-PUB TimerRemaining{}: t
+PUB timer_remaining{}: t
 ' Countdown timer time remaining
 '   Returns: u12
     readreg(core#TMRSTAT_LSB, 2, @t)
     t &= core#TIMER_MASK
-
-PUB Weekday{}: curr_wkday
-' Get current week day
-    return bcd2int(_wkdays) + 1
-
-PUB Year{}: curr_yr
-' Get current year
-    return bcd2int(_years)
-
-PRI bcd2int(bcd): int
-' Convert BCD (Binary Coded Decimal) to integer
-    return ((bcd >> 4) * 10) + (bcd // 16)
-
-PRI int2bcd(int): bcd
-' Convert integer to BCD (Binary Coded Decimal)
-    return ((int / 10) << 4) + (int // 10)
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from the device into ptr_buff
@@ -401,22 +373,21 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+
