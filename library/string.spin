@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: string.new.spin
+    Filename: string.spin
     Author: Jesse Burt
     Description: String processing and formatting
     Copyright (c) 2022
     Started May 29, 2022
-    Updated Jul 12, 2022
+    Updated Aug 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -32,7 +32,7 @@ CON
 
 OBJ
 
-    ctype  : "char.type.new"
+    ctype  : "char.type"
 
 VAR
 
@@ -257,7 +257,7 @@ PUB Hexs(val, digits) | idx
     digits := 1 #> digits <# 8
     val <<= (8 - digits) << 2                   ' prep most significant digit
     repeat digits
-        _tmp_buff[idx++] := lookupz((val <-= 4) & $F : "0".."9", "A".."F")
+        _tmp_buff[idx++] := lookupz((val <-= 4) & $F : "0".."9", "a".."f")
     return @_tmp_buff
 
 PUB IsAlpha(ptr_str): flag
