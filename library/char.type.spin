@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: char.type.new
+    Filename: char.type.spin
     Author: Jesse Burt
     Description: Character processing and formatting routines
     Copyright (c) 2022
