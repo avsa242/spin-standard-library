@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Feb 5, 2022
+    Updated: Aug 18, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -45,6 +45,9 @@ CON
     DISP_HEIGHT = 120
     BYTESPERPX  = 1
     PIX_CLK     = 25_175_000
+
+    { character attributes }
+    DRAWBG      = (1 << 0)
 
 VAR
 
