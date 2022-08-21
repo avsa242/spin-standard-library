@@ -5,19 +5,24 @@
     Description: Gyroscope demo - code common to all drivers
     Copyright (c) 2022
     Started Jul 12, 2022
-    Updated Jul 12, 2022
+    Updated Aug 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
-PUB GyroData{} | gx, gy, gz
-
+PUB GyroData{} | axis, g[3], sign
+' Display gyroscope data
     repeat until gyro.gyrodataready{}
-    gyro.gyrodps(@gx, @gy, @gz)
-    ser.str(string("Gyro: "))
-    ser.printf2(string("%d.%6.6ddps\t"), (gx/1_000_000), ||(gx//1_000_000))
-    ser.printf2(string("%d.%6.6ddps\t"), (gy/1_000_000), ||(gy//1_000_000))
-    ser.printf2(string("%d.%6.6ddps\t"), (gz/1_000_000), ||(gz//1_000_000))
+    gyro.gyrodps(@g[gyro#X_AXIS], @g[gyro#Y_AXIS], @g[gyro#Z_AXIS])
+    ser.str(string("Gyro (dps): "))
+    repeat axis from gyro#X_AXIS to gyro#Z_AXIS
+        if (g[axis] < 0)
+            sign := "-"
+        else
+            sign := " "
+        ser.printf3(string("%c%d.%06.6d     "), sign, ||(g[axis]/1_000_000), {
+}       ||(g[axis]//1_000_000))
+    ser.newline{}
 
 PUB Cal_Gyro{}
 ' Calibrate the gyroscope
