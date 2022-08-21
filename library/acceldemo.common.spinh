@@ -5,20 +5,24 @@
     Description: Accelerometer demo - code common to all drivers
     Copyright (c) 2022
     Started Jul 12, 2022
-    Updated Jul 12, 2022
+    Updated Aug 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
-PUB AccelData{} | ax, ay, az
-
-    repeat until accel.acceldataready{}
-    accel.accelg(@ax, @ay, @az)
-    ser.position(0, 3)
-    ser.str(string("Accel: "))
-    ser.printf2(string("%d.%6.6dg\t"), (ax/1_000_000), ||(ax//1_000_000))
-    ser.printf2(string("%d.%6.6dg\t"), (ay/1_000_000), ||(ay//1_000_000))
-    ser.printf2(string("%d.%6.6dg\t"), (az/1_000_000), ||(az//1_000_000))
+PUB AccelData() | axis, a[3], sign
+' Display accelerometer data
+    repeat until accel.acceldataready()
+    accel.accelg(@a[accel#X_AXIS], @a[accel#Y_AXIS], @a[accel#Z_AXIS])
+    ser.str(@"Accel (g):  ")
+    repeat axis from accel#X_AXIS to accel#Z_AXIS
+        if (a[axis] < 0)
+            sign := "-"
+        else
+            sign := " "
+        ser.printf3(string("%c%d.%06.6d     "), sign, ||(a[axis]/1_000_000), {
+}       ||(a[axis]//1_000_000))
+    ser.newline{}
 
 PUB Cal_Accel{}
 ' Calibrate the accelerometer
