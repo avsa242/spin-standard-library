@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
     Copyright (c) 2022
     Started: Apr 28, 2019
-    Updated: Jul 6, 2022
+    Updated: Sep 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -239,12 +239,12 @@ PUB Box(sx, sy, ex, ey, color, filled) | tmp[3]
 
     { fg color - left-justified }
     tmp.byte[4] := ((color & $f800) >> 11) << 1 ' R LSB is don't care
-    tmp.byte[5] := (color & $07e0) >> 6
+    tmp.byte[5] := (color & $07e0) >> 5
     tmp.byte[6] := (color & $1f) << 1           ' B LSB is don't care
 
     { bg color - left-justified }
     tmp.byte[7] := ((color & $f800) >> 11) << 1 ' R LSB is don't care
-    tmp.byte[8] := (color & $07e0) >> 6
+    tmp.byte[8] := (color & $07e0) >> 5
     tmp.byte[9] := (color & $1f) << 1           ' B LSB is don't care
     writereg(core#DRAWRECT, 10, @tmp)
 #endif
@@ -579,7 +579,7 @@ PUB Line(sx, sy, ex, ey, color) | tmp[2]
     tmp.byte[2] := ex
     tmp.byte[3] := ey
     tmp.byte[4] := ((color & $f800) >> 11) << 1 ' R LSB is don't care
-    tmp.byte[5] := (color & $07e0) >> 6
+    tmp.byte[5] := (color & $07e0) >> 5
     tmp.byte[6] := (color & $1f) << 1           ' B LSB is don't care
     writereg(core#DRAWLINE, 7, @tmp)
 #endif
@@ -651,8 +651,14 @@ PUB Plot(x, y, color) | tmp
 
     outa[_DC] := DATA
     outa[_CS] := 0
+    { ColorDepth(COLOR_65K) }
     spi.wr_byte(color.byte[1])
     spi.wr_byte(color.byte[0])
+
+    { ColorDepth(COLOR_65K2) }
+'    spi.wr_byte(rgb565_r5(color) << 1)
+'    spi.wr_byte(rgb565_g5(color))
+'    spi.wr_byte(rgb565_b5(color) << 1)
     outa[_CS] := 1
 #else
 ' buffered display
