@@ -76,6 +76,11 @@ PUB left_duty(duty)
 '   -100_0:  reverse pin, full high
     _l_duty := ((duty <# 1_000) #> -1_000)
 
+PUB ptr_duty{}: ptr
+' Get pointer to duty-cycle data
+'   long[ptr_duty{}][0]: left, [1]: right
+    return @_l_duty
+
 PUB right_duty(duty)
 ' Set right-channel duty cycle, in tenths of a percent
 '   Valid values: -100_0..100_0
