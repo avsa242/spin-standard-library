@@ -6,7 +6,7 @@
         sets the software RTC by it, and continuously
         displays the date and time from the software RTC
     Started Sep 7, 2020
-    Updated May 14, 2022
+    Updated Sep 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -54,7 +54,7 @@ PUB Main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
     setup{}
 
 ' Read in the time from the hardware RTC
-    hardrtc.pollrtc{}
+    hardrtc.poll_rtc{}
     hyr := hardrtc.year{}
     hmo := hardrtc.month{}
     hdy := hardrtc.date{}
