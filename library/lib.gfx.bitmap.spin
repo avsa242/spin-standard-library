@@ -5,7 +5,7 @@
     Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2022
     Started May 19, 2019
-    Updated Jul 23, 2022
+    Updated Sep 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -149,7 +149,7 @@ PUB Char(ch) | glyph_col, glyph_row, xs, ys, xe, ye, last_glyph_col, last_glyph_
                     scrollup(0, 0, _disp_xmax, _disp_ymax)
 #endif
 
-PUB Circle(x0, y0, radius, color, filled) | x, y, err, cdx, cdy, ht
+PUB Circle(x0, y0, radius, color, filled) | x, y, err, cdx, cdy, cht
 ' Draw a circle
 '   x0, y0: Coordinates
 '   radius: Circle radius
@@ -184,8 +184,8 @@ PUB Circle(x0, y0, radius, color, filled) | x, y, err, cdx, cdy, ht
                     err += cdx - (radius << 1)
         other:
             repeat x from -radius to radius
-                ht := ^^((radius * radius) - (x * x))
-                repeat y from -ht to ht-1
+                cht := ^^((radius * radius) - (x * x))
+                repeat y from -cht to cht-1
                     plot(x0 + x, y0 + y, color)
 
 #ifndef GFX_DIRECT
