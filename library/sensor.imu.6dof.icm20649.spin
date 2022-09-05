@@ -5,11 +5,12 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2022
     Started Aug 28, 2020
-    Updated Jul 16, 2022
+    Updated Sep 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 #include "sensor.imu.common.spinh"
+#include "sensor.temp.common.spinh"
 
 CON
 
@@ -77,7 +78,6 @@ VAR
 
     long _CS
     word _abias_fact[ACCEL_DOF]
-    word _temp_scale
     byte _roomtemp_offs
 
 OBJ
@@ -644,6 +644,11 @@ PUB Reset{} | tmp
     writereg(core#PWR_MGMT_1, 1, @tmp)
     time.usleep(core#G_START_COLD)
 
+PUB TempData{}: adc_word
+' Read temperature ADC data
+    adc_word := 0
+    readreg(core#TEMP_OUT_H, 2, @adc_word)
+
 PUB TempDataReady{}: flag
 ' Flag indicating new temperature sensor data available
 '   Returns TRUE or FALSE
@@ -666,17 +671,6 @@ PUB TempEnabled(state): curr_state
     state := ((curr_state & core#TEMP_DIS_MASK) | state) & core#PWR_MGMT_1_MASK
     writereg(core#PWR_MGMT_1, 1, @state)
 
-PUB Temperature{}: temp
-' Read temperature, in hundredths of a degree
-    temp := 0
-    readreg(core#TEMP_OUT_H, 2, @temp)
-    temp := (( (temp-_roomtemp_offs) * 1_0000) / 333_87) + 21_00 'XXX unverified
-    case _temp_scale
-        F:
-            return (temp * 9_00 / 5_00) + 32_00
-        other:
-            return
-
 PUB TempOffset(u8): curr_offs
 ' Set room temperature offset for Temperature()
 '   Valid values: 0..255
@@ -687,17 +681,14 @@ PUB TempOffset(u8): curr_offs
         other:
             return _roomtemp_offs
 
-PUB TempScale(scale): curr_scl
-' Set temperature scale used by Temperature method
-'   Valid values:
-'       C (0): Celsius
-'       F (1): Fahrenheit
-'   Any other value returns the current setting
-    case scale
-        C, F:
-            _temp_scale := scale
+PUB TempWord2Deg(adc_word): temp
+' Convert temperature ADC word to degrees in chosen scale
+    temp := (( (adc_word-_roomtemp_offs) * 1_0000) / 333_87) + 21_00 'XXX unverified
+    case _temp_scale
+        F:
+            return (temp * 9_00 / 5_00) + 32_00
         other:
-            return _temp_scale
+            return
 
 PUB XLGDataRate(rate): curr_rate
 ' Set output data rate, in Hz, of accelerometer and gyroscope
@@ -815,24 +806,21 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp, i
 
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
