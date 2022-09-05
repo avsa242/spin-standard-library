@@ -58,36 +58,45 @@ PUB stop{}
         cogstop(_cog - 1)
         _cog := 0
 
-PUB left_duty(duty)
-' Set left-channel duty cycle, in percent
-'   Valid values: -1000..1000
+PUB both_duty(duty)
+' Set both channels' duty cycle, in tenths of a percent
+'   Valid values: -100_0..100_0
 '   Value clamped to above range
-'   1000:   forward pin, full high
+'   100_0:   forward pin, full high
 '   0:      brake
-'   -1000:  reverse pin, full high
+'   -100_0:  reverse pin, full high
+    longfill(@_l_duty, ((duty <# 1_000) #> -1_000), 2)
+
+PUB left_duty(duty)
+' Set left-channel duty cycle, in tenths of a percent
+'   Valid values: -100_0..100_0
+'   Value clamped to above range
+'   100_0:   forward pin, full high
+'   0:      brake
+'   -100_0:  reverse pin, full high
     _l_duty := ((duty <# 1_000) #> -1_000)
 
 PUB right_duty(duty)
-' Set right-channel duty cycle, in percent
-'   Valid values: -1000..1000
+' Set right-channel duty cycle, in tenths of a percent
+'   Valid values: -100_0..100_0
 '   Value clamped to above range
-'   1000:   forward pin, full high
+'   100_0:   forward pin, full high
 '   0:      brake
-'   -1000:  reverse pin, full high
+'   -100_0:  reverse pin, full high
     _r_duty := ((duty <# 1_000) #> -1_000)
 
-PRI pwm_engine{} | waitper
+PRI pwm_engine{} | waitper, pwm_per
 ' Counter-based PWM engine
     dira := _pin_masks
     frqa := 1
     frqb := 1
     waitper := cnt
-
+    pwm_per := (_freq / 1_000)
     repeat
         waitper += _freq
         waitcnt(waitper)
-        phsa := -(( ||(_l_duty) ) * (_freq / 1_000))
-        phsb := -(( ||(_r_duty) ) * (_freq / 1_000))
+        phsa := -( ||(_l_duty) * pwm_per)
+        phsb := -( ||(_r_duty) * pwm_per)
         ctra := (ctrs#NCO_SINGLEEND | _dir_left[-(_l_duty < 0)])
         ctrb := (ctrs#NCO_SINGLEEND | _dir_right[-(_r_duty < 0)])
 
