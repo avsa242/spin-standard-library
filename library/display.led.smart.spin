@@ -19,7 +19,10 @@ CON
     MAX_PIXELS  = 1024                                          ' max pixels per strip
     MAX_COLOR   = 16_777_215
     BYTESPERPX  = 4
-  
+
+' Character attributes
+    DRAWBG      = (1 << 0)
+
   ' borrowed from Gavin Garner's TM1804 LED driver
   ' -- additional colors by Lachlan   
   ' -- some alterations by JM
@@ -72,11 +75,11 @@ VAR
     long _cycleticks                            ' ticks in 1.25us
     long _updateframe
 
-PUB Null
+PUB null{}
 ' This is not a top-level object
 ' -- this code should only be called from another object
   
-PUB Start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bits, ns0h, ns1h, nsperiod, count
+PUB start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bits, ns0h, ns1h, nsperiod, count
 ' Start smart pixel driver driver
 ' -- addr is pointer to [long] array holding pixel data
 ' -- pin is serial output to pixels
@@ -134,21 +137,19 @@ PUB Start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bit
         OTHER:
             return FALSE
 
-    Stop                                                        ' stop if running
+    stop{}                                                      ' stop if running
     dira[NEOPIX_PIN] := 0                                       ' clear tx pin in this cog
 
     if (clkfreq < 80_000_000)                                   ' requires 80MHz clock
         return FALSE
 
     count := width * height
-    if count < 1 or count > 1024                                ' Must be between 1 and 1024 pixels, inclusive
+    if (count < 1 or count > 1024)                              ' Must be between 1 and 1024 pixels, inclusive
         return FALSE
 
     ustix := clkfreq / 1_000_000                                ' ticks in 1us
 
-  ' set cog parameters
-
-    Address(addr, count, NEOPIX_PIN, bits)                      ' set connection details
+    address(addr, count, NEOPIX_PIN, bits)                      ' set connection details
   
     _resetticks := ustix * 100 * (1 #> holdoff <# 50)           ' note: 80us min reset timing
     _rgfix      := rgswap <> 0                                  ' promote non-zero to true
@@ -159,6 +160,8 @@ PUB Start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bit
     _cog := cognew(@pixdriver, @_connection) + 1                ' start the cog
     if (_cog)                                                   ' if it started
         repeat until (_connection == 0)                         '  wait until ready
+    else
+        return FALSE                                            ' cog didn't start
 
     _disp_width := width
     _disp_height := height
@@ -168,13 +171,13 @@ PUB Start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bit
     _bytesperln := _disp_width * BYTESPERPX
     return _cog
 
-PUB Stop
+PUB stop{}
 ' Stops pixel driver cog (if running)
-    if Running
+    if (_cog)
         cogstop(_cog - 1)
         _cog := 0
 
-PUB Address(addr, count, pin, bits) : c
+PUB address(addr, count, pin, bits) : c
 ' Assigns buffer at addr to pixel driver
 ' -- addr is pointer to long array
 ' -- count is # of elements in the array 
@@ -192,26 +195,30 @@ PUB Address(addr, count, pin, bits) : c
     _connection := c                                            ' set new connection
     return _ptr_framebuffer
 
-PUB Clear{}
+PUB charattrs(attrs)
+' Set character attributes
+    _char_attrs := attrs
+
+PUB clear{}
 ' Clear the display buffer
     longfill(_ptr_drawbuffer, _bgcolor, _npixels)
 
-PUB Connected
+PUB connected{}
 ' Returns true when latest connection details picked up by driver
     return (_connection == 0)
 
-PUB DrawTo(addr)
+PUB drawto(addr)
 ' Set address of (optional) draw/render buffer
 '   NOTE: This is typically used as an offscreen buffer,
 '       to subsequently be copied to the display or "live" buffer,
 '       once a complete frame is rendered.
     _ptr_drawbuffer := addr
 
-PUB NumPixels 
+PUB numpixels{}
 ' Returns number of pixels in assiged pixel array                      
     return _npixels
 
-PUB Plot(x, y, color)
+PUB plot(x, y, color)
 ' Plot pixel at (x, y) in color
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
         return                                  ' coords out of bounds, ignore
@@ -224,7 +231,7 @@ PUB Plot(x, y, color)
 #endif
 
 #ifndef GFX_DIRECT
-PUB Point(x, y): pix_clr
+PUB point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -232,17 +239,13 @@ PUB Point(x, y): pix_clr
     return long[_ptr_drawbuffer][x + (y * _disp_width)]
 #endif
 
-PUB Running
-' Returns true if running
-    return (_cog <> 0)
-
-PUB Update
+PUB update{}
 ' Write the draw buffer to the display
 '   NOTE: This is only required when using double-buffering
     longmove(_ptr_framebuffer, _ptr_drawbuffer, _buff_sz/4)
 
 #ifndef GFX_DIRECT
-PRI memFill(xs, ys, val, count)
+PRI memfill(xs, ys, val, count)
 ' Fill region of display buffer memory
 '   xs, ys: Start of region
 '   val: Color
@@ -400,27 +403,23 @@ t3                      res     1
 
                         fit     496                                   
 
-DAT { license }
+DAT
+{
+Copyright 2022 Jesse Burt
 
-{{
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-  Terms of Use: MIT License
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this
-  software and associated documentation files (the "Software"), to deal in the Software
-  without restriction, including without limitation the rights to use, copy, modify,
-  merge, PUBlish, distribute, sublicense, and/or sell copies of the Software, and to
-  permit persons to whom the Software is furnished to do so, subject to the following
-  conditions:
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
-  The above copyright notice and this permission notice shall be included in all copies
-  or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
-  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
-  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-}}  
