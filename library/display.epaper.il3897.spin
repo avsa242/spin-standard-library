@@ -1,12 +1,12 @@
 {
     --------------------------------------------
-    Filename: display.epaper.il3897.spi.spin
+    Filename: display.epaper.il3897.spin
     Author: Jesse Burt
     Description: Driver for IL3897/SSD1675 AM E-Paper display
         controller
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Feb 5, 2022
+    Updated Sep 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -77,6 +77,9 @@ CON
     DL              = 74
     GT              = 75
 
+' Character attributes
+    DRAWBG          = (1 << 0)
+
 VAR
 
     long _CS, _RST, _DC, _BUSY
@@ -91,10 +94,10 @@ OBJ
     core: "core.con.il3897"                     ' hw-specific low-level const's
     time: "time"                                ' Basic timing functions
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, PTR_DISPBUFF): status
+PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, PTR_DISPBUFF): status
 ' Start using custom IO pins
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(RST_PIN: 0..31) and {
@@ -128,7 +131,7 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, 
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
+PUB stop{}
 ' Stop SPI engine, float I/O pins, and clear variable space
     spi.deinit{}
     dira[_DC] := 0
@@ -138,11 +141,11 @@ PUB Stop{}
     wordfill(@_buff_sz, 0, 2)
     bytefill(@_disp_width, 0, 4)
 
-PUB Defaults{}
+PUB defaults{}
 ' Factory default settings
     reset{}
 
-PUB Preset_2_13_BW{}
+PUB preset_2_13_bw{}
 ' Presets for 2.13" BW E-ink panel, 122x250
     repeat until displayready{}
     reset{}
@@ -177,7 +180,7 @@ PUB Preset_2_13_BW{}
     displaypos(0, 0)
     repeat until displayready{}
 
-PUB Address(ptr_drawbuff)
+PUB address(ptr_drawbuff)
 ' Set pointer to display/frame buffer
     case ptr_drawbuff
         4..$7fff-_buff_sz:
@@ -185,7 +188,7 @@ PUB Address(ptr_drawbuff)
         other:
             return _ptr_drawbuffer
 
-PUB AddrCtrMode(mode): curr_mode
+PUB addrctrmode(mode): curr_mode
 ' Set address increment/decrement mode
 '   Valid values:
 '       YD_XD (%00): Y-decrement, X-decrement
@@ -206,7 +209,7 @@ PUB AddrCtrMode(mode): curr_mode
         _data_entr_mode := mode
     writereg(core#DATA_ENT_MD, 1, @_data_entr_mode)
 
-PUB AddrMode(mode): curr_mode
+PUB addrmode(mode): curr_mode
 ' Set display addressing mode
 '   Valid values:
 '      *HORIZ (0)
@@ -226,12 +229,12 @@ PUB AddrMode(mode): curr_mode
         _data_entr_mode := mode
     writereg(core#DATA_ENT_MD, 1, @_data_entr_mode)
 
-PUB AnalogBlkCtrl{} | tmp
+PUB analogblkctrl{} | tmp
 ' Analog Block control
     tmp := $54
     writereg(core#ANLG_BLK_CTRL, 1, @tmp)
 
-PUB BorderGSTCtrl(mode): curr_mode
+PUB bordergstctrl(mode): curr_mode
 ' Set border waveform GS transition mode
 '   Valid values:
 '       FLWLUT_VCOMRED (0)
@@ -251,7 +254,7 @@ PUB BorderGSTCtrl(mode): curr_mode
         _brd_wvf_ctrl := mode
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
-PUB BorderGSTrans(trans): curr_trans
+PUB bordergstrans(trans): curr_trans
 ' Set border waveform transition
     curr_trans := _brd_wvf_ctrl
     case trans
@@ -266,7 +269,7 @@ PUB BorderGSTrans(trans): curr_trans
         _brd_wvf_ctrl := trans
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
-PUB BorderMode(mode): curr_mode
+PUB bordermode(mode): curr_mode
 ' Set border waveform VBD option
 '   Valid values:
 '       GS_TRANS (%00)
@@ -288,7 +291,7 @@ PUB BorderMode(mode): curr_mode
         _brd_wvf_ctrl := mode
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
-PUB BorderVBDLev(level): curr_lev
+PUB bordervbdlev(level): curr_lev
 ' Set border fixed VBD level
 '   Valid values:
 '       BRD_VSS (%00)
@@ -310,18 +313,22 @@ PUB BorderVBDLev(level): curr_lev
         _brd_wvf_ctrl := level
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
+PUB charattrs(attrs)
+' Set character attributes
+    _char_attrs := attrs
+
 #ifndef GFX_DIRECT
-PUB Clear{}
+PUB clear{}
 ' Clear the display buffer
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
 
-PUB DigBlkCtrl{} | tmp
+PUB digblkctrl{} | tmp
 ' Digital Block control
     tmp := $3b
     writereg(core#DIGI_BLK_CTRL, 1, @tmp)
 
-PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
+PUB displaybounds(sx, sy, ex, ey) | tmpx, tmpy
 ' Set drawable display region for subsequent drawing operations
 '   Valid values:
 '       sx, ex: 0..159
@@ -337,7 +344,7 @@ PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
     writereg(core#RAM_X_WIND, 2, @tmpx)
     writereg(core#RAM_Y_WIND, 4, @tmpy)
 
-PUB DisplayLines(lines): curr_lines
+PUB displaylines(lines): curr_lines
 ' Set display visible lines
 '   Valid values: 1..296
 '   Any other value returns the current (cached) setting
@@ -356,7 +363,7 @@ PUB DisplayLines(lines): curr_lines
         _drv_out_ctrl[1] := lines.byte[1]
         writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB DisplayPos(x, y) | tmp
+PUB displaypos(x, y) | tmp
 ' Set position for subsequent drawing operations
 '   Valid values:
 '       x: 0..159
@@ -364,20 +371,21 @@ PUB DisplayPos(x, y) | tmp
     writereg(core#RAM_X, 1, @x)
     writereg(core#RAM_Y, 2, @y)
 
-PUB DisplayReady{}: flag
+PUB displayready{}: flag
 ' Flag indicating display is ready to accept commands
+'   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
     return (ina[_BUSY] == 0)
 
-PUB DispUpdateCtrl2{} | tmp
+PUB dispupdatectrl2{} | tmp
 
     tmp := $c7
     writereg(core#DISP_UP_CTRL2, 1, 0)
 
-PUB DummyLinePer(ln_per)
+PUB dummylineper(ln_per)
 
     writereg(core#DUMMY_LN_PER, 1, @ln_per)
 
-PUB GateFirstChan(ch): curr_ch
+PUB gatefirstchan(ch): curr_ch
 ' Set first output gate
 '   Valid values:
 '       0: G0 first channel; output sequence is G0, G1, G2, G3...
@@ -397,15 +405,15 @@ PUB GateFirstChan(ch): curr_ch
         _drv_out_ctrl[2] := ch
         writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB GateLineWidth(ln_wid)
+PUB gatelinewidth(ln_wid)
 
     writereg(core#GATE_LN_WID, 1, @ln_wid)
 
-PUB GateStartPos(row)
+PUB gatestartpos(row)
 
     writereg(core#GATE_ST_POS, 2, @row)
 
-PUB GateVoltage(lvl): curr_lvl
+PUB gatevoltage(lvl): curr_lvl
 ' Set gate driving voltage (VGH), in millivolts
 '   Valid values: 10_000..21_000 (rounded to increments of 500mV)
 '   Any other value returns the current (cached) setting
@@ -422,7 +430,7 @@ PUB GateVoltage(lvl): curr_lvl
         _gate_drv_volt := lvl
         writereg(core.GATE_DRV_CTRL, 1, @_gate_drv_volt)
 
-PUB Interlaced(state): curr_state
+PUB interlaced(state): curr_state
 ' Alternate direction of every other display line
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
@@ -440,11 +448,11 @@ PUB Interlaced(state): curr_state
         _drv_out_ctrl[2] := state
         writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB MasterAct{}
+PUB masteract{}
 
     writereg(core#MASTER_ACT, 0, 0)
 
-PUB MirrorV(state): curr_state  'XXX not functional yet
+PUB mirrorv(state): curr_state  'XXX not functional yet
 ' Mirror display, vertically
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
@@ -462,7 +470,7 @@ PUB MirrorV(state): curr_state  'XXX not functional yet
         _drv_out_ctrl[2] := state
         writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB Plot(x, y, color)
+PUB plot(x, y, color)
 ' Plot pixel at (x, y) in color
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
         return                                  ' coords out of bounds, ignore
@@ -483,7 +491,7 @@ PUB Plot(x, y, color)
 #endif
 
 #ifndef GFX_DIRECT
-PUB Point(x, y): pix_clr
+PUB point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -491,7 +499,7 @@ PUB Point(x, y): pix_clr
     return byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3]
 #endif
 
-PUB Reset{}
+PUB reset{}
 ' Reset the device
     if (lookdown(_RST: 0..31))                  ' only touch the reset pin
         outa[_RST] := 0                         '   if it's defined
@@ -503,17 +511,16 @@ PUB Reset{}
         time.usleep(core#T_POR)
     repeat until displayready{}
 
-PUB Update{}
+PUB update{}
 ' Send the draw buffer to the display
     writereg(core#WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
-
     dispupdatectrl2{}
     masteract{}
     writereg(core#NOOP, 0, 0)
 
     repeat until displayready{}
 
-PUB VCOMVoltage(volts) | tmp
+PUB vcomvoltage(volts) | tmp
 ' Set VCOM voltage level, in millivolts
     case volts
         -3_000..-0_200:
@@ -522,7 +529,7 @@ PUB VCOMVoltage(volts) | tmp
             return
     writereg(core#WR_VCOM, 1, @volts)
 
-PUB VSH1Voltage(lvl): curr_lvl
+PUB vsh1voltage(lvl): curr_lvl
 ' Set source driving voltage (VSH1), in millivolts
 '   Valid values: 2_400..18_000
 '       2_400..8_800: rounded to multiples of 100mV
@@ -547,7 +554,7 @@ PUB VSH1Voltage(lvl): curr_lvl
         _src_drv_volt[VSH1] := lvl
         writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
 
-PUB VSH2Voltage(lvl): curr_lvl
+PUB vsh2voltage(lvl): curr_lvl
 ' Set source driving voltage (VSH2), in millivolts
 '   Valid values: 2_400..18_000
 '       2_400..8_800: rounded to multiples of 100mV
@@ -572,7 +579,7 @@ PUB VSH2Voltage(lvl): curr_lvl
         _src_drv_volt[VSH2] := lvl
         writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
 
-PUB VSLVoltage(lvl): curr_lvl
+PUB vslvoltage(lvl): curr_lvl
 ' Set source driving voltage (VSL), in millivolts
 '   Valid values: -18_000..-9_000 (rounded to multiples of 500mV)
 '   Any other value returns the current (cached) setting
@@ -589,13 +596,13 @@ PUB VSLVoltage(lvl): curr_lvl
         _src_drv_volt[VSL] := lvl
         writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
 
-PUB WriteLUT(ptr_lut)
+PUB writelut(ptr_lut)
 ' Write display waveform lookup table
 '   NOTE: The data pointed to must be exactly 70 bytes
     writereg(core#WR_LUT, 70, ptr_lut)
 
 #ifndef GFX_DIRECT
-PRI memFill(xs, ys, val, count)
+PRI memfill(xs, ys, val, count)
 ' Fill region of display buffer memory
 '   xs, ys: Start of region
 '   val: Color
@@ -603,7 +610,7 @@ PRI memFill(xs, ys, val, count)
     bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 #endif
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff)
+PRI writereg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to the device from ptr_buff
     case reg_nr
         core#WR_RAM_BW:
@@ -676,22 +683,21 @@ DAT
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+
