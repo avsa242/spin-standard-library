@@ -5,7 +5,7 @@
     Description: PWM control of H-bridge for
         brushed DC-motors
     Started May 31, 2021
-    Updated May 31, 2021
+    Updated Sep 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -23,13 +23,13 @@ OBJ
 VAR
 
     long _cog
-    long _l_duty, _r_duty, _pin_masks, _freq, _pwm_stack[7]
+    long _l_duty, _r_duty, _pin_masks, _freq, _pwm_stack[50]
     long _dir_left[2], _dir_right[2]
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start(L_FWD_PIN, L_REV_PIN, R_FWD_PIN, R_REV_PIN, PWM_FREQ): status
+PUB start(L_FWD_PIN, L_REV_PIN, R_FWD_PIN, R_REV_PIN, PWM_FREQ): status
 ' Start H-Bridge PWM engine
 '   H-Bridge control pins:  
 '       L_FWD_PIN: Forward pin, left channel (0 - 31, or -1 to disable)
@@ -48,17 +48,17 @@ PUB Start(L_FWD_PIN, L_REV_PIN, R_FWD_PIN, R_REV_PIN, PWM_FREQ): status
 }       (R_FWD_PIN <> -1)) | ((|<_dir_right[1]) & (R_REV_PIN <> -1)))
 
         _freq := clkfreq / PWM_FREQ             ' calculate PWM period
-        if status := _cog := cognew(pwmengine{}, @_pwm_stack) + 1
+        if status := _cog := cognew(pwm_engine{}, @_pwm_stack) + 1
             return
     return FALSE
 
-PUB Stop{}
+PUB stop{}
 ' Stop PWM engine
     if(_cog)
         cogstop(_cog - 1)
         _cog := 0
 
-PUB LeftDuty(duty)
+PUB left_duty(duty)
 ' Set left-channel duty cycle, in percent
 '   Valid values: -1000..1000
 '   Value clamped to above range
@@ -67,7 +67,7 @@ PUB LeftDuty(duty)
 '   -1000:  reverse pin, full high
     _l_duty := ((duty <# 1_000) #> -1_000)
 
-PUB RightDuty(duty)
+PUB right_duty(duty)
 ' Set right-channel duty cycle, in percent
 '   Valid values: -1000..1000
 '   Value clamped to above range
@@ -76,7 +76,7 @@ PUB RightDuty(duty)
 '   -1000:  reverse pin, full high
     _r_duty := ((duty <# 1_000) #> -1_000)
 
-PRI PWMEngine{} | waitper
+PRI pwm_engine{} | waitper
 ' Counter-based PWM engine
     dira := _pin_masks
     frqa := 1
@@ -93,23 +93,21 @@ PRI PWMEngine{} | waitper
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
