@@ -6,7 +6,7 @@
         controller
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Sep 5, 2022
+    Updated Sep 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -76,9 +76,6 @@ CON
     SDC2            = 73
     DL              = 74
     GT              = 75
-
-' Character attributes
-    DRAWBG          = (1 << 0)
 
 VAR
 
@@ -312,10 +309,6 @@ PUB bordervbdlev(level): curr_lev
     else
         _brd_wvf_ctrl := level
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
-
-PUB charattrs(attrs)
-' Set character attributes
-    _char_attrs := attrs
 
 #ifndef GFX_DIRECT
 PUB clear{}

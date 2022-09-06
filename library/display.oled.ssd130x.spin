@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Apr 26, 2018
-    Updated: May 27, 2022
+    Updated: Sep 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -51,11 +51,11 @@ VAR
     long _CS, _DC, _RES
     byte _addr_bits
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
 #ifdef SSD130X_I2C
-PUB Startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT, ptr_dispbuff): status
+PUB startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT, ptr_dispbuff): status
 ' Start the driver with custom I/O settings
 '   SCL_PIN: 0..31
 '   SDA_PIN: 0..31
@@ -86,7 +86,7 @@ PUB Startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT, ptr_disp
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 #elseifdef SSD130X_SPI
-PUB Startx(CS_PIN, SCK_PIN, SDIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuff): status
+PUB startx(CS_PIN, SCK_PIN, SDIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuff): status
 ' Start the driver with custom I/O settings
 '   CS_PIN: 0..31
 '   SCK_PIN: 0..31
@@ -121,7 +121,7 @@ PUB Startx(CS_PIN, SCK_PIN, SDIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbu
     return FALSE
 #endif
 
-PUB Stop{}
+PUB stop{}
 
     powered(FALSE)
 #ifdef SSD130X_I2C
@@ -130,7 +130,7 @@ PUB Stop{}
     spi.deinit{}
 #endif
 
-PUB Defaults{}
+PUB defaults{}
 ' Apply power-on-reset default settings
 #ifndef HAS_RESET
     ' this code will be called only if HAS_RESET isn't defined at build-time
@@ -149,7 +149,7 @@ PUB Defaults{}
     reset{}
 #endif
 
-PUB Preset_128x{}
+PUB preset_128x{}
 ' Preset: 128px wide, determine settings for height at runtime
     displaylines(_disp_height)
     displaystartline(0)
@@ -165,7 +165,7 @@ PUB Preset_128x{}
             compincfg(0, 0)
     powered(TRUE)
 
-PUB Preset_128x32{}
+PUB preset_128x32{}
 ' Preset: 128px wide, setup for 32px height
     displaylines(32)
     displaystartline(0)
@@ -175,7 +175,7 @@ PUB Preset_128x32{}
     compincfg(0, 0)
     powered(TRUE)
 
-PUB Preset_128x64{}
+PUB preset_128x64{}
 ' Preset: 128px wide, setup for 64px height
     displaylines(64)
     displaystartline(0)
@@ -185,7 +185,7 @@ PUB Preset_128x64{}
     compincfg(1, 0)
     powered(TRUE)
 
-PUB Address(addr): curr_addr
+PUB address(addr): curr_addr
 ' Set framebuffer address
     case addr
         $0004..$7FFF-_buff_sz:
@@ -193,7 +193,7 @@ PUB Address(addr): curr_addr
         other:
             return _ptr_drawbuffer
 
-PUB AddrMode(mode)
+PUB addrmode(mode)
 ' Set Memory Addressing Mode
 '   Valid values:
 '       0: Horizontal addressing mode
@@ -207,7 +207,7 @@ PUB AddrMode(mode)
             return
 
 #ifdef GFX_DIRECT
-PUB Bitmap(ptr_bmap, sx, sy, ex, ey) | bm_sz
+PUB bitmap(ptr_bmap, sx, sy, ex, ey) | bm_sz
 ' Display bitmap
 '   ptr_bmap: pointer to bitmap data
 '   (sx, sy): upper-left corner of bitmap
@@ -219,7 +219,7 @@ PUB Bitmap(ptr_bmap, sx, sy, ex, ey) | bm_sz
 #endif
 
 #ifdef GFX_DIRECT
-PUB Char(ch) | ch_offs
+PUB char(ch) | ch_offs
 ' Draw a character from the loaded font
     ch_offs := _font_addr + (ch << 3)
     displaybounds(_charpx_x, _charpx_y, _charpx_x+_charcell_w, _charpx_y+_charcell_h)
@@ -234,7 +234,7 @@ PUB Char(ch) | ch_offs
             _charpx_x := _charpx_y := 0         ' wrap to beginning of disp
 #endif
 
-PUB ChgPumpVoltage(v)
+PUB chgpumpvoltage(v)
 ' Set charge pump regulator voltage, in millivolts
 '   Valid values:
 '       0 (off), 6_000, *7_500, 8_500, 9_000
@@ -260,7 +260,7 @@ PUB ChgPumpVoltage(v)
     writereg(core#CHGPUMP, 1, v)
 #endif
 
-PUB Clear{}
+PUB clear{}
 ' Clear the display
 #ifdef GFX_DIRECT
 #ifdef SSD130X_I2C
@@ -280,7 +280,7 @@ PUB Clear{}
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
 
-PUB ClockFreq(freq)
+PUB clockfreq(freq)
 ' Set display internal oscillator frequency, in kHz
 '   Valid values: (disply-specific)
 '       SSD1306:
@@ -303,7 +303,7 @@ PUB ClockFreq(freq)
         other:
             return
 
-PUB COMPinCfg(pin_config, remap) | config
+PUB compincfg(pin_config, remap) | config
 ' Set COM Pins Hardware Configuration and Left/Right Remap
 '   Valid values:
 '       pin_config: 0: Sequential                      1: Alternative (POR)
@@ -322,7 +322,7 @@ PUB COMPinCfg(pin_config, remap) | config
 
     writereg(core#SETCOM_CFG, 1, config)
 
-PUB Contrast(level)
+PUB contrast(level)
 ' Set Contrast Level
 '   Valid values: 0..255 (default: 127)
 '   Any other value sets the default value
@@ -332,7 +332,7 @@ PUB Contrast(level)
         other:
             level := 127
 
-PUB DisplayBounds(sx, sy, ex, ey)
+PUB displaybounds(sx, sy, ex, ey)
 ' Set displayable area
     ifnot lookup(sx: 0..127) or lookup(sy: 0..63) or lookup(ex: 0..127) {
 }   or lookup(ey: 0..63)
@@ -343,7 +343,7 @@ PUB DisplayBounds(sx, sy, ex, ey)
     writereg(core#SET_COLADDR, 2, (ex << 8) | sx)
     writereg(core#SET_PAGEADDR, 2, (ey << 8) | sy)
 
-PUB DisplayInverted(state) | tmp
+PUB displayinverted(state) | tmp
 ' Invert display colors
     case ||(state)
         0:
@@ -353,7 +353,7 @@ PUB DisplayInverted(state) | tmp
         other:
             return
 
-PUB DisplayLines(lines)
+PUB displaylines(lines)
 ' Set total number of display lines
 '   Valid values: 16..64
 '   Typical values: 32, 64
@@ -365,7 +365,7 @@ PUB DisplayLines(lines)
         other:
             return
 
-PUB DisplayOffset(offset)
+PUB displayoffset(offset)
 ' Set display offset/vertical shift
 '   Valid values: 0..63 (default: 0)
 '   Any other value sets the default value
@@ -375,7 +375,7 @@ PUB DisplayOffset(offset)
         other:
             offset := 0
 
-PUB DisplayStartLine(start_line)
+PUB displaystartline(start_line)
 ' Set Display Start Line
 '   Valid values: 0..63 (default: 0)
 '   Any other value sets the default value
@@ -385,7 +385,7 @@ PUB DisplayStartLine(start_line)
         other:
             start_line := 0
 
-PUB DisplayVisibility(mode)
+PUB displayvisibility(mode)
 ' Set display visibility
     case mode
         NORMAL:
@@ -398,7 +398,7 @@ PUB DisplayVisibility(mode)
         other:
             return
 
-PUB MirrorH(state)
+PUB mirrorh(state)
 ' Mirror display, horizontally
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value is ignored
@@ -409,7 +409,7 @@ PUB MirrorH(state)
         other:
             return
 
-PUB MirrorV(state)
+PUB mirrorv(state)
 ' Mirror display, vertically
 '   Valid values: TRUE (-1 or 1), *FALSE (0)
 '   Any other value is ignored
@@ -422,7 +422,7 @@ PUB MirrorV(state)
 
     writereg(core#COMDIR_NORM, 0, state)
 
-PUB Plot(x, y, color)
+PUB plot(x, y, color)
 ' Plot pixel at (x, y) in color
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
         return                                  ' coords out of bounds, ignore
@@ -443,7 +443,7 @@ PUB Plot(x, y, color)
 #endif
 
 #ifndef GFX_DIRECT
-PUB Point(x, y): pix_clr
+PUB point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -451,7 +451,7 @@ PUB Point(x, y): pix_clr
     return (byte[_ptr_drawbuffer][(x + (y >> 3) * _disp_width)] & (1 << (y & 7)) <> 0) * -1
 #endif
 
-PUB Powered(state) | tmp
+PUB powered(state) | tmp
 ' Enable display power
     case ||(state)
         0, 1:
@@ -460,7 +460,7 @@ PUB Powered(state) | tmp
         other:
             return
 
-PUB PrechargePeriod(phs1_clks, phs2_clks)
+PUB prechargeperiod(phs1_clks, phs2_clks)
 ' Set display refresh pre-charge period, in display clocks
 '   Valid values: 1..15 (default: 2, 2)
 '   Any other value sets the default value
@@ -476,7 +476,7 @@ PUB PrechargePeriod(phs1_clks, phs2_clks)
 
     writereg(core#SETPRECHARGE, 1, (phs2_clks << 4) | phs1_clks)
 
-PUB Reset{}
+PUB reset{}
 ' Reset the display controller
     if lookdown(_RES: 0..31)
         outa[_RES] := 1
@@ -486,7 +486,7 @@ PUB Reset{}
         time.usleep(3)
         outa[_RES] := 1
 
-PUB Update{} | tmp
+PUB update{} | tmp
 ' Write display buffer to display
     displaybounds(0, 0, _disp_xmax, _disp_ymax)
 
@@ -502,7 +502,7 @@ PUB Update{} | tmp
     spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
 #endif
 
-PUB VCOMHVoltage(level)
+PUB vcomhvoltage(level)
 ' Set COM output voltage, in millivolts
 '   Valid values:
 '       SSD1306:
@@ -535,7 +535,7 @@ PUB VCOMHVoltage(level)
 
     writereg(core#SETVCOMDESEL, 1, level)
 
-PUB WriteBuffer(ptr_buff, buff_sz) | tmp
+PUB writebuffer(ptr_buff, buff_sz) | tmp
 ' Write alternate buffer to display
 '   buff_sz: bytes to write
 '   ptr_buff: address of buffer to write to display
@@ -553,7 +553,7 @@ PUB WriteBuffer(ptr_buff, buff_sz) | tmp
 #endif
 
 #ifndef GFX_DIRECT
-PRI memFill(xs, ys, val, count)
+PRI memfill(xs, ys, val, count)
 ' Fill region of display buffer memory
 '   xs, ys: Start of region
 '   val: Color
@@ -561,7 +561,7 @@ PRI memFill(xs, ys, val, count)
     bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 #endif
 
-PRI writeReg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp, ackbit
+PRI writereg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp, ackbit
 ' Write nr_bytes from val to device
 #ifdef SSD130X_I2C
     cmd_pkt.byte[0] := SLAVE_WR | _addr_bits
@@ -609,22 +609,21 @@ PRI writeReg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp, ackbit
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+

@@ -5,7 +5,7 @@
     Description: Driver for Sitronix ST7735-based displays
     Copyright (c) 2022
     Started Mar 7, 2020
-    Updated Feb 21, 2022
+    Updated Sep 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -54,9 +54,6 @@ CON
     AVDD_X3             = 1
     AVDD_X3_VGH25       = 2
 
-' Character attributes
-    DRAWBG              = 1 << 0
-
 VAR
 
     word _framerate
@@ -72,10 +69,10 @@ OBJ
     core: "core.con.st7735"                     ' HW-specific constants
     time: "time"                                ' basic timekeeping methods
 
-PUB Null{}
+PUB null{}
 'This is not a top-level object
 
-PUB Startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, WIDTH, HEIGHT, ptr_drawbuff): status
+PUB startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, WIDTH, HEIGHT, ptr_drawbuff): status
 ' Start using custom I/O settings
 '   NOTE: RES_PIN is optional, but recommended (pin # only validated in Reset())
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
@@ -104,13 +101,13 @@ PUB Startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, WIDTH, HEIGHT, ptr_drawb
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
+PUB stop{}
 
     displayvisibility(ALL_OFF)
     powered(FALSE)
     spi.deinit{}
 
-PUB Defaults{}
+PUB defaults{}
 ' Apply power-on-reset default settings
     reset{}
     powered(TRUE)
@@ -145,7 +142,7 @@ PUB Defaults{}
     opmode(NORMAL)
     displayvisibility(NORMAL)
 
-PUB Preset_GreenTab128x128{}
+PUB preset_greentab128x128{}
 ' Like defaults, but with settings applicable to green-tabbed 128x128 displays
     reset{}
     powered(TRUE)
@@ -180,10 +177,10 @@ PUB Preset_GreenTab128x128{}
     opmode(NORMAL)
     displayvisibility(NORMAL)
 
-PUB Contrast(level)
+PUB contrast(level)
 ' Dummy method
 
-PUB Address(addr): curr_addr
+PUB address(addr): curr_addr
 ' Set framebuffer/display buffer address
     case addr
         $0000..$7fff-_buff_sz:
@@ -192,7 +189,7 @@ PUB Address(addr): curr_addr
             return _ptr_drawbuffer
 
 #ifdef GFX_DIRECT
-PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
+PUB bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
 ' Display bitmap
 '   ptr_bmap: pointer to bitmap data
 '   (xs, ys): upper-left corner of bitmap
@@ -213,7 +210,7 @@ PUB Bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
 #endif
 
 #ifdef GFX_DIRECT
-PUB Box(x1, y1, x2, y2, color, fill) | cmd_pkt[3]
+PUB box(x1, y1, x2, y2, color, fill) | cmd_pkt[3]
 ' Draw a box
 '   (x1, y1): upper-left corner of box
 '   (x2, y2): lower-right corner of box
@@ -285,7 +282,7 @@ PUB Box(x1, y1, x2, y2, color, fill) | cmd_pkt[3]
 #endif
 
 #ifdef GFX_DIRECT
-PUB Char(ch) | gl_c, gl_r, lastgl_c, lastgl_r
+PUB char(ch) | gl_c, gl_r, lastgl_c, lastgl_r
 ' Draw character from currently loaded font
     lastgl_c := _font_width-1
     lastgl_r := _font_height-1
@@ -319,12 +316,8 @@ PUB Char(ch) | gl_c, gl_r, lastgl_c, lastgl_r
             return
 #endif
 
-PUB CharAttrs(attrs)
-' Set character attributes
-    _char_attrs := attrs
-
 #ifdef GFX_DIRECT
-PUB Clear{}
+PUB clear{}
 ' Clear the display directly, bypassing the display buffer
     displaybounds(0, 0, _disp_xmax, _disp_ymax)
     outa[_DC] := core#CMD
@@ -334,12 +327,12 @@ PUB Clear{}
     spi.wrwordx_msbf(_bgcolor, _buff_sz/2)
     outa[_CS] := 1
 #else
-PUB Clear{}
+PUB clear{}
 ' Clear the display buffer
     wordfill(_ptr_drawbuffer, _bgcolor, _buff_sz/2)
 #endif
 
-PUB ColorDepth(format): curr_fmt
+PUB colordepth(format): curr_fmt
 ' Set expected color format of pixel data, in bits per pixel
 '   Valid values: 12, 16, 18
 '   Any other value returns the current setting
@@ -350,7 +343,7 @@ PUB ColorDepth(format): curr_fmt
         other:
             return lookup(_colmod & core#IFPF_BITS: 0, 0, 12, 0, 16, 18)
 
-PUB COMVoltageLevel(level)
+PUB comvoltagelevel(level)
 ' Set VCOM voltage level, in millivolts
 '   Valid values:
 '       -0_425..-2_000 (in increments of 25mV)   Default: -0_525
@@ -362,7 +355,7 @@ PUB COMVoltageLevel(level)
         other:
             return
 
-PUB DisplayBounds(sx, sy, ex, ey) | tmp, tmpx, tmpy, cmd_pkt[3]
+PUB displaybounds(sx, sy, ex, ey) | tmp, tmpx, tmpy, cmd_pkt[3]
 ' Set display start (sx, sy) and end (ex, ey) drawing boundaries
     if (sx => 0 and ex =< _disp_xmax) and (sy => 0 and ey =< _disp_ymax)
         ' the ST7735 requires (ex, ey) be greater than (sx, sy)
@@ -391,7 +384,7 @@ PUB DisplayBounds(sx, sy, ex, ey) | tmp, tmpx, tmpy, cmd_pkt[3]
         writereg(core#CASET, 4, @tmpx)
         writereg(core#RASET, 4, @tmpy)
 
-PUB DisplayInverted(state)
+PUB displayinverted(state)
 ' Invert display colors
     case ||(state)
         0:
@@ -401,12 +394,12 @@ PUB DisplayInverted(state)
         other:
             return
 
-PUB DisplayOffset(x, y)
+PUB displayoffset(x, y)
 ' Set display offset
     _offs_x := 0 #> x <# 127
     _offs_y := 0 #> y <# 159
 
-PUB DisplayRotate(state): curr_state
+PUB displayrotate(state): curr_state
 ' Rotate display
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current setting
@@ -420,7 +413,7 @@ PUB DisplayRotate(state): curr_state
     _madctl := ((curr_state & core#MV_MASK) | state)
     writereg(core#MADCTL, 1, @_madctl)
 
-PUB DisplayVisibility(mode) | inv_state
+PUB displayvisibility(mode) | inv_state
 ' Set display visiblity
 '   NOTE: Doesn't affect display RAM contents.
 '   NOTE: There is a mandatory 120ms delay imposed by calling this method
@@ -440,7 +433,7 @@ PUB DisplayVisibility(mode) | inv_state
     writereg(inv_state, 0, 0)
     time.msleep(120)
 
-PUB FrameRateCtrl(ln_per, f_porch, b_porch, lim_ln_per, lim_f_porch, lim_b_porch): curr_frmr | tmp[2], nr_bytes
+PUB frameratectrl(ln_per, f_porch, b_porch, lim_ln_per, lim_f_porch, lim_b_porch): curr_frmr | tmp[2], nr_bytes
 ' Set frame frequency
 '   Valid values:
 '       ln_per: 0..15
@@ -501,15 +494,15 @@ PUB FrameRateCtrl(ln_per, f_porch, b_porch, lim_ln_per, lim_f_porch, lim_b_porch
 
     writereg(core#FRMCTR1 + _opmode, nr_bytes, @tmp)
 
-PUB GammaTableN(ptr_buff)
+PUB gammatablen(ptr_buff)
 ' Modify gamma table (negative polarity)
     writereg(core#GMCTRN1, 16, ptr_buff)
 
-PUB GammaTableP(ptr_buff)
+PUB gammatablep(ptr_buff)
 ' Modify gamma table (positive polarity)
     writereg(core#GMCTRP1, 16, ptr_buff)
 
-PUB InversionCtrl(mask)
+PUB inversionctrl(mask)
 ' Set display inversion mode control bitmask
 '   Valid values: %000..%111
 '       0: Dot inversion
@@ -527,7 +520,7 @@ PUB InversionCtrl(mask)
     writereg(core#INVCTR, 1, @mask)
 
 #ifdef GFX_DIRECT
-PUB Line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
+PUB line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
 ' Draw line from x1, y1 to x2, y2
     if (x1 == x2)
         displaybounds(x1, y1, x1, y2)           ' vertical
@@ -573,7 +566,7 @@ PUB Line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
             y1 += sy
 #endif
 
-PUB MirrorH(state): curr_state
+PUB mirrorh(state): curr_state
 ' Mirror the display, horizontally
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value is ignored
@@ -587,7 +580,7 @@ PUB MirrorH(state): curr_state
     _madctl := ((_madctl & core#MX_MASK) | state)
     writereg(core#MADCTL, 1, @_madctl)
 
-PUB MirrorV(state): curr_state
+PUB mirrorv(state): curr_state
 ' Mirror the display, vertically
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value is ignored
@@ -601,7 +594,7 @@ PUB MirrorV(state): curr_state
     _madctl := ((_madctl & core#MY_MASK) | state)
     writereg(core#MADCTL, 1, @_madctl)
 
-PUB OpMode(mode)
+PUB opmode(mode)
 ' Set operating mode
 '   Valid values:
 '       NORMAL (0): Normal display mode
@@ -621,7 +614,7 @@ PUB OpMode(mode)
 
     _opmode := mode
 
-PUB PartialArea(sy, ey) | tmp
+PUB partialarea(sy, ey) | tmp
 ' Define visible area (rows) of display when operating in partial-display mode
     tmp.byte[0] := 0
     tmp.byte[1] := sy & $FF
@@ -630,7 +623,7 @@ PUB PartialArea(sy, ey) | tmp
 
     writereg(core#PTLAR, 4, @tmp)
 
-PUB Plot(x, y, color) | tmp, xs, ys, xe, ye, cmd_pkt[3]
+PUB plot(x, y, color) | tmp, xs, ys, xe, ye, cmd_pkt[3]
 ' Plot pixel at (x, y) in color
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
         return                                  ' coords out of bounds, ignore
@@ -667,7 +660,7 @@ PUB Plot(x, y, color) | tmp, xs, ys, xe, ye, cmd_pkt[3]
 #endif
 
 #ifndef GFX_DIRECT
-PUB Point(x, y): pix_clr
+PUB point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -675,7 +668,7 @@ PUB Point(x, y): pix_clr
     return word[_ptr_drawbuffer][x + (y * _disp_width)]
 #endif
 
-PUB Powered(state)
+PUB powered(state)
 ' Enable display power
     case ||(state)
         0, 1:
@@ -686,7 +679,7 @@ PUB Powered(state)
     writereg(state, 0, 0)
     time.msleep(120)
 
-PUB PowerControl(mode, ap, sap, bclkdiv1, bclkdiv2, bclkdiv3, bclkdiv4, bclkdiv5) | tmp
+PUB powercontrol(mode, ap, sap, bclkdiv1, bclkdiv2, bclkdiv3, bclkdiv4, bclkdiv5) | tmp
 ' Set partial mode/full-colors power control
 '   Valid values:
 '       mode: Settings applied to operating mode
@@ -752,7 +745,7 @@ PUB PowerControl(mode, ap, sap, bclkdiv1, bclkdiv2, bclkdiv3, bclkdiv4, bclkdiv5
     tmp.byte[1] := (bclkdiv4 << 6) | (bclkdiv3 << 4) | (bclkdiv2 << 2) | bclkdiv1
     writereg(core#PWCTR3 + mode, 2, @tmp)
 
-PUB PowerControl1(avdd, gvdd, gvcl, mode) | tmp
+PUB powercontrol1(avdd, gvdd, gvcl, mode) | tmp
 ' Set LCD supply voltages, in millivolts
 '   Valid values:
 '       avdd: 4_500..5_100, in increments of 100 (default: 4_900)
@@ -790,7 +783,7 @@ PUB PowerControl1(avdd, gvdd, gvcl, mode) | tmp
 
     writereg(core#PWCTR1, 3, @tmp)
 
-PUB PowerControl2(v25, vgh, vgl) | tmp
+PUB powercontrol2(v25, vgh, vgl) | tmp
 ' Set LCD supply voltages, in millivolts
 '   Valid values:
 '       V25: 2_100, 2_200, 2_300, 2_400 (default: 2_400)
@@ -817,7 +810,7 @@ PUB PowerControl2(v25, vgh, vgl) | tmp
 
     writereg(core#PWCTR2, 1, @tmp)
 
-PUB Reset{}
+PUB reset{}
 ' Reset the display controller
     if lookdown(_RESET: 0..31)                  ' I/O pin defined - hard reset
         outa[_RESET] := 1
@@ -829,7 +822,7 @@ PUB Reset{}
     else                                        ' no I/O pin defined - do
         writereg(core#SOFT_RESET, 0, 0)         '   soft reset instead
 
-PUB SubpixelOrder(order): curr_ord
+PUB subpixelorder(order): curr_ord
 ' Set subpixel color order
 '   Valid values:
 '       RGB (0): Red-Green-Blue order
@@ -845,7 +838,7 @@ PUB SubpixelOrder(order): curr_ord
     _madctl := ((curr_ord & core#RGB_MASK) | order)
     writereg(core#MADCTL, 1, @_madctl)
 
-PUB Update{}
+PUB update{}
 ' Write the draw buffer to the display
 #ifndef GFX_DIRECT
     outa[_DC] := core#CMD
@@ -857,7 +850,7 @@ PUB Update{}
 #endif
 
 #ifndef GFX_DIRECT
-PRI memFill(xs, ys, val, count)
+PRI memfill(xs, ys, val, count)
 ' Fill region of display buffer memory
 '   xs, ys: Start of region
 '   val: Color
@@ -865,7 +858,7 @@ PRI memFill(xs, ys, val, count)
     wordfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), val, count)
 #endif
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff)
+PRI writereg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to device from ptr_buff
     case reg_nr
         ' single-byte commands

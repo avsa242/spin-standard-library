@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated May 14, 2022
+    Updated Sep 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -19,9 +19,6 @@ CON
     MAX_PIXELS  = 1024                                          ' max pixels per strip
     MAX_COLOR   = 16_777_215
     BYTESPERPX  = 4
-
-' Character attributes
-    DRAWBG      = (1 << 0)
 
   ' borrowed from Gavin Garner's TM1804 LED driver
   ' -- additional colors by Lachlan   
@@ -194,10 +191,6 @@ PUB address(addr, count, pin, bits) : c
 
     _connection := c                                            ' set new connection
     return _ptr_framebuffer
-
-PUB charattrs(attrs)
-' Set character attributes
-    _char_attrs := attrs
 
 PUB clear{}
 ' Clear the display buffer

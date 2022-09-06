@@ -5,7 +5,7 @@
     Description: Driver for ILI9341 LCD controllers
     Copyright (c) 2022
     Started Oct 14, 2021
-    Updated Feb 20, 2022
+    Updated Sep 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,9 +36,6 @@ CON
     NORM            = 0
     INV             = 1
 
-' Character attributes
-    DRAWBG          = 1 << 0
-
 ' Internal use
     VMH             = 0
     VML             = 1
@@ -61,7 +58,7 @@ VAR
     byte _madctl, _pwr_ctrl2, _vmctrl1[2], _vcomoffs, _colmod, _frmctr1[2]
     byte _g3ctrl
 
-PUB Startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT): status
+PUB startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT): status
 ' Start driver using custom I/O settings
 '   DATA_BASEPIN: first (lowest) pin of 8 data pin block (must be contiguous)
 '   RES_PIN: display's hardware reset pin (optional, -1 to ignore)
@@ -82,7 +79,7 @@ PUB Startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT)
             _bytesperln := _disp_width * BYTESPERPX
             reset{}
 
-PUB Preset{}
+PUB preset{}
 ' Preset settings
     reset{}
     time.msleep(5)
@@ -129,12 +126,12 @@ PUB Preset{}
     powered(true)
     displayvisibility(NORMAL)
 
-PUB Stop{}
+PUB stop{}
 ' Power off the display, and stop the engine
     powered(false)
     com.deinit{}
 
-PUB Bitmap(ptr_bmap, sx, sy, ex, ey) | nr_words
+PUB bitmap(ptr_bmap, sx, sy, ex, ey) | nr_words
 ' Draw bitmap
 '   ptr_bmap: pointer to bitmap data
 '   (sx, sy): upper-left corner of bitmap
@@ -145,7 +142,7 @@ PUB Bitmap(ptr_bmap, sx, sy, ex, ey) | nr_words
     com.wrbyte_cmd(core#RAMWR)
     com.wrblkword_msbf(ptr_bmap, nr_words)
 
-PUB Box(x1, y1, x2, y2, color, filled) | xt, yt
+PUB box(x1, y1, x2, y2, color, filled) | xt, yt
 ' Draw a box from (x1, y1) to (x2, y2) in color, optionally filled
     xt := ||(x2-x1)+1
     yt := ||(y2-y1)+1
@@ -170,7 +167,7 @@ PUB Box(x1, y1, x2, y2, color, filled) | xt, yt
         com.wrbyte_cmd(core#RAMWR)
         com.wrwordx_dat(color, yt)
 
-PUB Char(ch) | gl_c, gl_r, lastgl_c, lastgl_r
+PUB char(ch) | gl_c, gl_r, lastgl_c, lastgl_r
 ' Draw character from currently loaded font
     lastgl_c := _font_width-1
     lastgl_r := _font_height-1
@@ -203,13 +200,13 @@ PUB Char(ch) | gl_c, gl_r, lastgl_c, lastgl_r
         other:
             return
 
-PUB Clear{}
+PUB clear{}
 ' Clear display
     displaybounds(0, 0, _disp_xmax, _disp_ymax)
     com.wrbyte_cmd(core#RAMWR)
     com.wrwordx_dat(_bgcolor, _buff_sz)
 
-PUB ClkDiv(cdiv): curr_cdiv
+PUB clkdiv(cdiv): curr_cdiv
 ' Set LCD clock divisor
 '   Valid values: 1, 2, 4, 8
 '   Any other value returns the current (cached) setting
@@ -222,7 +219,7 @@ PUB ClkDiv(cdiv): curr_cdiv
         other:
             return lookupz(_frmctr1[CLK_DIV]: 1, 2, 4, 8)
 
-PUB ColorDepth(cbpp): curr_cbpp
+PUB colordepth(cbpp): curr_cbpp
 ' Set display color depth, in bits per pixel
 '   Valid values: 16, 18
 '   Any other value returns the current (cached) setting
@@ -240,9 +237,9 @@ PUB ColorDepth(cbpp): curr_cbpp
     com.wrbyte_cmd(core#COLMOD)
     com.wrbyte_dat(_colmod)
 
-PUB Contrast(c)
+PUB contrast(c)
 
-PUB DisplayBounds(x1, y1, x2, y2) | x, y, cmd_pkt[2]
+PUB displaybounds(x1, y1, x2, y2) | x, y, cmd_pkt[2]
 ' Set drawing area for subsequent drawing command(s)
     if x2 < x1                                  ' x2 must be greater than x1
         x := x2                                 ' if it isn't, swap them
@@ -268,7 +265,7 @@ PUB DisplayBounds(x1, y1, x2, y2) | x, y, cmd_pkt[2]
     com.wrbyte_cmd(core#PASET)
     com.wrblock_dat(@cmd_pkt.byte[4], 4)
 
-PUB DisplayInverted(state)
+PUB displayinverted(state)
 ' Invert display colors
 '   Valid values:
 '       TRUE (-1 or 1), FALSE (0)
@@ -277,7 +274,7 @@ PUB DisplayInverted(state)
         0, 1:
             com.wrbyte_cmd(core#INVOFF + ||(state))
 
-PUB DisplayRotate(state): curr_state
+PUB displayrotate(state): curr_state
 ' Rotate display
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current setting
@@ -292,7 +289,7 @@ PUB DisplayRotate(state): curr_state
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
 
-PUB DisplayVisibility(state): curr_state
+PUB displayvisibility(state): curr_state
 ' Set display visibility
 '   Valid values:
 '       ALL_OFF/OFF (0), NORMAL/ON (1), ALL_ON (3)
@@ -310,7 +307,7 @@ PUB DisplayVisibility(state): curr_state
             com.wrbyte_dat(core#GDR_VGH)
         other:
 
-PUB FrameRate(frate): curr_frate
+PUB framerate(frate): curr_frate
 ' Set LCD maximum frame rate, in Hz
 '   Valid values: 61, 63, 65, 68, 70, 73, 76, 79, 83, 86, 90, 95, 100, 106,
 '                   112, 119
@@ -327,7 +324,7 @@ PUB FrameRate(frate): curr_frate
             return lookupz(_frmctr1[FRM_RT]: 119, 112, 106, 100, 95, 90, 86, {
 }           83, 79, 76, 73, 70, 68, 65, 63, 61)
 
-PUB Gamma3ChCtrl(state): curr_state
+PUB gamma3chctrl(state): curr_state
 ' Enable 3-gamma control
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
@@ -339,23 +336,23 @@ PUB Gamma3ChCtrl(state): curr_state
         other:
             return ((_g3ctrl & 1) == 1)
 
-PUB GammaFixedCurve(prest): curr_prest
+PUB gammafixedcurve(prest): curr_prest
 ' Set gamma curve preset
 '   NOTE: Parameter is ignored; for API compatibility with other drivers
     com.wrbyte_cmd(core#GAMMASET)
     com.wrbyte_dat($01)
 
-PUB GammaTableN(ptr_buff)
+PUB gammatablen(ptr_buff)
 ' Modify gamma table (negative polarity)
     com.wrbyte_cmd(core#GMCTRN1)
     com.wrblock_dat(ptr_buff, 15)
 
-PUB GammaTableP(ptr_buff)
+PUB gammatablep(ptr_buff)
 ' Modify gamma table (positive polarity)
     com.wrbyte_cmd(core#GMCTRP1)
     com.wrblock_dat(ptr_buff, 15)
 
-PUB GVDDVoltage(v): curr_v
+PUB gvddvoltage(v): curr_v
 ' Set GVDD level, in millivolts
 '   (reference level for VCOM and grayscale voltage level)
 '   Valid values: 3_000..6_000 (rounded to nearest 50mV)
@@ -365,7 +362,7 @@ PUB GVDDVoltage(v): curr_v
             com.wrbyte_cmd(core#PWCTR1)
             com.wrbyte_cmd(v)
 
-PUB HorizRefreshDir(mode): curr_mode
+PUB horizrefreshDir(mode): curr_mode
 ' Set panel horizontal refresh direction
 '   (refresh direction relative to panel's top-left (0, 0) location)
 '   NORM (0): normal
@@ -382,7 +379,7 @@ PUB HorizRefreshDir(mode): curr_mode
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
 
-PUB Line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
+PUB line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
 ' Draw line from (x1, y1) to (x2, y2), in color
     if (x1 == x2)
         displaybounds(x1, y1, x1, y2)           ' vertical
@@ -419,7 +416,7 @@ PUB Line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
             err += ddx
             y1 += sy
 
-PUB MirrorH(state): curr_state
+PUB mirrorh(state): curr_state
 ' Mirror display, horizontally
 '   Valid values:
 '       TRUE (-1 or 1), FALSE (0)
@@ -435,7 +432,7 @@ PUB MirrorH(state): curr_state
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
 
-PUB MirrorV(state): curr_state
+PUB mirrorv(state): curr_state
 ' Mirror display, vertically
 '   Valid values:
 '       TRUE (-1 or 1), FALSE (0)
@@ -451,7 +448,7 @@ PUB MirrorV(state): curr_state
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
 
-PUB Plot(x, y, color) | cmd_pkt
+PUB plot(x, y, color) | cmd_pkt
 ' Plot pixel at (x, y) in color (direct to display)
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
         return                                  ' coords out of bounds, ignore
@@ -466,7 +463,7 @@ PUB Plot(x, y, color) | cmd_pkt
     com.wrbyte_cmd(core#RAMWR)
     com.wrblock_dat(@cmd_pkt, 2)
 
-PUB Powered(state)
+PUB powered(state)
 ' Enable display power
 '   Valid values:
 '       TRUE (-1 or 1), FALSE (0)
@@ -479,7 +476,7 @@ PUB Powered(state)
             time.msleep(60)
             com.wrbyte_cmd(core#DISPON)
 
-PUB Reset{}
+PUB reset{}
 ' Reset the display controller
     if lookdown(_RESET: 0..31)                  ' perform hard reset, if
         dira[_RESET] := 1                       '   I/O pin is defined
@@ -493,7 +490,7 @@ PUB Reset{}
         com.wrbyte_cmd(core#SWRESET)
         time.msleep(5)
 
-PUB SubpixelOrder(order): curr_ord
+PUB subpixelorder(order): curr_ord
 ' Set subpixel color order
 '   Valid values:
 '       RGB (0): Red-Green-Blue order
@@ -510,10 +507,10 @@ PUB SubpixelOrder(order): curr_ord
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
 
-PUB Update
+PUB update{}
 ' Dummy method
 
-PUB VCOMHVoltage(v): curr_v
+PUB vcomhvoltage(v): curr_v
 ' Set VCOMH voltage, in millivolts
 '   Valid values: 2_700..5875 (rounded to nearest 25mV; default: 3_925)
 '   Any other value returns the current (cached) setting
@@ -526,7 +523,7 @@ PUB VCOMHVoltage(v): curr_v
         other:
             return (_vmctrl1[VMH] * 25) + 2_700
 
-PUB VCOMLVoltage(v): curr_v
+PUB vcomlvoltage(v): curr_v
 ' Set VCOML voltage, in millivolts
 '   Valid values: -2_500..0 (rounded to nearest 25mV; default: -1_000)
 '   Any other value returns the current (cached) setting
@@ -539,7 +536,7 @@ PUB VCOMLVoltage(v): curr_v
         other:
             return (_vmctrl1[VML] * 25) - 2_500
 
-PUB VCOMOffset(v): curr_v
+PUB vcomoffset(v): curr_v
 ' Set VCOMH/VCOML offset, in millivolts
 '   Valid values: -63..63 (default: 0)
     curr_v := _vcomoffs
@@ -553,7 +550,7 @@ PUB VCOMOffset(v): curr_v
         other:
             return (_vcomoffs-64)
 
-PUB VertRefreshDir(mode): curr_mode
+PUB vertrefreshdir(mode): curr_mode
 ' Set panel vertical refresh direction
 '   (refresh direction relative to panel's top-left (0, 0) location)
 '   NORM (0): normal
@@ -570,7 +567,7 @@ PUB VertRefreshDir(mode): curr_mode
     com.wrbyte_cmd(core#MADCTL)
     com.wrbyte_dat(_madctl)
 
-PUB VGHStepFactor(fact): curr_fact
+PUB vghstepfactor(fact): curr_fact
 ' Set step-up factor for VGH operating voltage (VCI * n)
 '   Valid values: 6, 7
 '   Any other value returns the current (cached) setting
@@ -582,11 +579,11 @@ PUB VGHStepFactor(fact): curr_fact
             return ((curr_fact >> 1) & %11)
 
     fact := ((curr_fact & core#VGH_MASK) | fact)
-    _madctl |= (1 << 4)
+    _madctl |= (1 << 4) 'XXX find out why this was needed, or if it really is??? ALL occurrences
     com.wrbyte_cmd(core#PWCTR2)
     com.wrbyte_dat(fact)
 
-PUB VGLStepFactor(fact): curr_fact
+PUB vglstepfactor(fact): curr_fact
 ' Set step-up factor for VGL operating voltage (VCI * n)
 '   Valid values: 3, 4
 '   Any other value returns the current (cached) setting
@@ -615,22 +612,22 @@ DAT
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+
+

@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Aug 18, 2022
+    Updated: Sep 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -46,9 +46,6 @@ CON
     BYTESPERPX  = 1
     PIX_CLK     = 25_175_000
 
-    { character attributes }
-    DRAWBG      = (1 << 0)
-
 VAR
 
     byte _cog
@@ -57,7 +54,7 @@ OBJ
 
     ctrs    : "core.con.counters"
 
-PUB Startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): okay
+PUB startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): okay
 ' Start VGA engine
 '   PINGRP: 8-pin group number (0, 1, 2, 3 for start pin as 0, 8, 16, 24, resp)
 '   pins must be connected contiguously in the following (ascending) order:
@@ -91,39 +88,39 @@ PUB Startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): okay
     syncIndicatorAddress := @syncIndicator
     okay := _cog := cognew(@initialization, _ptr_drawbuffer)+1
 
-PUB Stop
+PUB stop
 
     if(_cog)
         cogstop(_cog-1)
         _cog := 0
 
-PUB Address(addr)
+PUB address(addr)
 ' Set address of display buffer
 '   Example:
 '       display.Address(@_framebuffer)
     _ptr_drawbuffer := addr
 
-PUB Clear{}
+PUB clear{}
 ' Clear the display
     longfill(_ptr_drawbuffer, _bgcolor, constant((DISP_WIDTH * DISP_HEIGHT) / 4))
 
-PUB DisplayState(state)
+PUB displaystate(state)
 ' Enable video output
 '   Valid values: TRUE (-1), FALSE (0)
     displayIndicator := state
 
-PUB DisplayRate(rate)
+PUB displayrate(rate)
 ' Returns true or false depending on the time elasped according to a specified rate.
 '   Rate - A display rate to return at. 0=0.234375Hz, 1=0.46875Hz, 2=0.9375Hz, 3=1.875Hz, 4=3.75Hz, 5=7.5Hz, 6=15Hz, 7=30Hz.
     result or= (($80 >> ((rate <# 7) #> 0)) & syncIndicator)
 
-PUB MirrorH(state)
+PUB mirrorh(state)
 ' dummy method
 
-PUB MirrorV(state)
+PUB mirrorv(state)
 ' dummy method
 
-PUB Plot(x, y, color)
+PUB plot(x, y, color)
 ' Plot pixel at (x, y) in color
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
         return                                  ' coords out of bounds, ignore
@@ -136,7 +133,7 @@ PUB Plot(x, y, color)
 #endif
 
 #ifndef GFX_DIRECT
-PUB Point(x, y): pix_clr
+PUB point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
@@ -144,16 +141,16 @@ PUB Point(x, y): pix_clr
     return byte[_ptr_drawbuffer][x + (y * _disp_width)] >> 2
 #endif
 
-PUB WaitVSync
+PUB waitvsync
 ' Waits for the display vertical refresh.
     result := syncIndicator
     repeat until(result <> syncIndicator)
 
-PUB Update
+PUB update
 ' dummy method
 
 #ifndef GFX_DIRECT
-PRI memFill(xs, ys, val, count)
+PRI memfill(xs, ys, val, count)
 ' Fill region of display buffer memory
 '   xs, ys: Start of region
 '   val: Color
@@ -281,24 +278,23 @@ displayCounter          res     1
 displayIndicator        byte    1                                          ' Video output control.
 syncIndicator           byte    0                                          ' Video update control.
 
+DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
