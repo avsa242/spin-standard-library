@@ -5,12 +5,17 @@
     Description: Library of generic bitmap-oriented graphics rendering routines
     Copyright (c) 2022
     Started May 19, 2019
-    Updated Sep 3, 2022
+    Updated Sep 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
 #include "terminal.common.spinh"                ' for PrintF(), Str(), etc
+
+CON
+
+    { character attributes }
+    DRAWBG  = (1 << 0)
 
 VAR
 
@@ -148,6 +153,10 @@ PUB Char(ch) | glyph_col, glyph_row, xs, ys, xe, ye, last_glyph_col, last_glyph_
                 repeat char_ht                  '   the display
                     scrollup(0, 0, _disp_xmax, _disp_ymax)
 #endif
+
+PUB charattrs(attrs)
+' Set character attributes
+    _char_attrs := attrs
 
 PUB Circle(x0, y0, radius, color, filled) | x, y, err, cdx, cdy, cht
 ' Draw a circle
