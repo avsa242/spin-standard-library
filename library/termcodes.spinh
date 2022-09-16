@@ -20,6 +20,7 @@ CON
     VT              = 11    ' vertical tab
     NP              = 12    ' new page
     FF              = 12    ' form feed
+    CB              = 12    ' clear
     CR              = 13    ' carriage return
     SO              = 14    ' shift out
     SI              = 15    ' shift in
