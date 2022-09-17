@@ -5,7 +5,7 @@
     Description: String processing and formatting
     Copyright (c) 2022
     Started May 29, 2022
-    Updated Aug 5, 2022
+    Updated Sep 17, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -344,6 +344,34 @@ PUB ItoA(num, ptr_str) | str0, dvsr, temp
     dvsr := 1_000_000_000
     repeat while (dvsr > num)
         dvsr /= 10
+    repeat while (dvsr > 0)
+        temp := num / dvsr
+        byte[ptr_str++] := temp + "0"
+        num -= temp * dvsr
+        dvsr /= 10
+    byte[ptr_str++] := 0
+    return ptr_str - str0 - 1
+
+PUB ItoAz(num, ptr_str, digits) | str0, dvsr, temp
+' Convert number (signed) to string representation, with zero padding
+'   num: integer value to convert
+'   ptr_str: string to copy output to
+    str0 := ptr_str
+    if (num < 0)
+        byte[ptr_str++] := "-"
+        if (num == $80000000)
+            byte[ptr_str++] := "2"
+            num += 2_000_000_000
+        num := -num
+    elseif (num == 0)
+        byte[ptr_str++] := "0"
+        byte[ptr_str] := NUL
+        return 1
+    dvsr := 1_000_000_000
+    repeat while (dvsr > num)
+        dvsr /= 10
+    repeat digits-1
+        byte[ptr_str++] := "0"
     repeat while (dvsr > 0)
         temp := num / dvsr
         byte[ptr_str++] := temp + "0"
