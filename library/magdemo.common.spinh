@@ -5,22 +5,26 @@
     Description: Magnetometer demo - code common to all drivers
     Copyright (c) 2022
     Started Jul 12, 2022
-    Updated Jul 12, 2022
+    Updated Sep 18, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
-PUB MagData{} | mx, my, mz
+PUB magdata{} | axis, m[3], sign
 
     repeat until mag.magdataready{}
-    mag.maggauss(@mx, @my, @mz)
-    ser.position(0, 3)
-    ser.str(string("Mag: "))
-    ser.printf2(string("%d.%6.6dGs\t"), (mx/1_000_000), ||(mx//1_000_000))
-    ser.printf2(string("%d.%6.6dGs\t"), (my/1_000_000), ||(my//1_000_000))
-    ser.printf2(string("%d.%6.6dGs\t"), (mz/1_000_000), ||(mz//1_000_000))
+    mag.maggauss(@m[mag#X_AXIS], @m[mag#Y_AXIS], @m[mag#Z_AXIS])
+    ser.str(@"Mag (Gs):  ")
+    repeat axis from mag#X_AXIS to mag#Z_AXIS
+        if (m[axis] < 0)
+            sign := "-"
+        else
+            sign := " "
+        ser.printf3(string("%c%d.%06.6d     "), sign, ||(m[axis] / 1_000_000), {
+}       ||(m[axis] // 1_000_000))
+    ser.newline{}
 
-PUB Cal_Mag{}
+PUB cal_mag{}
 ' Calibrate the magnetometer
     ser.position(0, 5)
     ser.str(string("Calibrating magnetometer..."))
