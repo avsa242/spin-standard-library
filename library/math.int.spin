@@ -5,7 +5,7 @@
     Description: Basic integer math functions
     Copyright (c) 2022
     Started Apr 11, 2021
-    Updated May 2, 2022
+    Updated Sep 18, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,10 +18,10 @@ VAR
 
     long _rndseed
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Atan(iy, ix): iangle | iratio, itmp
+PUB atan(iy, ix): iangle | iratio, itmp
 ' Arctangent
     if (ix == 0) and (iy == 0)
         return 0
@@ -49,7 +49,7 @@ PUB Atan(iy, ix): iangle | iratio, itmp
 
     return iangle
 
-PUB Atan2(iy, ix): iresult
+PUB atan2(iy, ix): iresult
 ' 2-argument arctangent
     if (ix == -32768)
         ix := -32767
@@ -67,49 +67,42 @@ PUB Atan2(iy, ix): iresult
 
     return iresult
 
-PUB Cos(angle): cosine
+PUB cos(angle): cosine
 ' Return the cosine of angle
     return sin(angle + $800)
 
-PUB Log2(num): l2
+PUB log2(num): l2
 ' Return base-2 logarithm of num
-    l2 := 0
-    if num > 1
-        repeat
-            num >>= 1
-            l2++
-        until num == 1
-    return
+    return (>| num)-1
 
-PUB Pow(base, exp): r
+PUB pow(base, exp): r
 ' Return base raised to the power of exp
     r := base
     exp--
     repeat exp
         r *= base
-    return
 
-PUB RNDSeed(val)
+PUB rndseed(val)
 ' Set seed for random number generator
     _rndseed := val
 
-PUB RND(maxval): r
+PUB rnd(maxval): r
 ' Return random unsigned number up to maxval
     return ||(? _rndseed) // maxval
 
-PUB RNDS(maxval): r
+PUB rnds(maxval): r
 ' Return random signed number up to maxval
     return (? _rndseed) // maxval
 
-PUB RNDi(maxval): r
+PUB rndi(maxval): r
 ' Return random unsigned number up to maxval, inclusive
     return ||(? _rndseed) // (maxval+1)
 
-PUB RNDSi(maxval): r
+PUB rndsi(maxval): r
 ' Return random signed number up to maxval, inclusive
     return (? _rndseed) // (maxval+1)
 
-PUB Sin(angle): sine
+PUB sin(angle): sine
 ' Return the sine of angle
     sine := angle << 1 & $FFE
     if angle & $800
@@ -124,7 +117,7 @@ CON
     MINDELTADIV = 1
     MINDELTATRIG= 1
 
-PRI Div(iy, ix): ir | itmp, idelta
+PRI div(iy, ix): ir | itmp, idelta
 
     ir := 0
     idelta := 16384
@@ -142,4 +135,24 @@ PRI Div(iy, ix): ir | itmp, idelta
     while (idelta => MINDELTADIV)
 
     return ir
+
+DAT
+{
+Copyright 2022 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
