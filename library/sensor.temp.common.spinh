@@ -61,7 +61,7 @@ PUB temperature{}: temp
 ' Current Temperature, in hundredths of a degree
 '   Returns: Integer
 '   (e.g., 2105 is equivalent to 21.05 deg C)
-    return temp_word2deg(tempdata{})
+    return temp_word2deg(temp_data{})
 #endif
 
 PUB temp_scale(scale): curr_scale

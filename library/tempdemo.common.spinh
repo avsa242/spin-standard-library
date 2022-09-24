@@ -14,9 +14,9 @@ VAR
 
     byte _tc_type
 
-PUB TempData{} | tscl, cj_temp, tc_temp
+PUB temp_data{} | tscl, cj_temp, tc_temp
 ' Display temperature sensor data
-    tscl := lookupz(sensr.tempscale(-2): "C", "F", "K")
+    tscl := lookupz(sensr.temp_scale(-2): "C", "F", "K")
     cj_temp := sensr.cj_temp{}
     tc_temp := sensr.tc_temp{}
     ser.printf1(string("Temp (deg %c):\n\r"), tscl)
@@ -24,7 +24,7 @@ PUB TempData{} | tscl, cj_temp, tc_temp
     ser.printf3(string("Thermocouple (%c): %3.3d.%02.2d\n\r"), tc_type(_tc_type), {
 }   (tc_temp / 100), ||(tc_temp // 100))
 
-PUB TC_Type(val): t
+PUB tc_type(val): t
 ' Return thermocouple type as ASCII character, given sensor-specific value for type
     case val
         sensr#TYPE_B: t := "B"
@@ -39,10 +39,10 @@ PUB TC_Type(val): t
 
 #else                                           { other temperature sensor drivers }
 
-PUB TempData{} | temp, tscl
+PUB temp_data{} | temp, tscl
 ' Display temperature sensor data
     temp := sensr.temperature{}
-    tscl := lookupz(sensr.tempscale(-2): "C", "F", "K")
+    tscl := lookupz(sensr.temp_scale(-2): "C", "F", "K")
     ser.printf3(string("Temp. (deg %c): %3.3d.%02.2d\n\r"), tscl, (temp / 100), ||(temp // 100))
 #endif
 
