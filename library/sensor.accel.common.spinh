@@ -5,7 +5,7 @@
     Description: Routines common to all sensor.accel device drivers
     Copyright (c) 2022
     Started Aug 31, 2022
-    Updated Sep 30, 2022
+    Updated Oct 1, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -21,8 +21,6 @@ VAR
     long _ares
     long _abias[ACCEL_DOF]
     long _ax, _ay, _az
-
-    byte _addr_bits 'XXX move this back to the driver
 
 PUB accel_data_cache{}
 ' Cache an accelerometer data sample
