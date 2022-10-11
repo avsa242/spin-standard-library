@@ -1,16 +1,16 @@
 {
     --------------------------------------------
-    Filename: com.i2c-common.spinh
+    Filename: com.i2c.common.spinh
     Author: Jesse Burt
     Description: Routines common to all I2C engines
     Started Jun 27, 2022
-    Updated Jun 27, 2022
+    Updated Oct 10, 2022
     Copyright (c) 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
-PUB Present(slave_addr): status
+PUB present(slave_addr): status
 ' Check for slave device presence on bus
 '   Returns:
 '       FALSE (0): Device didn't acknowledge (NAK)
@@ -30,41 +30,41 @@ PUB Present(slave_addr): status
        ACK (0): Send ACK to slave device after reading
 }
 
-PUB Rd_Byte(ackbit): b
+PUB rd_byte(ackbit): b
 ' Read byte from I2C bus
 '   Returns: data (byte)
     rdblock_lsbf(@b, 1, ackbit)
     b &= $ff
 
-PUB RdLong_LSBF(ackbit): l
+PUB rdlong_lsbf(ackbit): l
 ' Read long from I2C bus, least-significant byte first
 '   Returns: data (long)
     rdblock_lsbf(@l, 4, ackbit)
 
-PUB RdLong_MSBF(ackbit): l
+PUB rdlong_msbf(ackbit): l
 ' Read long from I2C bus, least-significant byte first
 '   Returns: data (long)
     rdblock_msbf(@l, 4, ackbit)
 
-PUB RdWord_LSBF(ackbit): w
+PUB rdword_lsbf(ackbit): w
 ' Read word from I2C bus, least-significant byte first
 '   Returns: data (word)
     rdblock_lsbf(@w, 2, ackbit)
     w &= $ffff
 
-PUB RdWord_MSBF(ackbit): w
+PUB rdword_msbf(ackbit): w
 ' Read word from I2C bus, least-significant byte first
 '   Returns: data (word)
     rdblock_msbf(@w, 2, ackbit)
     w &= $ffff
 
-PUB Read(ackbit): b
+PUB read(ackbit): b
 ' Read byte from I2C bus
 '   Returns: data (byte)
     rdblock_lsbf(@b, 1, ackbit)
     b &= $ff
 
-PUB Wait(slave_addr) | ackbit
+PUB wait(slave_addr) | ackbit
 ' Waits for I2C device to be ready for new command
 '   NOTE: This method will wait indefinitely,
 '   if the device doesn't respond
@@ -73,7 +73,7 @@ PUB Wait(slave_addr) | ackbit
         ackbit := write(slave_addr)
     until (ackbit == ACK)
 
-PUB Waitx(slaveid, ms): ackbit | tmp
+PUB waitx(slaveid, ms): ackbit | tmp
 ' Wait ms milliseconds for I2C device to be ready for new command
 '   Returns:
 '       ACK(0): device responded within specified time
@@ -97,90 +97,87 @@ PUB Waitx(slaveid, ms): ackbit | tmp
     All leave SCL low when returning
 }
 
-PUB Wr_Byte(b): ackbit
+PUB wr_byte(b): ackbit
 ' Write byte to I2C bus
 '   b: byte to write
     return wrblock_lsbf(@b, 1)
 
-PUB Wr_ByteX(b, nr_bytes): ackbit
+PUB wr_bytex(b, nr_bytes): ackbit
 ' Repeatedly write byte to bus
 '   b: byte to write
 '   nr_bytes: number of bytes to write
     repeat nr_bytes
         ackbit := wrblock_lsbf(@b, 1)
 
-PUB WrLong_LSBF(l): ackbit
-' Write long to I2C bus, least-significant byte first
+PUB wrlong_lsbf(l): ackbit
+' write long to I2C bus, least-significant byte first
 '   l: long to write
     return wrblock_lsbf(@l, 4)
 
-PUB WrLong_MSBF(l): ackbit
-' Write long to I2C bus, most-significant byte first
+PUB wrlong_msbf(l): ackbit
+' write long to I2C bus, most-significant byte first
 '   l: long to write
     return wrblock_msbf(@l, 4)
 
-PUB WrLongX_LSBF(l, nr_longs): ackbit
+PUB wrlongx_lsbf(l, nr_longs): ackbit
 ' Repeatedly write LSB-first long to bus
 '   l: long to write
 '   nr_longs: number of longs to write
     repeat nr_longs
         ackbit := wrblock_lsbf(@l, 4)
 
-PUB WrLongX_MSBF(l, nr_longs): ackbit
+PUB wrlongx_msbf(l, nr_longs): ackbit
 ' Repeatedly write MSB-first long to bus
 '   l: long to write
 '   nr_longs: number of longs to write
     repeat nr_longs
         ackbit := wrblock_msbf(@l, 4)
 
-PUB WrWord_LSBF(w): ackbit
-' Write word to I2C bus, least-significant byte first
+PUB wrword_lsbf(w): ackbit
+' write word to I2C bus, least-significant byte first
 '   w: word to write
     return wrblock_lsbf(@w, 2)
 
-PUB WrWord_MSBF(w): ackbit
-' Write word to I2C bus, most-significant byte first
+PUB wrword_msbf(w): ackbit
+' write word to I2C bus, most-significant byte first
 '   w: word to write
     return wrblock_msbf(@w, 2)
 
-PUB WrWordX_LSBF(w, nr_words): ackbit
+PUB wrwordx_lsbf(w, nr_words): ackbit
 ' Repeatedly write LSB-first word to bus
 '   w: word to write
 '   nr_words: number of words to write
     repeat nr_words
         ackbit := wrblock_lsbf(@w, 2)
 
-PUB WrWordX_MSBF(w, nr_words): ackbit
+PUB wrwordx_msbf(w, nr_words): ackbit
 ' Repeatedly write MSB-first word to bus
 '   w: word to write
 '   nr_words: number of words to write
     repeat nr_words
         ackbit := wrblock_msbf(@w, 2)
 
-PUB Write(b): ackbit
-' Write byte to I2C bus
+PUB write(b): ackbit
+' write byte to I2C bus
 '   b: byte to write
     return wrblock_lsbf(@b, 1)
 
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

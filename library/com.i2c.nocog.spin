@@ -7,7 +7,7 @@
         Write speed: 27.472kHz (19% duty - 7.2uS H : 29.2uS L)
         Read speed: 29.411kHz (69% duty - 23.6uS H : 10.4uS L)
     Started Jun 9, 2019
-    Updated Jun 27, 2022
+    Updated Oct 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -35,14 +35,14 @@ VAR
     long _SCL                                   ' Bus pins
     long _SDA
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB InitDef{}: status
+PUB init_def{}: status
 ' Initialize I2C engine using default Propeller I2C pins
     return init(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Init(SCL, SDA, I2C_HZ): status
+PUB init(SCL, SDA, I2C_HZ): status
 ' Initialize I2C engine using custom I2C pins
 '   SCL, SDA: 0..31 (each unique)
 '   Bus speed is approx 28-32kHz @80MHz system clock
@@ -56,11 +56,11 @@ PUB Init(SCL, SDA, I2C_HZ): status
 
     return cogid{}+1                            ' return current cog id
 
-PUB DeInit{}
+PUB deinit{}
 ' Deinitialize - clear out hub vars
     longfill(@_SCL, 0, 2)
 
-PUB RdBlock_LSBF(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
+PUB rdblock_lsbf(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
 ' Read nr_bytes from I2C bus into ptr_buff, LSByte-first
 '   ptr_buff: pointer to buffer to read data into
 '   nr_bytes: number of bytes to read from bus
@@ -70,7 +70,7 @@ PUB RdBlock_LSBF(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
     { LSB-first byte loop }
     repeat bnum from 0 to lastb
         dira[_SDA] := 0
-        waitclockstretch{}
+        wait_clk_stretch{}
 
         { bit loop }
         repeat 8
@@ -85,7 +85,7 @@ PUB RdBlock_LSBF(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
 
         byte[ptr_buff][bnum] := tmp             ' copy to dest
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
+PUB rdblock_msbf(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
 ' Read nr_bytes from I2C bus into ptr_buff, MSByte-first
 '   ptr_buff: pointer to buffer to read data into
 '   nr_bytes: number of bytes to read from bus
@@ -95,7 +95,7 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
     { MSB-first byte loop }
     repeat bnum from lastb to 0
         dira[_SDA] := 0
-        waitclockstretch{}
+        wait_clk_stretch{}
 
         { bit loop }
         repeat 8
@@ -110,7 +110,7 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum
 
         byte[ptr_buff][bnum] := tmp             ' copy to dest
 
-PUB Reset{}
+PUB reset{}
 ' Reset I2C bus
     repeat 9                                    ' send up to 9 clock pulses
         dira[_SCL] := 1
@@ -118,31 +118,31 @@ PUB Reset{}
         if (ina[_SDA])                          ' if SDA is released,
             quit                                '   our work is done - return
 
-PUB Start{}
+PUB start{}
 ' Create start or re-start condition (S, Sr)
 '   NOTE: This method supports clock stretching;
 '       waits while SDA pin is held low
     dira[_SDA] := 0                             ' Float SDA (1)
-    waitclockstretch{}                          ' wait: clock stretching
+    wait_clk_stretch{}                          ' wait: clock stretching
 
     dira[_SDA] := 1                             ' SDA low (0)
     dira[_SCL] := 1                             ' SCL low (0)
 
-PUB Stop{}
+PUB stop{}
 ' Create I2C Stop condition (P)
 '   NOTE: This method supports clock stretching;
 '       waits while SDA pin is held low
     dira[_SDA] := 1                             ' SDA low
-    waitclockstretch{}                          ' wait: clock stretching
+    wait_clk_stretch{}                          ' wait: clock stretching
 
     dira[_SDA] := 0                             ' Float SDA
 
-PUB WaitClockStretch{}
+PUB wait_clk_stretch{}
 ' Wait for slave device using clock-stretching
     dira[_SCL] := 0                             ' let SCL float
     repeat until ina[_SCL] == HIGH              ' wait until slave releases it
 
-PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit | bnum, lastb, tmp
+PUB wrblock_lsbf(ptr_buff, nr_bytes): ackbit | bnum, lastb, tmp
 ' Write nr_bytes to I2C bus from ptr_buff, LSByte-first
 '   ptr_buff: pointer to buffer of data to write to bus
 '   nr_bytes: number of bytes to write
@@ -161,12 +161,12 @@ PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit | bnum, lastb, tmp
 
         { read ACK bit }
         dira[_SDA] := 0                         ' float SDA
-        waitclockstretch{}
+        wait_clk_stretch{}
         ackbit := ina[_SDA]
         dira[_SCL] := 1                         ' SCL low
     return ackbit
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit | tmp, lastb, bnum
+PUB wrblock_msbf(ptr_buff, nr_bytes): ackbit | tmp, lastb, bnum
 ' Write nr_bytes to I2C bus from ptr_buff, MSByte-first
     tmp := 0
     lastb := (nr_bytes-1)
@@ -182,32 +182,30 @@ PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit | tmp, lastb, bnum
 
         { read ACK bit }
         dira[_SDA] := 0                         ' float SDA
-        waitclockstretch{}
+        wait_clk_stretch{}
         ackbit := ina[_SDA]
         dira[_SCL] := 1                         ' SCL low
     return ackbit
 
 #include "com.i2c.common.spinh"                 ' R/W methods common to all I2C engines
 
+DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

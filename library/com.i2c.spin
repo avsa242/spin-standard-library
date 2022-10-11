@@ -17,7 +17,7 @@
         Read speed: 454.483kHz actual (36% duty - 0.8uS H : 1.4 uS L)
 
     Started Mar 9, 2019
-    Updated Jul 31, 2022
+    Updated Oct 10, 2022
     See end of file for terms of use.
 
     NOTE: This is based on jm_i2c_fast_2018.spin, by
@@ -47,16 +47,16 @@ VAR
     long  _i2c_result
     long _cog
 
-PUB Null
+PUB null
 ' This is not a top-level object
 
-PUB InitDef(HZ): status
+PUB init_def(HZ): status
 ' Initialize I2C engine using default Propeller I2C pins
 '   HZ: I2C bus speed, in Hz (1..approx 1_000_000)
 '   NOTE: Aborts if cog is already running
     status := init(DEF_SCL, DEF_SDA, HZ)
 
-PUB Init(SCL, SDA, HZ): status
+PUB init(SCL, SDA, HZ): status
 ' Initialize I2C engine using custom I2C pins
 '   SCL, SDA: 0..31 (each unique)
 '   HZ: I2C bus speed, in Hz (1..approx 1_000_000)
@@ -73,7 +73,7 @@ PUB Init(SCL, SDA, HZ): status
 
     return _cog
 
-PUB DeInit
+PUB deinit
 ' Deinitialize/stop PASM engine
     if (_cog)                                   ' check it's actually started
         cogstop(_cog-1)                         ' first, before trying to stop
@@ -81,7 +81,7 @@ PUB DeInit
 
     longfill(@_i2c_cmd, 0, 4)
 
-PUB RdBlock_LSBF(ptr_buff, nr_bytes, ack_last)
+PUB rdblock_lsbf(ptr_buff, nr_bytes, ack_last)
 ' Read nr_bytes from I2C bus to ptr_buff
 '   Least-significant byte first
 '   ack_last:
@@ -98,7 +98,7 @@ PUB RdBlock_LSBF(ptr_buff, nr_bytes, ack_last)
     _i2c_cmd := I2C_READ_LE | ack_last
     repeat while (_i2c_cmd <> 0)
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last)
+PUB rdblock_msbf(ptr_buff, nr_bytes, ack_last)
 ' Read nr_ytes from I2C bus to ptr_buff,
 '   Most-significant byte first
 '   ack_last:
@@ -115,21 +115,21 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes, ack_last)
     _i2c_cmd := I2C_READ_BE | ack_last
     repeat while (_i2c_cmd <> 0)
 
-PUB Start
+PUB start
 ' Create I2C start/restart condition (S, Sr)
 '   NOTE: This method supports clock stretching;
 '       waits while SCL pin is held low
     _i2c_cmd := I2C_START
     repeat while (_i2c_cmd <> 0)
 
-PUB Stop
+PUB stop
 ' Create I2C stop condition (P)
 '   NOTE: This method supports clock stretching;
 '       waits while SCL pin is held low
     _i2c_cmd := I2C_STOP
     repeat while (_i2c_cmd <> 0)
 
-PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit
+PUB wrblock_lsbf(ptr_buff, nr_bytes): ackbit
 ' Write block of nr_bytes bytes from ptr_buff to I2C bus,
 '   Least-Significant byte first
     _i2c_params.word[0] := ptr_buff
@@ -140,7 +140,7 @@ PUB WrBlock_LSBF(ptr_buff, nr_bytes): ackbit
 
     return _i2c_result                          ' Return ACK or NAK
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes): ackbit
+PUB wrblock_msbf(ptr_buff, nr_bytes): ackbit
 ' Write block of nr_bytes bytes from ptr_buff to I2C bus,
 '   Most-significant byte first
     _i2c_params.word[0] := ptr_buff
@@ -453,24 +453,22 @@ tbits                   res     1
 
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 }
 
