@@ -5,7 +5,7 @@
     Description: UART engine
         (@80MHz Fsys: 250kbps TX/RX, or 1Mbps TX-only)
     Started 2009
-    Updated Oct 12, 2021
+    Updated Oct 11, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -42,12 +42,14 @@ VAR
     byte _rx_buff[BUFFER_LENGTH]                ' Receive and transmit buffers
     byte _tx_buff[BUFFER_LENGTH]
 
-PUB Start(baudrate): status
+PUB start = init_def
+PUB init_def(baudrate): status
 ' Start UART engine with default parameters (RX: P31, TX: P30, mode: %0000)
 '   Returns: (cogid+1) of cog running PASM engine, or 0 if unsuccessful
-    return startrxtx(DEF_RX, DEF_TX, DEF_MODE, baudrate)
+    return init(DEF_RX, DEF_TX, DEF_MODE, baudrate)
 
-PUB StartRxTx(rxpin, txpin, mode, baudrate): status
+PUB startrxtx = init
+PUB init(rxpin, txpin, mode, baudrate): status
 ' Start UART engine with custom parameters
 '   rxpin: input pin; receives signals from external device's TX pin.
 '   txpin: output pin; sends signals to  external device's RX pin.
@@ -58,54 +60,52 @@ PUB StartRxTx(rxpin, txpin, mode, baudrate): status
 '       bit 3 - ignore tx echo on rx
 '   baudrate - bits per second
 '   Returns: (cogid+1) of cog running PASM engine, or 0 if unsuccessful
-    stop
+    deinit{}
     longfill(@_rx_head, 0, 4)                   ' initialize vars to 0
     longmove(@_rx_pin, @rxpin, 3)               ' copy pins to vars
     _bit_ticks := (clkfreq / baudrate)          ' calc bit time for baud rate
     _ptr_buff := @_rx_buff
     return (_cog := cognew(@entry, @_rx_head) + 1)
 
-PUB Stop
+PUB stop = deinit
+PUB deinit{}
 ' Stop UART engine cog
-    if _cog                                     ' check for a running cog first
+    if (_cog)                                   ' check for a running cog first
         cogstop(_cog - 1)
     longfill(@_cog, 0, 10)                      ' clear hub vars
 
-PUB Count: nr_chars
+PUB fifo_rx_bytes{}: nr_chars
 ' Get count of characters in receive buffer
 '   Returns: number of characters waiting in receive buffer
     nr_chars := (_rx_head - _rx_tail)
     nr_chars -= (BUFFER_LENGTH * (nr_chars < 0))
 
-PUB Flush
+PUB flush_rx{}
 ' Flush receive buffer
     repeat while rxcheck => 0
 
-PUB Char(ch)
-' Send single-byte character
+PUB tx = putchar
+PUB char = putchar
+PUB putchar(ch)
+' Send single-byte character (blocking)
 '   ch: character (ASCII byte value) to send
-'   NOTE: This method will block while waiting for room in transmit buffer,
-'       if necessary
     repeat until (_tx_tail <> ((_tx_head + 1) & BUFFER_MASK))
     _tx_buff[_tx_head] := ch
     _tx_head := (_tx_head + 1) & BUFFER_MASK
 
-    if _rxtx_mode & %1000
-        charin
+    if (_rxtx_mode & %1000)
+        char_in{}
 
-PUB CharIn
-' Receive single-byte character
+PUB rx = getchar
+PUB charin = getchar
+PUB getchar: ch
+' Receive a single byte (blocking)
 '   Returns: $00..$FF
-'   NOTE: This method will block while waiting for a character
-#ifdef __FLEXSPIN__
-    result := rxcheck
-    repeat while result < 0
-        result := rxcheck
-#else
-    repeat while (result := rxcheck) < 0
-#endif
+    repeat
+        ch := rx_check
+    while (ch == -1)
 
-PUB RxCheck: ch_rx
+PUB rx_check: ch_rx
 ' Check if character received
 '   Returns:
 '       -1: no byte received
@@ -260,23 +260,20 @@ txcode          res     1
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 }
 
