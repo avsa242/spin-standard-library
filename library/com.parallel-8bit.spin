@@ -5,7 +5,7 @@
     Description: 8-bit parallel I/O engine for LCDs
     Copyright (c) 2022
     Started Oct 13, 2021
-    Updated Jun 30, 2022
+    Updated Oct 11, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,7 +16,7 @@ CON
     CMD         = 1
     DATA        = 2
     BLKDAT      = 3
-    BLKWDMSBF   = 4
+    BLKWD_MSBF  = 4
     BYTEX       = 5
     WORDX       = 6
 
@@ -26,10 +26,10 @@ VAR
     long _io_cmd, _ptr_buff, _xfer_cnt
     long _DATA, _CS, _DC, _WR, _RD
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Init(D_BASEPIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN): status
+PUB init(D_BASEPIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN): status
 ' Initialize engine
 '   D_BASEPIN: first of 8 I/O pin block
 '   CS_PIN: CS / CSX (chip select)
@@ -46,28 +46,28 @@ PUB Init(D_BASEPIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN): status
 
     return _cog
 
-PUB DeInit{}
+PUB deinit{}
 ' Deinitialize engine
 '   Stop running cog and clear variables
-    if _cog
+    if (_cog)
         cogstop(_cog-1)
         longfill(@_cog, 0, 8)
 
-PUB WrByte_CMD(c)
+PUB wrbyte_cmd(c)
 ' Write command (8-bits)
     _xfer_cnt := 1                              ' set data size
     _ptr_buff := c                              ' command byte
     _io_cmd := CMD                              ' signal command to engine
     repeat until (_io_cmd == IDLE)              ' wait for engine to finish
 
-PUB WrByte_DAT(d)
+PUB wrbyte_dat(d)
 ' Write data (8-bits)
     _xfer_cnt := 1
     _ptr_buff := d
     _io_cmd := DATA
     repeat until (_io_cmd == IDLE)
 
-PUB WrBlock_DAT(ptr_buff, nr_bytes)
+PUB wrblock_dat(ptr_buff, nr_bytes)
 ' Write block of data
 '   ptr_buff: pointer to buffer of data
 '   nr_bytes: number of bytes to write to display
@@ -75,15 +75,15 @@ PUB WrBlock_DAT(ptr_buff, nr_bytes)
     _io_cmd := BLKDAT                           '   params
     repeat until (_io_cmd == IDLE)
 
-PUB WrBlkWord_MSBF(ptr_buff, nr_words)
+PUB wrblkword_msbf(ptr_buff, nr_words)
 ' Write block of words (MSByte-first)
 '   ptr_buff: pointer to buffer of data
 '   nr_words: number of words to write to display
     longmove(@_ptr_buff, @ptr_buff, 2)
-    _io_cmd := BLKWDMSBF
+    _io_cmd := BLKWD_MSBF
     repeat until (_io_cmd == IDLE)
 
-PUB WrWordX_DAT(dw, nr_words)
+PUB wrwordx_dat(dw, nr_words)
 ' Repeatedly write word dw, nr_words times
     longmove(@_ptr_buff, @dw, 2)
     _io_cmd := WORDX
@@ -140,7 +140,7 @@ cmdloop
     if_e    jmp     #wr_dat
             cmp     tmp0, #BLKDAT   wz
     if_e    jmp     #wrblk_data
-            cmp     tmp0, #BLKWDMSBF wz
+            cmp     tmp0, #BLKWD_MSBF wz
     if_e    jmp     #wrblkwd_msbf
             cmp     tmp0, #BYTEX   wz
     if_e    jmp     #wrwordx_data
@@ -176,6 +176,8 @@ wr_dat
             or      outa, WRC                   ' clock out byte
             andn    outa, WRC
             jmp     #cmdexit                    ' return
+
+
 wrblk_data
 ' Write block of bytes
             or      outa, DC                    ' DC high: data
@@ -277,4 +279,24 @@ ptr_xcnt    long    0
 xcnt        long    0
 byte1       long    0
 byte0       long    0
+
+DAT
+{
+Copyright 2022 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
