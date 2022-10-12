@@ -19,11 +19,11 @@
   long  debug
   long  debug2
 
-pub get_debug
+PUB get_debug
 '' used to export intermediate results of computations for debugging.
   result := debug
 
-pub get_debug2
+PUB get_debug2
 '' used to export intermediate results of computations for debugging.
   result := debug2    '}
                       '
@@ -38,13 +38,13 @@ var
   long sprout
   long spud
 
-pub seed(intA, intB)
+PUB seed(intA, intB)
 ''seed the pseudo-random number generator with two 32-bit integers.
   sprout := intA
   spud := intB
 
 
-pub random
+PUB random
 ''returns a random, uniformly distrubuted float within the range of -1 to 1
   repeat (((spud <<13) >> 30)+1)                        'run the LFSR 1-4 times bassed on center bits of spud.
     ?sprout
@@ -53,7 +53,7 @@ pub random
   result := Fmul( Ffloat(spud), lfsr_scale)
 
 
-pub isNaN(singleA) | m
+PUB isnan(singleA) | m
 ''returns True if singleA is NaN (Not a Number)
 ''returns false if singleA is a number
   result := false               'set default answer
@@ -63,7 +63,7 @@ pub isNaN(singleA) | m
       result := true            'singleA is a NaN
 
  
-pub isInf(singleA) | s, m
+PUB isinf(singleA) | s, m
 '' returns 1 if singleA is +inf
 '' returns 0 if singleA is finite or NaN
 '' returns -1 if singleA is -inf
@@ -78,7 +78,7 @@ pub isInf(singleA) | s, m
         result := 1 
 
 
-PUB Fcmp(singleA, singleB) | single
+PUB fcmp(singleA, singleB) | single
 ''exactly compare two floating point values
 ''returns an integer containing the results of the comparison
 ''result := 1 if singleA > singleB
@@ -101,44 +101,44 @@ con 'exp and log constants
   exp_base2_baseE = 1.44269504088896                    'result of log2(e)
   exp_base2_base10 = 3.32192809488736                   'result of log2(10) 
 
-pub exp(singleA)
+PUB exp(singleA)
 ''evaluate the base 'e' exponential
 ''uses base 2 exponential and change of base identity. ((x^a)^b) = x^(a*b) with x = 2 and x^a = new_base then a = log2(new_base)
   result := exp2( Fmul(singleA, exp_base2_baseE) )
 
 
-pub exp10(singleA)
+PUB exp10(singleA)
 ''evaluate the base '10' exponential
 ''uses base 2 exponential and change of base identity. ((x^a)^b) = x^(a*b) with x = 2 and x^a = new_base then a = log2(new_base)
   result := exp2( Fmul(singleA, exp_base2_base10) ) 
 
 
-pub pow(singleA, singleB)
+PUB pow(singleA, singleB)
 ''evaluate the base 'singleB' exponential (i.e. singleA^singleB )
 ''uses base 2 exponential and change of base identity. ((x^a)^b) = x^(a*b) with x = 2 and x^a = new_base then a = log2(new_base)
   singleA := log2(singleA)
   result := exp2( Fmul(singleA, singleB) )
 
 
-pub log(singleA)
+PUB log(singleA)
 ''natural logarithim of SingleA
 ''uses change of base identity and Log2()
   result := Fmul(log2(singleA), log_base2_baseE)
 
 
-pub log10(singleA)
+PUB log10(singleA)
 ''base 10 logarithim of SinglA
 ''uses change of base identity and Log2()
   result := Fmul(log2(singleA), log_base2_base10)
   
 
-pub logB(singleA, singleB)
+PUB logb(singleA, singleB)
 ''logarithim with base SingleA of SingleB
 ''uses change of base identity and Log2()
   result := Fdiv( log2(singleB), log2(singleA) )
    
 
-pub log2(singleA) | s, x, m, temp, work, idx', temp2
+PUB log2(singleA) | s, x, m, temp, work, idx', temp2
 ''evaluate the base 2 logarithim using an invariant,
 ''and successive approximation from a table of "nice" numbers.
 ''bassed on algorythm shown at http://www.quinapalus.com/efunc.html
@@ -185,7 +185,7 @@ pub log2(singleA) | s, x, m, temp, work, idx', temp2
   result := pack(@s)            'pack and return result.
 
 
-pub exp2(singleA) | s, x, m, temp, work, idx
+PUB exp2(singleA) | s, x, m, temp, work, idx
 ''evaluate the base 2 exponential (anti-log) using an invariant,
 ''and successive approximation from a table of "nice" numbers.
 ''bassed on algorythm shown at http://www.quinapalus.com/efunc.html  
@@ -255,7 +255,7 @@ con
   trig_vector_float = float(trig_vector_int)
 
 
-pub sin(singleA) | a, x, y
+PUB sin(singleA) | a, x, y
 ''use cordic to calculate Sin(singleA) where singleA is the angle in radians
 ''only valid from -(2^(31-cordic_precision)-1)*2*pi to (2^(31-cordic_precision)-1)*2*pi {default of -1605 to 1605 radians}
 'unless FRound is modified to allow truncating the MSB of restults larger than POSX or NEGX
@@ -278,7 +278,7 @@ pub sin(singleA) | a, x, y
   result := Fmul(singleA, constant(1.0/trig_vector_float))
 
 
-pub cos(singleA) | a, x, y
+PUB cos(singleA) | a, x, y
 ''use cordic to calculate cos(singleA) where singleA is the angle in radians
 ''only valid from -(2^(31-cordic_precision)-1)*2*pi to (2^(31-cordic_precision)-1)*2*pi {default of -1605 to 1605 radians}
 'unless FRound is modified to allow truncating the MSB of restults larger than POSX or NEGX
@@ -301,7 +301,7 @@ pub cos(singleA) | a, x, y
   result := Fmul(singleA, constant(1.0/trig_vector_float))'}
 
 
-pub tan(singleA) | a, x, y
+PUB tan(singleA) | a, x, y
 ''use cordic to calculate tan(singleA) where singleA is the angle in radians.  (uses tan(x) = sin(x)/cos(x) identity)
 ''only valid from -(2^(31-cordic_precision)-1)*2*pi to (2^(31-cordic_precision)-1)*2*pi {default of -1605 to 1605 radians}
 'unless FRound is modified to allow truncating the MSB of restults larger than POSX or NEGX
@@ -326,7 +326,7 @@ con
   cordic_to_rad = pi/float(1<<30) 're-scales cordic/2 angular units to radians.
 
 
-pub atan2(singleA, singleB) | sa, xa, ma, sb, xb, mb, a, x, y 
+PUB atan2(singleA, singleB) | sa, xa, ma, sb, xb, mb, a, x, y 
 ''use cordic to calculate atan2(y,x)
 ''outputs an angle over the range of -pi to pi radians.
   're-scale inputs.  (same front end as addition)
@@ -364,13 +364,13 @@ pub atan2(singleA, singleB) | sa, xa, ma, sb, xb, mb, a, x, y
   result := Fmul(FFloat(result), cordic_to_rad)  'convert back to radians.
 
 
-pub atan(singleA)
+PUB atan(singleA)
 '' arctangent
 '' atan( A ) = atan2( A , 1.0 )
   result := atan2(singleA, 1.0)
 
 
-pub asin(SingleA) | singleB, temp
+PUB asin(SingleA) | singleB, temp
 '' arcsine
 '' asin( x ) = atan2( x, sqrt( 1 - x*x ) )
 '' only valid with inputs between -1 and 1 inclusive.
@@ -384,7 +384,7 @@ pub asin(SingleA) | singleB, temp
   result := atan2( singleA, singleB)
 
 
-pub acos(SingleA) | singleB, temp
+PUB acos(SingleA) | singleB, temp
 '' arccosine
 '' acos( x ) = atan2( sqrt( 1 - x*x ), x )
 '' only valid with inputs between -1 and 1 inclusive.
@@ -402,7 +402,7 @@ pub acos(SingleA) | singleB, temp
   long a, xc, y
 
 
-pub Cor(_a, _x, _y, mode)
+PUB Cor(_a, _x, _y, mode)
 'calls the cordic algorithm with the given parameters
 'returns the address of "a"
   a := _a
@@ -412,22 +412,22 @@ pub Cor(_a, _x, _y, mode)
   result := @a
 
 
-pub get_a
+PUB get_a
 'gets the results of a cordic run
   result := a
 
 
-pub get_x
+PUB get_x
 'gets the results of a cordic run
   result := xc
 
 
-pub get_y
+PUB get_y
 'gets the results of a cordic run
   result := y '}
   
 
-pub cordic(ptr, mode) | negate, i, da, dx, dy, a, x, y
+PUB cordic(ptr, mode) | negate, i, da, dx, dy, a, x, y
 
 '' CORDIC algorithm
 ''
@@ -512,7 +512,7 @@ corlut  long $20000000          'CORDIC angle lookup table
         long $0000000A
 
 
-PUB FFloat(integer) : single | s, x, m
+PUB ffloat(integer) : single | s, x, m
 ''Convert integer to float
   if m := ||integer             'absolutize mantissa, if 0, result 0
     s := integer >> 31          'get sign
@@ -523,21 +523,21 @@ PUB FFloat(integer) : single | s, x, m
     return Pack(@s)             'pack result
    
 
-PUB FRound(single) : integer
+PUB fround(single) : integer
 ''Convert float to rounded integer
-  return FInteger(single, 1)    'use 1/2 to round
+  return finteger(single, 1)    'use 1/2 to round
 
 
-PUB FTrunc(single) : integer
+PUB ftrunc(single) : integer
 ''Convert float to truncated integer
-  return FInteger(single, 0)    'use 0 to round
+  return finteger(single, 0)    'use 0 to round
 
 
 con
   Mask29 = $1FFF_FFFF
 
 
-Pub frac(singleA) : single | s, x, m    
+PUB fractional(singleA) : single | s, x, m    
 ''extract the fractional portion of a floating point number.
 ''translated from F32 and Float32full.
 {'------------------------------------------------------------------------------
@@ -566,7 +566,7 @@ _Frac_ret               ret}
   single := pack(@s)            'pack up and return result.
 
 
-pri frac_int(singleA) : int | s, x, m    
+PRI frac_int(singleA) : int | s, x, m    
 ''extract the fractional portion of a floating point number.
 ''returns an integer binary fraction for use in exp2() function.
   unpack(@s, singleA)           'unpack the float
@@ -584,22 +584,22 @@ pri frac_int(singleA) : int | s, x, m
   int := m                      'return fraction of single A as a binary fraction.  int/(1<<29) = int/(2^29) = fractional portion of singleA
 
 
-PUB FNeg(singleA) : single
+PUB fneg(singleA) : single
 ''Negate singleA
   return singleA ^ $8000_0000   'toggle sign bit
   
 
-PUB FAbs(singleA) : single
+PUB fabs(singleA) : single
 ''Absolute singleA
   return singleA & $7FFF_FFFF   'clear sign bit
 
 
-PUB FAbsNeg(singleA) : single
+PUB fabsneg(singleA) : single
 ''ABS singleA then Negate singleA
   return singleA | $8000_0000   'set sign bit  
 
 
-PUB FSqr(singleA) : single | s, x, m, root
+PUB fsqr(singleA) : single | s, x, m, root
 ''Compute square root of singleA
   if singleA > 0                'if a =< 0, result 0
 
@@ -621,7 +621,7 @@ PUB FSqr(singleA) : single | s, x, m, root
     return nan_con
 
 
-PUB FAdd(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
+PUB fadd(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
 ''Add singleA and singleB
   Unpack(@sa, singleA)          'unpack inputs
   Unpack(@sb, singleB)
@@ -645,12 +645,12 @@ PUB FAdd(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
   return Pack(@sa)              'pack result
 
 
-PUB FSub(singleA, singleB) : single
+PUB fsub(singleA, singleB) : single
 ''Subtract singleB from singleA
   return FAdd(singleA, FNeg(singleB))
 
              
-PUB FMul(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
+PUB fmul(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
 ''Multiply singleA by singleB
   Unpack(@sa, singleA)          'unpack inputs
   Unpack(@sb, singleB)
@@ -662,7 +662,7 @@ PUB FMul(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
   return Pack(@sa)              'pack result
 
 
-PUB FDiv(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
+PUB fdiv(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
 ''Divide singleA by singleB
   Unpack(@sa, singleA)          'unpack inputs
   Unpack(@sb, singleB)
@@ -681,7 +681,7 @@ PUB FDiv(singleA, singleB) : single | sa, xa, ma, sb, xb, mb
   return Pack(@sa)              'pack result
 
 
-pub FMod(singleA, singleB) | tempA
+PUB fmod(singleA, singleB) | tempA
 ''impliments [a - float(floor(a/b)) * b] calculation of Mod function
 'this is likely pretty slow
   tempA := FDiv(singleA, singleB)
@@ -695,7 +695,7 @@ pub FMod(singleA, singleB) | tempA
     result := FAbs(result)
   
 
-PRI FInteger(singleA, r) : integer | s, x, m
+PRI finteger(singleA, r) : integer | s, x, m
 
 'Convert float to rounded/truncated integer
 
@@ -711,7 +711,7 @@ PRI FInteger(singleA, r) : integer | s, x, m
     return m                    'return integer
 
       
-Pri Unpack(pointer, single) | s, x, m
+PRI unpack(pointer, single) | s, x, m
 
 'Unpack floating-point into (sign, exponent, mantissa) at pointer
 
@@ -731,7 +731,7 @@ Pri Unpack(pointer, single) | s, x, m
   longmove(pointer, @s, 3)      'write (s,x,m) structure from locals
   
   
-pri Pack(pointer) : single | s, x, m
+PRI pack(pointer) : single | s, x, m
 
 'Pack floating-point from (sign, exponent, mantissa) at pointer
 
@@ -757,21 +757,19 @@ pri Pack(pointer) : single | s, x, m
     return s << 31 | x << 23 | m >> 9 'pack result
 
 
-{{
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                   TERMS OF USE: MIT License                                                  │                                                            
-├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation    │ 
-│files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,    │
-│modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software│
-│is furnished to do so, subject to the following conditions:                                                                   │
-│                                                                                                                              │
-│The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.│
-│                                                                                                                              │
-│THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE          │
-│WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR         │
-│COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,   │
-│ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                         │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-}}
+{
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
