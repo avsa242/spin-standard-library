@@ -9,7 +9,7 @@
                 (23% duty - 0.06uS H : 0.2uS L) 260ns
             Read speed: 4.16MHz actual (41% duty - 0.1uS H : 0.14uS L) 240
     Started Jul 19, 2011
-    Updated Oct 16, 2021
+    Updated Oct 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -31,10 +31,10 @@ VAR
     long _command
     byte _cog
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Init(CS, SCK, MOSI, MISO, SPI_MODE): status
+PUB init(CS, SCK, MOSI, MISO, SPI_MODE): status
 ' Initialize SPI engine using custom pins
 '   CS, SCK, MOSI, MISO: 0..31 (each unique)
 '   SPI_MODE: 0..3
@@ -61,7 +61,7 @@ PUB Init(CS, SCK, MOSI, MISO, SPI_MODE): status
 
     status := _cog := cognew (@entry, @_command) + 1
 
-PUB DeInit{}
+PUB deinit{}
 ' Deinitialize
 '   Float I/O pins, clear out hub vars, and stop the PASM engine
     if _cog
@@ -70,38 +70,38 @@ PUB DeInit{}
         _cog := 0
     _command := 0
 
-PUB DeselectAfter(state)
+PUB desel_after(state)
 ' Deselect (raise CS) after a read or write transaction
 '   NOTE: Transitional method for temporary compatibility with interface to PASM engine
     _des_after := (state <> 0)
 
-PUB RdBlock_LSBF(ptr_buff, nr_bytes) | tmp
+PUB rdblock_lsbf(ptr_buff, nr_bytes) | tmp
 ' Read block of data from SPI bus, least-significant byte first
     tmp := _des_after
     _command := CMD_READ + @ptr_buff
     repeat while _command
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
+PUB rdblock_msbf(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
 ' Read block of data from SPI bus, most-significant byte first
     repeat tmp from nr_bytes-1 to 0
         rdblock_lsbf(ptr_buff+tmp, 1)
 
-PUB WrBlock_LSBF(ptr_buff, nr_bytes) | dsel_after
+PUB wrblock_lsbf(ptr_buff, nr_bytes) | dsel_after
 ' Write block of data to SPI bus from ptr_buff, least-significant byte first
     dsel_after := ||(_des_after)
     _command := CMD_WRITE + @ptr_buff
     repeat while _command
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
+PUB wrblock_msbf(ptr_buff, nr_bytes) | tmp  'XXX non-functional, for now
 ' Write block of data to SPI bus from ptr_buff, most-significant byte first
     repeat tmp from nr_bytes-1 to 0
         wrblock_lsbf(ptr_buff+tmp, 1)
 
-PUB XDeselect
+PUB xdeselect
 ' Explicitly deselect/raise CS
-'   For exceptional/corner cases where CS was left low after a prior Read() or Write()
+'   For exceptional/corner cases where CS was left low after a prior read() or write()
 '       that had no logical way to deselect because e.g., the decision to deselect was
-'       based on the result of a Read()
+'       based on the result of a read()
     _command := CMD_DESELECT
     repeat while _command
 
@@ -221,26 +221,22 @@ command_addr    res     1
 count           res     1
 
 DAT
-
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
