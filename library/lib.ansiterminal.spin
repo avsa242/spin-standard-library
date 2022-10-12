@@ -10,7 +10,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Jun 18, 2019
-    Updated: May 2, 2022
+    Updated: Oct 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -110,22 +110,22 @@ CON
     THLVSTEM            = $77                   ' Top H-line w/V-stem
     VLINE               = $78                   ' V-line
 
-PUB BGColor(bcolor)
+PUB bgcolor(bcolor)
 ' Set background color
     csi{}
     char(";")
     dec(BG + bcolor)
     char("m")
 
-PUB Blink(mode)
+PUB blink(mode)
 ' Set Blink attribute
     sgr(mode)
 
-PUB Bold(mode)
+PUB bold(mode)
 ' Set Bold attribute
     sgr(mode)
 
-PUB Box(x0, y0, x1, y1, brd_fg, brd_bg, filled) | inwidth, inheight, inbot, intop, x, y
+PUB box(x0, y0, x1, y1, brd_fg, brd_bg, filled) | inwidth, inheight, inbot, intop, x, y
 ' Draw a box, using semigraphics characters
 '   x0, y0, x1, y1: upper left, lower right coords
 '   brd_fg, brd_bg: border foreground, background colors
@@ -185,21 +185,21 @@ PUB Box(x0, y0, x1, y1, brd_fg, brd_bg, filled) | inwidth, inheight, inbot, into
             char(LOWRT)
             semigfx(false)                      ' done. turn off semigfx mode
 
-PUB Clear{}
+PUB clear{}
 ' Clear the terminal
     clearmode(CLR_ALL_HOME)
 
-PUB ClearLine{}
+PUB clearln{}
 ' Clear current line of terminal
     clearlinex(CLR_CUR_TO_END)
 
-PUB ClearLineX(mode)
+PUB clearlnx(mode)
 ' Clear line using explicitly set mode
     csi{}
     dec(mode)
     char("K")
 
-PUB ClearMode(mode)
+PUB clear_mode(mode)
 ' Clear screen using explicitly set mode
     csi{}
     dec(mode)
@@ -207,7 +207,7 @@ PUB ClearMode(mode)
     if (mode == CLR_ALL_HOME)
         position (0, 0)
 
-PUB Color(fcolor, bcolor)
+PUB color(fcolor, bcolor)
 ' Set foreground and background colors
     csi{}
     dec(fcolor)
@@ -215,11 +215,11 @@ PUB Color(fcolor, bcolor)
     dec(bcolor)
     char("m")
 
-PUB Conceal(mode)
+PUB conceal(mode)
 ' Set Conceal attribute
     sgr(mode)
 
-PUB CursorpositionReporting(enabled)
+PUB curs_pos_report_ena(enabled)
 ' Enable/disable mouse cursor position reporting
     csi{}
     case enabled
@@ -228,52 +228,52 @@ PUB CursorpositionReporting(enabled)
         OTHER:
             str(string("?1000;1006;1015h"))
 
-PUB CursorNextLine(rows)
+PUB curs_next_line(rows)
 ' Move cursor to beginning of next row, or 'rows' number of rows down
     csi{}
     dec(rows)
     char("E")
 
-PUB CursorPrevLine(rows)
+PUB curs_prev_line(rows)
 ' Move cursor to beginning of previous row, or 'rows' number of rows up
     csi{}
     dec(rows)
     char("F")
 
-PUB Encircle{}
+PUB encircle{}
 ' Set Encircle attribute
     sgr(SGR_ENCIRCLED)
 
-PUB FGColor(fcolor)
+PUB fgcolor(fcolor)
 ' Set foreground color
     csi{}
     dec(FG + fcolor)
     char("m")
 
-PUB Framed{}
+PUB framed{}
 ' Set framed attribute
     sgr(SGR_FRAMED)
 
-PUB HideCursor{}
+PUB hide_curs{}
 ' Hide cursor
     csi{}
     char("?")
     dec(25)
     char("l")
     
-PUB Home{}
+PUB home{}
 ' Move cursor to home/upper-left position
     position(0, 0)
 
-PUB Inverse(mode)
+PUB inverse(mode)
 ' Set inverse attribute
     sgr(mode)
 
-PUB Italic{}
+PUB italic{}
 ' Set italicized attribute
     sgr(SGR_ITALIC)
 
-PUB MouseCursorposition{} | b, x, y
+PUB mouse_curs_pos{} | b, x, y
 ' Report Current mouse position (press mouse button to update)
 '   Returns: Button pressed, X, Y coordinates (packed into long)
 '       byte 0: X coordinate
@@ -302,35 +302,35 @@ PUB MouseCursorposition{} | b, x, y
     y := charin-33                              '   to 0, 0 instead of 1, 1
     result := (b << 16) | (y << 8) | x          ' Pack into the return value
 
-PUB MoveDown(rows)
+PUB move_down(rows)
 ' Move cursor down 1 or more rows
     csi{}
     dec(rows)
     char("B")
 
-PUB MoveLeft(columns)
+PUB move_left(columns)
 ' Move cursor back/left 1 or more columns
     csi{}
     dec(columns)
     char("D")
 
-PUB MoveRight(columns)
+PUB move_right(columns)
 ' Move cursor forward/right 1 or more columns
     csi{}
     dec(columns)
     char("C")
 
-PUB MoveUp(rows)
+PUB move_up(rows)
 ' Move cursor up 1 or more rows
     csi{}
     dec(rows)
     char("A")
 
-PUB Overline{}
+PUB overline{}
 ' Set Overline attribute
     sgr(SGR_OVERLINED)
 
-PUB Position(x, y)
+PUB pos_xy(x, y)
 ' position cursor at column x, row y (from top-left)
     csi{}
     dec(y+1)                                    ' 1-base coordinates
@@ -338,36 +338,36 @@ PUB Position(x, y)
     dec(x+1)
     char("f")
 
-PUB PositionX(column)
+PUB pos_x(column)
 ' Set horizontal position of cursor
     csi{}
     dec(column+1)                               ' 1-base coordinate
     char("G")
 
-PUB PositionY(y)
+PUB pos_y(y)
 ' Set vertical position of cursor
     csi{}
     dec(y+1)                                    ' 1-base coordinate
     char("d")
 
-PUB Reset{}
+PUB reset{}
 ' Reset terminal attributes
     csi{}
     char("m")
 
-PUB ScrollDown(lines)
+PUB scroll_down(lines)
 ' Scroll display down 1 or more lines
     csi{}
     dec(lines)
     char("T")
 
-PUB ScrollUp(lines)
+PUB scroll_up(lines)
 ' Scroll display up 1 or more lines
     csi{}
     dec(lines)
     char("S")
 
-PUB SemiGfx(enabled)
+PUB semi_gfx_ena(enabled)
 ' Enable semi-graphics (e.g., line-drawing) mode
     case ||(enabled)
         1:
@@ -375,18 +375,18 @@ PUB SemiGfx(enabled)
         0:
             str(string(ESC, "(", "B"))
 
-PUB ShowCursor{}
+PUB show_cursor{}
 ' Show cursor
     csi{}
     char("?")
     dec(25)
     char("h")
 
-PUB Strikethrough(mode)
+PUB strikethru(mode)
 ' Set strike-through attribute
     sgr(mode)
 
-PUB TextWindow(ptr_titlestr, x, y, w, h, brd_fg, brd_bg, ttl_fg)
+PUB text_win(ptr_titlestr, x, y, w, h, brd_fg, brd_bg, ttl_fg)
 ' Draw a window with title string and border
 '   x, y: upper-left coords of window
 '   w, h: window dimensions (_outer_)
@@ -399,16 +399,16 @@ PUB TextWindow(ptr_titlestr, x, y, w, h, brd_fg, brd_bg, ttl_fg)
     position(x+2, y)                        ' display window title
     str(ptr_titlestr)
 
-PUB Underline(mode)
+PUB underline(mode)
 ' Set Underline attribute
     sgr(mode)
 
-PRI CSI{}
+PRI csi{}
 ' Command Sequence Introducer
     char(ESC)
     char("[")
 
-PRI SGR(mode)
+PRI sgr(mode)
 ' Select Graphic Rendition
     csi{}
     dec(mode)
@@ -416,22 +416,21 @@ PRI SGR(mode)
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+
