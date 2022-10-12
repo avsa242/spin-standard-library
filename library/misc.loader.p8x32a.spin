@@ -5,9 +5,9 @@
     Modified by: Jesse Burt
     Description: Object to use a host Propeller to load
         firmware to another Propeller
-    Copyright (c) 2020
+    Copyright (c) 2022
     Started Jun 13, 2006
-    Updated May 25, 2020
+    Updated Oct 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -70,93 +70,93 @@ OBJ
 
     time    : "time"
 
-PUB Connect(RESN_PIN, P31_PIN, P30_PIN, version, command, ptr_code): error
+PUB connect(RESN_PIN, P31_PIN, P30_PIN, version, command, ptr_code): error
 
-    _P31 := P31_PIN                                             ' Set P31 and P30
+    _P31 := P31_PIN                             ' Set P31 and P30
     _P30 := P30_PIN
 
-    outa[RESN_PIN] := 0                                         ' RESn low
+    outa[RESN_PIN] := 0                         ' RESn low
     dira[RESN_PIN] := 1
 
-    outa[P31_PIN] := 1                                          ' P31 high (our TX)
+    outa[P31_PIN] := 1                          ' P31 high (our TX)
     dira[P31_PIN] := 1
 
-    dira[P30_PIN] := 0                                          ' P30 input (our RX)
+    dira[P30_PIN] := 0                          ' P30 input (our RX)
 
-    outa[RESN_PIN] := 1                                         ' RESn high
+    outa[RESN_PIN] := 1                         ' RESn high
 
-    time.MSleep(100)                                            ' Wait 100ms
+    time.msleep(100)                            ' Wait 100ms
 
-    if error := \Communicate(version, command, ptr_code)        ' Communicate (may abort with error code)
+    if (error := \communicate(version, command, ptr_code))
         dira[RESN_PIN] := 0
 
-    dira[P31_PIN] := 0                                          ' P31 float
+    dira[P31_PIN] := 0                          ' P31 float
 
-PRI Communicate(version, command, ptr_code) | bytecount
+PRI communicate(version, command, ptr_code) | bytecount
 
-    BitsOut(%01, 2)                                             ' Output calibration pulses
+    bits_out(%01, 2)                            ' Output calibration pulses
 
-    _LFSR := "P"                                                ' Send LFSR pattern
+    _LFSR := "P"                                ' Send LFSR pattern
     repeat 250
-        BitsOut(Iterate_LFSR, 1)
+        bits_out(iterate_lfsr, 1)
 
-    repeat 250                                                  ' Receive and verify LFSR pattern
-        if WaitBit(1) <> Iterate_LFSR
+    repeat 250                                  ' Receive and verify LFSR pattern
+        if (wait_bit(1) <> iterate_lfsr)
             abort ERRORCONNECT
 
-    repeat 8                                                    ' Receive chip version
-        Ver := WaitBit(1) << 7 + Ver >> 1
+    repeat 8                                    ' Receive chip version
+        ver := wait_bit(1) << 7 + Ver >> 1
 
-    if Ver <> version                                           ' If version mismatch, shutdown and abort
-        BitsOut(SHUTDOWN, 32)
+    if (ver <> version)                         ' If version mismatch, shutdown and abort
+        bits_out(SHUTDOWN, 32)
         abort ERRORVERSION
 
-    BitsOut(command, 32)                                        ' Send command
+    bits_out(command, 32)                       ' Send command
 
-    if command                                                  ' Handle command details
+    if (command)                                ' Handle command details
         bytecount := byte[ptr_code][8] | byte[ptr_code][9] << 8 ' Send long count
-        BitsOut(bytecount >> 2, 32)
+        bits_out(bytecount >> 2, 32)
 
-        repeat bytecount                                        ' Send bytes
-            BitsOut(byte[ptr_code++], 8)
+        repeat bytecount                        ' Send bytes
+            bits_out(byte[ptr_code++], 8)
 
-        if WaitBit(25)                                          ' Allow 250ms for positive checksum response
+        if (wait_bit(25))                       ' Allow 250ms for positive checksum response
             abort ERRORCHECKSUM
 
-        if command > 1                                          ' EEPROM program command
-            if WaitBit(500)                                     ' Allow 5s for positive program response
+        if (command > 1)                        ' EEPROM program command
+            if (wait_bit(500))                  ' Allow 5s for positive program response
                 abort ERRORPROGRAM
-            if WaitBit(200)                                     ' Allow 2s for positive verify response
+            if (wait_bit(200))                  ' Allow 2s for positive verify response
                 abort ERRORVERIFY
 
-PRI Iterate_LFSR: bit
+PRI iterate_lfsr: bit
 
-    bit := _LFSR & 1                                            ' Get return bit
-                                                                ' Iterate LFSR (8-bit, $B2 taps)
+    bit := _LFSR & 1                            ' Get return bit
+                                                ' Iterate LFSR (8-bit, $B2 taps)
     _LFSR := _LFSR << 1 | (_LFSR >> 7 ^ _LFSR >> 5 ^ _LFSR >> 4 ^ _LFSR >> 1) & 1
 
-PRI WaitBit(Hundredths): bit | prior_echo
+PRI wait_bit(Hundredths): bit | prior_echo
 
-    repeat Hundredths                                           ' Output 1t pulse
-        BitsOut(1, 1)
-        bit := ina[_P30]                                        ' Sample bit and echo
+    repeat Hundredths                           ' Output 1t pulse
+        bits_out(1, 1)
+        bit := ina[_P30]                        ' Sample bit and echo
         prior_echo := _echo
-        BitsOut(0, 1)                                           ' Output 2t pulse
+        bits_out(0, 1)                          ' Output 2t pulse
 
-        if not prior_echo                                       ' If echo was low, got bit
+        ifnot (prior_echo)                      ' If echo was low, got bit
             return
-        time.MSleep(10)                                         ' Wait 10ms
+        time.msleep(10)                         ' Wait 10ms
 
-    abort ERRORCONNECT                                          ' Timeout, abort
+    abort ERRORCONNECT                          ' Timeout, abort
 
-PRI BitsOut(value, bits)
+PRI bits_out(value, bits)
 
     repeat bits
-        if value & 1                                            ' Output '1' (1t pulse)
+        if (value & 1)                          ' Output '1' (1t pulse)
             outa[_P31] := 0
             _echo := ina[_P30]
             outa[_P31] := 1
-        else                                                    ' Output '0' (2t pulse)
+        else                                    ' Output '0' (2t pulse)
             outa[_P31] := 0
             outa[_P31] := 0
             _echo := ina[_P30]
@@ -166,23 +166,19 @@ PRI BitsOut(value, bits)
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
