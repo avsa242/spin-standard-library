@@ -1,8 +1,7 @@
 {
     --------------------------------------------
     Filename: com.spi.fast.spin
-    Author: Timothy D. Swieter
-    Modified by: Jesse Burt
+    Author: Jesse Burt
     Description: Fast PASM SPI engine (20MHz W, 10MHz R)
         @80MHz Fsys:
             Write speed: 20MHz, exact timings vary:
@@ -11,7 +10,7 @@
             Read speed: 10MHz:
                 9.99MHz actual (52% duty - 0.052uS H : 0.048uS L) 100ns
     Started Oct 13, 2012
-    Updated Jun 28, 2022
+    Updated Oct 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -43,10 +42,10 @@ DAT
 ' Command setup
     _command    long    0                       ' PASM engine cmd + args
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Init(CS, SCK, MOSI, MISO, SPI_MODE): status
+PUB init(CS, SCK, MOSI, MISO, SPI_MODE): status
 ' Initialize SPI engine using custom pins
 '   CS, SCK, MOSI, MISO: 0..31 (each unique)
 '   SPI_MODE: 0..3
@@ -83,7 +82,7 @@ PUB Init(CS, SCK, MOSI, MISO, SPI_MODE): status
 ' start the PASM engine in a new cog
     status := _cog := cognew(@entry, @_command) + 1
 
-PUB DeInit{}
+PUB deinit{}
 ' Deinitialize
 '   Float I/O pins, clear out hub vars, and stop the PASM engine
     if _cog
@@ -92,22 +91,22 @@ PUB DeInit{}
         _cog := 0
     _command := 0
 
-PUB DeselectAfter(state)
+PUB desel_after(state)
 ' Deselect (raise CS) after a read or write transaction
 '   NOTE: Transitional method for temporary compatibility with interface to PASM engine
     _dsel_after := (state <> 0)
 
-PUB RdBlock_LSBF(ptr_buff, nr_bytes)
+PUB rdblock_lsbf(ptr_buff, nr_bytes)
 ' Read nr_bytes from slave device into ptr_buff
     _command := CMD_READ + @ptr_buff
     repeat while _command
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes) | i
+PUB rdblock_msbf(ptr_buff, nr_bytes) | i
 ' Read nr_bytes from slave device into ptr_buff
     repeat i from nr_bytes-1 to 0
         rdblock_lsbf(ptr_buff+i, 1)
 
-PUB WrBlock_LSBF(ptr_buff, nr_bytes) | dsel_after
+PUB wrblock_lsbf(ptr_buff, nr_bytes) | dsel_after
 ' Write nr_bytes from ptr_buff into slave device
 '   Valid values:
 '       block:
@@ -119,21 +118,21 @@ PUB WrBlock_LSBF(ptr_buff, nr_bytes) | dsel_after
     _command := CMD_WRITE + @ptr_buff
     repeat while _command
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes) | i
+PUB wrblock_msbf(ptr_buff, nr_bytes) | i
 ' Write block of data to SPI bus from ptr_buff, most-significant byte first
     repeat i from nr_bytes-1 to 0
         wrblock_lsbf(ptr_buff+i, 1)
 
 #define HAS_WR_BYTEX
 ' Normally the common code #included provides this, but this engine has native support
-PUB Wr_ByteX(byte2spi, nr_bytes)
+PUB wr_bytex(byte2spi, nr_bytes)
 ' Write byte2spi repeatedly to SPI bus, nr_bytes times
     _command := CMD_WR8_X + @byte2spi
     repeat while _command
 
 #define HAS_WRWORDX_MSBF
 ' Normally the common code #included provides this, but this engine has native support
-PUB WrWordX_MSBF(word2spi, nr_words)
+PUB wrwordx_msbf(word2spi, nr_words)
 ' Repeatedly write word2spi to SPI bus, nr_words times
     _command := CMD_WR16_X_MSBF + @word2spi
     repeat while _command
@@ -375,26 +374,22 @@ ptr_hub         res     1                       ' pointer to read/write buffer
                                                 '   fit in a single cog?
 
 DAT
-
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
