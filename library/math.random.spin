@@ -35,7 +35,7 @@ VAR
 
     long    random_value
 
-PUB Start
+PUB start: status
 {{
     Start real random driver - starts a cog
     returns false if no cog available
@@ -43,7 +43,7 @@ PUB Start
 
     return cognew(@entry, @random_value) + 1
 
-PUB Random
+PUB random: r
 {{
     Returns a new long random value
 }}
@@ -52,7 +52,7 @@ PUB Random
     result := random_value
     random_value := 0
 
-PUB RandomAddress
+PUB ptr_rand: p
 {{
     Returns the address of the long which receives the random value
 
