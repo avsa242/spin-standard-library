@@ -7,11 +7,11 @@
             Write speed: 1MHz actual (40% duty - 0.4uS H : 0.6uS L)
             Read speed: 1.052MHz actual (31% duty - 0.3uS H : 0.65 L)
         Inter-byte times:
-            WrBlock(), Wr_Word(), Wr_Long(): 61uS
-            Wr_ByteX(): 88uS
+            wrblock(), wr_word(), wr_long(): 61uS
+            wr_bytex(): 88uS
             Read: 72uS
     Started 2009
-    Updated Jul 9, 2022
+    Updated Oct 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -24,10 +24,10 @@ VAR
     long _SCK, _MOSI, _MISO
     long _cog, _command
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Init(SCK, MOSI, MISO, SPI_MODE): status
+PUB init(SCK, MOSI, MISO, SPI_MODE): status
 ' Initialize SPI engine using custom pins
 '   SCK, MOSI, MISO: 0..31 (each unique)
 '   SPI_MODE: 0..3
@@ -55,7 +55,7 @@ PUB Init(SCK, MOSI, MISO, SPI_MODE): status
     clkdelay := 1                               ' = ~ 1MHz
     status := _cog := cognew(@entry, @_command) + 1
 
-PUB DeInit{}
+PUB deinit{}
 ' Deinitialize
 '   Float I/O pins, clear out hub vars, and stop the PASM engine
     if _cog
@@ -66,7 +66,7 @@ PUB DeInit{}
     dira[_MOSI] := 0
     dira[_MISO] := 0
 
-PUB RdBits_LSBF(nr_bits): val | SCK, MOSI, MISO
+PUB rdbits_lsbf(nr_bits): val | SCK, MOSI, MISO
 ' Read arbitrary number of bits from SPI bus, least-significant bit first
 '   nr_bits: 1 to 32
     longmove(@SCK, @_SCK, 3)
@@ -77,7 +77,7 @@ PUB RdBits_LSBF(nr_bits): val | SCK, MOSI, MISO
         1, 3:
             val := shiftin(MISO, SCK, LSBPOST, nr_bits)
 
-PUB RdBits_MSBF(nr_bits): val | SCK, MOSI, MISO
+PUB rdbits_msbf(nr_bits): val | SCK, MOSI, MISO
 ' Read arbitrary number of bits from SPI bus, most-significant bit first
 '   nr_bits: 1 to 32
     longmove(@SCK, @_SCK, 3)
@@ -88,7 +88,7 @@ PUB RdBits_MSBF(nr_bits): val | SCK, MOSI, MISO
         1, 3:
             val := shiftin(MISO, SCK, MSBPOST, nr_bits)
 
-PUB RdBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
+PUB rdblock_lsbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Read block of data from SPI bus, least-significant byte first
     longmove(@SCK, @_SCK, 3)
     case _spi_mode
@@ -99,7 +99,7 @@ PUB RdBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
             repeat b_num from 0 to nr_bytes-1
                 byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
+PUB rdblock_msbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Read block of data from SPI bus, most-significant byte first
     longmove(@SCK, @_SCK, 3)
     case _spi_mode
@@ -110,31 +110,31 @@ PUB RdBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
             repeat b_num from nr_bytes-1 to 0
                 byte[ptr_buff][b_num] := shiftin(MISO, SCK, MSBPOST, 8)
 
-PUB WrBits_LSBF(val, nr_bits) | SCK, MOSI, MISO
+PUB wrbits_lsbf(val, nr_bits) | SCK, MOSI, MISO
 ' Write arbitrary number of bits to SPI bus, least-significant byte first
 '   nr_bits: 1 to 32
     longmove(@SCK, @_SCK, 4)
         shiftout(MOSI, SCK, LSBFIRST, nr_bits, val)
 
-PUB WrBits_MSBF(val, nr_bits) | SCK, MOSI, MISO
+PUB wrbits_msbf(val, nr_bits) | SCK, MOSI, MISO
 ' Write arbitrary number of bits to SPI bus, most-significant byte first
 '   nr_bits: 1 to 32
     longmove(@SCK, @_SCK, 4)
         shiftout(MOSI, SCK, MSBFIRST, nr_bits, val)
 
-PUB WrBlock_LSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
+PUB wrblock_lsbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Write block of data to SPI bus from ptr_buff, least-significant byte first
     longmove(@SCK, @_SCK, 3)
     repeat b_num from 0 to nr_bytes-1
         shiftout(MOSI, SCK, MSBFIRST, 8, byte[ptr_buff][b_num])
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
+PUB wrblock_msbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Write block of data to SPI bus from ptr_buff, most-significant byte first
     longmove(@SCK, @_SCK, 3)
     repeat b_num from nr_bytes-1 to 0
         shiftout(MOSI, SCK, MSBFIRST, 8, byte[ptr_buff][b_num])
 
-PRI setCommand(cmd, argptr)
+PRI setcommand(cmd, argptr)
     _command := cmd << 16 + argptr              ' write cmd and pointer
     repeat while _command                       ' wait for cmd to complete
 
@@ -163,13 +163,13 @@ CON
 '              
 '       =1      =2
 
-PUB SHIFTOUT(Dpin, Cpin, wrmode, Bits, Value)
-' If SHIFTOUT is called with 'Bits' set to Zero, then the COG will shut
+PUB shiftout(Dpin, Cpin, wrmode, bits, Value)
+' If shiftout is called with 'bits' set to Zero, then the COG will shut
 ' down.  Another way to shut the COG down is to call 'stop' from Spin.
     setcommand(_SHIFTOUT, @Dpin)
 
-PUB SHIFTIN(Dpin, Cpin, rdmode, Bits) | Value, Flag
-' If SHIFTIN is called with 'Bits' set to Zero, then the COG will shut
+PUB shiftin(Dpin, Cpin, rdmode, bits) | Value, Flag
+' If shiftin is called with 'bits' set to Zero, then the COG will shut
 ' down.  Another way to shut the COG down is to call 'stop' from Spin.
 
     Flag := 1                                   ' Set Flag
@@ -212,7 +212,7 @@ NotUsed_        jmp     #loop
 
 SHIFTOUT_                                       ' SHIFTOUT Entry
                 mov     t4,         arg3 wz     ' Load number of data bits
-    if_z        jmp     #Done                   ' '0' number of Bits = Done
+    if_z        jmp     #Done                   ' '0' number of bits = Done
                 mov     ptr_params, #1 wz       ' Configure DataPin
                 shl     ptr_params, arg0
                 muxz    outa,       ptr_params  ' PreSet DataPin LOW
@@ -232,7 +232,7 @@ SHIFTOUT_                                       ' SHIFTOUT Entry
 
 SHIFTIN_                                        ' SHIFTIN Entry
                 mov     t4,         arg3 wz     ' Load number of data bits
-    if_z        jmp     #done                   ' '0' number of Bits = Done
+    if_z        jmp     #done                   ' '0' number of bits = Done
                 mov     ptr_params, #1 wz       ' Configure DataPin
                 shl     ptr_params, arg0
                 muxz    dira,       ptr_params  ' Set DataPin to an INPUT
@@ -266,7 +266,7 @@ Rd_LSBPre       test    ptr_params, ina wc      ' Read Data Bit into 'C' flag
                 rcr     t3,         #1          ' rotate "C" flag into return value
                 call    #preclk                 ' Send clock pulse
                 djnz    t4,         #rd_lsbpre  ' Decrement t4 ; jump if not Zero
-                mov     t4,         #32         ' For LSB shift data right 32 - #Bits when done
+                mov     t4,         #32         ' For LSB shift data right 32 - #bits when done
                 sub     t4,         arg3
                 shr     t3,         t4
                 jmp     #rdlong_hub             ' Pass received data to SHIFTIN receive variable
@@ -284,7 +284,7 @@ Rd_LSBPost      call    #postclk                ' Send clock pulse
                 test    ptr_params, ina wc      ' Read Data Bit into 'C' flag
                 rcr     t3,         #1          ' rotate "C" flag into return value
                 djnz    t4,         #rd_lsbpost ' Decrement t4 ; jump if not Zero
-                mov     t4,         #32         ' For LSB shift data right 32 - #Bits when done
+                mov     t4,         #32         ' For LSB shift data right 32 - #bits when done
                 sub     t4,         arg3
                 shr     t3,         t4
                 jmp     #rdlong_hub             ' Pass received data to SHIFTIN receive variable
@@ -377,7 +377,7 @@ clkstate        long    0
 ptr_params      long    0                       ' Used for DataPin mask     and     COG shutdown
 t2              long    0                       ' Used for CLockPin mask    and     COG shutdown
 t3              long    0                       ' Used to hold DataValue SHIFTIN/SHIFTOUT
-t4              long    0                       ' Used to hold # of Bits
+t4              long    0                       ' Used to hold # of bits
 t5              long    0                       ' Used for temporary data mask
 t6              long    0                       ' Used for Clock Delay
 address         long    0                       ' Used to hold return address of first Argument passed
@@ -391,24 +391,21 @@ arg4            long    0
 DAT
 
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
