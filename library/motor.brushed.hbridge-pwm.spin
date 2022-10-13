@@ -5,7 +5,7 @@
     Description: PWM control of H-bridge for
         brushed DC-motors
     Started May 31, 2021
-    Updated Sep 5, 2022
+    Updated Oct 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -54,23 +54,30 @@ PUB start(L_FWD_PIN, L_REV_PIN, R_FWD_PIN, R_REV_PIN, PWM_FREQ): status
 
 PUB stop{}
 ' Stop PWM engine
-    if(_cog)
+    if (_cog)
         cogstop(_cog - 1)
         _cog := 0
 
 PUB both_duty(duty)
 ' Set both channels' duty cycle, in tenths of a percent
-'   Valid values: -100_0..100_0
-'   Value clamped to above range
+'   Valid values: -100_0..100_0 (clamped to range)
 '   100_0:   forward pin, full high
 '   0:      brake
 '   -100_0:  reverse pin, full high
     longfill(@_l_duty, ((duty <# 1_000) #> -1_000), 2)
 
+PUB coast{}
+' Stop motor effort (allow to coast or free-wheel)
+    both_duty(0)
+
+PUB forward(duty)
+' Command motor forward, in tenths of a percent duty cycle
+'   (e.g., 50_5 == 50.5%)
+    longfill(@_l_duty, ((duty <# 1_000) #> 0), 2)
+
 PUB left_duty(duty)
 ' Set left-channel duty cycle, in tenths of a percent
-'   Valid values: -100_0..100_0
-'   Value clamped to above range
+'   Valid values: -100_0..100_0 (clamped to range)
 '   100_0:   forward pin, full high
 '   0:      brake
 '   -100_0:  reverse pin, full high
@@ -78,13 +85,17 @@ PUB left_duty(duty)
 
 PUB ptr_duty{}: ptr
 ' Get pointer to duty-cycle data
-'   long[ptr_duty{}][0]: left, [1]: right
+'   long[ptr_duty()][0]: left, [1]: right
     return @_l_duty
+
+PUB reverse(duty)
+' Command motor reverse, in tenths of a percent duty cycle
+'   (e.g., 50_5 == 50.5%)
+    longfill(@_l_duty, ((duty <# 0) #> -1_000), 2)
 
 PUB right_duty(duty)
 ' Set right-channel duty cycle, in tenths of a percent
-'   Valid values: -100_0..100_0
-'   Value clamped to above range
+'   Valid values: -100_0..100_0 (clamped to range)
 '   100_0:   forward pin, full high
 '   0:      brake
 '   -100_0:  reverse pin, full high
