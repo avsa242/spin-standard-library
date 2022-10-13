@@ -4,16 +4,11 @@
     Author: Jesse Burt
     Description: 2-channel DAC object using the duty mode of the counters as output
     Started Feb 16, 2020
-    Updated Apr 22, 2020
+    Updated Oct 13, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This object is based on the Parallax Simple-Library functionality
 }
-
-OBJ
-
-    io      : "io"
-    counters: "core.con.counters"
 
 VAR
 
@@ -23,26 +18,30 @@ VAR
     byte _ch0, _ch1
     byte _cog
 
-PUB Start(ch0_pin, ch1_pin, dac_res_bits)
-
-    if lookup(ch0_pin: 0..31)                               ' Validate ch0 pin
+PUB start(ch0_pin, ch1_pin, dac_res_bits)
+' ch0_pin: DAC channel 0 I/O pin
+' ch1_pin: DAC channel 1 I/O pin (optional; pass invalid pin to ignore)
+' dac_res_bits: DAC resolution (bits)
+    if (lookup(ch0_pin: 0..31))                 ' validate ch0 pin
         _ch0 := ch0_pin
-        io.Output(ch0_pin)
-        if ch1_pin <> ch0_pin AND lookup(ch1_pin: 0..31)    ' ch1 is optional - ignore if outside of 0..31 range
-            io.Output(ch1_pin)
+        outa[ch0_pin] := 0
+        dira[ch0_pin] := 1
+        if (lookup(ch1_pin: 0..31))             ' optional - ignore if outside of 0..31 range
             _ch1 := ch1_pin
-        if _cog := cognew(dacLoop, @_dac_stack) + 1         ' Is a cog available?
-            Resolution(dac_res_bits)                        ' Set resolution (default to 8 if invalid)
+            outa[ch1_pin] := 0
+            dira[ch1_pin] := 1
+        if (_cog := cognew(cog_dac_loop{}, @_dac_stack) + 1)
+            dac_res(dac_res_bits)               ' set resolution (default to 8 if invalid)
             return _cog
-    return FALSE                                            ' If we got here, something went wrong
+    return FALSE                                ' if we got here, something went wrong
 
-PUB Stop
+PUB stop
 ' Stop the DAC cog
-    if _cog
+    if (_cog)
         cogstop(_cog-1)
         _cog := 0
 
-PUB Output(channel, value)
+PUB output(channel, value)
 ' Output value to DAC
 '   Valid values:
 '       channel: 0, 1
@@ -53,52 +52,74 @@ PUB Output(channel, value)
 '
 '       dac : "signal.dac.duty"
 '
-'   PUB ExampleDemoMethod
+'   PUB example_method
 '
-'       dac.Start(26, 27, 8)' Use I/O pins 26 and 27 for ch0 and ch1, resp. Set resolution to 8 bits
-'       dac.Output(0, 0)    ' Output 0V on channel 0
-'       dac.Output(1, 127)  ' Output 1.65V on channel 1
-'       dac.Output(0, 255)  ' Output 3.3V on channel 0
-    ifnot channel                                           ' Channel 0
+'       dac.startx(26, 27, 8)' ch0 = GPIO 26, ch1 = GPIO 27; set resolution to 8 bits
+'       dac.output(0, 0)    ' Output 0V on channel 0
+'       dac.output(1, 127)  ' Output 1.65V on channel 1
+'       dac.output(0, 255)  ' Output 3.3V on channel 0
+    ifnot (channel)                                         ' Channel 0
         _frqa := (value << _dac_res)
     else                                                    ' Channel 1
         _frqb := (value << _dac_res)
 
-PUB Resolution(bits)
+PUB dac_res(bits)
 ' Set DAC resolution, in bits
 '   Valid values: 1..32
 '   Any other value sets a default resolution of 8 bits
     case bits
         1..32:
-        OTHER:
+        other:
             bits := 8
 
     _dac_res := 32-bits
 
-PRI dacLoop | pin
+#include "core.con.counters.spin"
+
+PRI cog_dac_loop | pin
 ' Digital to Analog Converter
-    _ctra := (counters#DUTY_SINGLEEND + _ch0)       ' Set counters to single-ended duty-cycle mode
-    _ctrb := (counters#DUTY_SINGLEEND + _ch1)
+    _ctra := (DUTY_SINGLEEND + _ch0)       ' Set counters to single-ended duty-cycle mode
+    _ctrb := (DUTY_SINGLEEND + _ch1)
     repeat
-        if _ctra <> CTRA
-            if CTRA <> 0
-                pin := CTRA & %111111
-                DIRA &= (1 << pin) ^ $FFFFFFFF
-            CTRA := _ctra
+        if (_ctra <> ctra)
+            if (ctra <> 0)
+                pin := (ctra & %111111)
+                dira &= (1 << pin) ^ $FFFFFFFF
+            ctra := _ctra
 
-            if _ctra <> 0
-                pin := CTRA & %111111
-                DIRA |= (1 << pin)
+            if (_ctra <> 0)
+                pin := (ctra & %111111)
+                dira |= (1 << pin)
 
-        if _ctrb <> CTRB
-            if CTRB <> 0
-                pin := CTRB & %111111
-                DIRA &= (1 << pin) ^ $FFFFFFFF
-            CTRB := _ctrb
+        if (_ctrb <> ctrb)
+            if (ctrb <> 0)
+                pin := (ctrb & %111111)
+                dira &= (1 << pin) ^ $FFFFFFFF
+            ctrb := _ctrb
 
-            if ctrb <> 0
-                pin := CTRB & %111111
-                DIRA |= (1 << pin)
-        FRQA := _frqa
-        FRQB := _frqb
+            if (ctrb <> 0)
+                pin := (ctrb & %111111)
+                dira |= (1 << pin)
+        frqa := _frqa
+        frqb := _frqb
+
+DAT
+{
+Copyright 2022 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
