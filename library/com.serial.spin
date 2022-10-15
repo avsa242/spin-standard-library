@@ -5,7 +5,7 @@
     Description: UART engine
         (@80MHz Fsys: 250kbps TX/RX, or 1Mbps TX-only)
     Started 2009
-    Updated Oct 11, 2022
+    Updated Oct 15, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -74,12 +74,14 @@ PUB deinit{}
         cogstop(_cog - 1)
     longfill(@_cog, 0, 10)                      ' clear hub vars
 
+PUB count = fifo_rx_bytes
 PUB fifo_rx_bytes{}: nr_chars
 ' Get count of characters in receive buffer
 '   Returns: number of characters waiting in receive buffer
     nr_chars := (_rx_head - _rx_tail)
     nr_chars -= (BUFFER_LENGTH * (nr_chars < 0))
 
+PUB flush = flush_rx
 PUB flush_rx{}
 ' Flush receive buffer
     repeat while rxcheck => 0
@@ -94,7 +96,7 @@ PUB putchar(ch)
     _tx_head := (_tx_head + 1) & BUFFER_MASK
 
     if (_rxtx_mode & %1000)
-        char_in{}
+        getchar{}
 
 PUB rx = getchar
 PUB charin = getchar
@@ -105,12 +107,12 @@ PUB getchar: ch
         ch := rx_check
     while (ch == -1)
 
+PUB rxcheck = rx_check
 PUB rx_check: ch_rx
-' Check if character received
+' Check if character received (non-blocking)
 '   Returns:
 '       -1: no byte received
 '       $00..$FF if character received
-'   NOTE: This method doesn't block, i.e., will return immediately
     ch_rx := -1
     if (_rx_tail <> _rx_head)
         ch_rx := _rx_buff[_rx_tail]
