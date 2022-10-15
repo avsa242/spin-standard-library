@@ -4,7 +4,7 @@
     Description: OneWire Bus engine
     Author: Jesse Burt
     Created July 15, 2006
-    Updated Feb 7, 2021
+    Updated Oct 15, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -43,69 +43,69 @@ VAR
     long _cog
     long _command, _cmd_ret
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Init(OW_PIN): status | pin, usec
+PUB init(OW_PIN): status | pin, usec
 ' Initialize OneWire engine
     deinit{}                                    ' stop an existing instance
     status := _cog := cognew(@getcmd, @_command) + 1
 
     ' set pin to use for 1-wire interface and calculate usec delay
-    if status
+    if (status)
         pin := OW_PIN
         usec := (clkfreq + 999_999) / 1_000_000
-        sendcmd(OW_SETUP + @pin)
+        ow_cmd(OW_SETUP + @pin)
 
-PUB DeInit{}
+PUB deinit{}
 ' Deinitialize
-    if _cog
+    if (_cog)
         cogstop(_cog - 1)
         _cog := 0
     _command := 0
 
-PUB CRC8(nr_bytes, ptr_buff): outcrc
+PUB crc8(nr_bytes, ptr_buff): outcrc
 ' Calculate CRC of nr_bytes of data at ptr_buff
-    return sendcmd(OW_CRC8 + @nr_bytes)
+    return ow_cmd(OW_CRC8 + @nr_bytes)
 
-PUB Rd_Byte{}: ow2byte
+PUB rd_byte{}: ow2byte
 ' Read a byte from the bus
     return rd_bits(8)
 
-PUB Rd_Long{}: ow2long
+PUB rd_long{}: ow2long
 ' Read a long from the bus
     return rd_bits(32)
 
-PUB Rd_Word{}: ow2word
+PUB rd_word{}: ow2word
 ' Read a word from the bus
     return rd_bits(16)
 
-PUB Rd_Bits(nr_bits): ow2bits
+PUB rd_bits(nr_bits): ow2bits
 ' Read nr_bits from the bus
-    return sendcmd(OW_READ + @nr_bits)
+    return ow_cmd(OW_READ + @nr_bits)
 
-PUB RdBlock_LSBF(ptr_buff, nr_bytes) | bytenum
+PUB rdblock_lsbf(ptr_buff, nr_bytes) | bytenum
 ' Read block of bytes from bus, least-significant byte first
     repeat bytenum from 0 to nr_bytes-1
         byte[ptr_buff][bytenum] := rd_bits(8)
 
-PUB RdBlock_MSBF(ptr_buff, nr_bytes) | bytenum
+PUB rdblock_msbf(ptr_buff, nr_bytes) | bytenum
 ' Read block of bytes from bus, most-significant byte first
     repeat bytenum from nr_bytes-1 to 0
         byte[ptr_buff][bytenum] := rd_bits(8)
 
-PUB ReadAddress(ptr_addr)
+PUB rd_addr(ptr_addr)
 ' Read 64-bit address from the bus
     rdblock_lsbf(ptr_addr, 8)
 
-PUB Reset{}: pres
+PUB reset{}: pres
 ' Send Reset signal to bus
 '   Returns:
 '       TRUE (-1): a device is present
 '       FALSE (0): no device present, or bus is busy
-    return (sendcmd(OW_RESET) == PRESENT)
+    return (ow_cmd(OW_RESET) == PRESENT)
 
-PUB Search(flags, max_addrs, ptr_addr): nr_devs
+PUB search(flags, max_addrs, ptr_addr): nr_devs
 ' Search bus for devices
 '   flags:
 '       bits[7..0]: restrict search to family code
@@ -115,39 +115,39 @@ PUB Search(flags, max_addrs, ptr_addr): nr_devs
 '       NOTE: buffer must be a minimum of (max_addrs * 8) bytes
 '
 '   Returns: number of devices found
-    return sendcmd(OW_SEARCH + @flags)
+    return ow_cmd(OW_SEARCH + @flags)
 
-PUB Wr_Bits(byte2ow, nr_bits)
+PUB wr_bits(byte2ow, nr_bits)
 ' Write nr_bits of byte2ow to bus (LSB-first)
-    sendcmd(OW_WRITE + @byte2ow)
+    ow_cmd(OW_WRITE + @byte2ow)
 
-PUB Wr_Byte(byte2ow)
+PUB wr_byte(byte2ow)
 ' Write byte to bus
     wr_bits(byte2ow, 8)
 
-PUB Wr_Long(long2ow)
+PUB wr_long(long2ow)
 ' Write long to bus
     wr_bits(long2ow, 32)
 
-PUB Wr_Word(word2ow)
+PUB wr_word(word2ow)
 ' Write word to bus
     wr_bits(word2ow, 16)
 
-PUB WrBlock_LSBF(ptr_buff, nr_bytes) | bytenum
+PUB wrblock_lsbf(ptr_buff, nr_bytes) | bytenum
 ' Writeblock of bytes to bus, least-significant byte first
     repeat bytenum from 0 to nr_bytes-1
         wr_bits(byte[ptr_buff][bytenum], 8)
 
-PUB WrBlock_MSBF(ptr_buff, nr_bytes) | bytenum
+PUB wrblock_msbf(ptr_buff, nr_bytes) | bytenum
 ' Write block of bytes to bus, least-significant byte first
     repeat bytenum from nr_bytes-1 to 0
         wr_bits(byte[ptr_buff][bytenum], 8)
 
-PUB WriteAddress(ptr_addr)
+PUB wr_addr(ptr_addr)
 ' Write 64-bit address to bus
     wrblock_lsbf(ptr_addr, 8)
 
-PRI sendCmd(cmd): cmd_ret
+PRI ow_cmd(cmd): cmd_ret
 ' Send command to OneWire PASM engine
     _command := cmd
     repeat while _command                       ' wait until PASM finished
@@ -473,24 +473,23 @@ dly2usec                res     1                       ' 2 usec delay
 dly3usec                res     1                       ' 3 usec delay
 dly4usec                res     1                       ' 4 usec delay
 
+DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
