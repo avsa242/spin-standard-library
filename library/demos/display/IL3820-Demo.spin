@@ -36,7 +36,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     epaper  : "display.epaper.il3820"
 
 VAR

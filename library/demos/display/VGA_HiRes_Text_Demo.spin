@@ -50,7 +50,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.demoboard"
+    cfg     : "boardcfg.demoboard"
     vgatext : "display.vga.text.hires"
     mouse   : "input.mouse.ps2"
 

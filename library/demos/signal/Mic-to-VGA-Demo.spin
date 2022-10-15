@@ -45,7 +45,7 @@ CON
 
 OBJ
 
-    cfg : "core.con.boardcfg.demoboard"
+    cfg : "boardcfg.demoboard"
     vga : "display.vga.bitmap.512x384"
     ctrs: "core.con.counters"
 

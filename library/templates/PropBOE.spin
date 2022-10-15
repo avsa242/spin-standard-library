@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.boardcfg.propboe"
+    cfg   : "boardcfg.propboe"
     time  : "time"
 
 VAR

@@ -36,7 +36,7 @@ CON
 OBJ
 
     ser     : "com.serial.terminal.ansi"
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     time    : "time"
     int     : "string.integer"
     cc2500  : "wireless.transceiver.cc2500"

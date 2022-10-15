@@ -31,7 +31,7 @@ CON
 OBJ
 
     ser         : "com.serial.terminal.ansi"
-    cfg         : "core.con.boardcfg.flip"
+    cfg         : "boardcfg.flip"
     time        : "time"
     int         : "string.integer"
     nrf24       : "wireless.transceiver.nrf24l01"

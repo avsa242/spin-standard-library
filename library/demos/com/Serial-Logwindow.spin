@@ -40,7 +40,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.demoboard"
+    cfg     : "boardcfg.demoboard"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     sf      : "string.format"

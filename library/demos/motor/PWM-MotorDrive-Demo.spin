@@ -35,7 +35,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     time    : "time"
     ser     : "com.serial.terminal.ansi"
     motor   : "motor.brushed.hbridge-pwm"

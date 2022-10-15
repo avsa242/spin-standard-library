@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.boardcfg.hydra"
+    cfg   : "boardcfg.hydra"
     time  : "time"
 
 VAR

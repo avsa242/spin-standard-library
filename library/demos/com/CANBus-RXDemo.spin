@@ -33,7 +33,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     canbus  : "com.canbus.txrx"                 ' RX/TX, 500Kbps max, req 1 cog

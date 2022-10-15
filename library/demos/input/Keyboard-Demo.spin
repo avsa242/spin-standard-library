@@ -37,8 +37,8 @@ OBJ
 ' Uncomment one of the boardcfg objects below for your board,
 '   or define the constants above appropriately
 
-    cfg : "core.con.boardcfg.demoboard"
-'    cfg : "core.con.boardcfg.quickstart-hib"
+    cfg : "boardcfg.demoboard"
+'    cfg : "boardcfg.quickstart-hib"
 #ifdef HAS_TV
     term: "display.tv.terminal"
 #else

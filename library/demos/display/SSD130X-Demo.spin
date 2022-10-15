@@ -42,7 +42,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     disp    : "display.oled.ssd130x"
 
 VAR

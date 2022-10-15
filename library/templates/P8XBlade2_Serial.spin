@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-  cfg   : "core.con.boardcfg.p8xblade2"
+  cfg   : "boardcfg.p8xblade2"
   ser   : "com.serial.terminal"
   time  : "time"
 

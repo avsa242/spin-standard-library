@@ -30,7 +30,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     term    : "com.serial.terminal.ansi"
     lfs     : "sensor.light.tsl230"
     time    : "time"

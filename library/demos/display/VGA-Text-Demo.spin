@@ -22,7 +22,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.demoboard"
+    cfg     : "boardcfg.demoboard"
     text    : "display.vga.text"
 
 PUB Start | i

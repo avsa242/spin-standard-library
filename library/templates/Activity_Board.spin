@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.boardcfg.activityboard"
+    cfg   : "boardcfg.activityboard"
     time  : "time"
 
 VAR

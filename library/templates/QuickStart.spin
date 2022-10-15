@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.boardcfg.quickstart"
+    cfg   : "boardcfg.quickstart"
     time  : "time"
 
 VAR

@@ -35,7 +35,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     sht3x   : "sensor.temp_rh.sht3x"
     int     : "string.integer"

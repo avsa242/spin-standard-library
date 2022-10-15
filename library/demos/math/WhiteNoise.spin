@@ -23,7 +23,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.activityboard"
+    cfg     : "boardcfg.activityboard"
     random  : "math.random"
     io      : "io"
 

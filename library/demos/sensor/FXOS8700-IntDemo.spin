@@ -45,7 +45,7 @@ VAR
 
 OBJ
 
-    cfg : "core.con.boardcfg.flip"      ' Clock setup, I/O pins, etc
+    cfg : "boardcfg.flip"      ' Clock setup, I/O pins, etc
     ser : "com.serial.terminal.ansi"
     time: "time"
     imu : "sensor.imu.6dof.fxos8700"

@@ -39,7 +39,7 @@ CON
 
 OBJ
 
-    cfg : "core.con.boardcfg.flip"
+    cfg : "boardcfg.flip"
     sens: "sensor.thermal-array.mlx90621"
     disp: "display.oled.ssd1331"
 

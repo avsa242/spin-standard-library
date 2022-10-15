@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.boardcfg.propmini"
+    cfg   : "boardcfg.propmini"
     time  : "time"
 
 VAR

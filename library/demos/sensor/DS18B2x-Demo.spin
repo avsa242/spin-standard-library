@@ -31,7 +31,7 @@ CON
 
 OBJ
 
-    cfg : "core.con.boardcfg.flip"
+    cfg : "boardcfg.flip"
     time: "time"
     ds  : "sensor.temperature.ds18b2x"
     ser : "com.serial.terminal.ansi"

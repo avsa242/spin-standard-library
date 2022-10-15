@@ -28,7 +28,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
 '    ser     : "com.serial.terminal"             ' PST-compatible terminal
     time    : "time"

@@ -1,0 +1,24 @@
+{
+    --------------------------------------------
+    Filename: p8x32a.common.spinh
+    Author: Jesse Burt
+    Description: P8X32A/Propeller 1 common system code
+    Started Oct 15, 2022
+    Updated Oct 15, 2022
+    Copyright 2022
+    See end of file for terms of use.
+    --------------------------------------------
+}
+
+CON
+
+    { --- I/O --- }
+    { I2C }
+    SCL         = 28
+    SDA         = 29
+
+    { async serial }
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
+

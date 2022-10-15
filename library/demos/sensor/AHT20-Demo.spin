@@ -30,7 +30,7 @@ CON
 
 OBJ
 
-    cfg:    "core.con.boardcfg.flip"
+    cfg:    "boardcfg.flip"
     sensr:  "sensor.temp_rh.aht20"
     ser:    "com.serial.terminal.ansi"
     time:   "time"

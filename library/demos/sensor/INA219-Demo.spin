@@ -28,7 +28,7 @@ CON
 
 OBJ
 
-    cfg : "core.con.boardcfg.flip"
+    cfg : "boardcfg.flip"
     ser : "com.serial.terminal.ansi"
     pwr : "sensor.power.ina219"
     time: "time"

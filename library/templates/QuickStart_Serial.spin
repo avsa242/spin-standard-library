@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.boardcfg.quickstart"
+    cfg   : "boardcfg.quickstart"
     ser   : "com.serial.terminal"
     time  : "time"
 

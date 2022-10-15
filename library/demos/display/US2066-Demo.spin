@@ -36,7 +36,7 @@ CON
 
 OBJ
 
-    cfg : "core.con.boardcfg.flip"
+    cfg : "boardcfg.flip"
     time: "time"
     oled: "display.oled-alpha.us2066"
     ser : "com.serial.terminal.ansi"

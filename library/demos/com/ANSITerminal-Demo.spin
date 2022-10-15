@@ -23,7 +23,7 @@ CON
 OBJ
 
     ser         : "com.serial.terminal.ansi"
-    cfg         : "core.con.boardcfg.demoboard"
+    cfg         : "boardcfg.demoboard"
     io          : "io"
     time        : "time"
     int         : "string.integer"

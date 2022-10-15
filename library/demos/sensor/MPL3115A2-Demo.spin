@@ -31,7 +31,7 @@ CON
 
 OBJ
 
-    cfg:    "core.con.boardcfg.flip"
+    cfg:    "boardcfg.flip"
     sensr:  "sensor.pressure.mpl3115a2"
     ser:    "com.serial.terminal.ansi"
     time:   "time"

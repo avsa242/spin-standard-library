@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.boardcfg.jtagulator"
+    cfg   : "boardcfg.jtagulator"
     ser   : "com.serial.terminal"
     time  : "time"
 

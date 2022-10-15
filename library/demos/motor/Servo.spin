@@ -25,7 +25,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.activityboard"
+    cfg     : "boardcfg.activityboard"
     servo   : "motor.servo"
     time    : "time"
 

@@ -33,7 +33,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     int     : "string.integer"
     accel   : "sensor.accel.2dof.mxd2125"

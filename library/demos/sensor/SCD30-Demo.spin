@@ -33,7 +33,7 @@ CON
 
 OBJ
 
-    cfg: "core.con.boardcfg.flip"
+    cfg: "boardcfg.flip"
     env: "sensor.co2.scd30"
     ser: "com.serial.terminal.ansi"
     time: "time"

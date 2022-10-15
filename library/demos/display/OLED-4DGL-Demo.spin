@@ -42,7 +42,7 @@ VAR
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     oled    : "display.oled.4dgl.uart"
     ser     : "com.serial.terminal"                                 ''Used ONLY For DEBUGGING
     time    : "time"

@@ -32,7 +32,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     disp    : "display.vga.bitmap.160x120"
 
 VAR

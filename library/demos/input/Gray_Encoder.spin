@@ -39,7 +39,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     encoder : "input.encoder.graycode"
     time    : "time"

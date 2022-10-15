@@ -26,7 +26,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.activityboard"
+    cfg     : "boardcfg.activityboard"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     io      : "io"

@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg : "core.con.boardcfg.flip"
+    cfg : "boardcfg.flip"
     term: "com.serial.terminal.ansi"
     ss  : "string"
     time: "time"

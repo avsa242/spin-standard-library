@@ -1,70 +1,80 @@
 {
     --------------------------------------------
-    Filename: core.con.boardcfg.ybox2.spin
+    Filename: boardcfg.ybox2.spin
     Author: Jesse Burt
     Description: Board configuration file for YBox2
-    Started Mar 19, 2022
-    Updated Mar 20, 2022
+        https://www.adafruit.com/product/95
+    Started Oct 15, 2022
+    Updated Oct 15, 2022
     Copyright 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+
+#include "p8x32a.common.spinh"
 #define YBOX2
-
 CON
-' YBox2
-' https://www.adafruit.com/product/95
-    { Clock Settings }
-    _clkmode        = xtal1 + pll16x
-    _xinfreq        = 5_000_000
+    { --- clock settings --- }
+    _clkmode    = xtal1 + pll16x
+    _xinfreq    = 5_000_000
 
-    { Pin definitions }
-
+    { --- pin definitions --- }
     { ENC28J60 Ethernet controller }
-    RESET_PIN       = 0                         ' O
-    CS_PIN          = 1                         ' O
-    SCK_PIN         = 2                         ' O
-    MOSI_PIN        = 3                         ' O
-    MISO_PIN        = 4                         ' I
-    WOL_PIN         = 5                         ' I (Wake-on-LAN)
-    INT_PIN         = 6                         ' I (Interrupt)
+    RESET_PIN       = 0
+    CS_PIN          = 1
+    SCK_PIN         = 2
+    MOSI_PIN        = 3
+    MISO_PIN        = 4
+    WOL_PIN         = 5
+    INT_PIN         = 6
 
     { NOTE: The YBox2 provides no crystal for the ENC28J60,
         so the clock (25MHz) must be generated using one of the Propeller's
         counters, output to I/O pin 7 }
-    ENC_OSCPIN      = 7                         ' O
+    ENC_OSCPIN      = 7
 
-    { Piezo buzzer }
-    BUZZER          = 8                         ' O
+    { piezo buzzer }
+    BUZZER          = 8
     AUDIO           = 8
     AUDIO_L         = 8
     AUDIO_R         = 8
     SOUND           = 8
 
     { RGB LED (not smart-LED), color order can differ from LED to LED }
-    LED1            = 9                         ' O
-    LED2            = 10                        ' O
-    LED3            = 11                        ' O
+    LED1            = 9
+    LED2            = 10
+    LED3            = 11
 
-    { Composite video; spans 3 pins }
-    COMPVIDEO       = 12                        ' O
+    { composite video }
+    COMPVIDEO       = 12
 
     { PNA640XM IR receiver, 38kHz }
-    IR_RX           = 15                        ' I
+    IR_RX           = 15
 
     { S1: Tactile button }
-    SWITCH1         = 16                        ' I
+    SWITCH1         = 16
     BUTTON1         = 16
 
-    { I2C bus }
-    SCL             = 28                        ' O
-    SDA             = 29                        ' I/O
-
-    { Async serial }
-    SER_RX_DEF      = 31                        ' I
-    SER_TX_DEF      = 30                        ' O
-    SER_BAUD_DEF    = 115_200
-
-PUB Null
+PUB null
 ' This is not a top-level object
+
+DAT
+{
+Copyright 2022 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 

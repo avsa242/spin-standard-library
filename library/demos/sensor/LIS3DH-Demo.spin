@@ -41,7 +41,7 @@ CON
 
 OBJ
 
-    cfg: "core.con.boardcfg.flip"
+    cfg: "boardcfg.flip"
     imu: "sensor.accel.3dof.lis3dh"
     ser: "com.serial.terminal.ansi"
     time: "time"

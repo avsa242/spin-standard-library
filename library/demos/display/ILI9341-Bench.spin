@@ -36,7 +36,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     disp    : "display.lcd.ili9341"
 
 VAR

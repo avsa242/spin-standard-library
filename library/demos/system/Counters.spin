@@ -195,7 +195,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.activityboard"
+    cfg     : "boardcfg.activityboard"
     term    : "com.serial.terminal.ansi"
     time    : "time"
     ctrs    : "core.con.counters"

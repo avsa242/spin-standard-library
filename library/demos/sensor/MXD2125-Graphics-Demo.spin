@@ -67,7 +67,7 @@ VAR
 
 OBJ
 
-    cfg     : "core.con.boardcfg.demoboard"
+    cfg     : "boardcfg.demoboard"
     tv      : "display.tv"
     gr      : "display.tv.graphics"
     mxd2125 : "sensor.accel.2dof.mxd2125"

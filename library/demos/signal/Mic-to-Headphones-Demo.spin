@@ -48,7 +48,7 @@ CON
 
 OBJ
 
-    cfg : "core.con.boardcfg.demoboard"
+    cfg : "boardcfg.demoboard"
     ctrs: "core.con.counters"
 
 PUB Go

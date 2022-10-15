@@ -32,7 +32,7 @@ CON
 
 OBJ
 
-    cfg:    "core.con.boardcfg.flip"
+    cfg:    "boardcfg.flip"
     sensr:  "sensor.thermocouple.max31856"
     ser:    "com.serial.terminal.ansi"
     time:   "time"

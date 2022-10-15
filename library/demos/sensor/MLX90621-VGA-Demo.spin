@@ -39,7 +39,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.quickstart-hib"
+    cfg     : "boardcfg.quickstart-hib"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     mlx     : "sensor.thermal-array.mlx90621"

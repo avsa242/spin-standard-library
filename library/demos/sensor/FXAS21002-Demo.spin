@@ -31,7 +31,7 @@ CON
 
 OBJ
 
-    cfg: "core.con.boardcfg.flip"
+    cfg: "boardcfg.flip"
     imu: "sensor.gyroscope.3dof.fxas21002"
     ser: "com.serial.terminal.ansi"
     time: "time"

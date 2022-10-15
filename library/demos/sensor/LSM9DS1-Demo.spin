@@ -40,7 +40,7 @@ CON
 
 OBJ
 
-    cfg: "core.con.boardcfg.flip"
+    cfg: "boardcfg.flip"
     imu: "sensor.imu.9dof.lsm9ds1"
     ser: "com.serial.terminal.ansi"
     time: "time"

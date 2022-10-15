@@ -36,7 +36,7 @@ CON
 OBJ
 
     ser     : "com.serial.terminal.ansi"
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     radio   : "wireless.transceiver.nrf24l01"
     time    : "time"
     encoder : "input.encoder.quadrature"

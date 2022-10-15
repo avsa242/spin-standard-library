@@ -17,7 +17,7 @@ CON
 
 OBJ
 
-    cfg   : "core.con.boardcfg.parraldev"
+    cfg   : "boardcfg.parraldev"
     ser   : "com.serial.terminal"
     time  : "time"
 

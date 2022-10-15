@@ -34,7 +34,7 @@ CON
 
 OBJ
 
-    cfg:    "core.con.boardcfg.flip"
+    cfg:    "boardcfg.flip"
     sensr:  "sensor.light.tsl2591"
     ser:    "com.serial.terminal.ansi"
     time:   "time"

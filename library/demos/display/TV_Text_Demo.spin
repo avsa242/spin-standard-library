@@ -30,7 +30,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.demoboard"
+    cfg     : "boardcfg.demoboard"
     term    : "display.tv.text"
 
 PUB start | i

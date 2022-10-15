@@ -1,9 +1,10 @@
 {
     --------------------------------------------
-    Filename: boardcfg.propboe.spin
+    Filename: boardcfg.activity.spin
     Author: Jesse Burt
-    Description: Board configuration file for Propeller Board of Education
-        Parallax #32900
+    Description: Board configuration file for Activity board
+        Activity Board
+        Parallax WX #32912 and non-WX #32910
     Started Oct 15, 2022
     Updated Oct 15, 2022
     Copyright 2022
@@ -20,36 +21,39 @@ CON
 
     { --- pin definitions --- }
     { 6x 3-pin servo headers }
-    SERVO1      = 14
-    SERVO2      = 15
-    SERVO3      = 16
-    SERVO4      = 17
-    SERVO5      = 18
-    SERVO6      = 19
+    SERVO1      = 12
+    SERVO2      = 13
+    SERVO3      = 14
+    SERVO4      = 15
+    SERVO5      = 16
+    SERVO6      = 17
 
-    { microphone }
-    MIC_FB      = 20
-    MIC_IN      = 21
+    { ADC }
+    ADC_DI      = 18
+    ADC_DO      = 19
+    ADC_SCL     = 20
+    ADC_CS      = 21
 
-    { micro-sd socket - SPI }
+    { microSD socket - SPI }
+    SD_BASEPIN  = 22
     SD_DO       = 22
     SD_CLK      = 23
     SD_DI       = 24
     SD_CS       = 25
-    SD_MISO     = 22
-    SD_MOSI     = 24
-    SD_CD       = 25
 
     { sound }
+    AUDIO       = 26
+    AUDIO_L     = 26
+    AUDIO_R     = 27
     SOUND       = 26
     SOUND_L     = 26
     SOUND_R     = 27
 
-    { 2x amber LEDs }
+    { two amber LEDs }
     LED1        = 26
     LED2        = 27
 
-    { DAC }
+    { two DAC outputs }
     DA0         = 26
     DA1         = 27
 
