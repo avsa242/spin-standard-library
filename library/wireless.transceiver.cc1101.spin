@@ -100,9 +100,9 @@ OBJ
 { SPI? }
 { decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
 #ifdef CC1101_SPI_BC
-    spi : "com.spi.nocog"                       ' BC SPI engine
+    spi : "com.spi.25khz.nocog"                       ' BC SPI engine
 #else
-    spi : "com.spi.4w"                          ' PASM SPI engine
+    spi : "com.spi.1mhz"                          ' PASM SPI engine
 #endif
     core: "core.con.cc1101"
     time: "time"

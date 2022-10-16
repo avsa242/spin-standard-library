@@ -53,7 +53,7 @@ OBJ
 
     core    : "core.con.ssd1351"                ' HW-specific constants
     time    : "time"                            ' timekeeping methods
-    spi     : "com.spi.fast-nocs"               ' PASM SPI engine (20MHz)
+    spi     : "com.spi.20mhz"               ' PASM SPI engine (20MHz)
 
 VAR
 

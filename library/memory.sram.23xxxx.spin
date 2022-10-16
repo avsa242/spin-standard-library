@@ -27,7 +27,7 @@ VAR
 
 OBJ
 
-    spi : "com.spi.fast-nocs"                   ' PASM SPI engine
+    spi : "com.spi.20mhz"                   ' PASM SPI engine
     core: "core.con.23xxxx"                     ' hw-specific constants
     time: "time"                                ' basic timekeeping functions
 

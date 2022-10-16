@@ -176,7 +176,7 @@ VAR
 
 OBJ
 
-    spi : "com.spi.4w"                          ' PASM SPI engine
+    spi : "com.spi.1mhz"                          ' PASM SPI engine
     core: "core.con.sx1231"                     ' HW-specific constants
     time: "time"                                ' timekeeping methods
     u64 : "math.unsigned64"                     ' unsigned 64-bit int math

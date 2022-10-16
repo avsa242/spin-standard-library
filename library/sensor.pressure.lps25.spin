@@ -53,9 +53,9 @@ OBJ
 #ifdef LPS25_SPI
 { decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
 #ifdef LPS25_SPI_BC
-    spi : "com.spi.nocog"                       ' BC SPI engine
+    spi : "com.spi.25khz.nocog"                       ' BC SPI engine
 #else
-    spi : "com.spi.4w"                          ' PASM SPI engine
+    spi : "com.spi.1mhz"                          ' PASM SPI engine
 #endif
 #else
 { no, not SPI - default to I2C }

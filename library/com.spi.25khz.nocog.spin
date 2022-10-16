@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: com.spi.nocog.spin
+    Filename: com.spi.25khz.nocog.spin
     Author: Jesse Burt
     Description: SPI engine (SPIN-based)
         @80MHz Fsys:

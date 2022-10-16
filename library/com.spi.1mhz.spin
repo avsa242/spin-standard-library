@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: com.spi.4w.spin
+    Filename: com.spi.1mhz.spin
     Author: Jesse Burt
     Description: 1MHz SPI engine (PASM core)
         @80MHz Fsys:

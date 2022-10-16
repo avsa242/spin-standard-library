@@ -33,7 +33,7 @@ VAR
 
 OBJ
 
-    spi : "com.spi.4w"
+    spi : "com.spi.1mhz"
     core: "core.con.il3820"
     time: "time"
 

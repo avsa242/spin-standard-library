@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: com.spi.fast-nocs.spin
+    Filename: com.spi.20mhz.spin
     Author: Jesse Burt
     Description: Fast PASM SPI engine (20MHz W, 10MHz R)
         (_no builtin-Chip Select support_)

@@ -65,7 +65,7 @@ VAR
 
 OBJ
 
-    spi : "com.spi.fast-nocs"                   ' SPI engine (no CS support)
+    spi : "com.spi.20mhz"                   ' SPI engine (no CS support)
     core: "core.con.st7735"                     ' HW-specific constants
     time: "time"                                ' basic timekeeping methods
 

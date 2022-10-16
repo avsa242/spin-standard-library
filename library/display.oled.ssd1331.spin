@@ -49,7 +49,7 @@ OBJ
 
     core    : "core.con.ssd1331"                ' HW-specific constants
     time    : "time"                            ' timekeeping methods
-    spi     : "com.spi.fast-nocs"               ' SPI engine (20MHzW/10R)
+    spi     : "com.spi.20mhz"               ' SPI engine (20MHzW/10R)
 
 VAR
 
