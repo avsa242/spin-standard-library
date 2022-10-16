@@ -31,7 +31,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensr:  "sensor.temp_rh.htu21d"
+    sensor:  "sensor.temp_rh.htu21d"
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
@@ -42,13 +42,13 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
         ser.strln(string("HTU21D driver started"))
     else
         ser.strln(string("HTU21D driver failed to start - halting"))
         repeat
 
-    sensr.tempscale(sensr#C)
+    sensor.tempscale(sensor#C)
     demo{}
 
 #include "temp_rhdemo.common.spinh"             ' code common to all temp/RH demos

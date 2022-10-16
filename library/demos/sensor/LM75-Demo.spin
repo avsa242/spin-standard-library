@@ -32,7 +32,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensr:  "sensor.temperature.lm75"
+    sensor:  "sensor.temperature.lm75"
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
@@ -43,13 +43,13 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
         ser.strln(string("LM75 driver started"))
     else
         ser.strln(string("LM75 driver failed to start - halting"))
         repeat
 
-    sensr.tempscale(sensr#C)
+    sensor.tempscale(sensor#C)
     demo{}
 
 #include "tempdemo.common.spinh"             ' code common to all temp/RH demos

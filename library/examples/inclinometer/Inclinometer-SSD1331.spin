@@ -125,7 +125,7 @@ PUB Setup{}
     oled.fontspacing(1, 0)
     oled.fontscale(1)
     oled.fontsize(fnt#WIDTH, fnt#HEIGHT)
-    oled.fontaddress(fnt.baseaddr{})
+    oled.fontaddress(fnt.ptr{})
     oled.preset_96x64{}
 
 #ifdef LSM9DS1_SPI

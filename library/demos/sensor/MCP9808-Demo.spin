@@ -32,7 +32,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensr:  "sensor.temperature.mcp9808"
+    sensor:  "sensor.temperature.mcp9808"
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
@@ -43,14 +43,14 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
         ser.strln(string("MCP9808 driver started"))
     else
         ser.strln(string("MCP9808 driver failed to start - halting"))
         repeat
 
-    sensr.tempscale(sensr#C)
-    sensr.tempres(0_0625)                       ' 0_0625, 0_1250, 0_2500, 0_5000
+    sensor.tempscale(sensor#C)
+    sensor.tempres(0_0625)                       ' 0_0625, 0_1250, 0_2500, 0_5000
     demo{}
 
 #include "tempdemo.common.spinh"                ' code common to all temp/RH demos

@@ -35,7 +35,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensr:  "sensor.light.tsl2591"
+    sensor:  "sensor.light.tsl2591"
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
@@ -46,16 +46,16 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
         ser.strln(string("TSL2591 driver started"))
     else
         ser.strln(string("TSL2591 driver failed to start - halting"))
         repeat
 
-    sensr.preset_als{}
+    sensor.preset_als{}
 
-    sensr.glassattenuation(GA)
-    sensr.devicefactor(DF)
+    sensor.glassattenuation(GA)
+    sensor.devicefactor(DF)
     demo{}
 
 #include "luxdemo.common.spinh"                ' code common to all lux demos

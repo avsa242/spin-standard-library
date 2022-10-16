@@ -32,7 +32,7 @@ CON
 OBJ
 
     cfg: "boardcfg.flip"
-    sensr: "sensor.temp_rh.shtc3"
+    sensor: "sensor.temp_rh.shtc3"
     ser: "com.serial.terminal.ansi"
     time: "time"
 
@@ -43,13 +43,13 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
         ser.strln(string("SHTC3 driver started"))
     else
         ser.strln(string("SHTC3 driver failed to start - halting"))
         repeat
 
-    sensr.tempscale(sensr#C)
+    sensor.tempscale(sensor#C)
     demo{}
 
 #include "temp_rhdemo.common.spinh"             ' code common to all temp/RH demos

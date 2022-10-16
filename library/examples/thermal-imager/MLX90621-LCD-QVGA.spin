@@ -56,7 +56,7 @@ PUB Main{}
     disp.fontspacing(1, 0)
     disp.fontscale(3)
     disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
-    disp.fontaddress(fnt.baseaddr{})
+    disp.fontaddress(fnt.ptr{})
     disp.preset{}
 
     { set up for landscape orientation, B-G-R subpixels }

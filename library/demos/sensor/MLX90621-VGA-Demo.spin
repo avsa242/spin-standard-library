@@ -185,7 +185,7 @@ PUB Setup{}
     setuppalette{}
     vga.startx(VGA_PINGROUP, WIDTH, HEIGHT, @_framebuffer)
         ser.strln(string("VGA 8bpp driver started"))
-        vga.fontaddress(fnt.baseaddr{})
+        vga.fontaddress(fnt.ptr{})
         vga.fontscale(1)
         vga.fontsize(6, 8)
         vga.clear{}

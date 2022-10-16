@@ -55,7 +55,7 @@ PUB Main{}
     disp.fontspacing(1, 0)
     disp.fontscale(1)
     disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
-    disp.fontaddress(fnt.baseaddr{})
+    disp.fontaddress(fnt.ptr{})
     disp.preset_96x64_hiperf{}
     disp.subpixelorder(disp.RGB)
     disp.contrast(127)

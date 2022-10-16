@@ -51,7 +51,7 @@ PUB Main{}
         disp.fontspacing(1, 0)
         disp.fontscale(1)
         disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
-        disp.fontaddress(fnt.baseaddr{})
+        disp.fontaddress(fnt.ptr{})
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat

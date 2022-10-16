@@ -476,7 +476,7 @@ PUB Setup{}
     if disp.start(SMLED_PIN, WIDTH, HEIGHT, SMLED_MODEL, @_framebuff)
         ser.strln(string("SmartLED driver started"))
         disp.drawto(@_offscreen)
-        disp.fontaddress(fnt.baseaddr{})
+        disp.fontaddress(fnt.ptr{})
         disp.fontsize(6, 8)
         disp.clear{}
     else

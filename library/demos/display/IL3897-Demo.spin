@@ -55,7 +55,7 @@ PUB Main{}
         epaper.fontspacing(1, 0)
         epaper.fontsize(fnt#WIDTH, fnt#HEIGHT)
         epaper.fontscale(1)
-        epaper.fontaddress(fnt.baseaddr{})
+        epaper.fontaddress(fnt.ptr{})
         repeat until epaper.displayready{}
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)

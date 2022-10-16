@@ -32,7 +32,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensr:  "sensor.light.vcnl4200"
+    sensor:  "sensor.light.vcnl4200"
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
@@ -43,13 +43,13 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
         ser.strln(string("VCNL4200 driver started"))
     else
         ser.strln(string("VCNL4200 driver failed to start - halting"))
         repeat
 
-    sensr.preset_als_prox{}
+    sensor.preset_als_prox{}
     demo{}
 
 #include "luxdemo.common.spinh"                ' code common to all lux demos

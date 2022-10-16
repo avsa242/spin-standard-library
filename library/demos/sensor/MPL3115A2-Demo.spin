@@ -32,7 +32,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensr:  "sensor.pressure.mpl3115a2"
+    sensor:  "sensor.pressure.mpl3115a2"
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
@@ -43,13 +43,13 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if (sensr.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
         ser.strln(string("MPL3115A2 driver started"))
     else
         ser.strln(string("MPL3115A2 driver failed to start - halting"))
         repeat
 
-    sensr.preset_active{}                       ' set defaults, but enable
+    sensor.preset_active{}                       ' set defaults, but enable
                                                 '   sensor power
     demo{}
 
