@@ -5,11 +5,11 @@
     Description: Driver for the NXP/Freescale MMA7455 3-axis accelerometer
     Copyright (c) 2022
     Started Nov 27, 2019
-    Updated Jul 17, 2022
+    Updated Oct 1, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
-#include "sensor.imu.common.spinh"
+#include "sensor.accel.common.spinh"
 
 CON
 
@@ -68,6 +68,7 @@ CON
 VAR
 
     long _ascl
+    byte _addr_bits
 
 OBJ
 
@@ -80,80 +81,64 @@ OBJ
     core: "core.con.mma7455"
     time: "time"
 
-PUB Null{}
+PUB null{}
 'This is not a top-level object
 
-PUB Start{}: status
+PUB start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
+PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
+    if (lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and I2C_HZ =< core#I2C_MAX_FREQ)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.msleep(1)
             _addr_bits := (ADDR_BITS << 1)
-            if (deviceid{} == core#DEVID_RESP)
+            if (dev_id{} == core#DEVID_RESP)
                 return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     i2c.deinit{}
 
-PUB Preset_Active{}
+PUB preset_active{}
 ' Enable sensor power and set full-scale range
-    accelopmode(MEASURE)
-    accelscale(2)
+    accel_opmode(MEASURE)
+    accel_scale(2)
 
-PUB Preset_ThreshDetect{}
+PUB preset_thresh_detect{}
 ' Enable sensor power, set full-scale range, and set up
 '   to trigger an interrupt on INT1 when an acceleration threshold is reached
-    accelopmode(LEVELDET)
-    accelscale(2)
+    accel_opmode(LEVELDET)
+    accel_scale(2)
 
-PUB AccelBias(bias_x, bias_y, bias_z, rw) | tmp[2]
-' Read or write/manually set accelerometer calibration offset values
+PUB accel_bias(x, y, z) | tmp[2]
+' Read accelerometer calibration offset values
+'   x, y, z: pointers to copy offsets to
+    readreg(core#XOFFL, 6, @tmp)
+    long[x] := (((tmp.word[X_AXIS] << 22) ~> 22) * 2)
+    long[y] := (((tmp.word[Y_AXIS] << 22) ~> 22) * 2)
+    long[z] := (((tmp.word[Z_AXIS] << 22) ~> 22) * 2)
+
+PUB accel_set_bias(x, y, z)
+' Write accelerometer calibration offset values
 '   Valid values:
-'       rw:
-'           R (0), W (1)
-'       bias_x, bias_y, bias_z:
+'       x, y, z:
 '           -128..127 (2g or 4g scale)
 '           -512..511 (8g scale)
-'   NOTE: When rw is set to READ, bias_x, bias_y and bias_z must be addresses
-'       of respective variables to hold the returned calibration offset values.
-    case rw
-        R:
-            readreg(core#XOFFL, 6, @tmp)
-            long[bias_x] := (((tmp.word[X_AXIS] << 22) ~> 22) * 2)
-            long[bias_y] := (((tmp.word[Y_AXIS] << 22) ~> 22) * 2)
-            long[bias_z] := (((tmp.word[Z_AXIS] << 22) ~> 22) * 2)
-            return
-        W:
-            case bias_x
-                -512..511:
-                    bias_x *= -2
-                other:
-                    return                      ' out of range
-            case bias_y
-                -512..511:
-                    bias_y *= -2
-                other:
-                    return                      ' out of range
-            case bias_z
-                -512..511:
-                    bias_z *= -2
-                other:
-                    return                      ' out of range
-            writereg(core#XOFFL, 2, @bias_x)
-            writereg(core#YOFFL, 2, @bias_y)
-            writereg(core#ZOFFL, 2, @bias_z)
+'           (clamped to range)
+    x := (-512 #> x <# 511) * -2
+    y := (-512 #> y <# 511) * -2
+    z := (-512 #> z <# 511) * -2
+    writereg(core#XOFFL, 2, @x)
+    writereg(core#YOFFL, 2, @y)
+    writereg(core#ZOFFL, 2, @z)
 
-PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
+PUB accel_data(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Accelerometer output registers
     longfill(@tmp, 0, 2)
     case _ascl
@@ -169,7 +154,7 @@ PUB AccelData(ptr_x, ptr_y, ptr_z) | tmp[2]
             long[ptr_y] := (tmp.word[Y_AXIS] << 22) ~> 22
             long[ptr_z] := (tmp.word[Z_AXIS] << 22) ~> 22
 
-PUB AccelDataRate(rate): curr_rate
+PUB accel_data_rate(rate): curr_rate
 ' Set accelerometer output data rate, in Hz
 '   Valid values:
 '       125, 250
@@ -186,19 +171,19 @@ PUB AccelDataRate(rate): curr_rate
     rate := ((curr_rate & core#DFBW_MASK) | rate)
     writereg(core#CTL1, 1, @rate)
 
-PUB AccelDataOverrun{}: flag
+PUB accel_data_overrun{}: flag
 ' Flag indicating previously acquired data has been overwritten
 '   Returns: TRUE (-1) if data has overflowed/been overwritten, FALSE otherwise
     readreg(core#STATUS, 1, @flag)
     return (((flag >> core#DOVR) & 1) == 1)
 
-PUB AccelDataReady{}: flag
+PUB accel_data_rdy{}: flag
 ' Flag indicating data is ready
 '   Returns: TRUE (-1) if data ready, FALSE otherwise
     readreg(core#STATUS, 1, @flag)
     return ((flag & 1) == 1)
 
-PUB AccelIntClear(mask)
+PUB accel_int_clr(mask)
 ' Clear accelerometer interrupts
 '   Bits: 1..0
 '       1: Clear INT2 interrupt
@@ -211,7 +196,7 @@ PUB AccelIntClear(mask)
             writereg(core#INTRST, 1, @mask)     ' reset bits (not cleared
                                                 '   automatically)
 
-PUB AccelInt{}: int_src
+PUB accel_int{}: int_src
 ' Accelerometer interrupt source(s)
 '   Bits: 7..0
 '       7: Level detection (X-axis)
@@ -225,14 +210,14 @@ PUB AccelInt{}: int_src
     int_src := 0
     readreg(core#DETSRC, 1, @int_src)
 
-PUB AccelIntMask(mask): curr_mask | drpd
+PUB accel_int_mask(mask): curr_mask | drpd
 ' Set accelerometer interrupt mask
 '   Bits 7..0:
 '       7:
-'           Data-ready on INT1 pin (doesn't affect AccelDataReady())
+'           Data-ready on INT1 pin (doesn't affect accel_data_rdy())
 '       6:
-'           0: AccelIntThresh*() are unsigned (0g..+8g)
-'           1: AccelIntThresh*() are signed (-8g..+8g)
+'           0: accel_int_set_thresh*() are unsigned (0g..+8g)
+'           1: accel_int_set_thresh*() are signed (-8g..+8g)
 '       5..3
 '           5: Z-axis detection
 '           4: Y-axis detection
@@ -242,10 +227,10 @@ PUB AccelIntMask(mask): curr_mask | drpd
 '           %01:    Pulse/Click/Tap detection   Threshold detection
 '           %10:    Single pulse detection      Single/double pulse detection
 '       0:
-'           0: AccelInt() behavior
+'           0: accel_int() behavior
 '               INT1 bit indicates INT1 interrupt
 '               INT2 bit indicates INT2 interrupt
-'           1: AccelInt() behavior
+'           1: accel_int() behavior
 '               INT1 bit indicates INT2 interrupt
 '               INT2 bit indicates INT1 interrupt
 '   Any other value polls the chip and returns the current setting
@@ -273,43 +258,43 @@ PUB AccelIntMask(mask): curr_mask | drpd
     mask := ((curr_mask & core#INTMASK_MASK) | mask)
     writereg(core#CTL1, 1, @mask)
 
-PUB AccelIntThreshX(thresh): curr_thr
+PUB accel_int_thresh_x(thresh): curr_thr
 ' Set interrupt threshold, X-axis
 '   Valid values: 0..8_000000 (0..8g)
-'   Any other value returns the current setting
-'   NOTE: Range is fixed at 0..8g, regardless of AccelScale() setting
+'   NOTE: Range is fixed at 0..8g, regardless of accel_scale() setting
 '   NOTE: X, Y, Z axis are locked together (chip limitation);
 '       separate X, Y, Z methods provided for API compatibility
-    return accelintthresh(thresh)
+    accel_int_set_thresh(thresh)
 
-PUB AccelIntThreshY(thresh): curr_thr
+PUB accel_int_thresh_y(thresh): curr_thr
 ' Set interrupt threshold, Y-axis
-'   Valid values: 0..8_000000 (0..8g)
 '   Any other value returns the current setting
-'   NOTE: Range is fixed at 0..8g, regardless of AccelScale() setting
+'   NOTE: Range is fixed at 0..8g, regardless of accel_scale() setting
 '   NOTE: X, Y, Z axis are locked together (chip limitation);
-    return accelintthresh(thresh)
+'       separate X, Y, Z methods provided for API compatibility
+    accel_int_set_thresh(thresh)
 
-PUB AccelIntThreshZ(thresh): curr_thr
+PUB accel_int_thresh_z(thresh): curr_thr
 ' Set interrupt threshold, Z-axis
-'   Valid values: 0..8_000000 (0..8g)
 '   Any other value returns the current setting
-'   NOTE: Range is fixed at 0..8g, regardless of AccelScale() setting
+'   NOTE: Range is fixed at 0..8g, regardless of accel_scale() setting
 '   NOTE: X, Y, Z axis are locked together (chip limitation);
-    return accelintthresh(thresh)
+'       separate X, Y, Z methods provided for API compatibility
+    accel_int_set_thresh(thresh)
 
-PRI accelIntThresh(thresh): curr_thr
-' Set interrupt threshold register
-    case thresh
-        0..8_000000:                            ' range is fixed 0..8g
-            thresh /= 62_500                    ' convert to reg range (s8/u8)
-            writereg(core#LDTH, 1, @thresh)
-        other:
-            curr_thr := 0
-            readreg(core#LDTH, 1, @curr_thr)
-            return (~curr_thr * 62_500)         ' convert to micro-g's
+PUB accel_int_thresh{}: thresh
+' Get interrupt threshold
+    thresh := 0
+    readreg(core#LDTH, 1, @thresh)
+    return (~thresh * 62_500)         ' convert to micro-g's
 
-PUB AccelOpMode(mode) | curr_mode
+PUB accel_int_set_thresh(thresh)
+' Set interrupt threshold
+'   Valid values: 0..8_000000 (0..8g's; clamped to range)
+    thresh := ((0 #> thresh <# 8_000000) / 62_500)
+    writereg(core#LDTH, 1, @thresh)
+
+PUB accel_opmode(mode) | curr_mode
 ' Set operating mode
 '   Valid values:
 '       STANDBY (%00): Standby
@@ -327,7 +312,7 @@ PUB AccelOpMode(mode) | curr_mode
     mode := ((curr_mode & core#MODE_MASK) | mode)
     writereg(core#MCTL, 1, @mode)
 
-PUB AccelScale(scale): curr_scl
+PUB accel_scale(scale): curr_scl
 ' Set measurement range of the accelerometer, in g's
 '   Valid values: 2, 4, *8
 '   Any other value polls the chip and returns the current setting
@@ -347,7 +332,7 @@ PUB AccelScale(scale): curr_scl
     scale := ((curr_scl & core#GLVL_MASK) | scale)
     writereg(core#MCTL, 1, @scale)
 
-PUB AccelSelfTest(state) | curr_state
+PUB accel_self_test(state) | curr_state
 ' Enable self-test
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -364,49 +349,10 @@ PUB AccelSelfTest(state) | curr_state
     state := ((curr_state & core#STON_MASK) | state)
     writereg(core#MCTL, 1, @state)
 
-PUB DeviceID{}
+PUB dev_id{}
 ' Get chip/device ID
 '   Known values: $55
     readreg(core#WHOAMI, 1, @result)
-
-PUB GyroAxisEnabled(xyzmask)
-' Dummy method
-
-PUB GyroBias(x, y, z, rw)
-' Dummy method
-
-PUB GyroData(x, y, z)
-' Dummy method
-
-PUB GyroDataRate(hz)
-' Dummy method
-
-PUB GyroDataReady
-' Dummy method
-
-PUB GyroOpMode(mode)
-' Dummy method
-
-PUB GyroScale(scale)
-' Dummy method
-
-PUB MagBias(x, y, z, rw)
-' Dummy method
-
-PUB MagData(x, y, z)
-' Dummy method
-
-PUB MagDataRate(hz)
-' Dummy method
-
-PUB MagDataReady{}
-' Dummy method
-
-PUB MagOpMode(mode)
-' Dummy method
-
-PUB MagScale(scale)
-' Dummy method
 
 PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from slave device into ptr_buff
@@ -439,24 +385,21 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

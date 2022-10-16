@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Jun 22, 2021
-    Updated: Sep 3, 2022
+    Updated: Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,26 +40,26 @@ OBJ
     disp: "display.led-seg.ht16k33"
     fs  : "string.float"
     
-PUB Main{} | i, b
+PUB main{} | i, b
 
     setup{}
 
-    disp.blinkrate(2)
-    demomsg(string("DEMO"))
+    disp.blink_rate(2)
+    demo_msg(string("DEMO"))
     time.sleep(2)
-    disp.blinkrate(0)
+    disp.blink_rate(0)
     time.sleep(1)
 
-    demomsg(string("CHAR"))
+    demo_msg(string("CHAR"))
 
     repeat i from 32 to 126
-        disp.position(0, 0)
+        disp.pos(0, 0)
         disp.char(i)
         time.msleep(100)
     time.sleep(2)
 
 
-    demomsg(string("STR"))
+    demo_msg(string("STR"))
 
     disp.str(string("This"))
     time.sleep(1)
@@ -77,30 +77,30 @@ PUB Main{} | i, b
     time.sleep(2)
 
 
-    demomsg(string("HEX"))
+    demo_msg(string("HEX"))
 
     repeat i from 0 to $1ff
-        disp.position(0, 0)
+        disp.pos(0, 0)
         disp.hex(i, 4)
     time.sleep(2)
 
-    demomsg(string("BIN"))
+    demo_msg(string("BIN"))
 
     repeat i from 0 to %1111
-        disp.position(0, 0)
+        disp.pos(0, 0)
         disp.printf1(string("%04.4b"), i)
         time.msleep(200)
     time.sleep(2)
 
-    demomsg(string("DEC"))
+    demo_msg(string("DEC"))
 
     repeat i from 0 to 1000
-        disp.position(0, 0)
+        disp.pos(0, 0)
         disp.printf1(string("%4.4d"), i)
     time.sleep(2)
 
 
-    demomsg(string("FLT"))
+    demo_msg(string("FLT"))
 
     disp.str(fs.floattostring(3.141))
     time.sleep(1)
@@ -112,20 +112,20 @@ PUB Main{} | i, b
     time.sleep(2)
 
 
-    demomsg(string("TYPE"))
+    demo_msg(string("TYPE"))
 
     repeat
-        b := ser.charin
+        b := ser.charin{}
         disp.char(b)
 
-PRI DemoMsg(ptr_str)
+PRI demo_msg(ptr_str)
 ' Clear the display, show a message, wait 2 seconds, then clear again
     disp.clear{}
     disp.str(ptr_str)
     time.sleep(2)
     disp.clear
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)

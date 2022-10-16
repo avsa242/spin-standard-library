@@ -2,11 +2,10 @@
     --------------------------------------------
     Filename: signal.adc.mcp320x.spin
     Author: Jesse Burt
-    Description: Driver for Microchip MCP320x
-        Analog to Digital Converters
+    Description: Driver for Microchip MCP320x Analog to Digital Converters
     Copyright (c) 2022
     Started Nov 26, 2019
-    Updated Aug 6, 2022
+    Updated Sep 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -52,10 +51,10 @@ PUB stop{}
 
 PUB defaults{}
 ' Factory defaults
-    adc_chan_enabled(0)
+    adc_chan_ena(0)
     ref_voltage(3_300000)
 
-PUB adc_chan_enabled(ch)
+PUB adc_chan_ena(ch)
 ' Set ADC channel for subsequent reads
 '   Valid values: 0, 1
 '   Any other value returns the current setting

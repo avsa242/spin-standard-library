@@ -5,7 +5,7 @@
     Description: Driver for HUB75 RGB LED matrix displays
     Copyright (c) 2022
     Started: Oct 24, 2021
-    Updated: Sep 6, 2022
+    Updated: Oct 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -90,12 +90,6 @@ PUB clear{}
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
 
-PUB mirrorh(m)
-' dummy method
-
-PUB mirrorv(m)
-' dummy method
-
 PUB plot(x, y, color) | tmp
 ' Plot pixel at (x, y) in color
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
@@ -116,9 +110,6 @@ PUB point(x, y): pix_clr
 
     return byte[_ptr_drawbuffer][x + (y * _disp_width)]
 #endif
-
-PUB update{}
-' dummy method
 
 PRI hub75_engine{} | r0, g0, b0, r1, g1, b1, a, b, c, d, bl, clk, lat, tmp, {
 } y, x, ty_offs, by_offs, top_offs, bot_offs, bnkht

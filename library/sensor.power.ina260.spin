@@ -5,7 +5,7 @@
     Description: Driver for the TI INA260 Precision Current and Power Monitor IC
     Copyright (c) 2022
     Started Nov 13, 2019
-    Updated Aug 1, 2022
+    Updated Sep 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -89,7 +89,7 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
             time.usleep(core#T_POR)
             _addr_bits := (ADDR_BITS << 1)
             reset{}
-            if (device_id{} == core#DEVID_RESP)
+            if (dev_id{} == core#DEVID_RESP)
             return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
@@ -99,6 +99,7 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 PUB stop{}
 ' Stop the driver
     i2c.deinit{}
+    _addr_bits := 0
 
 PUB adc2amps(adc_word): a
 ' Convert current ADC word to amperage
@@ -115,7 +116,7 @@ PUB adc2watts(adc_word): w
 '   Returns: power in microwatts
     return (adc_word * 10_000)
 
-PUB current_data(): a
+PUB current_data{}: a
 ' Read the measured current, in microamperes
 '   NOTE: If averaging is enabled, this will return the averaged value
     a := 0
@@ -138,14 +139,7 @@ PUB current_conv_time(ctime): curr_set
     ctime := ((curr_set & core#ISHCT_MASK) | ctime) & core#CONFIG_MASK
     writereg(core#CONFIG, 2, @ctime)
 
-PUB data_ready(): flag
-' Flag indicating data from the last conversion is available for reading
-'   Returns: TRUE (-1) if data available, FALSE (0) otherwise
-    flag := 0
-    readreg(core#ENABLE, 2, @flag)
-    return ((flag & core#DRDY) <> 0)
-
-PUB device_id{}: id
+PUB dev_id{}: id
 ' Read device ID
 '   Returns:
 '       Most-significant word: Die ID
@@ -159,7 +153,7 @@ PUB die_id{}: id
     id := 0
     readreg(core#DIE_ID, 2, @id)
 
-PUB int_active_state(state): curr_state
+PUB int_polarity(state): curr_state
 ' Set interrupt active level/polarity
 '   Valid values:
 '      *INTLVL_LO   (0) Active low
@@ -203,7 +197,7 @@ PUB int_mask(mask): curr_mask
     mask := ((curr_mask & core#ALERTS_MASK) | mask) & core#ENABLE_MASK
     writereg(core#ENABLE, 2, @mask)
 
-PUB ints_latched(state): curr_state
+PUB int_latch_ena(state): curr_state
 ' Enable latching of interrupts
 '   Valid values:
 '       TRUE (-1 or 1): Active interrupts remain asserted until cleared manually
@@ -219,17 +213,16 @@ PUB ints_latched(state): curr_state
     state := ((curr_state & core#LEN_MASK) | state) & core#ENABLE_MASK
     writereg(core#ENABLE, 2, @state)
 
-PUB int_thresh(thresh): curr_thr
+PUB int_set_thresh(thresh)
 ' Set interrupt/alert threshold
-'   Valid values: 0..65535
-'   Any other value polls the chip and returns the current setting
-    case thresh
-        0..65535:
-            writereg(core#ALERT_LIMIT, 2, @thresh)
-        other:
-            curr_thr := 0
-            readreg(core#ALERT_LIMIT, 2, @curr_thr)
-            return curr_thr
+'   Valid values: 0..65535 (clamped to range)
+    thresh := 0 #> thresh <# 65535
+    writereg(core#ALERT_LIMIT, 2, @thresh)
+
+PUB int_thresh{}: thresh
+' Get interrupt/alert threshold
+    thresh := 0
+    readreg(core#ALERT_LIMIT, 2, @thresh)
 
 PUB mfr_id{}: id
 ' Read the Manufacturer ID from the chip
@@ -264,27 +257,33 @@ PUB opmode(mode): curr_mode
     mode := ((curr_mode & core#MODE_MASK) | mode) & core#CONFIG_MASK
     writereg(core#CONFIG, 2, @mode)
 
-PUB power_data(): p
+PUB power_data{}: p
 ' Read the power measured by the chip, in microwatts
 '   NOTE: If averaging is enabled, this will return the averaged value
 '   NOTE: The maximum value returned is 419_430_000
     p := 0
     readreg(core#POWER, 2, @p)
 
-PUB power_overflowed(): flag
-' Flag indicating power data exceeded the maximum measurable value
-'   (419_430_000uW/419.43W)
+PUB power_data_rdy{}: flag
+' Flag indicating data from the last conversion is available for reading
+'   Returns: TRUE (-1) if data available, FALSE (0) otherwise
+    flag := 0
+    readreg(core#ENABLE, 2, @flag)
+    return ((flag & core#DRDY) <> 0)
+
+PUB power_overflowed{}: flag
+' Flag indicating power data exceeded the maximum measurable value (419_430_000uW or 419.43W)
     flag := 0
     readreg(core#ENABLE, 2, @flag)
     return ((flag & core#OVERFL) <> 0)
 
-PUB reset() | tmp
+PUB reset{} | tmp
 ' Reset the chip
 '   NOTE: Equivalent to Power-On Reset
     tmp := core#SOFT_RES
     writereg(core#CONFIG, 2, @tmp)
 
-PUB samples_averaged(samples=-2): curr_smp
+PUB samples_avg(samples=-2): curr_smp
 ' Set number of samples used for averaging measurements
 '   Valid values: *1, 4, 16, 64, 128, 256, 512, 1024
 '   Any other value polls the chip and returns the current setting
@@ -301,7 +300,7 @@ PUB samples_averaged(samples=-2): curr_smp
     samples := ((curr_smp & core#AVG_MASK) | samples) & core#CONFIG_MASK
     writereg(core#CONFIG, 2, @samples)
 
-PUB voltage_data(): v
+PUB voltage_data{}: v
 ' Read the measured bus voltage, in microvolts
 '   NOTE: If averaging is enabled, this will return the averaged value
 '   NOTE: Full-scale range is 40_960_000uV
@@ -326,7 +325,7 @@ PUB voltage_conv_time(ctime): curr_time
     ctime := ((curr_time & core#VBUSCT_MASK) | ctime) & core#CONFIG_MASK
     writereg(core#CONFIG, 2, @ctime)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from the slave device into ptr_buff
     case reg_nr
         $00..$03, $06, $07, $fe, $ff:
@@ -342,7 +341,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to the slave device
     case reg_nr
         $00:

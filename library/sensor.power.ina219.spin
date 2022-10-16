@@ -3,8 +3,9 @@
     Filename: sensor.power.ina219.spin
     Author: Jesse Burt
     Description: Driver of the TI INA219 current/power monitor IC
+    Copyright (c) 2022
     Started Sep 18, 2019
-    Updated Jul 31, 2022
+    Updated Sep 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -75,14 +76,14 @@ PUB start{}: status
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom settings
     ' validate I/O pins, bus speed and I2C address option bits
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ and lookdown(ADDR_BITS: %0000..%1111)
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and I2C_HZ =< core#I2C_MAX_FREQ and {
+}   lookdown(ADDR_BITS: %0000..%1111)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.msleep(1)
             _addr_bits := ADDR_BITS << 1
             ' test device bus presence
-            if i2c.present(SLAVE_WR | _addr_bits)
-                if (device_id{} == core#DEVID_RESP)
+            if (i2c.present(SLAVE_WR | _addr_bits))
+                if (dev_id{} == core#DEVID_RESP)
                     return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
@@ -96,14 +97,14 @@ PUB stop{}
 PUB defaults{}
 ' Factory default settings
 '   POR settings:
-'   bus_voltage_range(32)
-'   shunt_voltage_range(320)
+'   bus_voltage_rng(32)
+'   shunt_voltage_rng(320)
 '   bus_adc_res(12)
 '   shunt_adc_res(12)
 '   opmode(BOTH_CONT)
-    reset()
+    reset{}
 
-PUB preset_320S_2A_100mohm{}
+PUB preset_320s_2a_100mohm{}
 ' Preset:       'XXX for coming up with a value for current_scale()
 '   32V bus voltage range
 '   320mV shunt voltage range
@@ -116,8 +117,8 @@ PUB preset_320S_2A_100mohm{}
     _p_lsb := _i_lsb * 20
     _vmax_shunt := _i_max * _shunt_res
 
-    bus_voltage_range(32)
-    shunt_voltage_range(320)
+    bus_voltage_rng(32)
+    shunt_voltage_rng(320)
     shunt_adc_res(12)
     shunt_samples(1)
     bus_adc_res(12)
@@ -146,16 +147,16 @@ PUB bus_adc_res(adcres): curr_res
     curr_res := 0
     readreg(core#CONFIG, 2, @curr_res)
     case adcres
-        9, 10, 11, 12:
-            adcres := lookdownz(adcres: 9, 10, 11, 12) << core#BADC
+        9..12:
+            adcres := (adcres-9) << core#BADC
         other:
             curr_res := (curr_res >> core#BADC) & core#BADC_BITS
-            return lookupz(curr_res: 9, 10, 11, 12)
+            return (curr_res + 9)
 
     adcres := ((curr_res & core#BADC_MASK) | adcres) & core#CONFIG_MASK
     writereg(core#CONFIG, 2, @adcres)
 
-PUB bus_voltage_range(range): curr_rng
+PUB bus_voltage_rng(range): curr_rng
 ' Set bus voltage range
 '   Valid values: 16, *32
 '   Any other value polls the chip and returns the current setting
@@ -163,7 +164,7 @@ PUB bus_voltage_range(range): curr_rng
     readreg(core#CONFIG, 2, @curr_rng)
     case range
         16, 32:
-            range := lookdownz(range: 16, 32) << core#BRNG
+            range := ((range / 16)-1) << core#BRNG
         other:
             curr_rng := (curr_rng >> core#BRNG) & 1
             return lookupz(curr_rng: 16, 32)
@@ -176,22 +177,22 @@ PUB current_data{}: a
 '   Returns: Current in milliamps
     readreg(core#CURRENT, 2, @a)
 
-PUB current_scale(val): curr_val
+PUB current_scale{}: scale
+' Get current scale
+'   Returns: current scale, in LSBs
+    scale := 0
+    readreg(core#CALIBRATION, 2, @scale)
+
+PUB current_set_scale(scale)
 ' Set current scale, in LSBs
 '   Valid values: *0..65534 (even numbers only)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: Current and power readings will always be 0,
 '       unless this value is set non-zero
-    case val
-        0..65534:
-            curr_val := val & core#CALIBRATION_MASK
-            writereg(core#CALIBRATION, 2, @curr_val)
-        other:
-            curr_val := 0
-            readreg(core#CALIBRATION, 2, @curr_val)
-            return
+    scale := 0 #> (scale & core#CALIBRATION_MASK) <# 65534
+    writereg(core#CALIBRATION, 2, @scale)
 
-PUB device_id{}: id
+PUB dev_id{}: id
 ' Read device ID
 '   Returns: POR value of the configuration register
 '   NOTE: This method performs a soft-reset of the chip and reads the value of
@@ -243,11 +244,11 @@ PUB shunt_adc_res(adc_res): curr_res
     curr_res := 0
     readreg(core#CONFIG, 2, @curr_res)
     case adc_res
-        9, 10, 11, 12:
-            adc_res := lookdownz(adc_res: 9, 10, 11, 12) << core#SADC
+        9..12:
+            adc_res := (adc_res - 9) << core#SADC
         other:
             curr_res := (curr_res >> core#SADC) & core#SADC_BITS
-            return lookupz(curr_res: 9, 10, 11, 12)
+            return (curr_res + 9)
 
     adc_res := ((curr_res & core#SADC_MASK) | adc_res) & core#CONFIG_MASK
     writereg(core#CONFIG, 2, @adc_res)
@@ -273,13 +274,13 @@ PUB shunt_samples(samples): curr_smp
     readreg(core#CONFIG, 2, @curr_smp)
     case samples
         1, 2, 4, 8, 16, 32, 64, 128:
-            samples := lookdownz(samples: 1, 2, 4, 8, 16, 32, 64, 128) << core#SADC
+            samples := ((>| samples) - 1) << core#SADC
             samples |= (1 << core#SADC_AVG)
         other:
             curr_smp := (curr_smp >> core#SADC) & core#SADC_BITS
             if curr_smp & %1000 ' XXX briefly explain this block
                 curr_smp &= %0111
-                return lookupz(curr_smp: 1, 2, 4, 8, 16, 32, 64, 128)
+                return (|<(curr_smp))
             else
                 return 0
 
@@ -296,7 +297,7 @@ PUB shunt_voltage{}: v
 '   Returns: Voltage in microvolts
     return adc2shunt_volts(shunt_voltage_data{})
 
-PUB shunt_voltage_range(range): curr_rng
+PUB shunt_voltage_rng(range): curr_rng
 ' Set shunt voltage range, in millivolts
 '   Valid values: 40, 80, 160, *320
 '   Any other value polls the chip and returns the current setting
@@ -318,7 +319,7 @@ PUB voltage_data{}: v
     v := 0
     readreg(core#BUS_VOLTAGE, 2, @v)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' read nr_bytes from device into ptr_buff
     case reg_nr                                    ' validate register
         core#CONFIG..core#CALIBRATION:
@@ -333,7 +334,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' write nr_bytes to device from ptr_buff
     case reg_nr
         core#CONFIG, core#CALIBRATION:

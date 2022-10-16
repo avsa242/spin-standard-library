@@ -6,7 +6,7 @@
         * Temp data output
     Copyright (c) 2022
     Started Jul 26, 2020
-    Updated Jul 20, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -36,7 +36,7 @@ OBJ
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(10)
@@ -49,8 +49,8 @@ PUB Setup{}
         ser.strln(string("MCP9808 driver failed to start - halting"))
         repeat
 
-    sensor.tempscale(sensor#C)
-    sensor.tempres(0_0625)                       ' 0_0625, 0_1250, 0_2500, 0_5000
+    sensor.temp_scale(sensor#C)
+    sensor.temp_res(0_0625)                      ' 0_0625, 0_1250, 0_2500, 0_5000
     demo{}
 
 #include "tempdemo.common.spinh"                ' code common to all temp/RH demos

@@ -6,7 +6,7 @@
         audio amp driver.
     Copyright (c) 2022
     Started Jul 7, 2018
-    Updated May 14, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }

@@ -5,7 +5,7 @@
     Description: Driver for the PCF8563 Real Time Clock
     Copyright (c) 2022
     Started Sep 6, 2020
-    Updated Aug 2, 2022
+    Updated Sep 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -318,7 +318,7 @@ PUB timer_enabled(state): curr_state
     state := ((curr_state & core#TE_MASK) | state)
     writereg(core#CTRL_TIMER, 1, @state)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from device into ptr_buff
     case reg_nr                                 ' Validate reg
         $00..$0f:
@@ -335,7 +335,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to device
     case reg_nr
         $00..$0f:                               ' Validate reg

@@ -6,7 +6,7 @@
         * 3DoF data output
     Copyright (c) 2022
     Started Jul 7, 2021
-    Updated Jul 17, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -32,28 +32,30 @@ CON
 OBJ
 
     cfg: "boardcfg.flip"
-    imu: "sensor.gyroscope.3dof.fxas21002"
+    sensor: "sensor.gyroscope.3dof.fxas21002"
     ser: "com.serial.terminal.ansi"
     time: "time"
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(10)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if (imu.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
         ser.strln(string("FXAS21002 driver started"))
     else
         ser.strln(string("FXAS21002 driver failed to start - halting"))
         repeat
 
-    imu.preset_active{}
+    sensor.preset_active{}
 
-    demo{}
+    repeat
+        ser.position(0, 3)
+        show_gyro_data{}
 
-#include "imudemo.common.spinh"                 ' code common to all IMU demos
+#include "gyrodemo.common.spinh"                 ' code common to all IMU demos
 
 DAT
 {

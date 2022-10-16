@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: sensor.temperature.mcp9808.i2c.spin
+    Filename: sensor.temperature.mcp9808.spin
     Author: Jesse Burt
     Description: Driver for Microchip MCP9808 temperature sensors
     Copyright (c) 2022
     Started Jul 26, 2020
-    Updated May 25, 2022
+    Updated Sep 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -44,14 +44,14 @@ OBJ
     core: "core.con.mcp9808"                    ' HW-specific constants
     time: "time"                                ' timekeeping methods
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start{}: status
+PUB start{}: status
 ' Start using "standard" Propeller I2C pins, default slave address and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ, %000)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
+PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom I/O pins and I2C bus speed
     ' validate pins, bus freq, and optional slave address bits:
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
@@ -61,24 +61,25 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
             time.usleep(core#T_POR)
             ' check device bus presence:
             if i2c.present(SLAVE_WR | _addr_bits)
-                if deviceid{} == core#DEVID_RESP
+                if (dev_id{} == core#DEVID_RESP)
                     return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     i2c.deinit{}
+    _addr_bits := 0
 
-PUB Defaults{}
+PUB defaults{}
 ' Factory defaults
-    tempscale(C)
+    temp_scale(C)
     powered(TRUE)
-    tempres(0_0625)
+    temp_res(0_0625)
 
-PUB DeviceID{}: id
+PUB dev_id{}: id
 ' Read device identification
 '   Returns:
 '       Manufacturer ID: $0054 (MSW)
@@ -86,7 +87,7 @@ PUB DeviceID{}: id
     readreg(core#MFR_ID, 2, @id.word[1])        ' 9808 doesn't support seq. R/W
     readreg(core#DEV_ID, 2, @id.word[0])        '   so do discrete reads
 
-PUB IntActiveState(state): curr_state
+PUB int_polarity(state): curr_state
 ' Set interrupt active state
 '   Valid values: *LOW (0), HIGH (1)
 '   Any other value polls the chip and returns the current setting
@@ -102,13 +103,13 @@ PUB IntActiveState(state): curr_state
     state := ((curr_state & core#ALTPOL_MASK) | state)
     writereg(core#CONFIG, 2, @state)
 
-PUB IntClear{} | tmp
+PUB int_clr{} | tmp
 ' Clear interrupt
     readreg(core#CONFIG, 2, @tmp)
     tmp |= (1 << core#INTCLR)
     writereg(core#CONFIG, 2, @tmp)
 
-PUB Interrupt{}: active_ints
+PUB interrupt{}: active_ints
 ' Flag indicating interrupt(s) asserted
 '   Returns: 3-bit mask, [2..0]
 '       2: Temperature at or above Critical threshold
@@ -117,7 +118,7 @@ PUB Interrupt{}: active_ints
     readreg(core#TEMP, 2, @active_ints)
     active_ints >>= 13
 
-PUB IntHysteresis(deg): curr_setting
+PUB int_hyst(deg): curr_setting
 ' Set interrupt Upper and Lower threshold hysteresis, in degrees Celsius
 '   Valid values:
 '       Value   represents
@@ -138,7 +139,7 @@ PUB IntHysteresis(deg): curr_setting
     deg := ((curr_setting & core#HYST_MASK) | deg)
     writereg(core#CONFIG, 2, @deg)
 
-PUB IntMask(mask): curr_mask
+PUB int_mask(mask): curr_mask
 ' Set interrupt mask
 '   Valid values:
 '      *0: Interrupts asserted for Upper, Lower, and Critical thresholds
@@ -155,7 +156,7 @@ PUB IntMask(mask): curr_mask
     mask := ((curr_mask & core#ALTSEL_MASK) | mask)
     writereg(core#CONFIG, 2, @mask)
 
-PUB IntMode(mode): curr_mode
+PUB int_mode(mode): curr_mode
 ' Set interrupt mode
 '   Valid values:
 '      *COMP (0): Comparator output
@@ -171,7 +172,7 @@ PUB IntMode(mode): curr_mode
     mode := ((curr_mode & core#ALTMOD_MASK) | mode)
     writereg(core#CONFIG, 2, @mode)
 
-PUB IntsEnabled(state): curr_state
+PUB int_ena(state): curr_state
 ' Enable interrupts
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -186,43 +187,46 @@ PUB IntsEnabled(state): curr_state
     state := ((curr_state & core#ALTCNT_MASK) | state)
     writereg(core#CONFIG, 2, @state)
 
-PUB IntTempCritThresh(level): curr_lvl
+PUB int_crit_thresh{}: thresh
+' Get critical (high) temperature interrupt threshold
+'   Returns: hundredths of a degree Celsius
+    thresh := 0
+    readreg(core#ALERT_CRIT, 2, @thresh)
+    return temp_word2deg(thresh)
+
+PUB int_set_crit_thresh(thresh)
 ' Set critical (high) temperature interrupt threshold, in hundredths of a degree Celsius
-'   Valid values: -256_00..255_94 (-256.00C .. 255.94C)
-'   Any other value polls the chip and returns the current setting
-    case level
-        -256_00..255_94:
-            level := calctempword(level)
-            writereg(core#ALERT_CRIT, 2, @level)
-        other:
-            readreg(core#ALERT_CRIT, 2, @curr_lvl)
-            return tempword2deg(curr_lvl)
+'   Valid values: -256_00..255_94 (-256.00C .. 255.94C; clamped to range)
+    thresh := calc_temp_word(-256_00 #> thresh <# 255_94)
+    writereg(core#ALERT_CRIT, 2, @thresh)
 
-PUB IntTempHiThresh(level): curr_lvl
+PUB int_hi_thresh{}: thresh
+' Get high temperature interrupt threshold
+'   Returns: hundredths of a degree Celsius
+    thresh := 0
+    readreg(core#ALERT_UPPER, 2, @thresh)
+    return temp_word2deg(thresh)
+
+PUB int_set_hi_thresh(thresh)
 ' Set high temperature interrupt threshold, in hundredths of a degree Celsius
-'   Valid values: -256_00..255_94 (-256.00C .. 255.94C)
-'   Any other value polls the chip and returns the current setting
-    case level
-        -256_00..255_94:
-            level := calctempword(level)
-            writereg(core#ALERT_UPPER, 2, @level)
-        other:
-            readreg(core#ALERT_UPPER, 2, @curr_lvl)
-            return tempword2deg(curr_lvl)
+'   Valid values: -256_00..255_94 (-256.00C .. 255.94C; clamped to range)
+    thresh := calc_temp_word(-256_00 #> thresh <# 255_94)
+    writereg(core#ALERT_UPPER, 2, @thresh)
 
-PUB IntTempLoThresh(level): curr_lvl
+PUB int_lo_thresh{}: thresh
+' Get low temperature interrupt threshold
+'   Returns: hundredths of a degree Celsius
+    thresh := 0
+    readreg(core#ALERT_LOWER, 2, @thresh)
+    return temp_word2deg(thresh)
+
+PUB int_set_lo_thresh(thresh)
 ' Set low temperature interrupt threshold, in hundredths of a degree Celsius
 '   Valid values: -256_00..255_94 (-256.00C .. 255.94C)
-'   Any other value polls the chip and returns the current setting
-    case level
-        -256_00..255_94:
-            level := calctempword(level)
-            writereg(core#ALERT_LOWER, 2, @level)
-        other:
-            readreg(core#ALERT_LOWER, 2, @curr_lvl)
-            return tempword2deg(curr_lvl)
+    thresh := calc_temp_word(-256_00 #> thresh <# 255_94)
+    writereg(core#ALERT_LOWER, 2, @thresh)
 
-PUB Powered(state): curr_state
+PUB powered(state): curr_state
 ' Enable sensor power
 '   Valid values: *TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -237,13 +241,13 @@ PUB Powered(state): curr_state
     state := ((curr_state & core#SHDN_MASK) | state)
     writereg(core#CONFIG, 2, @state)
 
-PUB TempData{}: temp_adc
+PUB temp_data{}: temp_adc
 ' Read temperature ADC data
 '   Returns: s13
     temp_adc := 0
     readreg(core#TEMP, 2, @temp_adc)
 
-PUB TempRes(deg_c): curr_res
+PUB temp_res(deg_c): curr_res
 ' Set temperature resolution, in degrees Celsius (fractional)
 '   Valid values:
 '       Value   represents      Conversion time
@@ -261,7 +265,7 @@ PUB TempRes(deg_c): curr_res
             readreg(core#RESOLUTION, 1, @curr_res)
             return lookupz(curr_res: 0_5000, 0_2500, 0_1250, 0_0625)
 
-PUB TempWord2Deg(temp_word): temp | whole, part
+PUB temp_word2deg(temp_word): temp | whole, part
 ' Convert temperature ADC word to temperature
 '   Returns: temperature, in hundredths of a degree, in chosen scale
     temp_word := (temp_word << 19) ~> 19        ' Extend sign bit (#12)
@@ -276,21 +280,21 @@ PUB TempWord2Deg(temp_word): temp | whole, part
         other:
             return FALSE
 
-PRI calcTempWord(temp_c): temp_word
+PRI calc_temp_word(temp_c): temp_word
 ' Calculate word, given temperature in degrees Celsius
 '   Returns: 11-bit, two's complement word (0.25C resolution)
     temp_word := 0
-    if temp_c < 0
+    if (temp_c < 0)
         temp_word := temp_c + 256_00
     else
         temp_word := temp_c
 
     temp_word := ((temp_word * 4) << 2) / 100
 
-    if temp_c < 0
+    if (temp_c < 0)
         temp_word |= constant(1 << 12)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from the slave device into ptr_buff
     case reg_nr                                 ' validate reg number
         $00..$08:
@@ -306,7 +310,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes to the slave device from ptr_buff
     case reg_nr
         $01..$04, $08:
@@ -319,27 +323,23 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return
 
-
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

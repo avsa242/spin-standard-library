@@ -6,7 +6,7 @@
         * 3DoF data output
     Copyright (c) 2022
     Started Jul 11, 2020
-    Updated Jul 17, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -40,11 +40,11 @@ CON
 OBJ
 
     cfg: "boardcfg.flip"
-    imu: "sensor.gyroscope.3dof.l3gd20h"
+    sensor: "sensor.gyroscope.3dof.l3gd20h"
     ser: "com.serial.terminal.ansi"
     time: "time"
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(10)
@@ -52,20 +52,22 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
 
 #ifdef L3GD20H_SPI
-    if (imu.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
+    if (sensor.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
 #else
-    if (imu.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
 #endif
         ser.strln(string("L3GD20H driver started"))
     else
         ser.strln(string("L3GD20H driver failed to start - halting"))
         repeat
 
-    imu.preset_active{}
+    sensor.preset_active{}
 
-    demo{}
+    repeat
+        ser.position(0, 3)
+        show_gyro_data{}
 
-#include "imudemo.common.spinh"                 ' code common to all IMU demos
+#include "gyrodemo.common.spinh"                 ' code common to all IMU demos
 
 DAT
 {

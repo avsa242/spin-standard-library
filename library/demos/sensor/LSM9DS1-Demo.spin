@@ -6,7 +6,7 @@
         * 9DoF data output
     Copyright (c) 2022
     Started Aug 12, 2017
-    Updated Jul 13, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -41,11 +41,11 @@ CON
 OBJ
 
     cfg: "boardcfg.flip"
-    imu: "sensor.imu.9dof.lsm9ds1"
+    sensor: "sensor.imu.9dof.lsm9ds1"
     ser: "com.serial.terminal.ansi"
     time: "time"
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(10)
@@ -53,20 +53,26 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
 
 #ifdef LSM9DS1_SPI
-    if (imu.startx(CS_AG_PIN, CS_M_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
+    if (sensor.startx(CS_AG_PIN, CS_M_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
 #else
-    if (imu.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
+    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS))
 #endif
         ser.strln(string("LSM9DS1 driver started"))
     else
         ser.strln(string("LSM9DS1 driver failed to start - halting"))
         repeat
 
-    imu.preset_active{}
+    sensor.preset_active{}
 
-    demo{}
+    repeat
+        ser.position(0, 3)
+        show_accel_data{}
+        show_gyro_data{}
+        show_mag_data{}
 
-#include "imudemo.common.spinh"                 ' code common to all IMU demos
+#include "acceldemo.common.spinh"
+#include "gyrodemo.common.spinh"
+#include "magdemo.common.spinh"
 
 DAT
 {

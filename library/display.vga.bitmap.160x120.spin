@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Sep 6, 2022
+    Updated: Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -34,7 +34,6 @@
  Nyamekye,
 
 }}
-#define _PASM_
 #define MEMMV_NATIVE bytemove
 #include "lib.gfx.bitmap.spin"
 
@@ -49,10 +48,6 @@ CON
 VAR
 
     byte _cog
-
-OBJ
-
-    ctrs    : "core.con.counters"
 
 PUB startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): okay
 ' Start VGA engine
@@ -104,21 +99,15 @@ PUB clear{}
 ' Clear the display
     longfill(_ptr_drawbuffer, _bgcolor, constant((DISP_WIDTH * DISP_HEIGHT) / 4))
 
-PUB displaystate(state)
+PUB disp_state(state)
 ' Enable video output
 '   Valid values: TRUE (-1), FALSE (0)
     displayIndicator := state
 
-PUB displayrate(rate)
+PUB disp_rate(rate)
 ' Returns true or false depending on the time elasped according to a specified rate.
 '   Rate - A display rate to return at. 0=0.234375Hz, 1=0.46875Hz, 2=0.9375Hz, 3=1.875Hz, 4=3.75Hz, 5=7.5Hz, 6=15Hz, 7=30Hz.
     result or= (($80 >> ((rate <# 7) #> 0)) & syncIndicator)
-
-PUB mirrorh(state)
-' dummy method
-
-PUB mirrorv(state)
-' dummy method
 
 PUB plot(x, y, color)
 ' Plot pixel at (x, y) in color
@@ -141,13 +130,10 @@ PUB point(x, y): pix_clr
     return byte[_ptr_drawbuffer][x + (y * _disp_width)] >> 2
 #endif
 
-PUB waitvsync
+PUB wait_vsync
 ' Waits for the display vertical refresh.
     result := syncIndicator
     repeat until(result <> syncIndicator)
-
-PUB update
-' dummy method
 
 #ifndef GFX_DIRECT
 PRI memfill(xs, ys, val, count)
@@ -158,6 +144,9 @@ PRI memfill(xs, ys, val, count)
     bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), (val << 2) | $3, count)
 #endif
 
+#define _PASM_
+#include "core.con.counters.spin"
+
 DAT
 
                         org     0
@@ -166,7 +155,7 @@ DAT
 
 initialization          mov     vcfg,           videoState                 ' Setup video hardware.
                         mov     frqa,           frequencyState             '
-                        movi    ctra,           #(ctrs#VCO_DIV_4 | ctrs#PLL_INTERNAL)
+                        movi    ctra,           #(VCO_DIV_4 | PLL_INTERNAL)
 
 '                       Active Video
 loop                    mov     displayCounter, par                        ' Set/Reset tiles fill counter.

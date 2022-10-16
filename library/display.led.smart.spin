@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated Sep 6, 2022
+    Updated Oct 6, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -200,14 +200,14 @@ PUB connected{}
 ' Returns true when latest connection details picked up by driver
     return (_connection == 0)
 
-PUB drawto(addr)
+PUB draw_to(addr)
 ' Set address of (optional) draw/render buffer
 '   NOTE: This is typically used as an offscreen buffer,
 '       to subsequently be copied to the display or "live" buffer,
 '       once a complete frame is rendered.
     _ptr_drawbuffer := addr
 
-PUB numpixels{}
+PUB num_pixels{}
 ' Returns number of pixels in assiged pixel array                      
     return _npixels
 
@@ -232,7 +232,7 @@ PUB point(x, y): pix_clr
     return long[_ptr_drawbuffer][x + (y * _disp_width)]
 #endif
 
-PUB update{}
+PUB show{}
 ' Write the draw buffer to the display
 '   NOTE: This is only required when using double-buffering
     longmove(_ptr_framebuffer, _ptr_drawbuffer, _buff_sz/4)

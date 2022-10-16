@@ -6,7 +6,7 @@
         * Memory hexdump display
     Copyright (c) 2022
     Started Sep 10, 2020
-    Updated Jul 30, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -39,7 +39,7 @@ OBJ
     time: "time"
     mem : "memory.fram.85xxxx"
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)

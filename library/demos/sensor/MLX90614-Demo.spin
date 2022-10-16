@@ -6,7 +6,7 @@
         * Object temp data output
     Copyright (c) 2022
     Started Mar 17, 2019
-    Updated Jul 20, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -35,7 +35,7 @@ OBJ
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(10)
@@ -48,7 +48,7 @@ PUB Setup{}
         ser.strln(string("MLX90614 driver failed to start - halting"))
         repeat
 
-    sensor.tempscale(sensor#C)
+    sensor.temp_scale(sensor#C)
     demo{}
 
 #include "tempdemo.common.spinh"             ' code common to all temp/RH demos

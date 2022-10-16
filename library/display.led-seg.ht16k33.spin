@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Jun 22, 2021
-    Updated: Sep 6, 2022
+    Updated: Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,8 +21,7 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT): status
 ' SCL_PIN, SDA_PIN, I2C_HZ: I2C bus I/O pins and speed
 ' ADDR_BITS: specify LSBs of slave address (%000..%111)
 ' WIDTH, HEIGHT: dimensions of display, in digits/characters
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
+    if (lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and I2C_HZ =< core#I2C_MAX_FREQ)
         if lookdown(ADDR_BITS: %000..%111)
             if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
                 time.usleep(core#T_POR)         ' wait for device startup
@@ -31,7 +30,7 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT): status
                 _disp_height := HEIGHT
                 _disp_xmax := WIDTH-1
                 _disp_ymax := HEIGHT-1
-                if i2c.present(SLAVE_WR | _addr_bits) ' test device presence
+                if (i2c.present(SLAVE_WR | _addr_bits)) ' test device presence
                     clear{}
                     return
     ' if this point is reached, something above failed
@@ -39,33 +38,34 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT): status
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB char(c) | cmd_pkt, i
+PUB char = putchar
+PUB putchar(c) | cmd_pkt, i
 ' Write character to display
 '   NOTE: Interprets control characters
     case c
         BS, DEL:                                ' backspace/delete
-            prevdigit{}                         ' move back to previous digit
-            updatebuff(" ")                     '   and display a SPACE over it
+            prev_digit{}                         ' move back to previous digit
+            update_buff(" ")                     '   and display a SPACE over it
         LF:
-            movedown{}
+            move_down{}
         FF:                                     ' clear/form feed
             clear{}
         CR:
-            positionx(0) 
+            pos_x(0) 
         " ".."-", "/".."~":                     ' printable characters
             _lastchar := c
-            updatebuff(c)
-            nextdigit{}
+            update_buff(c)
+            next_digit{}
         ".":                                    ' period/decimal point
-            if lookdown(_lastchar: "0".."9")    ' if previous char was a num,
+            if (lookdown(_lastchar: "0".."9"))    ' if previous char was a num,
                 _lastchar := "."                '   draw the decimal point in
-                prevdigit{}                     '   the same digit as the num
-                updatebuff(c)
-                nextdigit{}
+                prev_digit{}                     '   the same digit as the num
+                update_buff(c)
+                next_digit{}
             else
                 _lastchar := "."
-                updatebuff(c)
-                nextdigit{}
+                update_buff(c)
+                next_digit{}
         other:
             return
 
@@ -81,75 +81,75 @@ PUB clear{}
 ' Clear display
     repeat 7
         char(" ")
-    position(0, 0)
+    pos(0, 0)
 
-PUB movedown{}
+PUB move_down{}
 ' Move cursor down one row
 '   NOTE: Wraps around to the first row
     _row++
-    if _row > _disp_ymax
+    if (_row > _disp_ymax)
         _row := 0
 
-PUB moveleft{}
+PUB move_left{}
 ' Move cursor left one column
 '   NOTE: Wraps around to the last column
     _col--
-    if _col < 0
+    if (_col < 0)
         _col := _disp_xmax
 
-PUB moveright{}
+PUB move_right{}
 ' Move cursor right one column
 '   NOTE: Wraps around to the first column
     _col++
-    if _col > _disp_xmax
+    if (_col > _disp_xmax)
         _col := 0
 
-PUB moveup{}
+PUB move_up{}
 ' Move cursor up one row
 '   NOTE: Wraps around to the last row
     _row--
-    if _row < 0
+    if (_row < 0)
         _row := _disp_ymax
 
-PUB position(x, y)
+PUB pos(x, y)
 ' Set cursor position
-    if (x => 0) and (x =< _disp_xmax) and (y => 0) and (y =< _disp_ymax)
+    if ((x => 0) and (x =< _disp_xmax) and (y => 0) and (y =< _disp_ymax))
         _col := x
         _row := y
 
-PUB positionx(x)
+PUB pos_x(x)
 ' Set cursor X position
-    if (x => 0) and (x =< _disp_xmax)
+    if ((x => 0) and (x =< _disp_xmax))
         _col := x
 
-PUB positiony(y)
+PUB pos_y(y)
 ' Set cursor Y position
-    if (y => 0) and (y =< _disp_ymax)
+    if ((y => 0) and (y =< _disp_ymax))
         _row := y
 
-PRI nextdigit{}
+PRI next_digit{}
 ' Advance to next display digit
 '   NOTE:
 '       * Wraps around to the first column
 '       * Wraps around to first row
     _col++
-    if _col > _disp_xmax
+    if (_col > _disp_xmax)
         _col := 0
-        movedown{}
+        move_down{}
 
-PRI prevdigit{}
+PRI prev_digit{}
 ' Move back to previous display digit
 '   NOTE:
 '       * Wraps around to the last column
 '       * Wraps around to last row
     _col--
-    if _col < 0
+    if (_col < 0)
         _col := _disp_xmax
-        moveup{}
+        move_up{}
 
-PRI updatebuff(c)
+PRI update_buff(c)
 ' Update display buffer with character 'c'
-    if c == "."
+    if (c == ".")
         ' if drawing a period/decimal point, OR it in with the current digit's
         '   data, so it doesn't clear the digit and just draw the period
         _disp_buff[(_row * _disp_width) + _col] |= _fnt_tbl[c-32]

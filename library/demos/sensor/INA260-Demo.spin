@@ -5,7 +5,7 @@
     Description: Demo of the INA260 driver
         * Power data output
     Started Sep 18, 2019
-    Updated Aug 1, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -30,7 +30,7 @@ OBJ
 
     cfg : "boardcfg.flip"
     ser : "com.serial.terminal.ansi"
-    pwr : "sensor.power.ina260"
+    sensor : "sensor.power.ina260"
     time: "time"
 
 PUB main{}
@@ -39,7 +39,7 @@ PUB main{}
     time.msleep(10)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if pwr.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
+    if sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
         ser.strln(string("INA260 driver started"))
     else
         ser.strln(string("INA260 driver failed to start - halting"))

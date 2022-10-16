@@ -5,7 +5,7 @@
     Description: Driver for PAJ6520U2 Gesture Sensor
     Copyright (c) 2021
     Started May 21, 2020
-    Updated May 19, 2021
+    Updated Sep 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -41,14 +41,14 @@ OBJ
     core: "core.con.paj7620u2"
     time: "time"
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
 PUB Start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom settings
     if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
 }   I2C_HZ =< core#I2C_MAX_FREQ
@@ -66,20 +66,20 @@ PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     powered(FALSE)
     i2c.deinit{}
 
-PUB Defaults{}
+PUB defaults{}
 ' Set factory defaults
     intmask(%111111111)
 
-PUB DeviceID{}: id
+PUB deviceid{}: id
 ' Read device identification
     readreg(core#PARTID_LSB, 2, @id)
 
-PUB Interrupt{}: int_src
+PUB interrupt{}: int_src
 ' Flag indicating one or more interrupts have asserted, as a 9-bit mask
 '   Mask:
 '       %876543210
@@ -94,7 +94,7 @@ PUB Interrupt{}: int_src
 '       0 - Right
     readreg(core#INTFLAG_1, 2, @int_src)
 
-PUB IntMask(mask): curr_mask
+PUB intmask(mask): curr_mask
 ' Select which events will trigger an interrupt, as a 9-bit mask
 '   Mask:
 '       %876543210
@@ -116,7 +116,7 @@ PUB IntMask(mask): curr_mask
             readreg(core#R_INT_1_EN, 2, @curr_mask)
             return curr_mask
 
-PUB LastGesture{}: gest
+PUB lastgesture{}: gest
 ' Last gesture recognized by sensor
 '   Returns:
 '       Right               (1)
@@ -189,17 +189,17 @@ PUB LastGesture{}: gest
         other:
             return 0
 
-PUB ObjBrightness{}: obj_brt
+PUB objbrightness{}: obj_brt
 ' Object brightness
 '   Returns: 0..255
     readreg(core#OBJECTAVGY, 1, @obj_brt)
 
-PUB ObjSize{}: sz
+PUB objsize{}: sz
 ' Object size
 '   Returns: 0..4095
     readreg(core#OBJECTSIZE_LSB, 2, @sz)
 
-PUB Powered(state): curr_state
+PUB powered(state): curr_state
 ' Enable device power
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -213,12 +213,12 @@ PUB Powered(state): curr_state
 
     writereg(core#TG_ENH, 1, @state)
 
-PUB Reset{} | tmp
+PUB reset{} | tmp
 ' Reset the device
     tmp := 1
     writereg(core#R_REGBANK_RESET, 1, @tmp)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 '' Read num_bytes from the slave device into the address stored in ptr_buff
     case reg_nr
         $000..$003, $032..$03F, $040..$052, $054..$05F, $060, $061, $063..$06C, $080..$089, $08B..$09D, $09F..$0A5, $0A9, $0AA..$0DF, $0EE, $0EF, $100..$17F:   'XXX TRIM
@@ -242,7 +242,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
+PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Write nr_bytes from ptr_buff to slave device
     case reg_nr
         $003, $032..$03A, $03F, $040..$042, $046..$052, $05C..$05F, $061, $063..$06A, $080..$089, $08B..$09D, $09F..$0A5, $0A9, $0AA, $0AB, $0CC..$0D2, $0EE, $0EF, $060, $062, $06D..$075, $08A, $09E, $0A6..$0A8, $0E0..$0E9, $100..$1EF:
@@ -263,22 +263,21 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+

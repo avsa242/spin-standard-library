@@ -5,7 +5,7 @@
     Description: Driver for the DS3231 Real-Time Clock
     Copyright (c) 2022
     Started Nov 17, 2020
-    Updated Aug 3, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -222,7 +222,7 @@ PUB clkout_freq(freq): curr_freq
     freq := ((curr_freq & core#RS_MASK) | freq)
     writereg(core#CONTROL, 1, @freq)
 
-PUB int_clear(mask) | tmp
+PUB int_clr(mask) | tmp
 ' Clear asserted interrupts
     tmp := 0
     readreg(core#CTRL_STAT, 1, @tmp)
@@ -388,16 +388,16 @@ PUB set_year(y)
         other:
             return
 
-PUB tempdata{}: temp
+PUB temp_data{}: temp
 ' Temperature ADC data
     readreg(core#TEMP_MSB, 2, @temp)
 
-PUB tempdataready{}: flag
+PUB temp_data_rdy{}: flag
 ' Flag indicating temperature data ready
     readreg(core#CTRL_STAT, 1, @flag)
     return ((flag >> core#BSY) & 1) == 0
 
-PUB tempmeasure{} | tmp, meas
+PUB temp_measure{} | tmp, meas
 ' Perform a manual temperature measurement
 '   NOTE: The RTC automatically performs temperature measurements
 '       every 64 seconds
@@ -406,7 +406,7 @@ PUB tempmeasure{} | tmp, meas
 
     writereg(core#CONTROL, 1, @tmp)
 
-PUB tempword2deg(temp_word): temp
+PUB temp_word2deg(temp_word): temp
 ' Convert temperature ADC word to temperature
 '   Returns: temperature, in hundredths of a degree, in chosen scale
     temp := (temp_word >> 6) * 0_25
@@ -418,7 +418,7 @@ PUB tempword2deg(temp_word): temp
         other:
             return FALSE
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Read nr_bytes from device into ptr_buff
     case reg_nr
         core#SECONDS..core#TEMP_MSB:
@@ -437,7 +437,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
         i2c.rdblock_lsbf(ptr_buff, nr_bytes, i2c#NAK)
     i2c.stop{}
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
+PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt, tmp
 ' Write nr_bytes to device from ptr_buff
     case reg_nr
         core#SECONDS..core#AGE_OFFS:

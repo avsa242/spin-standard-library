@@ -3,38 +3,39 @@
     Filename: NRF24L01-TXDemo.spin
     Author: Jesse Burt
     Description: nRF24L01+ Transmit demo
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Nov 23, 2019
-    Updated May 15, 2021
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    _clkmode        = cfg#_clkmode
-    _xinfreq        = cfg#_xinfreq
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED             = cfg#LED1
-    SER_BAUD        = 115_200
+    LED         = cfg#LED1
+    SER_BAUD    = 115_200
 
-    CS_PIN          = 1
-    SCK_PIN         = 2
-    MOSI_PIN        = 3
-    MISO_PIN        = 4
-    CE_PIN          = 0
+    { SPI configuration }
+    CE_PIN      = 8'0
+    CS_PIN      = 9'1
+    SCK_PIN     = 10'2
+    MOSI_PIN    = 11'3
+    MISO_PIN    = 12'4
 
-    CHANNEL         = 2                         ' 0..125
+    CHANNEL     = 2                             ' 0..125
 ' --
 
 OBJ
 
-    ser         : "com.serial.terminal.ansi"
-    cfg         : "boardcfg.flip"
-    time        : "time"
-    int         : "string.integer"
-    nrf24       : "wireless.transceiver.nrf24l01"
+    ser  : "com.serial.terminal.ansi"
+    cfg  : "boardcfg.flip"
+    nrf24: "wireless.transceiver.nrf24l01"
+    str  : "string"
+    time : "time"
 
 VAR
 
@@ -42,11 +43,12 @@ VAR
     byte _payld_len
     byte _addr[5]
 
-PUB Main{} | payld_cnt, tmp[2], i, max_retrans, pkts_retrans, lost_pkts
+PUB main{} | payld_cnt, max_retrans, pkts_retrans, lost_pkts
 
-    setup{}
+    setup{}                                     ' start serial term. and nRF24
+    longfill(@payld_cnt, 0, 4)                  ' init vars to 0
 
-' -- User-modifiable settings
+' -- User-modifiable settings (NOTE: These settings _must_ match the receive side) }
     nrf24.channel(CHANNEL)
 
     ' choose a transmit mode preset (250kbps, 1Mbps, 2Mbps)
@@ -58,98 +60,80 @@ PUB Main{} | payld_cnt, tmp[2], i, max_retrans, pkts_retrans, lost_pkts
     nrf24.preset_tx2m{}                         ' 2Mbps
 '    nrf24.preset_tx2m_noaa{}                    ' 2Mbps, no Auto-Ack
 
-    nrf24.txpower(0)                            ' -18, -12, -6, 0 (dBm)
+    nrf24.tx_pwr(0)                             ' -18, -12, -6, 0 (dBm)
 
-    _payld_len := 8                             ' 1..32 (_must_ match RX side)
+    _payld_len := 8                             ' 1..32
 
-    ' Set transmit/receive address (note: order in string() is LSB, ..., MSB)
-    nrf24.nodeaddress(string($e7, $e7, $e7, $e7, $e7))
-
-    _payload[0] := "T"                          ' Start of payload
-    _payload[1] := "E"
-    _payload[2] := "S"
-    _payload[3] := "T"
+    { set transmit/receive address (note: order in string{} is LSB, ..., MSB) }
+    nrf24.node_addr(string($e7, $e7, $e7, $e7, $e7))
 
 ' --
 
-    nrf24.payloadlen(_payld_len, 0)
-    nrf24.txaddr(@_addr, nrf24#READ)
+    nrf24.payld_len(_payld_len, 0)
+    nrf24.tx_addr(@_addr, nrf24#READ)
 
     ser.clear{}
     ser.position(0, 0)
-    ser.printf1(string("Transmit mode (channel %d)\n"), nrf24.channel(-2))
-    ser.str(string("Transmitting..."))
+    ser.printf1(string("Transmit mode (channel %d)\n\r"), nrf24.channel(-2))
 
-    longfill(@payld_cnt, 0, 6)
     repeat
-        ' Collect some packet statistics
-        max_retrans := nrf24.maxretransreached{}
-        pkts_retrans := nrf24.packetsretransmitted{}
-        lost_pkts := nrf24.lostpackets{}
+        { payload to transmit }
+        str.sprintf1(@_payload, @"TEST%04.4d", payld_cnt++)
 
-        ser.position(0, 5)
+        { collect and display some packet statistics }
+        max_retrans := nrf24.max_retrans_reached{}
+        pkts_retrans := nrf24.pkts_retrans{}
+        lost_pkts := nrf24.lost_pkts{}
+        ser.position(0, 2)
         ser.str(string("Max retransmissions reached? "))
-        ser.str(lookupz(||(max_retrans): string("No "), string("Yes")))
-        ser.newline{}
+        ser.strln(lookupz(||(max_retrans): @"No ", @"Yes"))
+        ser.printf1(string("Packets retransmitted: %2.2d\n\r"), pkts_retrans)
+        ser.printf1(string("Lost packets: %2.2d\n\r"), lost_pkts)
 
-        ser.printf1(string("Packets retransmitted: %s"), int.decpadded(pkts_retrans, 2))
-        ser.printf1(string("\nLost packets: %s"), int.decpadded(lost_pkts, 2))
+        { display payload and transmit it }
+        ser.position(0, 6)
+        ser.printf5(string("Transmitting packet (to %02.2x:%02.2x:%02.2x:%02.2x:%02.2x)\n\r"), {
+}       _addr[4], _addr[3], _addr[2], _addr[1], _addr[0])
+        ser.hexdump(@_payload, 0, 4, _payld_len, 16 <# _payld_len)
+        nrf24.tx_payld(_payld_len, @_payload)
 
-        if max_retrans == TRUE                  ' Max retransmissions reached?
-            nrf24.intclear(%001)                '   If yes, clear the int
+        { check for transmission error limits and clear them so transmission can continue }
+        if (max_retrans)
+            nrf24.int_clr(nrf24#INT_MAX_RETRANS)
+        if (lost_pkts => 15)
+            nrf24.channel(CHANNEL)
 
-        if lost_pkts => 15                      ' Packets lost exceeds 15?
-            nrf24.channel(CHANNEL)              '   If yes, clear the int
+        { optional delay between transmissions - use as necessary to avoid abuse of the airwaves }
+        time.msleep(1000)
 
-        tmp := int.deczeroed(payld_cnt++, 4)    ' Tack a counter onto the
-        bytemove(@_payload[4], tmp, 4)          '   end of the payload
-        ser.position(0, 10)
-        ser.str(string("Transmitting packet "))
-
-        ser.char("(")
-        repeat i from 4 to 0                    ' Show address transmitting to
-            ser.hex(_addr[i], 2)
-        ser.strln(string(")"))
-
-        ' Show what will be transmitted
-        ser.position(0, 11)
-        ser.hexdump(@_payload, 0, 4, _payld_len, _payld_len)
-
-        nrf24.txpayload(_payld_len, @_payload)
-
-        time.msleep(1000)                       ' Optional inter-packet delay
-
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
-    if nrf24.startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.strln(string("NRF24L01+ driver started"))
+
+    if (nrf24.startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
+        ser.strln(string("nRF24L01+ driver started"))
     else
-        ser.strln(string("NRF24L01+ driver failed to start - halting"))
+        ser.strln(string("nRF24L01+ driver failed to start - halting"))
         repeat
 
 DAT
 
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
-}                                                                                                                
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
+
