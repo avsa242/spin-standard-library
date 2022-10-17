@@ -4,7 +4,7 @@
     Description: CANbus engine (bi-directional, 500kbps)
     Author: Jesse Burt
     Created: 2015
-    Updated: Oct 10, 2022
+    Updated: Oct 17, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -138,7 +138,7 @@ PUB recv_errs{}: errcnt
 
 PUB send(tx_id, bytes, d0, d1, d2, d3, d4, d5, d6, d7)
 ' Send a standard or extended frame with up to 8 data bytes, passed as discrete values
-    if (check_ready{})
+    if (can_rdy{})
         _tx_ident := tx_id
         _tx_dlc := bytes
         _tx_data[0] := d0
@@ -158,7 +158,7 @@ PUB send_rtr(tx_id)
 
 PUB send_str(tx_id, ptr_str) | i
 ' Send a standard or extended frame with up to 8 data bytes, passed as a length-prefaced string
-    if (check_ready{})
+    if (can_rdy{})
         _tx_ident := tx_id
         _tx_dlc := byte[ptr_str]
         i := 0
