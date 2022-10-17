@@ -437,14 +437,14 @@ PUB Usage | i
     else
         BuildCommandHelp(currentcommand)
 
-    str.Append(@data_usage, string(10))
+    str.Append(@data_usage, string(10, 13))
 
     return @data_usage
 
 PRI BuildHelp | i
 
     str.Append(@data_usage, ptr_description)
-    str.Append(@data_usage, string(10,"commands:",10,10))
+    str.Append(@data_usage, string(10,13,"commands:",10,13,10,13))
 
     i := 0
     repeat while i < cmdc
@@ -467,10 +467,10 @@ PRI BuildCommandHelp(cmd) | i, c
     if command_positional_argument_name[cmd] <> 0
         str.Append(@data_usage, string(" "))
         str.Append(@data_usage, command_positional_argument_name[cmd])
-        str.Append(@data_usage, string(10))
+        str.Append(@data_usage, string(10, 13))
 
     if c > 0
-        str.Append(@data_usage, string(10,"options:",10,10))
+        str.Append(@data_usage, string(10,13,"options:",10,13,10,13))
 
         i := 0
         repeat while i < optc
@@ -479,7 +479,7 @@ PRI BuildCommandHelp(cmd) | i, c
             i++
 
     if command_positional_argument_name[cmd] <> 0
-        str.Append(@data_usage, string(10,"positional argument:",10,10))
+        str.Append(@data_usage, string(10,13,"positional argument:",10,13,10,13))
         AddLine(command_positional_argument_name[cmd], command_positional_argument_description[cmd], 0)
 
 PRI AddLine(name, description, hasvalue)
@@ -494,7 +494,7 @@ PRI AddLine(name, description, hasvalue)
         bytefill  (@data_usage + strsize(@data_usage), " ", 12 - strsize(name))
 
     str.Append(@data_usage, description)
-    str.Append(@data_usage, string(10))
+    str.Append(@data_usage, string(10,13))
 
 PRI MatchCommand(s) | j
 
