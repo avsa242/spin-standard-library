@@ -62,7 +62,8 @@ PUB clear
     char(CS)
 
 PUB clearline = clear_line
-PUB clear_line
+PUB clear_line = clear_ln
+PUB clear_ln
 ' Clear from cursor to end of line
     char(CE)
 
