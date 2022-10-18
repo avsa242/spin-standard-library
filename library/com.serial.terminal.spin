@@ -5,7 +5,7 @@
     Description: Parallax Serial Terminal-compatible
         serial terminal driver
     Started 2006
-    Updated Oct 16, 2022
+    Updated Oct 18, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -109,7 +109,7 @@ PUB move_up(y)
 { common terminal code normally provides this, but tell it we already have one }
 #define _HAS_NEWLINE_
 PUB newline
-' Clear screen and place cursor at top-left.
+' Move to the start of the next line
     char(NL)
 
 PUB position = pos_xy
