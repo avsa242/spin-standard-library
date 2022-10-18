@@ -193,10 +193,10 @@ PUB clearline = clearln
 PUB clear_line = clear_ln
 PUB clear_ln{}
 ' Clear current line of terminal
-    clearlnx(CLR_CUR_TO_END)
+    clear_lnx(CLR_CUR_TO_END)
 
-PUB clearlinex = clearlnx
-PUB clearlnx(mode)
+PUB clearlinex = clear_lnx
+PUB clear_lnx(mode)
 ' Clear line using explicitly set mode
     csi{}
     dec(mode)
