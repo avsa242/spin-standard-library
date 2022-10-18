@@ -5,15 +5,13 @@
     Modified by: Jesse Burt
     Description: VGA 32x15 text-mode/terminal display
     Started 2006
-    Updated Nov 14, 2021
+    Updated Oct 18, 2022
     See end of file for terms of use.
     --------------------------------------------
 
     NOTE: This is based on VGA_Text.spin, originally
         by Chip Gracey
 }
-#define _HAS_NEWLINE_
-
 CON
 
     COLS        = 32
@@ -57,17 +55,17 @@ OBJ
 
     vga : "display.vga"
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start(VGA_BASEPIN): status
+PUB start(VGA_BASEPIN): status
 ' Start terminal - starts a cog
 '   Returns:
 '       cog number of VGA engine
 '       FALSE if no cog available
 '
 ' NOTE: Requires at least 80MHz system clock
-    setcolors(@_palette)
+    set_colors(@_palette)
     char(0)
 
     longmove(@_vga_status, @_vga_params, PARAM_CNT)
@@ -78,11 +76,13 @@ PUB Start(VGA_BASEPIN): status
 
     return vga.startx(@_vga_status)
 
-PUB Stop
+PUB stop
 ' Stop terminal - frees a cog
     vga.stop
 
-PUB Char(c) | i, k
+PUB tx = putchar
+PUB char = putchar
+PUB putchar(c) | i, k
 ' Output a character
 '
 '     $00 = clear screen
@@ -121,7 +121,9 @@ PUB Char(c) | i, k
         $0C: _color := c & 7
     _flag := 0
 
-PUB Newline
+{ normally the terminal common code provides this, but tell it we have our own, instead }
+#define _HAS_NEWLINE_
+PUB newline
 ' Move to first column of next line
     _col := 0
 
@@ -131,7 +133,7 @@ PUB Newline
         wordmove(@_screen, @_screen[COLS], LASTROW)  'scroll lines
         wordfill(@_screen[LASTROW], $220, COLS)      'clear new line
 
-PUB SetColors(ptr_color) | i, fore, back
+PUB set_colors(ptr_color) | i, fore, back
 ' Override default color palette
 ' ptr_color must point to a list of up to 8 colors
 ' arranged as follows (where r, g, b are 0..3):
@@ -154,7 +156,7 @@ PRI print(c)
     if ++_col == COLS
         newline
 
-#include "lib.terminal.spin"
+#include "terminal.common.spinh"
 
 DAT
 
@@ -190,3 +192,22 @@ _palette    byte    %%333, %%001                ' 0    white / dark blue
             byte    %%020, %%232                ' 5    green / gray-green
             byte    %%100, %%311                ' 6      red / pink
             byte    %%033, %%003                ' 7     cyan / blue
+
+DAT
+{
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
+
