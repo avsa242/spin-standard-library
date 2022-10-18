@@ -5,7 +5,7 @@
     Description: Driver for serial LCDs
         Parallax PNs (#27976, #27977, #27979)
     Started Apr 29, 2006
-    Updated Oct 17, 2022
+    Updated Oct 18, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -84,8 +84,9 @@ PUB clear{}
     putchar(LCD_CLS)
     time.msleep(5)
 
-PUB clearline = clear_line
-PUB clear_line(y)
+PUB clearline = clear_ln
+PUB clear_line = clear_ln
+PUB clear_ln(y)
 ' Clear line
     if (_display_lines == 2)                    ' check lcd size
         if (lookdown(y: 0..1))                  ' qualify line input
