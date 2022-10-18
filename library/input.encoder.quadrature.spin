@@ -7,7 +7,7 @@
         driver, 1..16
     Copyright (c) 2005
     Started 2005
-    Updated Oct 6, 2021
+    Updated Oct 18, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -21,7 +21,8 @@ VAR
     byte _cog                                   ' cog ID of encoder engine
     byte _nr_delta                              ' # enc. requiring delta vals
 
-PUB Start(ENC_BASEPIN, nr_enc, nr_delta, ptr_posbuff): status
+PUB start = startx
+PUB startx(ENC_BASEPIN, nr_enc, nr_delta, ptr_posbuff): status
 ' Start using custom I/O basepin and parameters
 '   ENC_BASEPIN: 0..31
 '       1st pin of encoder 1 (2nd pin of encoder 1 is ENC_BASEPIN+1)
@@ -41,12 +42,13 @@ PUB Start(ENC_BASEPIN, nr_enc, nr_delta, ptr_posbuff): status
     longfill(_ptr_posbuff, 0, _nr_enc+_nr_delta)
     status := (_cog := cognew(@entry, _ptr_posbuff) + 1)
 
-PUB Stop{}
+PUB stop{}
 ' Stop the encoder-reading cog, if there is one.
     if (_cog > 0)
         cogstop(_cog-1)
 
-PUB ReadDelta(enc_id): deltapos
+PUB readdelta = pos_delta
+PUB pos_delta(enc_id): deltapos
 ' Read delta position (relative position value since last time read) of enc_id.
     deltapos := 0 + -(enc_id < _nr_delta) * -long[_ptr_posbuff][_nr_enc+enc_id] {
 }   + (long[_ptr_posbuff][_nr_enc+enc_id] := long[_ptr_posbuff][enc_id])
@@ -219,23 +221,19 @@ B1A1 -> B2A2 | A1^B2:B1^A2 |     A1^B2^B1^A2      | extended value | Diagnosis
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
