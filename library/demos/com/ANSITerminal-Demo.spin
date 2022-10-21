@@ -3,9 +3,9 @@
     Filename: ANSITerminal-Demo.spin
     Description: Demo of the ANSI serial terminal driver
     Author: Jesse Burt
-    Copyright (c) 2020
+    Copyright (c) 2022
     Created: Jun 18, 2019
-    Updated: Jan 11, 2020
+    Updated: Oct 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,154 +15,126 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
+' -- User-modifiable constants
     LED         = cfg#LED1
-    SER_RX      = 31
-    SER_TX      = 30
     SER_BAUD    = 115_200
+' --
 
 OBJ
 
     ser         : "com.serial.terminal.ansi"
     cfg         : "boardcfg.demoboard"
-    io          : "io"
     time        : "time"
-    int         : "string.integer"
 
+PUB main{} | fg, bg
 
-PUB Main | fg, bg, mouse_raw, mouse_btn, mouse_x, mouse_y
+    setup{}
 
-    Setup
+    ser.strln(string("ANSI serial terminal demo"))
+    ser.strln(string("NOTE: Not all attributes supported by all terminals."))
 
-    ser.CursorPositionReporting(FALSE)
-    ser.Str(string("ANSI serial terminal demo", ser#CR, ser#LF))
-    ser.Str(string("NOTE: Not all attributes supported by all terminals.", ser#CR, ser#LF))
+    ser.bold(ser#SGR_INTENSITY_BOLD)
+    demo_text(string("BOLD"))
 
-    ser.Bold(ser#SGR_INTENSITY_BOLD)
-    Demo_Text(string("BOLD"))
+    ser.bold(ser#SGR_INTENSITY_FAINT)
+    demo_text(string("FAINT"))
 
-    ser.Bold(ser#SGR_INTENSITY_FAINT)
-    Demo_Text(string("FAINT"))
+    ser.italic
+    demo_text(string("ITALIC (or INVERSE)"))
 
-    ser.Italic
-    Demo_Text(string("ITALIC (or INVERSE)"))
-
-    ser.Underline(ser#SGR_UNDERLINE)
-    Demo_Text(string("UNDERLINED"))
+    ser.underline(ser#SGR_UNDERLINE)
+    demo_text(string("UNDERLINED"))
  
-    ser.Underline(ser#SGR_UNDERLINE_DBL)
-    Demo_Text(string("DOUBLE UNDERLINED"))
+    ser.underline(ser#SGR_UNDERLINE_DBL)
+    demo_text(string("DOUBLE UNDERLINED"))
 
-    ser.Blink(ser#SGR_BLINKSLOW)
-    Demo_Text(string("SLOW BLINKING"))
+    ser.blink(ser#SGR_BLINKSLOW)
+    demo_text(string("SLOW BLINKING"))
 
-    ser.Blink(ser#SGR_BLINKFAST)
-    Demo_Text(string("FAST BLINKING"))
+    ser.blink(ser#SGR_BLINKFAST)
+    demo_text(string("FAST BLINKING"))
 
-    ser.Inverse(ser#SGR_INVERSE)
-    Demo_Text(string("INVERSE"))
+    ser.inverse(ser#SGR_INVERSE)
+    demo_text(string("INVERSE"))
 
-    ser.Conceal(ser#SGR_CONCEAL)
-    Demo_Text(string("CONCEALED"))
+    ser.conceal(ser#SGR_CONCEAL)
+    demo_text(string("CONCEALED"))
 
-    ser.Strikethrough(ser#SGR_STRIKETHRU)
-    Demo_Text(string("STRIKETHROUGH"))
+    ser.strikethru(ser#SGR_STRIKETHRU)
+    demo_text(string("STRIKETHROUGH"))
 
-    ser.Framed
-    Demo_Text(string("FRAMED"))
+    ser.framed{}
+    demo_text(string("FRAMED"))
 
-    ser.Encircle
-    Demo_Text(string("ENCIRCLED"))
+    ser.encircle{}
+    demo_text(string("ENCIRCLED"))
 
-    ser.Overline
-    Demo_Text(string("OVERLINED"))
+    ser.overline{}
+    demo_text(string("OVERLINED"))
 
-    repeat bg from 40 to 47
-        repeat fg from 30 to 37
-            ser.Color(fg, bg)
-            ser.Str(string(" COLORED "))
-        ser.Newline
-    ser.Color(39, 49)
-
-    repeat 5
-        ser.MoveUp(1)
-        time.Sleep(1)
-    repeat 5
-        ser.MoveDown(1)
-        time.Sleep(1)
-
-    Demo_Text(string("Hide Cursor"))
-    ser.HideCursor
-    time.Sleep(3)
-
-    Demo_Text(string("Show cursor"))
-    ser.ShowCursor
-    time.Sleep(3)
-
-    Demo_Text(string("Window scrolling"))
-    repeat 5
-        ser.ScrollUp(1)
-        time.MSleep(500)
+    repeat bg from 0 to 7
+        repeat fg from 0 to 7
+            ser.color(fg, bg)
+            ser.str(string(" COLORED "))
+        ser.newline
+    ser.color(ser#GREY, ser#BLACK)
 
     repeat 5
-        ser.ScrollDown(1)
-        time.MSleep(500)
+        ser.moveup(1)
+        time.sleep(1)
+    repeat 5
+        ser.movedown(1)
+        time.sleep(1)
 
-    ser.Newline
-    ser.CursorPositionReporting(TRUE)
+    ser.strln(@"Hide Cursor")
+    ser.hidecursor()
+    time.msleep(3000)
 
-    ser.Position(0, 28)
-    ser.Str(string("Mouse reporting (hold down a mouse button to update current position):"))
+    ser.strln(@"Show cursor")
+    ser.showcursor()
+    time.msleep(3000)
 
+    repeat 5
+        ser.scrollup(1)
+        time.msleep(500)
+
+    repeat 5
+        ser.scrolldown(1)
+        time.msleep(500)
+
+    ser.newline{}
     repeat
-        ser.Position(5, 29)
-        mouse_raw := ser.MouseCursorPosition
-        mouse_btn := mouse_raw.byte[2]
-        mouse_y := mouse_raw.byte[1]
-        mouse_x := mouse_raw.byte[0]
-        ser.Str(string("X: "))
-        ser.Str(int.DecPadded(mouse_x, 3))
-        ser.Str(string("  Y: "))
-        ser.Str(int.DecPadded(mouse_y, 3))
-        ser.Str(string("  Button: "))
-        ser.Str(int.DecPadded(mouse_btn, 2))
 
-    FlashLED(LED, 100)
+PUB demo_text(inp_text)
 
-PUB Demo_Text(inp_text)
+    ser.printf1(string("This is %s text\n\r"), inp_text)
+    ser.reset()
 
-    ser.Str(string("This is "))
-    ser.Str(inp_text)
-    ser.Newline
-    ser.Reset
+PUB setup
 
-PUB Setup
-
-    repeat until ser.StartRxTx (SER_RX, SER_TX, 0, SER_BAUD)
-    time.MSleep(100)
-    ser.Reset
-    ser.Clear
-    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
-
-#include "lib.utility.spin"
+    ser.start(SER_BAUD)
+    time.msleep(100)
+    ser.reset{}
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 }
