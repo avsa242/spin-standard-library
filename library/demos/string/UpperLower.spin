@@ -27,7 +27,7 @@ OBJ
     str  : "string"
     time : "time"
 
-PUB Main{} | i
+PUB main{} | i
 
     term.start(SER_BAUD)
     time.msleep(30)

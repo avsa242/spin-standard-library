@@ -7,7 +7,7 @@
         to digitize audio from an electret mic and play
         it back on headphones/speakers
     Started 2006
-    Updated May 13, 2021
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -20,7 +20,6 @@ CON
     _clkmode    = xtal1 + pll16x
     _xinfreq    = 5_000_000
 
-
 ' At 80MHz the ADC/DAC sample resolutions and rates are as follows:
 '
 ' sample   sample
@@ -28,14 +27,14 @@ CON
 ' ----------------
 ' 5       2.5 MHz
 ' 6      1.25 MHz
-' 7       625 KHz
-' 8       313 KHz
-' 9       156 KHz
-' 10       78 KHz
-' 11       39 KHz
-' 12     19.5 KHz
-' 13     9.77 KHz
-' 14     4.88 KHz
+' 7       625 kHz
+' 8       313 kHz
+' 9       156 kHz
+' 10       78 kHz
+' 11       39 kHz
+' 12     19.5 kHz
+' 13     9.77 kHz
+' 14     4.88 kHz
 
 ' -- User-modifiable constants
     MIC_IN      = cfg#MIC_IN
@@ -48,16 +47,16 @@ CON
 
 OBJ
 
-    cfg : "boardcfg.demoboard"
-    ctrs: "core.con.counters"
+    cfg : "boardcfg.demoboard"                  ' board with a mic
 
-PUB Go
+PUB go{}
 
-    cognew(@asm_entry, 0)   'launch assembly program into a COG
+    cognew(@asm_entry, 0)                       ' launch assembly program into a COG
 
-' tell the counters object we want constants shifted into position
-'   for PASM programs
+{ tell the counters object we want constants shifted into position for PASM programs }
 #define _PASM_
+
+#include "core.con.counters.spin"
 
 DAT
 ' Assembly program
@@ -67,12 +66,12 @@ asm_entry   mov       dira, asm_dira            ' make pins 8 (ADC) and 0 (DAC) 
 
             movs      ctra, #MIC_IN             ' POS W/FEEDBACK mode for CTRA
             movd      ctra, #MIC_FB
-            movi      ctra, #ctrs#POS_DETECT_FB
+            movi      ctra, #POS_DETECT_FB
             mov       frqa, #1
 
             movs      ctrb, #AUDIO_L            ' DUTY DIFFERENTIAL mode for CTRB
             movd      ctrb, #AUDIO_R
-            movi      ctrb, #ctrs#DUTY_DIFFERENTIAL
+            movi      ctrb, #DUTY_DIFFERENTIAL
 
             mov       asm_cnt, cnt              ' prepare for WAITCNT loop
             add       asm_cnt, asm_cycles
@@ -98,23 +97,21 @@ asm_sample  res       1
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

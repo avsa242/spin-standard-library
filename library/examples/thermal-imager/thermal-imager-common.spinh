@@ -43,26 +43,26 @@ VAR
     byte _inv_x
     byte _show_hot, _show_sets, _show_scl
 
-PUB Imager{}
+PUB imager{}
 ' Thermal imager main loop
     repeat
         if (_set_chgd)
-            updatesettings{}
-        sens.getframe(@_ir_frame)
-        drawframe(_fx, _fy, _fw, _fh)
+            update_settings{}
+        sensor.get_frame(@_ir_frame)
+        draw_frame(_fx, _fy, _fw, _fh)
 
-PUB DrawFrame(fx, fy, pixw, pixh) | x, y, c, offs, pixsx, pixsy, pixex, pixey, maxx, maxy, hottest
+PUB draw_frame(fx, fy, pixw, pixh) | x, y, c, offs, pixsx, pixsy, pixex, pixey, maxx, maxy, hottest
 ' Draw the thermal image
     hottest := 0
-    repeat y from 0 to sens#YMAX
-        repeat x from 0 to sens#XMAX
+    repeat y from 0 to sensor#YMAX
+        repeat x from 0 to sensor#XMAX
             if (_inv_x)                      ' invert X display if set
-                offs := (((sens#XMAX-x) * sens#HEIGHT) + y)
+                offs := (((sensor#XMAX-x) * sensor#HEIGHT) + y)
             else
-                offs := ((x * sens#HEIGHT) + y)
+                offs := ((x * sensor#HEIGHT) + y)
 
             { calc color and scale up pixels from sensor }
-            c := getcolor((_ir_frame[offs] * _cscl) / _cdiv +_coffs)
+            c := get_color((_ir_frame[offs] * _cscl) / _cdiv +_coffs)
             pixsx := (fx + (x * pixw))
             pixsy := (fy + (y * (pixh + 1)))
             pixex := (pixsx + pixw)
@@ -81,42 +81,42 @@ PUB DrawFrame(fx, fy, pixw, pixh) | x, y, c, offs, pixsx, pixsy, pixex, pixey, m
         disp.box(maxx, maxy, maxx+pixw, maxy+pixh, disp.MAX_COLOR, false)
 
         { white cross-hair - span entire thermal image }
-'        disp.line(_fx, maxy+(pixh / 2), _fx+(_fw * sens#WIDTH), maxy+(pixh / 2), disp.MAX_COLOR)
+'        disp.line(_fx, maxy+(pixh / 2), _fx+(_fw * sensor#WIDTH), maxy+(pixh / 2), disp.MAX_COLOR)
 '        disp.line(maxx + (pixw / 2), _fy, maxx+(pixw / 2), _fy+(_fh * 4), disp.MAX_COLOR)
 
-PUB DrawScaleH(y, h) | x, reflvl
+PUB draw_scale_h(y, h) | x, reflvl
 ' Draw horizontal color scale horizontal
     { scale 16-bit color range to display width }
     repeat x from 0 to XMAX
-        disp.line(x, y, x, (y + h), getcolor(x * constant(disp#MAX_COLOR/WIDTH)))
+        disp.line(x, y, x, (y + h), get_color(x * constant(disp#MAX_COLOR/WIDTH)))
 
     { overlay the current reference level as a white line on the scale }
     reflvl := (_coffs / constant(disp#MAX_COLOR/WIDTH))
     disp.line(reflvl, y, reflvl, (y+h), disp#MAX_COLOR)
 
-PUB UpdateSettings{} | reftmp, cscl
+PUB update_settings{} | reftmp, cscl
 ' Settings have been changed by the user - update the sensor and the displayed settings
-    sens.adcres(_sens_adcres)                     ' Update sensor with current
-    sens.refreshrate(_sens_rate)                  '   settings
-    sens.adcreference(_sens_adcref)
+    sensor.adc_res(_sens_adcres)                  ' Update sensor with current
+    sensor.refresh_rate(_sens_rate)               '   settings
+    sensor.adc_ref(_sens_adcref)
 
-    reftmp := sens.adcreference(-2)              ' read from sensor for display
+    reftmp := sensor.adc_ref(-2)                  ' read from sensor for display
     disp.fgcolor(disp#MAX_COLOR)
-    disp.position(0, disp.textrows{}/2)
+    disp.pos_xy(0, disp.textrows{}/2)
     disp.box(0, CENTERY, XMAX, YMAX, 0, true)   ' erase prev text
     if (_show_scl)
         cscl := (5*HEIGHT)/100                  ' scale is 5% of display height
-        drawscaleh(YMAX-cscl, cscl)
+        draw_scale_h(YMAX-cscl, cscl)
     if (_show_sets)
         disp.printf1(string("X %s  "), lookupz(_inv_x: string("Norm"), string("Inv ")))
-        disp.printf1(string("%dHz   \n\r"), sens.refreshrate(-2))
-        disp.printf2(string("%dbit (%s)\n\r"), sens.adcres(-2), lookupz(reftmp: string("High ref"), {
-}       string("Low ref")))
-    _fx := CENTERX - ((_fw * sens#WIDTH) / 2)   ' center justify thermal image
+        disp.printf1(string("%dHz   \n\r"), sensor.refresh_rate(-2))
+        disp.printf2(string("%dbit (%s)\n\r"), sensor.adc_res(-2), {
+}       lookupz(reftmp: string("High ref"), string("Low ref")))
+    _fx := CENTERX - ((_fw * sensor#WIDTH) / 2)   ' center justify thermal image
     _fy := 0                                    ' top
     _set_chgd := false
 
-PUB cog_KeyInput{} | cmd
+PUB cog_keyinput{} | cmd
 ' Handle keypresses from serial terminal
     repeat
         repeat until (cmd := ser.charin{})
@@ -146,7 +146,7 @@ PUB cog_KeyInput{} | cmd
             "r":                                ' sensor ADC reference (hi/low)
                 _sens_adcref ^= 1
             "t":
-                dumpframe(0, 17)
+                dump_frame(0, 17)
                 next
             "-":                                ' color scale reference level
                 _coffs := 0 #> (_coffs - 1000)
@@ -159,23 +159,23 @@ PUB cog_KeyInput{} | cmd
             "1":
                 _show_scl ^= 1
             other:
-                showhelp{}                      ' show key input legend on serial terminal
+                show_help{}                      ' show key input legend on serial terminal
                 next
         _set_chgd := true                       ' trigger for main loop to update settings
 
-PUB DumpFrame(x, y) | line, col, offs
+PUB dump_frame(x, y) | line, col, offs
 ' Dump frame to the serial terminal
 '   NOTE: Image data are longs, but only words are displayed, for compactness
     repeat line from 0 to 3
         repeat col from 0 to 15
             offs := (col * 4) + line
-            ser.position(x + (col * 5), y + line)
+            ser.pos_xy(x + (col * 5), y + line)
             ser.hexs(_ir_frame[offs], 4)
-            ser.char(" ")
+            ser.putchar(" ")
 
-PUB ShowHelp{}
+PUB show_help{}
 
-    ser.position(0, 5)
+    ser.pos_xy(0, 5)
     ser.strln(string("A/a: Increase/decrease thermal sensor ADC resolution"))
     ser.strln(string("C/c: Increase/decrease color scaler (* or / 2)"))
     ser.strln(string("D/d: Increase/decrease color scale divider (* or / 2)"))
@@ -188,7 +188,7 @@ PUB ShowHelp{}
     ser.strln(string("0: Toggle show settings on display"))
     ser.strln(string("1: Toggle show color scale on display"))
 
-PRI getColor(val): rgb565 | r, g, b
+PRI get_color(val): rgb565 | r, g, b
 ' Map given input 'index' to color
 '   'Jet'-like palette: vio-blu-grn-yel-org-red-whi
     longfill(@r, 0, 3)

@@ -1,15 +1,18 @@
 {
     --------------------------------------------
-    Filename:
-    Author: Chip Gracey
-    Modified by: Jesse Burt
+    Filename: Mic-to-VGA-Demo.spin
     Description: Demo using the Propeller's counters
         to digitize audio from an electret mic and
         display the waveform on a VGA monitor
+    Author: Chip Gracey
+    Modified by: Jesse Burt
     Started 2006
-    Updated Nov 14, 2021
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
+
+    NOTE: This is based on microphone_to_vga.spin,
+        originally by Chip Gracey
 }
 
 CON
@@ -30,7 +33,7 @@ CON
 ' 13     9.77 KHz
 ' 14     4.88 KHz
 
-    VGA_BASEPIN = 16
+    VGA_BASEPIN = cfg#VGA
 
     MIC_IN      = cfg#MIC_IN
     MIC_FB      = cfg#MIC_FB
@@ -47,14 +50,13 @@ OBJ
 
     cfg : "boardcfg.demoboard"
     vga : "display.vga.bitmap.512x384"
-    ctrs: "core.con.counters"
 
 VAR
 
     long _sync, _pixels[TILES32]
     word _colors[TILES], _ypos[512]
 
-PUB Start | i
+PUB start{} | i
 
     ' start vga
     vga.startx(VGA_BASEPIN, @_colors, @_pixels, @_sync)
@@ -71,9 +73,9 @@ PUB Start | i
     asm_ypos := @_ypos
     cognew(@asm_entry, 0)
 
-' tell the counters object we want constants shifted into position
-'   for PASM programs
+{ tell the counters object we want constants shifted into position for PASM programs }
 #define _PASM_
+#include "core.con.counters.spin"
 
 DAT
 
@@ -83,7 +85,7 @@ asm_entry       mov     dira, asm_dira          ' make pin 8 (ADC) output
 
                 movs    ctra, #MIC_IN           ' POS W/FEEDBACK mode for CTRA
                 movd    ctra, #MIC_FB
-                movi    ctra, #ctrs#POS_DETECT_FB
+                movi    ctra, #POS_DETECT_FB
                 mov     frqa, #1
 
                 mov     xpos, #0
@@ -122,14 +124,14 @@ asm_entry       mov     dira, asm_dira          ' make pin 8 (ADC) output
                 mov     peak_max, #0
 :pksame
 
-                cmp     mode, #0 wz             ' wait for negative trigger threshold
+                cmp     trig_mode, #0 wz        ' wait for negative trigger threshold
 if_z            cmp     asm_sample, trig_min wc
-if_z_and_c      mov     mode, #1
+if_z_and_c      mov     trig_mode, #1
 if_z            jmp     #:loop
 
-                cmp     mode,#1 wz              ' wait for positive trigger threshold
+                cmp     trig_mode,#1 wz         ' wait for positive trigger threshold
 if_z            cmp     asm_sample, trig_max wc
-if_z_and_nc     mov     mode, #2
+if_z_and_nc     mov     trig_mode, #2
 if_z            jmp     #:loop
 
 
@@ -153,7 +155,7 @@ if_z            jmp     #:loop
 
                 add     xpos, #1                ' increment x position and mask
                 and     xpos, #$1FF wz
-if_z            mov     mode, #0                ' if rollover, reset mode for trigger
+if_z            mov     trig_mode, #0           ' if rollover, reset mode for trigger
 
                 jmp     #:loop                  ' wait for next sample period
 
@@ -180,7 +182,7 @@ asm_ypos        long      0                     ' y positions (set at runtime)
 average_cnt     long      1
 peak_cnt        long      1
 peak_load       long      512
-mode            long      0
+trig_mode       long      0
 bignum          long      $FFFFFFFF
 average_load    long      |< AVERAGING
 
@@ -201,23 +203,19 @@ peak_max        res       1
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

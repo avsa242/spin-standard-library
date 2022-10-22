@@ -3,9 +3,8 @@
     Filename: CommandLine.spin
     Author: Brett Weir
     Description: Simulated commandline interface
-    Copyright (c) 2021
     Started Jan 8, 2016
-    Updated May 1, 2021
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,7 +35,7 @@ VAR
     byte _prompt[70]
     byte _directory[64]
 
-PUB Main{}
+PUB main{}
 
     term.start(SER_BAUD)
     time.msleep(30)
@@ -44,77 +43,71 @@ PUB Main{}
 
     setdir(string("~"))
 
-    term.str(@data_signon)
+    term.puts(@data_signon)
 
     repeat
         term.flush{}
-        term.str(@_prompt)
+        term.puts(@_prompt)
 
         term.readline(@_line, MAX_LINE)
         term.newline{}
-        if process(@_line)
-            term.str(@data_usage)
+        if (process(@_line))
+            term.puts(@data_usage)
             next
 
 PUB Process(s)
 
     _argc := 0
     _argv[_argc] := str.tokenize(s)
-    repeat while _argv[_argc]
+    repeat while (_argv[_argc])
         _argv[++_argc] := str.tokenize(0)
 
-    if _argc < 1
+    if (_argc < 1)
         return
 
-    if match(_argv[0], string("ls"))
+    if (match(_argv[0], string("ls")))
         liststuff{}
 
-    elseif match(_argv[0], string("cd"))
+    elseif (match(_argv[0], string("cd")))
         changedir{}
 
-    elseif match(_argv[0], string("pwd"))
+    elseif (match(_argv[0], string("pwd")))
         printworkingdirectory{}
 
-    elseif match(_argv[0], string("bizz"))
+    elseif (match(_argv[0], string("bizz")))
         bizz{}
 
-    elseifnot str.compare(_argv[0], string("help"), false)
+    elseifnot (str.compare(_argv[0], string("help"), false))
         return true
 
     else
-        term.str(string("Bad command or file name!", term#CR, term#LF))
+        term.strln(string("Bad command or file name!"))
 
 
 PUB PrintWorkingDirectory{}
 
-    term.str(@_directory)
-    term.newline{}
+    term.strln(@_directory)
 
 PUB ListStuff{} | i
 
-    if match(@_directory, string("~/another"))
-        term.str(@data_dir2)
+    if (match(@_directory, string("~/another")))
+        term.puts(@data_dir2)
     else
-        term.str(@data_dir1)
+        term.puts(@data_dir1)
 
 PUB ChangeDir{} | i
 
-    if match(@_directory, string("~"))
-
-        if match(_argv[1], string("another")) or match(_argv[1], string("another/"))
+    if (match(@_directory, string("~")))
+        if (match(_argv[1], string("another")) or match(_argv[1], string("another/")))
             setdir(string("~/another"))
         else
             term.strln(string("Not a directory!"))
-
-    elseif match(@_directory, string("~/another"))
-
-        if match(_argv[1], string(".."))
+    elseif (match(@_directory, string("~/another")))
+        if (match(_argv[1], string("..")))
             setdir(string("~"))
         else
             term.strln(string("Not a directory!"))
-
-    elseif str.isempty(_argv[1]) or match(_argv[1], string("~"))
-
+    elseif (str.isempty(_argv[1]) or match(_argv[1], string("~")))
         setdir(string("~"))
         term.strln(string("Not a directory!"))
 
@@ -182,23 +175,19 @@ data_signon
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

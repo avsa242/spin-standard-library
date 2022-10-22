@@ -1,13 +1,12 @@
 {
     --------------------------------------------
     Filename: Counters.spin
+    Description: Demo of the Propeller's counters' frequency synthesis ability
+        (square waves; up to 128MHz)
     Author: Chip Gracey
     Modified by: Jesse Burt
-    Description: Demo of the Propeller's counters'
-        frequency synthesis ability
-        (square waves; up to 128MHz)
     Started May 2006
-    Updated May 8, 2021
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -195,7 +194,7 @@ CON
 
 OBJ
 
-    cfg     : "boardcfg.activityboard"
+    cfg     : "boardcfg.activity"
     term    : "com.serial.terminal.ansi"
     time    : "time"
     ctrs    : "core.con.counters"
@@ -204,14 +203,14 @@ VAR
 
     long _ctr, _frq
 
-PUB Main{}
+PUB main{}
 ' Synthesize frequencies on pin AUDIO_L and AUDIO_R
 '   also show FRQ values on terminal
     term.start(SER_BAUD)
     time.msleep(30)
     term.clear{}
 
-    term.printf2(string("Playing tone on pins %d and %d\n"), AUDIO_L, AUDIO_R)
+    term.printf2(string("Playing tone on pins %d and %d\n\r"), AUDIO_L, AUDIO_R)
     term.strln(string("(press q to stop"))
 
     synthfreq(AUDIO_L, 1000)                    ' Determine ctr and frq for pin 0
@@ -219,14 +218,14 @@ PUB Main{}
     frqa := _frq                                ' Set FRQA
     dira[AUDIO_L] := 1                          ' Make pin output
 
-    term.printf2(string("CTRA = %x  FRQA = %x\n"), _ctr, _frq)
+    term.printf2(string("CTRA = %x  FRQA = %d\n\r"), _ctr, _frq)
 
     synthfreq(AUDIO_R, 500)                     ' Determine ctr and frq for pin1
     ctrb := _ctr                                ' Set CTRB
     frqb := _frq                                ' Set FRQB
     dira[AUDIO_R] := 1                          ' Make pin output
 
-    term.printf2(string("CTRB = %x  FRQB = %x\n"), _ctr, _frq)
+    term.printf2(string("CTRB = %x  FRQB = %d\n\r"), _ctr, _frq)
 
     repeat until term.charin{} == "q"
     ctra := ctrb := frqa := frqb := 0
@@ -244,31 +243,31 @@ PRI Synthfreq(pin, freq) | s, d
 '   Uses NCO mode %00100 for 0..499_999 Hz
 '   Uses PLL mode %00010 for 500_000..128_000_000 Hz
 '
-    freq := freq #> 0 <# 128_000_000            ' Limit frequency range
+    freq := (0 #> freq <# 128_000_000)          ' Limit frequency range
 
-    if freq < 500_000                           ' If 0 to 499_999 Hz,
+    if (freq < 500_000)                         ' If 0 to 499_999 Hz,
         _ctr := ctrs#NCO_SINGLEEND              '   ..set NCO mode
         s := 1                                  '   ..shift = 1
 
     else                                        ' If 500_000 to 128_000_000 Hz,
         _ctr := ctrs#PLL_SINGLEEND              '   ..set PLL mode
         d := >|((freq - 1) / 1_000_000)         ' Determine PLLDIV
-        s := 4 - d                              ' Determine shift
-        _ctr |= d << ctrs#PLLDIV                ' Set PLLDIV
+        s := (4 - d)                            ' Determine shift
+        _ctr |= (d << ctrs#PLLDIV)              ' Set PLLDIV
 
     _frq := fraction(freq, clkfreq, s)          ' Compute FRQA/FRQB value
     _ctr |= pin                                 ' Set PINA to complete CTRA/CTRB value
 
-PRI Fraction(a, b, shift) : f
+PRI Fraction(a, b, shift): f
 
-    if shift > 0                                ' If shift, pre-shift a or b left
+    if (shift > 0)                              ' If shift, pre-shift a or b left
         a <<= shift                             '   to maintain significant bits while
-    if shift < 0                                '   insuring proper result
+    if (shift < 0)                              '   insuring proper result
         b <<= -shift
 
     repeat 32                                   ' Perform long division of a/b
         f <<= 1
-        if a => b
+        if (a => b)
             a -= b
             f++
         a <<= 1

@@ -6,7 +6,7 @@
         the printf() method variants
     Copyright (c) 2022
     Started Nov 9, 2020
-    Updated Jul 9, 2022
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -37,7 +37,7 @@ VAR
 
     byte _buff[BUFFSZ]
 
-PUB Main{} | sz, format, str1, str2
+PUB main{} | sz, format, str1, str2
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -56,7 +56,7 @@ PUB Main{} | sz, format, str1, str2
 '   Allowed escape sequences:
 '       \\: literal, i.e., just print a \ symbol
 '       \r: carriage return
-'       \n: carriage return, line feed (newline)
+'       \n\r: carriage return, line feed (newline)
 '       \t: tab (ASCII $09)
 
 '   Any unused parameters must still be specified (SPIN1 limitation), but will
@@ -71,18 +71,19 @@ PUB Main{} | sz, format, str1, str2
 '               printf2(string("Numbers %d %d"), 1234, 5678)
 
 '   a simple example:
-    format := string("A decimal: %d\n")
+    format := string("A decimal: %d\n\r")
 
 '   a more complex example
-'    format := string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\nnext line\n\n\n")
+'    format := string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\n\rnext line\n\r\n\r\n\r")
 
     str1 := string("a string")
     str2 := string("another")
 
-    ser.position(0, 0)
+    ser.pos_xy(0, 0)
 
     ' You can specify the format inline:
-    ser.printf6(string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\nnext line\n\n\n"), "A", -1000, $DEADBEEF, str1, str2, 0)
+    ser.printf5(string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\n\r"), {
+}   "A", -1000, $DEADBEEF, str1, str2)
 
     '   or use a pre-defined format:
     ser.printf6(format, "A", -1000, $DEADBEEF, str1, str2, 0)
@@ -103,37 +104,39 @@ PUB Main{} | sz, format, str1, str2
 
     ' An example showing comma-separated values, which could, for example,
     '   be written to a file on an SD-card
-    format := string("%d,%d,%d,%d,%d,%d\n\n")
+    format := string("%d,%d,%d,%d,%d,%d\n\r\n\r")
     sf.sprintf(@_buff, format, 7, 10, 3, 84, 16, 51)
     ser.str(@_buff)
 
     ' n-parameter alternate variants of printf that can be used
-    ser.printf1(string("printf1() prints format with 1 param: %d\n"), 1234)
-    ser.printf2(string("printf2() prints format with 2 params: %d %d\n"), 1234, 5678)
-    ser.printf3(string("printf3() prints format with 3 params: %d %d %d\n"), 1234, 5678, 9012)
-    ser.printf4(string("printf4() prints format with 4 params: %d %d %d %d\n"), 1234, 5678, 9012, 3456)
-    ser.printf5(string("printf5() prints format with 5 params: %d %d %d %d %d\n"), 1234, 5678, 9012, 3456, 7890)
+    ser.printf1(string("printf1() prints format with 1 param: %d\n\r"), 1234)
+    ser.printf2(string("printf2() prints format with 2 params: %d %d\n\r"), 1234, 5678)
+    ser.printf3(string("printf3() prints format with 3 params: %d %d %d\n\r"), 1234, 5678, 9012)
+    ser.printf4(string("printf4() prints format with 4 params: %d %d %d %d\n\r"), 1234, 5678, {
+}   9012, 3456)
+
+    ser.printf5(string("printf5() prints format with 5 params: %d %d %d %d %d\n\r"), 1234, 5678, {
+}   9012, 3456, 7890)
 
     repeat
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+

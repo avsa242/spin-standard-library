@@ -1,56 +1,34 @@
 {
     --------------------------------------------
-    Filename: CopyAppend.spin
-    Description: Demo of the Copy() and Append()
-        functions from the string object
-    Author: Brett Weir
+    Filename: CTR-FreqSynthDemo.spin
     Modified by: Jesse Burt
-    Started Jan 5, 2016
+    Description: Simple demo of counter-based frequency synthesis
+    Started 2007
     Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
+
+    NOTE: This is based on FrequencySynth.spin,
+        originally by Chip Gracey, Beau Schwabe.
 }
 
 CON
 
-    _clkmode    = xtal1 + pll16x
+    _clkmode    = xtal1 + pll16X
     _xinfreq    = 5_000_000
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-
-' --
+    PIN         = 27                            ' 0..31
+    FREQ        = 440                           ' DC to 128MHz
 
 OBJ
 
-    term : "com.serial.terminal.ansi"
-    str  : "string"
-    time : "time"
+    fsyn : "signal.synth"
 
-VAR
+PUB ctr_demo{}
 
-    byte _str1[32]
+    fsyn.synth("A",PIN, FREQ)                   ' synth({Counter"A" or Counter"B"}, pin, freq)
 
-PUB main{}
-
-    term.start(SER_BAUD)
-    time.msleep(30)
-    term.clear{}
-
-    str.copy(@_str1, string("BACON"))
-    term.strln(@_str1)
-
-    str.append(@_str1, string(" AND"))
-    term.strln(@_str1)
-
-    str.append(@_str1, string(" CHICKEN"))
-    term.strln(@_str1)
-
-    str.append(@_str1, string(" IS"))
-    term.strln(@_str1)
-
-    str.append(@_str1, string(" GOOD"))
-    term.puts(@_str1)
+    repeat                                      ' loop forever to keep cog alive
 
 DAT
 {

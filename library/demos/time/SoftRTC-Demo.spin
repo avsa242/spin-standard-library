@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Demo of the software RTC
     Started 2009
-    Updated Mar 23, 2021
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: Based on PropellerRTC_Emulator_DEMO.spin,
@@ -33,33 +33,30 @@ VAR
     long  _timestring
     byte  _datestamp[11], _timestamp[11]
 
-PUB Main{}
+PUB main{}
 
     setup{}
 
     rtc.suspend{}
-    rtc.setyear(20)                             ' 00..31 (Valid from 2000 to 2031)
-    rtc.setmonth(12)                            ' 01..12
-    rtc.setdate(31)                             ' 01..31
-    rtc.setweekday(5)                           ' 01..07
+    rtc.set_year(22)                             ' 00..31 (Valid from 2000 to 2031)
+    rtc.set_month(12)                            ' 01..12
+    rtc.set_date(31)                             ' 01..31
+    rtc.set_weekday(5)                           ' 01..07
 
-    rtc.sethours(23)                            ' 01..12
-    rtc.setminutes(59)                          ' 00..59
-    rtc.setseconds(55)                          ' 00..59
+    rtc.set_hours(23)                            ' 01..12
+    rtc.set_minutes(59)                          ' 00..59
+    rtc.set_seconds(55)                          ' 00..59
     rtc.resume{}
 
     repeat
-        rtc.parsedatestamp(@_datestamp)
-        rtc.parsetimestamp(@_timestamp)
+        rtc.parse_date_stamp(@_datestamp)
+        rtc.parse_time_stamp(@_timestamp)
 
         ser.position(0, 3)
-        ser.str(@_datestamp)
-        ser.char(" ")
-        ser.str(@weekday[(rtc.weekday{} - 1) * 4])
-        ser.str(string("  "))
-        ser.str(@_timestamp)
+        ser.printf3(string("%s %s  %s"), @_datestamp, @weekday[(rtc.weekday{} - 1) * 4], {
+}       @_timestamp)
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)

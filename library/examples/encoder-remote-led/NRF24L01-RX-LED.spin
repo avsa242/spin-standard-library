@@ -1,14 +1,14 @@
 {
     --------------------------------------------
-    Filename: NRF24L01-RX-LED.spin2
+    Filename: NRF24L01-RX-LED.spin
     Author: Jesse Burt
-    Description: Wireless cont<- of a Smart LED (receiver)
+    Description: Wireless control of a Smart LED (receiver)
         Uses:
         * nRF24L01+
         * 1x Smart LED (NeoPixel)
     Copyright (c) 2022
     Started Aug 29, 2022
-    Updated Aug 29, 2022
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -62,7 +62,7 @@ PUB main{} | bright, last, payload
     nrf24.channel(2)                            ' 0..125 (2.400 .. 2.525GHz)
 
     { set receive address (note: order in string() is LSB, ..., MSB) }
-    nrf24.rxaddr(string($e7, $e7, $e7, $e7, $e7), 0, nrf24.WRITE)
+    nrf24.rx_addr(string($e7, $e7, $e7, $e7, $e7), 0, nrf24.WRITE)
 ' --
 
     ser.clear{}
@@ -72,8 +72,8 @@ PUB main{} | bright, last, payload
     repeat
         { clear local buffer and wait until a payload is received }
         payload := 0
-        repeat until nrf24.payloadready{}
-        nrf24.rxpayload(4, @payload)
+        repeat until nrf24.payld_rdy{}
+        nrf24.rx_payld(4, @payload)
 
         { Only allow changes of up to +/- 5 from the last encoder reading received, so
             possible transmission glitches causing reception of bad values like 256
@@ -83,11 +83,11 @@ PUB main{} | bright, last, payload
             last := payload
             bright := 0 #> (bright + payload) <# 255
             led.plot(0, 0, bright << COLOR)
-            led.update{}
+            led.show{}
 
         { clear interrupt and receive buffer for next loop }
-        nrf24.intclear(nrf24.PAYLD_RDY)
-        nrf24.flushrx{}
+        nrf24.int_clr(nrf24.PAYLD_RDY)
+        nrf24.flush_rx{}
 
 PUB setup{}
 
@@ -96,16 +96,16 @@ PUB setup{}
     if nrf24.startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
         ser.strln(@"nRF24L01+ driver started")
         nrf24.preset_rx2m_noaa{}                ' 2Mbps, No Auto-Ack
-        nrf24.crccheckenabled(true)
-        nrf24.crclength(2)
-        nrf24.payloadlen(4, 0)
+        nrf24.crc_check_ena(true)
+        nrf24.crc_len(2)
+        nrf24.payld_len(4, 0)
     else
         ser.strln(@"nRF24L01+ driver failed to start - halting")
         repeat
 
     led.start(LED_PIN, 1, 1, LED_MODEL, @_led)
     led.clear{}
-    led.update{}
+    led.show{}
 
 DAT
 {

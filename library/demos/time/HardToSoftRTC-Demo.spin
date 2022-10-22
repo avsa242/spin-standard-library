@@ -6,7 +6,7 @@
         sets the software RTC by it, and continuously
         displays the date and time from the software RTC
     Started Sep 7, 2020
-    Updated Sep 5, 2022
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -49,7 +49,7 @@ VAR
     long  _timestring
     byte  _datestamp[11], _timestamp[11]
 
-PUB Main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
+PUB main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
 
     setup{}
 
@@ -72,20 +72,20 @@ PUB Main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
     ser.str(string("Setting SoftRTC from RV3028..."))
 #endif
     softrtc.suspend{}
-    softrtc.setyear(hyr)                        ' 00..31 (Valid from 2000 to 2031)
-    softrtc.setmonth(hmo)                       ' 01..12
-    softrtc.setdate(hdy)                        ' 01..31
-    softrtc.setweekday(hwkd)                    ' 01..07
+    softrtc.set_year(hyr)                       ' 00..31 (Valid from 2000 to 2031)
+    softrtc.set_month(hmo)                      ' 01..12
+    softrtc.set_date(hdy)                       ' 01..31
+    softrtc.set_weekday(hwkd)                   ' 01..07
 
-    softrtc.sethours(hhr)                       ' 01..12
-    softrtc.setminutes(hmin)                    ' 00..59
-    softrtc.setseconds(hsec)                    ' 00..59
+    softrtc.set_hours(hhr)                      ' 01..12
+    softrtc.set_minutes(hmin)                   ' 00..59
+    softrtc.set_seconds(hsec)                   ' 00..59
     softrtc.resume{}
     ser.str(string("done."))
 
     repeat
-        softrtc.parsedatestamp(@_datestamp)
-        softrtc.parsetimestamp(@_timestamp)
+        softrtc.parse_date_stamp(@_datestamp)
+        softrtc.parse_time_stamp(@_timestamp)
 
         ser.position(0, 7)
         ser.strln(string("SoftRTC date & time:"))
@@ -95,7 +95,7 @@ PUB Main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
         ser.str(string("  "))
         ser.str(@_timestamp)
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -132,23 +132,22 @@ DAT
             byte    "Fri", 0
             byte    "Sat", 0
 
+DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }

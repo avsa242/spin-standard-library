@@ -6,7 +6,7 @@
     Description: Demo of the Left(), Mid() and Right()
         functions from the string object
     Started Jan 5, 2016
-    Updated Sep 5, 2022
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -30,28 +30,23 @@ VAR
 
     byte _str_temp[20]
 
-PUB Main{}
+PUB main{}
 
     term.start(SER_BAUD)
     time.msleep(30)
     term.clear{}
 
-    term.str(str.left(@dinosaur, 4))
-    term.newline{}
-
-    term.str(str.mid(@dinosaur, 5, 9))
-    term.newline{}
-
-    term.str(str.right(@dinosaur, 6))
-    term.newline{}
+    term.strln(str.left(@dinosaur, 4))
+    term.strln(str.mid(@dinosaur, 5, 9))
+    term.strln(str.right(@dinosaur, 6))
 
     str.copy(@_str_temp, str.left(@dinosaur, 2))
     str.append(@_str_temp, str.right(@dinosaur, 6))
-    term.str(@_str_temp)
-    term.newline{}
+    term.strln(@_str_temp)
 
 DAT
-
+'                    0    5        14   19
+'                    |    |        |    |
 dinosaur    byte    "dass pineapplesaurus",0
 
 {

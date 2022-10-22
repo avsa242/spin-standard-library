@@ -6,7 +6,7 @@
         (serial display)
     Copyright (c) 2022
     Started Jan 29, 2020
-    Updated Sep 5, 2022
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -47,19 +47,19 @@ PUB main{} | pitch, roll
 
     { set the accelerometer to a lower, less noisy data rate }
     imu.preset_active{}
-    imu.acceldatarate(59)
-    imu.accelhighres(true)
-    imu.fifoenabled(false)
+    imu.accel_data_rate(59)
+    imu.accel_high_res_ena(true)
+    imu.fifo_ena(false)
     repeat
-        repeat until imu.acceldataready{}
-        ser.position(0, 3)
+        repeat until imu.accel_data_rdy{}
+        ser.pos_xy(0, 3)
 
         { clamp angles to +/- 90deg }
         pitch := -90_00 #> imu.pitch{} <# 90_00
         roll := -90_00 #> imu.roll{} <# 90_00
 
-        ser.printf2(@("Pitch: %d.%1.1d    \n\r"), pitch/100, ||(pitch//100)/10)
-        ser.printf2(@("Roll: %d.%1.1d    \n\r"), roll/100, ||(roll//100)/10)
+        ser.printf2(string("Pitch: %d.%1.1d    \n\r"), pitch/100, ||(pitch//100)/10)
+        ser.printf2(string("Roll: %d.%1.1d    \n\r"), roll/100, ||(roll//100)/10)
 
         { Press 'z' to reset the inclinometer's 'zero'
           Ensure the chip is lying on a flat surface and the package top
@@ -69,11 +69,11 @@ PUB main{} | pitch, roll
 
 PRI set_zero{}
 ' Re-set the 'zero' of the inclinometer (set accelerometer bias offsets)
-    ser.position(0, 7)
+    ser.pos_xy(0, 7)
     ser.str(string("Setting zero..."))
-    imu.calibrateaccel{}
-    ser.positionx(0)
-    ser.clearline{}
+    imu.calibrate_accel{}
+    ser.pos_x(0)
+    ser.clear_ln{}
 
 PUB setup{}
 

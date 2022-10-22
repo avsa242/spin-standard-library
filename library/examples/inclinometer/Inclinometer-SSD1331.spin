@@ -6,7 +6,7 @@
         (SSD1331 OLED display)
     Copyright (c) 2022
     Started May 29, 2022
-    Updated Jul 21, 2022
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -59,7 +59,7 @@ VAR
     long _needs_cal
     word _disp_buff[WIDTH*HEIGHT]
 
-PUB Main{} | pitch, roll
+PUB main{} | pitch, roll
 
     setup{}
 
@@ -67,40 +67,40 @@ PUB Main{} | pitch, roll
 
     { set the accelerometer to a lower, less noisy data rate }
     imu.preset_active{}
-    imu.acceldatarate(59)
-    imu.accelhighres(true)
+    imu.accel_data_rate(59)
+    imu.accel_high_res_ena(true)
 
-    oled.position(0, 0)
+    oled.pos_xy(0, 0)
     oled.strln(@"Pitch: ")
     oled.str(@" Roll: ")
 
     repeat
-        repeat until imu.acceldataready{}
+        repeat until imu.accel_data_rdy{}
 
         { clamp angles to +/- 90deg }
         pitch := -90_00 #> imu.pitch{} <# 90_00
         roll := -90_00 #> imu.roll{} <# 90_00
 
-        oled.position(7, 0)
+        oled.pos_xy(7, 0)
         oled.printf2(@("%d.%1.1d  "), pitch/100, ||(pitch//100)/10)
-        oled.position(7, 1)
+        oled.pos_xy(7, 1)
         oled.printf2(@("%d.%1.1d  "), roll/100, ||(roll//100)/10)
-        oled.update
+        oled.show{}
 
         if (_needs_cal)
-            setzero{}
+            set_zero{}
             _needs_cal := false
 
-PRI setZero{}
+PRI set_zero{}
 ' Re-set the 'zero' of the inclinometer (set accelerometer bias offsets)
-    oled.position(0, 3)
+    oled.pos_xy(0, 3)
     oled.str(string("Setting zero..."))
-    oled.update{}
-    imu.calibrateaccel{}
-    oled.position(0, 3)
+    oled.show{}
+    imu.calibrate_accel{}
+    oled.pos_xy(0, 3)
     oled.str(string("               "))
 
-PUB cog_ButtonInp{}
+PRI cog_button_inp{}
 ' Wait for button press - trigger a reset of the inclinometer's zero
 '   NOTE: Ensure the chip is lying on a flat surface and the package top
 '   is facing up
@@ -114,7 +114,7 @@ PUB cog_ButtonInp{}
             next
         repeat until (_needs_cal == false)
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -122,10 +122,10 @@ PUB Setup{}
     ser.strln(string("Serial terminal started"))
 
     oled.startx(OLED_CS, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_disp_buff)
-    oled.fontspacing(1, 0)
-    oled.fontscale(1)
-    oled.fontsize(fnt#WIDTH, fnt#HEIGHT)
-    oled.fontaddress(fnt.ptr{})
+    oled.font_spacing(1, 0)
+    oled.font_scl(1)
+    oled.font_sz(fnt#WIDTH, fnt#HEIGHT)
+    oled.font_addr(fnt.ptr{})
     oled.preset_96x64{}
 
 #ifdef LSM9DS1_SPI
@@ -138,26 +138,25 @@ PUB Setup{}
         ser.strln(string("LSM9DS1 driver failed to start - halting"))
         repeat
 
-    cognew(cog_buttoninp{}, @_btn_stk)
+    cognew(cog_button_inp{}, @_btn_stk)
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+

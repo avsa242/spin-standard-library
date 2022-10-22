@@ -8,7 +8,7 @@
     Author: Chris Savage, Jeff Martin
     Modified by: Jesse Burt
     Created May 8, 2006
-    Updated Apr 30, 2021
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -35,50 +35,46 @@ OBJ
 
     lcd     : "display.lcd.serial"
     ping    : "sensor.range.ultrasonic"
-    int     : "string.integer"
+    int     : "string"
     time    : "time"
 
-PUB Main{} | mm, inches
+PUB main{} | mm, inches
 
     setup{}
     lcd.printf1(string("PING))) Demo\rInches      -\rCentimeters -"), 0)
     repeat
         inches := ping.inches(PING_PIN)
-        lcd.position(16, 1)
-        lcd.dec(inches)
-        lcd.str(string(".0 "))
+        lcd.pos_xy(16, 1)
+        lcd.printf1(string("%d.0"), inches)
 
         mm := ping.millimeters(PING_PIN)
-        lcd.position(14, 2)
-        lcd.str(int.decpadded((mm / 10), 3))
-        lcd.char(".")
-        lcd.str(int.decpadded((mm // 10), 1))
+        lcd.pos_xy(14, 2)
+        lcd.printf2(string("%3.3d.%01.1d"), (mm / 10), (mm // 10))
         time.msleep(100)
 
-PUB Setup
+PUB setup{}
 
     lcd.start(LCD_PIN, LCD_BAUD, LCD_LINES)
-    lcd.cursormode(0)
-    lcd.enablebacklight(true)
+    lcd.curs_mode(0)
+    lcd.backlight_ena(true)
     lcd.clear{}
 
+DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }

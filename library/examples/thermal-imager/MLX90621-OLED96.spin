@@ -7,7 +7,7 @@
         display: SSD1331 (96x64)
     Copyright (c) 2022
     Started: Jul 6, 2022
-    Updated: Jul 7, 2022
+    Updated: Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,10 +40,10 @@ CON
 OBJ
 
     cfg : "boardcfg.flip"
-    sens: "sensor.thermal-array.mlx90621"
+    sensor: "sensor.thermal-array.mlx90621"
     disp: "display.oled.ssd1331"
 
-PUB Main{}
+PUB main{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -52,18 +52,18 @@ PUB Main{}
 
     disp.startx(SPI_CS, SPI_CLK, SPI_DIN, SPI_DC, SPI_RES, WIDTH, HEIGHT, 0)
     ser.strln(string("SSD1331 driver started"))
-    disp.fontspacing(1, 0)
-    disp.fontscale(1)
-    disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
-    disp.fontaddress(fnt.ptr{})
-    disp.preset_96x64_hiperf{}
-    disp.subpixelorder(disp.RGB)
+    disp.font_spacing(1, 0)
+    disp.font_scl(1)
+    disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
+    disp.font_addr(fnt.ptr{})
+    disp.preset_96x64_hi_perf{}
+    disp.subpix_order(disp.RGB)
     disp.contrast(127)
 
-    if (sens.startx(I2C_SCL, I2C_SDA, I2C_HZ))
+    if (sensor.startx(I2C_SCL, I2C_SDA, I2C_HZ))
         ser.strln(string("MLX90621 driver started"))
-        sens.defaults{}
-        sens.opmode(sens.CONT)
+        sensor.defaults{}
+        sensor.opmode(sensor.CONT)
     else
         ser.strln(string("MLX90621 driver failed to start - halting"))
         repeat

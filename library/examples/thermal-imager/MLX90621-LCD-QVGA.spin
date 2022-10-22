@@ -7,7 +7,7 @@
         display: ILI9341 (320x240)
     Copyright (c) 2022
     Started: Jul 7, 2022
-    Updated: Jul 7, 2022
+    Updated: Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,11 +40,11 @@ CON
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    sens: "sensor.thermal-array.mlx90621"
+    cfg: "boardcfg.flip"
+    sensor: "sensor.thermal-array.mlx90621"
     disp: "display.lcd.ili9341"
 
-PUB Main{}
+PUB main{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -53,23 +53,23 @@ PUB Main{}
 
     disp.startx(LCD_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT)
     ser.strln(string("ILI9341 driver started"))
-    disp.fontspacing(1, 0)
-    disp.fontscale(3)
-    disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
-    disp.fontaddress(fnt.ptr{})
+    disp.font_spacing(1, 0)
+    disp.font_scl(3)
+    disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
+    disp.font_addr(fnt.ptr{})
     disp.preset{}
 
     { set up for landscape orientation, B-G-R subpixels }
-    disp.displayrotate(true)
-    disp.mirrorv(true)
-    disp.mirrorh(false)
-    disp.subpixelorder(disp.BGR)
+    disp.disp_rot_ena(true)
+    disp.mirror_v(true)
+    disp.mirror_h(false)
+    disp.subpix_order(disp.BGR)
     disp.bgcolor(0)
     disp.clear{}
-    if (sens.startx(I2C_SCL, I2C_SDA, I2C_HZ))
+    if (sensor.startx(I2C_SCL, I2C_SDA, I2C_HZ))
         ser.strln(string("MLX90621 driver started"))
-        sens.defaults{}
-        sens.opmode(sens.CONT)
+        sensor.defaults{}
+        sensor.opmode(sensor.CONT)
     else
         ser.strln(string("MLX90621 driver failed to start - halting"))
         repeat
@@ -82,8 +82,8 @@ PUB Main{}
     _sens_adcref := 0
     _cscl := 2048
     _cdiv := 8
-    _fw := WIDTH/sens#WIDTH
-    _fh := WIDTH/sens#WIDTH
+    _fw := WIDTH/sensor#WIDTH
+    _fh := WIDTH/sensor#WIDTH
     _inv_x := 0
     _set_chgd := 1
     _show_sets := 1
@@ -95,24 +95,21 @@ PUB Main{}
 
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

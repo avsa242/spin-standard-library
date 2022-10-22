@@ -151,7 +151,7 @@ PUB start | i,dx,dy
 
 
     'Read RCTIME value; place value of RCTIME into 'RCValue'
-    RC.CalculateRCTIME(0,1,@RCValue)
+    rc.calc_rctime(0,1,@RCValue)
 
     'display text of RCtime value
     gr.text(0,50,Num.ToStr(RCValue, 10))

@@ -8,7 +8,7 @@
         * Quadrature encoder
     Copyright (c) 2022
     Started Aug 29, 2022
-    Updated Aug 29, 2022
+    Updated Oct 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -23,11 +23,11 @@ CON
     SER_BAUD    = 115_200
 
     { SPI configuration - nRF24L01+ }
-    CE_PIN      = 8'0
-    CS_PIN      = 9'1
-    SCK_PIN     = 10'2
-    MOSI_PIN    = 11'3
-    MISO_PIN    = 12'4
+    CE_PIN      = 0
+    CS_PIN      = 1
+    SCK_PIN     = 2
+    MOSI_PIN    = 3
+    MISO_PIN    = 4
 
     { encoder basepin (uses 2 pins) }
     ENC_BASEPIN = 24
@@ -53,10 +53,10 @@ PUB main{} | delta
 
 ' -- User-modifiable settings (NOTE: These settings _must_ match the receive side) }
     radio.channel(2)                            ' 0..125 (2.400 .. 2.525GHz)
-    radio.txpower(0)                            ' -18, -12, -6, 0 (dBm)
+    radio.tx_pwr(0)                             ' -18, -12, -6, 0 (dBm)
 
     { set transmit address (note: order in string() is LSB, ..., MSB) }
-    radio.nodeaddress(string($e7, $e7, $e7, $e7, $e7))
+    radio.node_addr(string($e7, $e7, $e7, $e7, $e7))
 
 ' --
 
@@ -68,7 +68,7 @@ PUB main{} | delta
         repeat
             delta := encoder.readdelta(0)       ' wait for a change in encoder position
         until (delta)
-        radio.txpayload(4, @delta)
+        radio.tx_payld(4, @delta)
 
 PUB setup{}
 
@@ -79,9 +79,9 @@ PUB setup{}
     if (radio.startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
         ser.strln(string("nRF24L01+ driver started"))
         radio.preset_tx2m_noaa{}                ' 2Mbps, no Auto-Ack
-        radio.crccheckenabled(true)
-        radio.crclength(2)
-        radio.payloadlen(4, 0)
+        radio.crc_check_ena(true)
+        radio.crc_len(2)
+        radio.payld_len(4, 0)
     else
         ser.strln(string("nRF24L01+ driver failed to start - halting"))
         repeat
