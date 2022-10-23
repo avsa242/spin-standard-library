@@ -1,37 +1,75 @@
+{
+    --------------------------------------------
+    Filename: Serial-InputNumbers.spin
+    Description: Demonstrate reading decimal numbers from the serial terminal
+    Author: Brett Weir
+    Modified by: Jesse Burt
+    Started Jan 3, 2016
+    Updated Oct 23, 2022
+    See end of file for terms of use.
+    --------------------------------------------
+}
+
 CON
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
+
+' -- User-modifiable constants
+    SER_BAUD    = 115_200
+' --
 
 OBJ
 
-    term : "com.serial.terminal"
+    cfg  : "boardcfg.flip"
+    ser  : "com.serial.terminal.ansi"
+    time : "time"
 
-VAR
+PUB main{} | a, b
 
-    byte    input[32]
+    ser.start(SER_BAUD)
+    time.msleep(20)
 
-PUB Main | a, b
+    ser.puts(string("Input a value: "))
+    a := ser.getdec{}                           ' read a decimal number from the terminal
+    ser.newline{}
 
-    term.Start(115_200)
+    ser.puts(string("Input another value: "))
+    b := ser.getdec{}                           '   and a second one
+    ser.newline{}
 
-    term.Str(string("Input a value: "))
-    a := term.DecIn
+    ser.str(string("a + b: "))
+    ser.putdec(a + b)                           ' add them
+    ser.newline{}
 
-    term.Str(string("Input another value: "))
-    b := term.DecIn
+    ser.str(string("a - b: "))
+    ser.putdec(a - b)                           ' subtract them
+    ser.newline{}
 
-    term.NewLine
-    term.Str(string("a + b: "))
-    term.Dec (a + b)
+    ser.str(string("a * b: "))
+    ser.putdec(a * b)                           ' multiply them
+    ser.newline{}
 
-    term.NewLine
-    term.Str(string("a - b: "))
-    term.Dec (a - b)
+    ser.str(string("a / b: "))
+    ser.putdec(a / b)                           ' divide them
 
-    term.NewLine
-    term.Str(string("a * b: "))
-    term.Dec (a * b)
+DAT
+{
+Copyright 2022 Jesse Burt
 
-    term.NewLine
-    term.Str(string("a / b: "))
-    term.Dec (a / b)
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
+

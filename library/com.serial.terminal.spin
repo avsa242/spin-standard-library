@@ -5,7 +5,7 @@
     Description: Parallax Serial Terminal-compatible
         serial terminal driver
     Started 2006
-    Updated Oct 18, 2022
+    Updated Oct 23, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -40,7 +40,7 @@ CON
 
 VAR
 
-    byte    _str_buffer[MAXSTR_LENGTH+1]        ' Buffer for numerical strings
+    byte    _str_buff[MAXSTR_LENGTH+1]          ' Buffer for numerical strings
 
 #include "com.serial.spin"                      ' low-level async serial driver
 
@@ -166,7 +166,7 @@ PUB gets_max(ptr_buff, max_len)
 
     { get up to max_len chars, or until CR received }
     repeat while (max_len--)
-        if ((byte[ptr_buff++] := ser.charin{}) == CR)
+        if ((byte[ptr_buff++] := charin{}) == CR)
             quit
 
     { zero terminate string; overwrite CR or append 0 char }

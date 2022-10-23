@@ -1,10 +1,10 @@
 {
     --------------------------------------------
     Filename: com.serial.terminal.ansi.spin
-    Author: Jesse Burt
     Description: ANSI-compatible serial terminal
+    Author: Jesse Burt
     Started Nov 9, 2020
-    Updated Oct 15, 2022
+    Updated Oct 23, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -18,44 +18,47 @@
 #include "termcodes.spinh"
 #endif
 
-CON
-
-    MAXSTR_LENGTH   = 49                        ' max len of received numerical
-                                                ' string (not including zero terminator)
+{ max len of received numerical string (not including zero terminator) }
+#ifndef SER_STR_BUFF_SZ
+#define SER_STR_BUFF_SZ 49
+#endif
 
 VAR
 
-    byte _str_buff[MAXSTR_LENGTH+1]             ' buffer for numerical strings
+    byte _str_buff[SER_STR_BUFF_SZ+1]           ' buffer for numerical strings
 
 #include "com.serial.spin"                      ' low-level async serial driver
 
 PUB chars(ch, nr_ch)
 ' Send character 'ch' nr_ch times
     repeat nr_ch
-        char(ch)
+        putchar(ch)
 
-PUB binin = get_bin
-PUB rx_bin = get_bin
-PUB get_bin{}: b
+PUB binin = getbin
+PUB rx_bin = getbin
+PUB get_bin = getbin
+PUB getbin{}: b
 ' Receive CR-terminated string representing a binary value
 '   Returns: the corresponding binary value
-    strinmax(@_str_buff, MAXSTR_LENGTH)
+    gets_max(@_str_buff, SER_STR_BUFF_SZ)
     return stl.atoib(@_str_buff, stl#IBIN)
 
-PUB decin = get_dec
-PUB rx_dec = get_dec
-PUB get_dec{}: d
+PUB decin = getdec
+PUB rx_dec = getdec
+PUB get_dec = getdec
+PUB getdec{}: d
 ' Receive CR-terminated string representing a decimal value
 '   Returns: the corresponding decimal value
-    strinmax(@_str_buff, MAXSTR_LENGTH)
+    gets_max(@_str_buff, SER_STR_BUFF_SZ)
     return stl.atoib(@_str_buff, stl#IDEC)
 
-PUB hexin = get_hex
-PUB rx_hex = get_hex
-PUB get_hex{}: h
+PUB hexin = gethex
+PUB rx_hex = gethex
+PUB get_hex = gethex
+PUB gethex{}: h
 ' Receive CR-terminated string representing a hexadecimal value
 '   Returns: the corresponding hexadecimal value
-    strinmax(@_str_buff, MAXSTR_LENGTH)
+    gets_max(@_str_buff, SER_STR_BUFF_SZ)
     return stl.atoib(@_str_buff, stl#IHEX)
 
 PUB strin = gets
@@ -65,7 +68,7 @@ PUB gets(ptr_buff)
 '   ptr_str: pointer to buffer in which to store received string
 '   NOTE: ptr_str must point to a large enough buffer for entire string
 '       plus a zero terminator
-    strinmax(ptr_buff, -1)
+    gets_max(ptr_buff, -1)
 
 PUB strinmax = gets_max
 PUB rx_str_max = gets_max
@@ -77,7 +80,7 @@ PUB gets_max(ptr_buff, max_len)
 
     { get up to max_len chars, or until CR received }
     repeat while (max_len--)
-        if ((byte[ptr_buff++] := ser.charin{}) == CR)
+        if ((byte[ptr_buff++] := getchar{}) == CR)
             quit
 
     { zero terminate string; overwrite CR or append 0 char }
@@ -89,7 +92,7 @@ PUB read_line(ptr_str, max_len): size | c
 '   Returns: number of characters received
     size := 0
     repeat
-        case (c := charin{})
+        case (c := getchar{})
             BS:
                 if (size)
                     size--

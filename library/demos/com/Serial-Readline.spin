@@ -1,29 +1,66 @@
-{{
-    This demo illustrates the use of the terminal ReadLine function for
-    getting input from a command line.
+{
+    --------------------------------------------
+    Filename: Serial-Readline.spin
+    Description: Read a line (of maximum length set by the user) from the
+        serial terminal and display it
+    Author: Brett Weir
+    Modified by: Jesse Burt
+    Copyright (c) 2022
+    Started Jan 9, 2016
+    Updated Oct 23, 2022
+    See end of file for terms of use.
+    --------------------------------------------
 
-    For this demo to work correctly, terminal Echo must be disabled.
-}}
+    NOTE: For this demo to work correctly, terminal Echo must be disabled.
+}
+
 CON
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
 
-    MAX_LINE = 64
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
+
+' -- User-modifiable constants
+    LED         = cfg#LED1
+    SER_BAUD    = 115_200
+
+    MAX_LINE    = 10                            ' max length of string to read
+' --
 
 OBJ
 
-    term : "com.serial.terminal"
+    cfg : "boardcfg.flip"
+    term: "com.serial.terminal.ansi"
 
 VAR
 
-    byte line[MAX_LINE]
+    byte _line[MAX_LINE]                        ' buffer to copy read line into
 
-PUB Main
+PUB main{}
 
-  term.Start (115200)
+    term.start(SER_BAUD)
 
-  repeat
-    term.Str (string("> "))
-    term.ReadLine (@line, MAX_LINE)
-    term.Str (@line)
-    term.NewLine
+    repeat
+        term.puts(string("> "))
+        term.read_line(@_line, MAX_LINE)        ' read a line, up to MAX_LINE characters
+        term.strln(@_line)                      ' show what was read
+
+DAT
+{
+Copyright 2022 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
+

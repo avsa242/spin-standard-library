@@ -1,16 +1,39 @@
+{
+    --------------------------------------------
+    Filename: Serial-DataBlast.spin
+    Description: Simple serial demo that sends all
+        printable characters to the terminal
+    Author: Unknown
+    Modified by: Jesse Burt
+    Copyright (c) 2022
+    Started: Unknown
+    Updated: Oct 22, 2022
+    See end of file for terms of use.
+    --------------------------------------------
+}
 CON
-    _clkmode = xtal1 + pll16x
-    _xinfreq = 5_000_000
+
+    _clkmode    = cfg#_clkmode
+    _xinfreq    = cfg#_xinfreq
+
+' -- User-modifiable constants
+    LED         = cfg#LED1
+    SER_BAUD    = 115200
+' --
 
 OBJ
-    ser : "com.serial"
 
-PUB Main | ran
+    cfg : "boardcfg.flip"
+    ser : "com.serial.terminal.ansi"
 
-    ser.Start(115_200)
+PUB main{} | ch
 
-    ran := cnt
+    ser.start(SER_BAUD)
+    ch := 32
 
     repeat
-        ser.Char(32 + (ran? & $3F))
+        if (ch > 127)
+            ch := 32
+        ser.putchar(ch++)
         repeat 10000
+

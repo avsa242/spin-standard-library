@@ -1,12 +1,12 @@
 {
     --------------------------------------------
-    Filename: SerialLogwindow.spin
+    Filename: Serial-Logwindow.spin
     Author: Jesse Burt
     Description: Display a scrolling text/logging
         "window" on the serial terminal
-    Copyright (c) 2020
+    Copyright (c) 2022
     Started Oct 25, 2020
-    Updated Nov 9, 2020
+    Updated Oct 23, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,52 +40,54 @@ CON
 
 OBJ
 
-    cfg     : "boardcfg.demoboard"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    sf      : "string.format"
+    cfg : "boardcfg.demoboard"
+    ser : "com.serial.terminal.ansi"
+    time: "time"
+    str : "string"
 
 VAR
 
     byte    _logbuff[LOGBUFFSZ]
     byte    _msg[LINEWIDTH]
 
-PUB Main{} | i, x, y
+PUB main{} | i, x, y
 
     setup{}
 
     x := 0                                      ' x, y coords of 'window'
     y := 4
-    ser.textwindow(string("Log messages"), x, y, LOG_W, LOG_H, ser#CYAN, ser#BLUE, ser#WHITE)
+    ser.text_win(string("Log messages"), x, y, LOG_W, LOG_H, ser#CYAN, ser#BLUE, ser#WHITE)
 
     i := 0
-    ser.hidecursor{}
+    ser.hide_curs{}
     ser.fgcolor(ser#CYAN)
     ser.bgcolor(ser#BLUE)
     repeat
         ' copy formatted string to temp buffer _msg
-        sf.snprintf(@_msg, LINEWIDTH, string("this is message %d"), i, 0, 0, 0, 0, 0)
+        str.sprintf1(@_msg, string("this is message %d"), i)
 
         ' display the scroll buffer and scroll it up one line
-        msgscrollup(@_msg, x, y)
+        msg_scroll_up(@_msg, x, y)
         bytefill(@_msg, 0, LINEWIDTH)           ' clear out the buffer
         i++                                     ' increment counter used above
 
-PUB MsgScrollDown(ptr_msg, x, y) | ln, ins_left, ins_top
+PUB msg_scroll_down(ptr_msg, x, y) | ln, ins_left, ins_top
 ' Scroll a message buffer down one line and add new message to the top row
     ins_left := x+1
     ins_top := y+1
 
     ' scroll lines from top line down
     bytemove(@_logbuff[LINE1], @_logbuff[TOP], SCRLBYTES)
+
     ' move the new message into the top line
     bytemove(@_logbuff[TOP], ptr_msg, LINE1)
+
     ' now display them
     repeat ln from 0 to LASTLINE
-        ser.position(ins_left, ins_top+ln)
-        ser.str(@_logbuff[LINEWIDTH*ln])
+        ser.pos_xy(ins_left, ins_top+ln)
+        ser.puts(@_logbuff[LINEWIDTH*ln])
 
-PUB MsgScrollUp(ptr_msg, x, y) | ln, ins_left, ins_top
+PUB msg_scroll_up(ptr_msg, x, y) | ln, ins_left, ins_top
 ' Scroll a message buffer up one line and add new message to the bottom row
     ins_left := x+1
     ins_top := y+1
@@ -96,10 +98,10 @@ PUB MsgScrollUp(ptr_msg, x, y) | ln, ins_left, ins_top
     bytemove(@_logbuff[BTM], ptr_msg, LINEWIDTH)
     ' now display them
     repeat ln from 0 to LASTLINE
-        ser.position(ins_left, ins_top+ln)
-        ser.str(@_logbuff[LINEWIDTH*ln])
+        ser.pos_xy(ins_left, ins_top+ln)
+        ser.puts(@_logbuff[LINEWIDTH*ln])
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -109,22 +111,21 @@ PUB Setup{}
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+
