@@ -1,17 +1,17 @@
 {
     --------------------------------------------
     Filename: display.tv.terminal.spin
+    Description: TV text/terminal driver
     Author: Chip Gracey
     Modified by: Jesse Burt
-    Description: TV text/terminal driver
     Started 2005
-    Updated May 13, 2021
+    Updated Oct 25, 2022
     See end of file for terms of use.
     --------------------------------------------
+
     NOTE: This is based on TV_Terminal.spin, originally
         by Chip Gracey
 }
-#define _HAS_NEWLINE_
 CON
 
     X_TILES         = 16
@@ -65,48 +65,49 @@ VAR
     long _bitmap[X_TILES * Y_TILES << 4 + 16]   ' add 16 longs to allow for 64-byte alignment
     word _screen[X_TILES * Y_TILES]
 
-
 OBJ
 
     tv : "display.tv"
     gr : "display.tv.graphics"
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start(TV_BASEPIN): status
+PUB start(TV_BASEPIN): status
 ' Start terminal
 '
 '  TV_BASEPIN: first of three pins on a 4-pin boundary (0, 4, 8...) to have
 '  1.1k, 560, and 270 ohm resistors connected and summed to form the 1V,
 '  75 ohm DAC for baseband video
 
-    ' init bitmap and tile screen
+    { init bitmap and tile screen }
     _ptr_bitmap := (@_bitmap + $3F) & $7FC0
     repeat _x from 0 to X_TILES - 1
         repeat _y from 0 to Y_TILES - 1
             _screen[_y * X_TILES + _x] := _ptr_bitmap >> 6 + _y + _x * Y_TILES
 
-    ' start tv
+    { start tv }
     _tvparams_pins := (TV_BASEPIN & $38) << 1 | (TV_BASEPIN & 4 == 4) & %0101
     longmove(@_tv_status, @_tvparams, PARAMCOUNT)
     _tv_screen := @_screen
     _tv_colors := @_color_schemes
     tv.start(@_tv_status)
 
-    ' start graphics
+    { start graphics }
     gr.start
     gr.setup(X_TILES, Y_TILES, 0, Y_SCREEN, _ptr_bitmap)
     gr.textmode(X_SCALE, Y_SCALE, X_SPACING, 0)
     gr.width(WIDTH)
     char(0)
 
-PUB Stop{}
+PUB stop{}
 ' Stop terminal
     tv.stop
     gr.stop
 
-PUB Char(c)
+PUB tx = putchar
+PUB char = putchar
+PUB putchar(c)
 ' Print a character
 '
 '       $00 = home
@@ -125,22 +126,21 @@ PUB Char(c)
             _tv_colors := @_color_schemes[c & 3]
         TB:                                     ' tab?
             repeat
-                char($20)
+                putchar(" ")
             while _x & 7
         CR:                                     ' return?
             newline
         " ".."~":                               ' character?
             gr.text(_x * X_CHR, -_y * Y_CHR - Y_OFFSET, @c)
             gr.finish
-            if ++_x == X_LIMIT
+            if (++_x == X_LIMIT)
                 newline
 
-' pull in terminal lib methods (Bin(), Dec(), Hex(), PrintF(), Str(), etc)
-#include "lib.terminal.spin"
+{ normally terminal.common.spinh provides newline(), but tell it we brought our own }
+#define _HAS_NEWLINE_
+PUB newline
 
-PUB Newline
-
-    if ++_y == Y_LIMIT
+    if (++_y == Y_LIMIT)
         gr.finish
         repeat _x from 0 to X_TILES - 1
             _y := _ptr_bitmap + _x * Y_SCREEN_BYTES
@@ -170,4 +170,25 @@ _color_schemes          long    $BC_6C_05_02
                         long    $0E_0D_0C_0A
                         long    $6E_6D_6C_6A
                         long    $BE_BD_BC_BA
+
+' pull in terminal lib methods (putbin(), putdec(), puthex(), printf(), puts(), etc)
+#include "terminal.common.spinh"
+
+DAT
+{
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
