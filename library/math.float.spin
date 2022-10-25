@@ -1,500 +1,355 @@
-' Original authors: Cam Thompson, Jonathan "lonesock" Dummer
-{{
+{
+    --------------------------------------------
+    Filename: math.float.spin
+    Description: Floating-point math routines
+        Single-precision, IEEE-754 (PASM-based)
+        (based on Float32Full.spin, originally by
+        Chip Gracey)
+    Started May 17, 2006
+    Updated Oct 23, 2022
+    See end of file for terms of use.
+    --------------------------------------------
+
+    NOTE: This is based on Float32Full.spin,
+    originally by: Cam Thompson, Jonathan "lonesock" Dummer
+
     IEEE 754 compliant 32-bit floating point math routines for the Propeller in a single cog.
 
     # Features
-
-     *  prop resources:       1 cog, 690 longs
+    *  prop resources:       1 cog, 690 longs
 
     # Usage
-     *  call start first (starts a new cog)
-     *  use functions as expected
-     *  realize that you are storing the result into a regular long variable type (signed 4-byte integer), _encoded_as_a_float_!
+    *  call start first (starts a new cog)
+    *  use functions as expected
+    *  realize that you are storing the result into a regular long variable type
+        (signed 4-byte integer), _encoded_as_a_float_!
 
     # Notes
-     *  CORDIC using floats would be very slow
-     *  integer-only CORDIC isn't super accurate for tiny integers
-         - not pre-rounding before performing bit shifts
-         - SAR is used to handle negative numbers, but -1 >> 10 still = -1, instad of 0
-     *  for small values of x, sin(x) ~= x, and cos(x) = 1.
-     *  if x <= 0.0002, the approximations' error is < f32 resolution!
-}}
+    *  CORDIC using floats would be very slow
+    *  integer-only CORDIC isn't super accurate for tiny integers
+        - not pre-rounding before performing bit shifts
+        - SAR is used to handle negative numbers, but -1 >> 10 still = -1, instad of 0
+    *  for small values of x, sin(x) ~= x, and cos(x) = 1.
+    *  if x <= 0.0002, the approximations' error is < f32 resolution!
+}
+
 CON
 
-    ' the list of all the PASM functions' offsets in the dispatch table
-    ' You probably only need this table can be used to call F32 routines from inside your own PASM code
+    { the list of all the PASM functions' offsets in the dispatch table }
+    { can be used to call F32 routines from inside your own PASM code }
+    OFFS_ADD        = OFFS_GAIN * 0
+    OFFS_SUB        = OFFS_GAIN * 1
+    OFFS_MUL        = OFFS_GAIN * 2
+    OFFS_DIV        = OFFS_GAIN * 3
+    OFFS_FLOAT      = OFFS_GAIN * 4
+    OFFS_TRUNCROUND = OFFS_GAIN * 5
+    OFFS_UINTTRUNC  = OFFS_GAIN * 6
+    OFFS_SQR        = OFFS_GAIN * 7
+    OFFS_CMP        = OFFS_GAIN * 8
+    OFFS_SIN        = OFFS_GAIN * 9
+    OFFS_COS        = OFFS_GAIN * 10
+    OFFS_TAN        = OFFS_GAIN * 11
+    OFFS_LOG2       = OFFS_GAIN * 12
+    OFFS_EXP2       = OFFS_GAIN * 13
+    OFFS_POW        = OFFS_GAIN * 14
+    OFFS_FRAC       = OFFS_GAIN * 15
+    OFFS_MOD        = OFFS_GAIN * 16
+    OFFS_ASINCOS    = OFFS_GAIN * 17
+    OFFS_ATAN2      = OFFS_GAIN * 18
+    OFFS_CEIL       = OFFS_GAIN * 19
+    OFFS_FLOOR      = OFFS_GAIN * 20
 
-    offAdd        = offGain * 0
-    offSub        = offGain * 1
-    offMul        = offGain * 2
-    offDiv        = offGain * 3
-    offFloat      = offGain * 4
-    offTruncRound = offGain * 5
-    offUintTrunc  = offGain * 6
-    offSqr        = offGain * 7
-    offCmp        = offGain * 8
-    offSin        = offGain * 9
-    offCos        = offGain * 10
-    offTan        = offGain * 11
-    offLog2       = offGain * 12
-    offExp2       = offGain * 13
-    offPow        = offGain * 14
-    offFrac       = offGain * 15
-    offMod        = offGain * 16
-    offASinCos    = offGain * 17
-    offATan2      = offGain * 18
-    offCeil       = offGain * 19
-    offFloor      = offGain * 20
-
-    ' each entry is a long...4 bytes
-
-    offGain       = 4
+    OFFS_GAIN       = 4                         ' each entry is a long/4 bytes
 
 VAR
 
-    long    f32_Cmd
-    byte    cog
-
-PUB Start
-{{
-    Start start floating point engine in a new cog.
-    Returns:     True (non-zero) if cog started, or False (0) if no cog is available.
-}}
-
-    Stop
-    f32_Cmd := 0
-    return cog := cognew(@f32_entry, @f32_Cmd) + 1
-
-PUB Stop
-{{
-    Stop floating point engine and release the cog.
-}}
-
-    if cog
-        cogstop(cog~ - 1)
-
-PUB FloatF(a)
-{{
-    Convert integer to floating point.
-    Parameters:
-      a        32-bit integer value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFFloat)
-
-PUB RoundF(a)
-{{
-    Round floating point number.
-
-    Parameters:
-      a        32-bit floating point value
-      b        flag: 3 signifies floating point rounding to the nearest whole number
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, %011, cmdFTruncRound)
-
-PUB TruncF(a)
-{{
-    Truncate floating point number.
-
-    Parameters:
-      a        32-bit floating point value
-      b        flag: 2 signifies floating point truncation
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, %010, cmdFTruncRound)
-
-PUB TruncUInt(a)
-{{
-    Convert floating point to unsigned integer (with truncation).
-
-    Parameters:
-      a        32-bit floating point value
-
-    Returns:   32-bit unsigned integer value
-    (negative values are clamped to 0)
-}}
-
-    return SetCommand(a, 0, cmdUintTrunc)
-
-PUB TruncFInt(a)
-{{
-    Convert floating point to integer (with truncation).
-
-    Parameters:
-      a        32-bit floating point value
-      b        flag: 0 signifies truncation
-    Returns:   32-bit integer value
-}}
-
-    return SetCommand(a, %000, cmdFTruncRound)
-
-PUB RoundFInt(a)
-{{
-    Convert floating point to integer (with rounding).
-
-    Parameters:
-      a        32-bit floating point value
-      b        flag: 1 signifies rounding to the nearest integer
-    Returns:   32-bit integer value
-}}
-
-    return SetCommand(a, %001, cmdFTruncRound)
-
-PUB NegF(a)
-{{
-    Negate: result = -a.
-    Parameters:
-      a        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return a ^ $8000_0000
-
-PUB AbsF(a)
-{{
-    Absolute Value: result = |a|.
-    Parameters:
-      a        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return a & $7FFF_FFFF
-
-PUB AddF(a, b)
-{{
-    Addition: result = a + b
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, b, cmdFAdd)
-
-PUB SubF(a, b)
-{{
-    Subtraction: result = a - b
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, b, cmdFSub)
-
-PUB MulF(a, b)
-{{
-    Multiplication: result = a * b
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, b, cmdFMul)
-
-PUB DivF(a, b)
-{{
-    Division: result = a / b
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, b, cmdFDiv)
-
-PUB ModF(a, b)
-{{
-    Floating point remainder: result = the remainder of a / b.
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, b, cmdFMod)
-
-PUB CmpF(a, b)
-{{
-    Floating point comparison.
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit integer value
-               -1 if a < b
-                0 if a == b
-                1 if a > b
-}}
-
-    return SetCommand(a, b, cmdFCmp)
-
-PUB Sqrt(a)
-{{
-    Square root.
-    Parameters:
-      a        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFSqr)
-
-PUB Sin(a)
-{{
-    Sine of an angle (radians).
-    Parameters:
-      a        32-bit floating point value (angle in radians)
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFSin)
-
-PUB Cos(a)
-{{
-    Cosine of an angle (radians).
-    Parameters:
-      a        32-bit floating point value (angle in radians)
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFCos)
-
-PUB Tan(a)
-{{
-    Tangent of an angle (radians).
-    Parameters:
-      a        32-bit floating point value (angle in radians)
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFTan)
-
-PUB Log(a)
-{{
-    Logarithm, base e.
-    Parameters:
-      a        32-bit floating point value
-      b        constant used to convert base 2 to base e
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 1.442695041, cmdFLog2)
-
-PUB Log2(a)
-{{
-    Logarithm, base 2.
-    Parameters:
-      a        32-bit floating point value
-      b        0 is a flag to skip the base conversion (skips a multiplication by 1.0)
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFLog2)
-
-PUB Log10(a)
-{{
-    Logarithm, base 10.
-    Parameters:
-      a        32-bit floating point value
-      b        constant used to convert base 2 to base 10
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 3.321928095, cmdFLog2)
-
-PUB Exp(a)
-{{
-    Exponential (e raised to the power a).
-    Parameters:
-      a        32-bit floating point value
-      b        constant used to convert base 2 to base e
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 1.442695041, cmdFExp2)
-
-PUB Exp2(a)
-{{
-    Exponential (2 raised to the power a).
-    Parameters:
-      a        32-bit floating point value
-      b        0 is a flag to skip the base conversion (skips a division by 1.0)
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFExp2)
-
-PUB Exp10(a)
-{{
-    Exponential (10 raised to the power a).
-    Parameters:
-      a        32-bit floating point value
-      b        constant used to convert base 2 to base 10
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 3.321928095, cmdFExp2)
-
-PUB Pow(a, b)
-{{
-    Power (a to the power b).
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, b, cmdFPow)
-
-PUB Frac(a)
-{{
-    Fraction (returns fractional part of a).
-    Parameters:
-      a        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFFrac)
-
-PUB Rad(a)
-{{
-    Convert degrees to radians
-    Parameters:
-      a        32-bit floating point value (angle in degrees)
-      b        the conversion factor
-    Returns:   32-bit floating point value (angle in radians)
-}}
-
-    return SetCommand(a, constant(pi / 180.0), cmdFMul)
-
-PUB Deg(a)
-{{
-    Convert radians to degrees
-    Parameters:
-      a        32-bit floating point value (angle in radians)
-      b        the conversion factor
-    Returns:   32-bit floating point value (angle in degrees)
-}}
-
-    return SetCommand(a, constant(180.0 / pi), cmdFMul)
-
-PUB ArcSin(a)
-{{
-    Arc Sine of a (in radians).
-    Parameters:
-      a        32-bit floating point value (|a| must be < 1)
-      b        1 is a flag signifying return the sine component
-    Returns:   32-bit floating point value (angle in radians)
-}}
-
-    return SetCommand(a, 1, cmdASinCos)
-
-PUB ArcCos(a)
-{{
-    Arc Cosine of a (in radians).
-    Parameters:
-      a        32-bit floating point value (|a| must be < 1)
-      b        0 is a flag signifying return the cosine component
-    Returns:   32-bit floating point value (angle in radians)
-               if |a| > 1, NaN is returned
-}}
-
-    return SetCommand(a, 0, cmdASinCos)
-
-PUB ArcTan(a)
-{{
-    Arc Tangent of a.
-    Parameters:
-      a        32-bit floating point value
-      b        atan(a) = atan2(a,1.0)
-    Returns:   32-bit floating point value (angle in radians)
-}}
-
-    return SetCommand(a, 1.0, cmdATan2)
-
-PUB ArcTan2(a, b)
-{{
-    Arc Tangent of vector a, b (in radians, no division is performed, so b==0 is legal).
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value (angle in radians)
-}}
-
-    return SetCommand(a, b, cmdATan2)
-
-PUB Floor(a)
-{{
-    Calculate the floating point value of the nearest integer <= a.
-    Parameters:
-      a        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdFloor)
-
-PUB Ceil(a)
-{{
-    Calculate the floating point value of the nearest integer >= a.
-    Parameters:
-      a        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    return SetCommand(a, 0, cmdCeil)
-
-PUB Minimum(a, b)
-{{
-    Minimum: result = the minimum value a or b.
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    result := SetCommand(a, b, cmdFCmp)
-    if result < 0
-      return a
-    return b
-
-PUB Maximum(a, b)
-{{
-    Maximum: result = the maximum value a or b.
-    Parameters:
-      a        32-bit floating point value
-      b        32-bit floating point value
-    Returns:   32-bit floating point value
-}}
-
-    result := SetCommand(a, b, cmdFCmp)
-    if result < 0
-      return b
-    return a
-
-PUB Cmd_ptr
-{{
-    return the Hub address of f32_Cmd, so other code can call F32 functions directly
-}}
-
-    return @f32_Cmd
-
-PUB Call_ptr
-{{
-    return the Hub address of the dispatch table, so other code can call F32 functions directly
-}}
-
+    long _f32_cmd
+    byte _cog
+
+PUB null
+' This is not a top-level object
+
+PUB start: status
+' Start floating point engine in a new cog.
+'   Returns: True (non-zero) if cog started, or False (0) if no cog is available.
+    stop{}
+    _f32_cmd := 0
+    return _cog := (cognew(@f32_entry, @_f32_cmd) + 1)
+
+PUB stop
+' Stop floating point engine and release the cog.
+    if (_cog)
+        cogstop(_cog~ - 1)
+
+PUB arccos = acos
+PUB acos(a): ar
+' Arc Cosine of a (in radians).
+'   a: 32-bit floating point value (|a| must be < 1)
+'   b: 0 is a flag signifying return the cosine component
+'   Returns: 32-bit floating point value (angle in radians)
+'       NOTE: if |a| > 1, NaN is returned
+    return set_cmd(a, 0, cmdASinCos)
+
+PUB arcsin = asin
+PUB asin(a): ar
+' Arc Sine of a (in radians).
+'   a: 32-bit floating point value (|a| must be < 1)
+'   b: 1 is a flag signifying return the sine component
+'   Returns: 32-bit floating point value (angle in radians)
+    return set_cmd(a, 1, cmdASinCos)
+
+PUB arctan = atan
+PUB atan(a): ar
+' Arc Tangent of a.
+'   a: 32-bit floating point value
+'   b: atan(a) = atan2(a,1.0)
+'   Returns: 32-bit floating point value (angle in radians)
+    return set_cmd(a, 1.0, cmdATan2)
+
+PUB arctan2 = atan2
+PUB atan2(a, b): ar
+' Arc Tangent of vector a, b (in radians, no division is performed, so b==0 is legal).
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns: 32-bit floating point value (angle in radians)
+    return set_cmd(a, b, cmdATan2)
+
+PUB call_ptr{}: ptr
+' Return the Hub address of the dispatch table, so other code can call F32 functions directly
     return @cmdCallTable
 
-PRI SetCommand(a, b, cmd)
+PUB ceil(a): c
+' Calculate the floating point value of the nearest integer >= a.
+'   a: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdCeil)
 
-    result  := cmd
-    f32_Cmd := @result
-    repeat
-    while f32_Cmd
+PUB cmd_ptr{}: ptr
+' Return the hub address of _f32_cmd, so other code can call F32 functions directly
+    return @_f32_cmd
+
+PUB cos(a): c
+' Cosine of an angle (radians).
+'   a: 32-bit floating point value (angle in radians)
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFCos)
+
+PUB deg(a): ad
+' Convert radians to degrees
+'   a: 32-bit floating point value (angle in radians)
+'   b: the conversion factor
+'   Returns: 32-bit floating point value (angle in degrees)
+    return set_cmd(a, constant(180.0 / pi), cmdFMul)
+
+PUB exp(a): ea
+' Exponential (e raised to the power a).
+'   a: 32-bit floating point value
+'   b: constant used to convert base 2 to base e
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 1.442695041, cmdFExp2)
+
+PUB exp2(a): ea
+' Exponential (2 raised to the power a).
+'   a: 32-bit floating point value
+'   b: 0 is a flag to skip the base conversion (skips a division by 1.0)
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFExp2)
+
+PUB exp10(a): ea
+' Exponential (10 raised to the power a).
+'   a: 32-bit floating point value
+'   b: constant used to convert base 2 to base 10
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 3.321928095, cmdFExp2)
+
+PUB fabs(a): absv
+' Absolute Value: result = |a|.
+'   a: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return (a & $7FFF_FFFF)
+
+PUB fadd(a, b): s
+' Addition: result = a + b
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, b, cmdFAdd)
+
+PUB fcmp(a, b): c
+' Floating point comparison.
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns:   32-bit integer value
+'               -1 if a < b
+'               0 if a == b
+'               1 if a > b
+    return set_cmd(a, b, cmdFCmp)
+
+PUB fdiv(a, b): q
+' Division: result = a / b
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, b, cmdFDiv)
+
+PUB ffloat(a): f
+' Convert integer to floating point.
+'   a: 32-bit integer value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFFloat)
+
+PUB floor(a): f
+' Calculate the floating point value of the nearest integer <= a.
+'   a: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFloor)
+
+PUB fmod(a, b): m
+' Floating point remainder: result = the remainder of a / b.
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, b, cmdFMod)
+
+PUB fmul(a, b): p
+' Multiplication: result = a * b
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, b, cmdFMul)
+
+PUB fneg(a): na
+' Negate: result = -a.
+'   a: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return a ^ $8000_0000
+
+PUB fract(a): f
+' Fraction (returns fractional part of a).
+'   a: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFFrac)
+
+PUB fround(a): fr
+' Round floating point number.
+'   a: 32-bit floating point value
+'   b: flag: 3 signifies floating point rounding to the nearest whole number
+'   Returns: 32-bit floating point value
+    return set_cmd(a, %011, cmdFTruncRound)
+
+PUB froundint(a): i
+' Convert floating point to integer (with rounding).
+'   a: 32-bit floating point value
+'   b: flag: 1 signifies rounding to the nearest integer
+'   Returns: 32-bit integer value
+    return set_cmd(a, %001, cmdFTruncRound)
+
+PUB fsqrt(a): sr
+' Square root.
+'   a: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFSqr)
+
+PUB fsub(a, b): d
+' Subtraction: result = a - b
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns:   32-bit floating point value
+    return set_cmd(a, b, cmdFSub)
+
+PUB ftrunc(a): f
+' Truncate floating point number.
+'   a: 32-bit floating point value
+'   b: flag: 2 signifies floating point truncation
+'   Returns: 32-bit floating point value
+    return set_cmd(a, %010, cmdFTruncRound)
+
+PUB ftruncint(a): i
+' Convert floating point to integer (with truncation).
+'   a: 32-bit floating point value
+'   b: flag: 0 signifies truncation
+'   Returns: 32-bit integer value
+    return set_cmd(a, %000, cmdFTruncRound)
+
+PUB ftruncuint(a): ui
+'Convert floating point to unsigned integer (with truncation).
+'   a: 32-bit floating point value
+'   Returns: 32-bit unsigned integer value
+'   (negative values are clamped to 0)
+    return set_cmd(a, 0, cmdUintTrunc)
+
+PUB log(a): f
+' Logarithm, base e.
+'   a: 32-bit floating point value
+'   b: constant used to convert base 2 to base e
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 1.442695041, cmdFLog2)
+
+PUB log2(a): f
+' Logarithm, base 2.
+'   a: 32-bit floating point value
+'   b: 0 is a flag to skip the base conversion (skips a multiplication by 1.0)
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFLog2)
+
+PUB log10(a): f
+' Logarithm, base 10.
+'   a: 32-bit floating point value
+'   b: constant used to convert base 2 to base 10
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 3.321928095, cmdFLog2)
+
+PUB minimum(a, b): f
+' Minimum: result = the minimum value a or b.
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    result := set_cmd(a, b, cmdFCmp)
+    if (result < 0)
+        return a
+    return b
+
+PUB maximum(a, b): f
+' Maximum: result = the maximum value a or b.
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    result := set_cmd(a, b, cmdFCmp)
+    if (result < 0)
+        return b
+    return a
+
+PUB pow(a, b): f
+' Power (a to the power b).
+'   a: 32-bit floating point value
+'   b: 32-bit floating point value
+'   Returns: 32-bit floating point value
+    return set_cmd(a, b, cmdFPow)
+
+PUB rad(a): r
+' Convert degrees to radians
+'   a: 32-bit floating point value (angle in degrees)
+'   b: the conversion factor
+'   Returns: 32-bit floating point value (angle in radians)
+    return set_cmd(a, constant(pi / 180.0), cmdFMul)
+
+PUB sin(a): f
+' Sine of an angle (radians).
+'   a: 32-bit floating point value (angle in radians)
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFSin)
+
+PUB tan(a): f
+' Tangent of an angle (radians).
+'   a: 32-bit floating point value (angle in radians)
+'   Returns: 32-bit floating point value
+    return set_cmd(a, 0, cmdFTan)
+
+PRI set_cmd(a, b, cmd)
+
+    result := cmd
+    _f32_cmd := @result
+    repeat while _f32_cmd
 
 CON
 
@@ -1335,4 +1190,24 @@ cmdASinCos              call    #_ASinCos
 cmdATan2                call    #_ATan2
 cmdCeil                 call    #_Ceil
 cmdFloor                call    #_Floor
+
+DAT
+{
+Copyright 2022 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
