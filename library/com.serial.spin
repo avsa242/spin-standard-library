@@ -5,7 +5,7 @@
     Description: UART engine
         (@80MHz Fsys: 250kbps TX/RX, or 1Mbps TX-only)
     Started 2009
-    Updated Oct 15, 2022
+    Updated Oct 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -22,8 +22,11 @@ CON
 
     ' set size of RX and TX buffers
     ' recommended: 64 or higher
-    BUFFER_LENGTH   = 64                        ' 2, 4, 8, 16, 32, 64, 128, 256
-    BUFFER_MASK     = BUFFER_LENGTH - 1
+    ' 2, 4, 8, 16, 32, 64, 128, 256
+#ifndef UART_BUFF_SZ
+#define UART_BUFF_SZ 64
+#endif
+    BUFFER_MASK     = UART_BUFF_SZ - 1
 
 VAR
 
@@ -39,8 +42,8 @@ VAR
     long _bit_ticks
     long _ptr_buff
 
-    byte _rx_buff[BUFFER_LENGTH]                ' Receive and transmit buffers
-    byte _tx_buff[BUFFER_LENGTH]
+    byte _rx_buff[UART_BUFF_SZ]                ' Receive and transmit buffers
+    byte _tx_buff[UART_BUFF_SZ]
 
 PUB start = init_def
 PUB init_def(baudrate): status
@@ -79,7 +82,7 @@ PUB fifo_rx_bytes{}: nr_chars
 ' Get count of characters in receive buffer
 '   Returns: number of characters waiting in receive buffer
     nr_chars := (_rx_head - _rx_tail)
-    nr_chars -= (BUFFER_LENGTH * (nr_chars < 0))
+    nr_chars -= (UART_BUFF_SZ * (nr_chars < 0))
 
 PUB flush = flush_rx
 PUB flush_rx{}
@@ -143,7 +146,7 @@ entry           mov     t1,par                  ' get structure address
                 add     t1,#4                   ' get _ptr_buff
                 rdlong  rxbuff,t1
                 mov     txbuff,rxbuff
-                add     txbuff,#BUFFER_LENGTH
+                add     txbuff,#UART_BUFF_SZ
 
                 test    rxtxmode,#%100 wz       ' init tx pin according to mode
                 test    rxtxmode,#%010 wc
