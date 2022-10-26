@@ -5,7 +5,7 @@
     Description: Demo of the hexdump() method
     Copyright (c) 2022
     Started May 15, 2021
-    Updated Oct 23, 2022
+    Updated Oct 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -41,6 +41,7 @@ PUB main{} | ptr_buff, base_addr, adr_digits, nr_bytes, columns, start, end
     adr_digits := 4                             ' # digits used in addr. disp.
 
     repeat ptr_buff from start to end step nr_bytes
+        base_addr := ptr_buff
         ser.pos_xy(0, 3)
         ser.hexdump(ptr_buff, base_addr, adr_digits, nr_bytes, columns)
 
