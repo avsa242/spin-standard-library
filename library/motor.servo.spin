@@ -1,283 +1,270 @@
-{{
-*****************************************
-* Servo32v7 Driver                   v7 *
-* Author: Beau Schwabe                  *
-* Copyright (c) 2009 Parallax           *
-* See end of file for terms of use.     *
-*****************************************
+{
+    --------------------------------------------
+    Filename: motor.servo.spin
+    Description: Servo driver
+        (32ch max)
+    Author: Beau Schwabe
+    Modified by: Jesse Burt
+    Started Dec 29, 2006
+    Updated Oct 27, 2022
+    See end of file for terms of use.
+    --------------------------------------------
 
-
-*****************************************************************
- Control up to 32-Servos      Version 7               08-18-2009
-*****************************************************************
- Coded by Beau Schwabe (Parallax).
-*****************************************************************
-
- History:
-                            Version 1 -               initial concept
-
-                            Version 2 - (03-08-2006)  Beta release
-
-                            Version 3 - (11-04-2007)  Improved servo resolution to 1uS
-
-                            Version 4 - (05-03-2009)  Ability to disable a servo channel
-                                                      and remove channel preset requirement
-
-                            Version 5 - (05-08-2009)  Added ramping ability
-
-                            Version 6 - (07-18-2009)  Fixed slight timing skew in ZoneLoop and
-                                                      fixed overhead timing latency in ZoneCore
-
-                            Version 7 - (08-18-2009)  Fixed servo jitter in ramping function when
-                                                      servo reached it's target position.
-
-Theory of Operation:
-
-Each servo requires a pulse that varies from 1mS to 2mS with a period of 20mS.
-To prevent a current surge nightmare, I have broken the 20mS period into four
-groups or Zones of 8 servos each with a period of 5mS. What this does, is to
-ensure that at any given moment in time, a maximum of only 8 servos are receiving
-a pulse.
-
-   Zone1 Zone2 Zone3    Zone4          In Zone1, servo pins  0- 7 are active
-           In Zone2, servo pins  8-15 are active
-  │─5mS│─5mS│─5mS│─5mS│        In Zone3, servo pins 16-23 are active
-  │──────────20mS───────────│        In Zone4, servo pins 24-31 are active
-                  
-    1-2mS servo pulse 
-
-The preferred circuit of choice is to place a 4.7K resistor on each signal input
-to the servo.    If long leads are used, place a 1000uF cap at the servo power
-connector.    Servo's seem to be happy with a 5V supply receiving a 3.3V signal.
-
-}}
+    NOTE: This is based on Servo32v7.spin,
+        originally by Beau Schwabe
+}
 
 CON
-    _1uS = 1_000_000 /        1                                                 'Divisor for 1 uS
+    _1US            = 1_000_000 / 1             ' divisor for 1 uS
 
-    ZonePeriod = 5_000                                                          '5mS (1/4th of typical servo period of 20mS)
-    NoGlitchWindow = 3_000                                                      '3mS Glitch prevention window (set value larger than maximum servo width of 2.5mS)
-                                                                                'Use at least 500uS for overhead (actual overhead about 300uS)
-
-     LowRange = 500             '<- during Debug I changed this value to 1 to test 1us resolution
-    HighRange = 2500
+    ZONE_PER        = 5_000                     ' 5mS (1/4th of typical servo period of 20mS)
+    NO_GLITCH_WIN   = 3_000                     ' 3mS glitch prevention window (set value larger
+                                                '   than maximum servo width of 2.5mS)
+                                                ' Use at least 500uS for overhead (actual overhead
+                                                '   about 300uS)
+    LOW_RNG = 500
+    HI_RNG = 2500
 
 VAR
-        long          RampFlag
-        long          ZoneClocks
-        long          NoGlitch
-        long          ServoPinDirection
-        long          ServoData[32]                                             '0-31 Current Servo Value
-        long          ServoTarget[32]                                           '0-31 Desired Servo Value
-        long          ServoDelay[32]                                            '0-31 Servo Ramp Delay
+
+    long _ramp_flag
+    long _zone_clks
+    long _no_glitch
+    long _servo_pin_dir
+    long _servo_data[32]                        ' 0-31 Current Servo Value
+    long _servo_tgt[32]                         ' 0-31 Desired Servo Value
+    long _servo_dly[32]                         ' 0-31 Servo Ramp Delay
 
 OBJ
 
-    SERVO : "motor.servo.ramp.spin"
+    sramp : "motor.servo.ramp.spin"
 
-PUB Start
-    RampFlag := 0
-    ZoneClocks := (clkfreq / _1uS * ZonePeriod)                                 'calculate # of clocks per ZonePeriod
-    NoGlitch   := $FFFF_FFFF-(clkfreq / _1uS * NoGlitchWindow)                  'calculate # of clocks for GlitchFree servos. Problem occurs when 'cnt' value rollover is less than the servo's pulse width.
-    cognew(@ServoStart,@ZoneClocks)
+PUB start
+' Start servo engine
+    _ramp_flag := 0
+    _zone_clks := (clkfreq / _1US * ZONE_PER)   ' calculate # of clocks per ZONE_PER
 
-PUB Ramp
-    SERVO.StartRamp(@ServoData)
-    RampFlag := 1
+    { calculate # of clocks for glitch-free servos; problem occurs when 'cnt' value rollover is
+        less than the servo's pulse width. }
+    _no_glitch := $FFFF_FFFF-(clkfreq / _1US * NO_GLITCH_WIN)
 
-PUB SetRamp(Pin, Width,Delay)|S_Width
-      ServoDelay[Pin] := Delay 'Note: The resolution of Delay is about 38.75us
-                               '      or 3100 clocks
+    cognew(@servo_start, @_zone_clks)
 
-      S_Width := LowRange #> Width <# HighRange                                 'limit Width value
-      Pin :=    0 #> Pin <# 31                                                  'limit Pin value between 0 and 31
-      ServoTarget[Pin] := ((clkfreq / _1uS * S_Width)/SERVO#CoreSpeed)*SERVO#CoreSpeed
-                                                                                'calculate # of clocks for a specific Pulse Width
-                                                                                'and adjust the snap value to match the value of
-                                                                                'CoreSpeed. (Note: this prevents jitter when Servo
-                                                                                '                  has reached it's target position)
+PUB ramp
+' Start (optional) servo ramping core
+    sramp.startramp(@_servo_data)
+    _ramp_flag := 1
+
+PUB setramp = set_ramp
+PUB set_ramp(pin, width, delay) | s_width
+' Ramp servo to position set by 'width' over 'delay' time period
+'   NOTE: delay resolution is approx. 38.75 microseconds (3100 clocks)
+    _servo_dly[pin] := delay
+
+    { calculate # of clocks for a specific pulse width and adjust the snap value to match the
+    value of CORE_SPD (this prevents jitter when servo has reached it's target position) }
+    s_width := LOW_RNG #> width <# HI_RNG
+    pin := 0 #> pin <# 31
+    _servo_tgt[pin] := ((clkfreq / _1US * s_width) / sramp#CORE_SPD) * sramp#CORE_SPD
 
 
-      if S_Width==Width
-         dira[Pin] := 1                                                         'set selected servo pin as an OUTPUT
-      else
-         dira[Pin] := 0                                                         'set selected servo pin as an INPUT only if Width out of range
-      ServoPinDirection := dira                                                 'Read I/O state of ALL pins
+    if (s_width == width)
+        dira[in] := 1                           ' set servo pin to output
+    else
+        dira[Pin] := 0                          ' or as input if width out of range
+    _servo_pin_dir := dira                      ' read I/O state of ALL pins
 
-PUB Set(Pin, Width)|S_Width                                                     'Set Servo value
-      S_Width := LowRange #> Width <# HighRange                                 'limit Width value
-      Pin :=    0 #> Pin <# 31                                                  'limit Pin value between 0 and 31
-      if RampFlag == 0
-         ServoData[Pin] := (clkfreq / _1uS * S_Width)                           'calculate # of clocks for a specific Pulse Width
-      else
-         ServoData[Pin] := ((clkfreq / _1uS * S_Width)/SERVO#CoreSpeed)*SERVO#CoreSpeed
+PUB set(pin, width) | s_width
+' Set servo on I/O pin to pulse width
+    { clamp pulse width range and I/O pin }
+    s_width := (LOW_RNG #> width <# HI_RNG)
+    pin := (0 #> pin <# 31)
 
-      ServoTarget[Pin] := ServoData[Pin]
+    if (_ramp_flag == 0)
+        { calculate # of clocks for a specific pulse width }
+        _servo_data[pin] := (clkfreq / _1US * s_width)
+    else
+        _servo_data[pin] := ((clkfreq / _1US * s_width) / sramp#CORE_SPD) * sramp#CORE_SPD
 
-      if S_Width==Width
-         dira[Pin] := 1                                                         'set selected servo pin as an OUTPUT
-      else
-         dira[Pin] := 0                                                         'set selected servo pin as an INPUT only if Width out of range
-      ServoPinDirection := dira                                                 'Read I/O state of ALL pins
+    _servo_tgt[pin] := _servo_data[pin]
+
+    if (s_width == width)
+        dira[pin] := 1                          ' set servo pin to output
+    else
+        dira[pin] := 0                          ' or as input if width out of range
+    _servo_pin_dir := dira                      ' read I/O state of ALL pins
 
 DAT
 
-'*********************
-'* Assembly language *
-'*********************
-                        org
-'------------------------------------------------------------------------------------------------------------------------------------------------
-ServoStart              mov     Index,                  par                     'Set Index Pointer
-                        rdlong  _ZoneClocks,            Index                   'Get ZoneClock value
-                        add     Index,                  #4                      'Increment Index to next Pointer
-                        rdlong  _NoGlitch,              Index                   'Get NoGlitch value
-                        add     Index,                  #4                      'Increment Index to next Pointer
-                        mov     PinDirectionAddress,    Index                   'Set pointer for I/O direction Address
-                        add     Index,                  #32                     'Increment Index to END of Zone1 Pointer
-                        mov     Zone1Index,             Index                   'Set Index Pointer for Zone1
-                        add     Index,                  #32                     'Increment Index to END of Zone2 Pointer
-                        mov     Zone2Index,             Index                   'Set Index Pointer for Zone2
-                        add     Index,                  #32                     'Increment Index to END of Zone3 Pointer
-                        mov     Zone3Index,             Index                   'Set Index Pointer for Zone3
-                        add     Index,                  #32                     'Increment Index to END of Zone4 Pointer
-                        mov     Zone4Index,             Index                   'Set Index Pointer for Zone4
-IOupdate                rdlong  dira,                   PinDirectionAddress     'Get and set I/O pin directions
-'------------------------------------------------------------------------------------------------------------------------------------------------
-Zone1                   mov     ZoneIndex,              Zone1Index              'Set Index Pointer for Zone1
-                        call    #ResetZone
-                        call    #ZoneCore
-Zone2                   mov     ZoneIndex,              Zone2Index              'Set Index Pointer for Zone2
-                        call    #IncrementZone
-                        call    #ZoneCore
-Zone3                   mov     ZoneIndex,              Zone3Index              'Set Index Pointer for Zone3
-                        call    #IncrementZone
-                        call    #ZoneCore
-Zone4                   mov     ZoneIndex,              Zone4Index              'Set Index Pointer for Zone4
-                        call    #IncrementZone
-                        call    #ZoneCore
-                        jmp     #IOupdate
-'------------------------------------------------------------------------------------------------------------------------------------------------
-ResetZone               mov     ZoneShift1,             #1
-                        mov     ZoneShift2,             #2
-                        mov     ZoneShift3,             #4
-                        mov     ZoneShift4,             #8
-                        mov     ZoneShift5,             #16
-                        mov     ZoneShift6,             #32
-                        mov     ZoneShift7,             #64
-                        mov     ZoneShift8,             #128
-ResetZone_RET           ret
-'------------------------------------------------------------------------------------------------------------------------------------------------
-IncrementZone           shl     ZoneShift1,             #8
-                        shl     ZoneShift2,             #8
-                        shl     ZoneShift3,             #8
-                        shl     ZoneShift4,             #8
-                        shl     ZoneShift5,             #8
-                        shl     ZoneShift6,             #8
-                        shl     ZoneShift7,             #8
-                        shl     ZoneShift8,             #8
-IncrementZone_RET       ret
-'------------------------------------------------------------------------------------------------------------------------------------------------
-ZoneCore                mov     ServoByte,              #0                      'Clear ServoByte
-                        mov     Index,                  ZoneIndex               'Set Index Pointer for proper Zone
+                    org
 
-ZoneSync                mov     SyncPoint,              cnt                     'Create a Sync Point with the system counter
-'                       mov     temp,                   _NoGlitch
-'                       sub     temp,                   SyncPoint            wc
-                        sub     _NoGlitch,              SyncPoint         nr,wc 'Test to make sure 'cnt' value won't rollover within Servo's pulse width
-              if_C      jmp     #ZoneSync                                       'If C flag is set get a new Sync Point, otherwise we are ok.
+servo_start         mov     idx,            par             ' set idx pointer
+                    rdlong  zone_clks,      idx             ' get zoneclock value
+                    add     idx,            #4              ' inc to next ptr
+                    rdlong  no_glitch,      idx             ' get no_glitch value
+                    add     idx,            #4
+                    mov     pin_dir_addr,   idx             ' set pointer for I/O direction addr
+                    add     idx,            #32             ' inc idx to END of zone1 pointer
+                    mov     zone1idx,       idx             ' set idx pointer for zone1
+                    add     idx,            #32             ' inc idx to END of zone2 pointer
+                    mov     zone2idx,       idx             ' set idx pointer for zone2
+                    add     idx,            #32             ' inc idx to END of zone3 pointer
+                    mov     zone3idx,       idx             ' set idx pointer for zone3
+                    add     idx,            #32             ' inc idx to END of zone4 pointer
+                    mov     zone4idx,       idx             ' set idx pointer for zone4
+io_upd              rdlong  dira,           pin_dir_addr    ' get and set I/O pin directions
 
 
-'                       add     SyncPoint,              #220                    '<- Debug - 2us becomes 1us
-'                       add     SyncPoint,              #300                    '<- Debug - 2us becomes 3us
-                        add     SyncPoint,              #260                    'Add overhead offset to counter Sync point
-                                                                                'midpoint from above Debug test.
+zone1               mov     zone_idx,       zone1idx        ' set idx pointer for zone1
+                    call    #reset_zone
+                    call    #zone_core
+zone2               mov     zone_idx,       zone2idx        ' set idx pointer for zone2
+                    call    #inc_zone
+                    call    #zone_core
+zone3               mov     zone_idx,       zone3idx        ' set idx pointer for zone3
+                    call    #inc_zone
+                    call    #zone_core
+zone4               mov     zone_idx,       zone4idx        ' set idx pointer for zone4
+                    call    #inc_zone
+                    call    #zone_core
+                    jmp     #io_upd
 
-                        mov     LoopCounter,            #8                      'Set Loop Counter to 8 Servos for this Zone
-                        movd    LoadServos,             #ServoWidth8            'Restore/Set self-modifying code on "LoadServos" line
-                        movd    ServoSync,              #ServoWidth8            'Restore/Set self-modifying code on "ServoSync" line
 
-        LoadServos      rdlong  ServoWidth8,            Index                   'Get Servo Data
-                        sub     Index,                  #4                      'Decrement Index pointer to next address
-                        nop
-        ServoSync       add     ServoWidth8,            SyncPoint               'Determine system counter location where pulse should end
-                        sub     LoadServos,             d_field                 'self-modify destination pointer for "LoadServos" line
-                        sub     ServoSync,              d_field                 'self-modify destination pointer for "ServoSync" line
-                        djnz    LoopCounter,            #LoadServos             'Do ALL 8 servo positions for this Zone
+reset_zone          mov     zone_shift1,    #1
+                    mov     zone_shift2,    #2
+                    mov     zone_shift3,    #4
+                    mov     zone_shift4,    #8
+                    mov     zone_shift5,    #16
+                    mov     zone_shift6,    #32
+                    mov     zone_shift7,    #64
+                    mov     zone_shift8,    #128
+reset_zone_ret      ret
 
-                        mov     temp,                   _ZoneClocks             'Move _ZoneClocks into temp
-                        add     temp,                   SyncPoint               'Add SyncPoint to _ZoneClocks
 
-'----------------------------------------------Start Tight Servo code-------------------------------------------------------------
-         ZoneLoop       mov     tempcnt,                cnt                     '(4 - clocks) take a snapshot of current counter value
-                        cmpsub  ServoWidth1,            tempcnt       nr,wc     '(4 - clocks) compare system counter to ServoWidth ; write result in C flag
-                        muxc    ServoByte,              ZoneShift1              '(4 - clocks) Set ServoByte.Bit0 to "0" or "1" depending on the value of "C"
-                        cmpsub  ServoWidth2,            tempcnt       nr,wc     '(4 - clocks) compare system counter to ServoWidth ; write result in C flag
-                        muxc    ServoByte,              ZoneShift2              '(4 - clocks) Set ServoByte.Bit1 to "0" or "1" depending on the value of "C"
-                        cmpsub  ServoWidth3,            tempcnt       nr,wc     '(4 - clocks) compare system counter to ServoWidth ; write result in C flag
-                        muxc    ServoByte,              ZoneShift3              '(4 - clocks) Set ServoByte.Bit2 to "0" or "1" depending on the value of "C"
-                        cmpsub  ServoWidth4,            tempcnt       nr,wc     '(4 - clocks) compare system counter to ServoWidth ; write result in C flag
-                        muxc    ServoByte,              ZoneShift4              '(4 - clocks) Set ServoByte.Bit3 to "0" or "1" depending on the value of "C"
-                        cmpsub  ServoWidth5,            tempcnt       nr,wc     '(4 - clocks) compare system counter to ServoWidth ; write result in C flag
-                        muxc    ServoByte,              ZoneShift5              '(4 - clocks) Set ServoByte.Bit4 to "0" or "1" depending on the value of "C"
-                        cmpsub  ServoWidth6,            tempcnt       nr,wc     '(4 - clocks) compare system counter to ServoWidth ; write result in C flag
-                        muxc    ServoByte,              ZoneShift6              '(4 - clocks) Set ServoByte.Bit5 to "0" or "1" depending on the value of "C"
-                        cmpsub  ServoWidth7,            tempcnt       nr,wc     '(4 - clocks) compare system counter to ServoWidth ; write result in C flag
-                        muxc    ServoByte,              ZoneShift7              '(4 - clocks) Set ServoByte.Bit6 to "0" or "1" depending on the value of "C"
-                        cmpsub  ServoWidth8,            tempcnt       nr,wc     '(4 - clocks) compare system counter to ServoWidth ; write result in C flag
-                        muxc    ServoByte,              ZoneShift8              '(4 - clocks) Set ServoByte.Bit7 to "0" or "1" depending on the value of "C"
-                        mov     outa,                   ServoByte               '(4 - clocks) Send ServoByte to Zone Port
-                        cmp     temp,                   tempcnt       nr,wc     '(4 - clocks) Determine if cnt has exceeded width of _ZoneClocks ; write result in C flag
-              if_NC     jmp     #ZoneLoop                                       '(4 - clocks) if the "C Flag" is not set stay in the current Zone
-'-----------------------------------------------End Tight Servo code--------------------------------------------------------------
-'                                                                        Total = 80 - clocks  @ 80MHz that's 1uS resolution
- ZoneCore_RET            ret
-'------------------------------------------------------------------------------------------------------------------------------------------------
-d_field                 long    $0000_0200
+inc_zone            shl     zone_shift1,    #8
+                    shl     zone_shift2,    #8
+                    shl     zone_shift3,    #8
+                    shl     zone_shift4,    #8
+                    shl     zone_shift5,    #8
+                    shl     zone_shift6,    #8
+                    shl     zone_shift7,    #8
+                    shl     zone_shift8,    #8
+inc_zone_ret        ret
 
-PinDirectionAddress     long    0
 
-counter                 long    0
-Address1                long    0
-Address2                long    0
-Address3                long    0
-temp1                   long    0
-temp2                   long    0
-tempcnt                 long    0
+zone_core           mov     servo_byte,     #0
+                    mov     idx,            zone_idx        ' set idx pointer for proper zone
 
-dly                     long    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-                        long    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+zone_sync           mov     sync_pt,        cnt             ' set sync point with the system counter
+                    sub     no_glitch,      sync_pt nr, wc  ' cnt rollover within pulse width?
+            if_c    jmp     #zone_sync                      '   yes: set a new sync point
 
-ServoWidth1             res     1
-ServoWidth2             res     1
-ServoWidth3             res     1
-ServoWidth4             res     1
-ServoWidth5             res     1
-ServoWidth6             res     1
-ServoWidth7             res     1
-ServoWidth8             res     1
+                    add     sync_pt,        #260            ' add overhead offset to counter sync
+                                                            '   point midpoint
 
-ZoneShift1              res     1
-ZoneShift2              res     1
-ZoneShift3              res     1
-ZoneShift4              res     1
-ZoneShift5              res     1
-ZoneShift6              res     1
-ZoneShift7              res     1
-ZoneShift8              res     1
+                    mov     loop_cntr,      #8              ' 8 servos for this zone
+                    movd    ld_servos,      #servo_width8   ' restore/set ld_servos line
+                    movd    servo_sync,     #servo_width8   ' Restore/set servo_sync line
 
-temp                    res     1
-Index                   res     1
-ZoneIndex               res     1
-Zone1Index              res     1
-Zone2Index              res     1
-Zone3Index              res     1
-Zone4Index              res     1
-SyncPoint               res     1
+ld_servos           rdlong  servo_width8,   idx             ' get servo data
+                    sub     idx,            #4              ' decrement idx pointer to next addr
+                    nop
+servo_sync          add     servo_width8,   sync_pt         ' pulse end
+                    sub     ld_servos,      d_field         ' self-modify dest. ptr for ld_servos
+                    sub     servo_sync,     d_field         ' self-modify dest. ptr for servo_sync
+                    djnz    loop_cntr,      #ld_servos      ' do ALL 8 servo positions for this zone
 
-ServoByte               res     1
-LoopCounter             res     1
+                    mov     temp,           zone_clks
+                    add     temp,           sync_pt         ' add sync_pt to zone_clks
 
-_ZoneClocks             res     1
-_NoGlitch               res     1
-_ServoPinDirection      res     1
+{ Servo code (80 clocks - 1uS resolution at 80MHz) }
+zoneloop            mov     tempcnt,        cnt             ' snapshot of current counter value
+                    cmpsub  servo_width1,   tempcnt nr, wc  ' compare system counter to servo_width
+                    muxc    servo_byte,     zone_shift1     ' set servo_byte.bit0 to the result
+                    cmpsub  servo_width2,   tempcnt nr, wc
+                    muxc    servo_byte,     zone_shift2     ' servo_byte.bit1
+                    cmpsub  servo_width3,   tempcnt nr, wc
+                    muxc    servo_byte,     zone_shift3     ' servo_byte.bit2
+                    cmpsub  servo_width4,   tempcnt nr, wc
+                    muxc    servo_byte,     zone_shift4     ' servo_byte.bit3
+                    cmpsub  servo_width5,   tempcnt nr, wc
+                    muxc    servo_byte,     zone_shift5     ' servo_byte.bit4
+                    cmpsub  servo_width6,   tempcnt nr, wc
+                    muxc    servo_byte,     zone_shift6     ' servo_byte.bit5
+                    cmpsub  servo_width7,   tempcnt nr, wc
+                    muxc    servo_byte,     zone_shift7     ' servo_byte.bit6
+                    cmpsub  servo_width8,   tempcnt nr, wc
+                    muxc    servo_byte,     zone_shift8     ' servo_byte.bit7
+                    mov     outa,           servo_byte      ' send servo_byte to zone port
+                    cmp     temp,           tempcnt nr, wc  ' cnt > zone_clks width? write C
+            if_nc   jmp     #zoneloop                       '   no? set stay in the current zone
+
+zone_core_ret       ret
+
+{ initialized data }
+d_field             long    $0000_0200
+
+pin_dir_addr        long    0
+
+counter             long    0
+addr1               long    0
+addr2               long    0
+addr3               long    0
+temp1               long    0
+temp2               long    0
+tempcnt             long    0
+
+dly                 long    0[32]
+
+servo_width1        res     1
+servo_width2        res     1
+servo_width3        res     1
+servo_width4        res     1
+servo_width5        res     1
+servo_width6        res     1
+servo_width7        res     1
+servo_width8        res     1
+
+zone_shift1         res     1
+zone_shift2         res     1
+zone_shift3         res     1
+zone_shift4         res     1
+zone_shift5         res     1
+zone_shift6         res     1
+zone_shift7         res     1
+zone_shift8         res     1
+
+temp                res     1
+idx                 res     1
+zone_idx            res     1
+zone1idx            res     1
+zone2idx            res     1
+zone3idx            res     1
+zone4idx            res     1
+sync_pt             res     1
+
+servo_byte          res     1
+loop_cntr           res     1
+
+zone_clks           res     1
+no_glitch           res     1
+servo_pin_dir       res     1
+
+DAT
+{
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
