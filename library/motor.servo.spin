@@ -22,8 +22,8 @@ CON
                                                 '   than maximum servo width of 2.5mS)
                                                 ' Use at least 500uS for overhead (actual overhead
                                                 '   about 300uS)
-    LOW_RNG = 500
-    HI_RNG = 2500
+    LOW_RNG         = 500
+    HI_RNG          = 2500
 
 VAR
 
@@ -52,7 +52,7 @@ PUB start
 
 PUB ramp
 ' Start (optional) servo ramping core
-    sramp.startramp(@_servo_data)
+    sramp.start_ramp(@_servo_data)
     _ramp_flag := 1
 
 PUB setramp = set_ramp
@@ -71,7 +71,7 @@ PUB set_ramp(pin, width, delay) | s_width
     if (s_width == width)
         dira[in] := 1                           ' set servo pin to output
     else
-        dira[Pin] := 0                          ' or as input if width out of range
+        dira[pin] := 0                          ' or as input if width out of range
     _servo_pin_dir := dira                      ' read I/O state of ALL pins
 
 PUB set(pin, width) | s_width
