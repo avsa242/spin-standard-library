@@ -1,12 +1,12 @@
 {
     --------------------------------------------
     Filename: PrintF-Demo.spin
-    Author: Jesse Burt
     Description: Demonstrate the functionality of
-        the printf() method variants
+        the (s)printf() method variants
+    Author: Jesse Burt
     Copyright (c) 2022
     Started Nov 9, 2020
-    Updated Oct 22, 2022
+    Updated Oct 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,16 +22,12 @@ CON
     BUFFSZ      = 200                           ' maximum buffer size, in bytes
 ' --
 
-    CR          = 13
-    LF          = 10
-    TB          = 9
-
 OBJ
 
-    cfg     : "boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    sf      : "string.format"
+    cfg : "boardcfg.flip"
+    ser : "com.serial.terminal.ansi"
+    time: "time"
+    str : "string"
 
 VAR
 
@@ -39,25 +35,37 @@ VAR
 
 PUB main{} | sz, format, str1, str2
 
-    ser.start(SER_BAUD)
-    time.msleep(30)
-    ser.clear{}
+    setup{}
 
-'   printf() prints directly to the terminal (serial, vga, oled, lcd, etc)
+'   printf() is embedded in a string library, used by most display/terminal output device drivers,
+'       (serial, vga, oled, lcd, etc), so can be used directly through the respective drivers,
 '       whereas sprintf() and snprintf() output to a user-allocated buffer
 '       (e.g., _buff in this demo)
 
-'   Allowed format specifiers:
-'       %%: literal, i.e., just print a % sign
-'       %d or %u: decimal (signed; unsigned is not supported at this time)
-'       %x: hex (always 8 digits, with leading zeroes)
+'   Escape codes:
+'       \\: backslash
+'       \t: tab
+'       \n: line-feed (next line, same column)
+'       \r: carriage-return (first column of current line)
+'           (combine \n\r for start of next line)
+'       \###: 3-digit/1-byte octal code for non-printable chars (e.g., \033 for ESC)
+'
+'   Formatting specifiers:
+'       %%: percent-sign
+'       %c: character
+'       %d, %i: decimal (signed)
+'       %b: binary
+'       %o: octal
+'       %u: decimal (unsigned)
+'       %x, %X: hexadecimal (lower-case, upper-case)
+'       %f: IEEE-754 float (not yet implemented)
 '       %s: string
-
-'   Allowed escape sequences:
-'       \\: literal, i.e., just print a \ symbol
-'       \r: carriage return
-'       \n\r: carriage return, line feed (newline)
-'       \t: tab (ASCII $09)
+'
+'   Optionally precede formatting spec letter with the following:
+'       0: pad numbers with zeroes (e.g., %0d for zero-padded decimal)
+'           (default padding character is space, when padding is necessary)
+'       #.#: minimum field width.maximum field width (e.g. %2.5d for decimal with 2..5 digits)
+'       -: left-justify (e.g. %-4.8x for left-justified hex with 4..8 digits)
 
 '   Any unused parameters must still be specified (SPIN1 limitation), but will
 '       be ignored
@@ -90,25 +98,18 @@ PUB main{} | sz, format, str1, str2
 
     ' Print to a buffer (for use in e.g., a file written to SD, or
     '   other external memory, etc)
-    sf.sprintf(@_buff, format, "A", -1000, $DEADBEEF, str1, str2, 0)
-    ser.str(@_buff)
+    str.sprintf5(@_buff, format, "A", -1000, $DEADBEEF, str1, str2)
+    ser.puts(@_buff)
 
     bytefill(@_buff, 0, BUFFSZ)                 ' clear the buffer
-
-    ' As above, but the second parameter specifies the maximum number
-    '   of bytes to write
-    sf.snprintf(@_buff, BUFFSZ, format, "A", -1000, $DEADBEEF, str1, str2, 0)
-    ser.str(@_buff)
-
-    bytefill(@_buff, 0, BUFFSZ)
 
     ' An example showing comma-separated values, which could, for example,
     '   be written to a file on an SD-card
     format := string("%d,%d,%d,%d,%d,%d\n\r\n\r")
-    sf.sprintf(@_buff, format, 7, 10, 3, 84, 16, 51)
-    ser.str(@_buff)
+    str.sprintf6(@_buff, format, 7, 10, 3, 84, 16, 51)
+    ser.puts(@_buff)
 
-    ' n-parameter alternate variants of printf that can be used
+    ' n-parameter alternate variants of printf that can be used (up to 10)
     ser.printf1(string("printf1() prints format with 1 param: %d\n\r"), 1234)
     ser.printf2(string("printf2() prints format with 2 params: %d %d\n\r"), 1234, 5678)
     ser.printf3(string("printf3() prints format with 3 params: %d %d %d\n\r"), 1234, 5678, 9012)
@@ -119,6 +120,13 @@ PUB main{} | sz, format, str1, str2
 }   9012, 3456, 7890)
 
     repeat
+
+PUB setup{}
+
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
 
 DAT
 {
