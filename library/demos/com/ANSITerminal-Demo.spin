@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Jun 18, 2019
-    Updated: Oct 21, 2022
+    Updated: Oct 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -33,34 +33,34 @@ PUB main{} | fg, bg
     ser.strln(string("ANSI serial terminal demo"))
     ser.strln(string("NOTE: Not all attributes supported by all terminals."))
 
-    ser.bold(ser#SGR_INTENSITY_BOLD)
+    ser.bold{}
     demo_text(string("BOLD"))
 
-    ser.bold(ser#SGR_INTENSITY_FAINT)
+    ser.faint{}
     demo_text(string("FAINT"))
 
-    ser.italic
+    ser.italic{}
     demo_text(string("ITALIC (or INVERSE)"))
 
-    ser.underline(ser#SGR_UNDERLINE)
+    ser.underline{}
     demo_text(string("UNDERLINED"))
  
-    ser.underline(ser#SGR_UNDERLINE_DBL)
+    ser.underline_dbl{}
     demo_text(string("DOUBLE UNDERLINED"))
 
-    ser.blink(ser#SGR_BLINKSLOW)
+    ser.blink{}
     demo_text(string("SLOW BLINKING"))
 
-    ser.blink(ser#SGR_BLINKFAST)
+    ser.blink_fast{}
     demo_text(string("FAST BLINKING"))
 
-    ser.inverse(ser#SGR_INVERSE)
+    ser.inverse{}
     demo_text(string("INVERSE"))
 
-    ser.conceal(ser#SGR_CONCEAL)
+    ser.conceal{}
     demo_text(string("CONCEALED"))
 
-    ser.strikethru(ser#SGR_STRIKETHRU)
+    ser.strikethru{}
     demo_text(string("STRIKETHROUGH"))
 
     ser.framed{}
@@ -80,26 +80,26 @@ PUB main{} | fg, bg
     ser.color(ser#GREY, ser#BLACK)
 
     repeat 5
-        ser.moveup(1)
+        ser.move_up{}
         time.sleep(1)
     repeat 5
-        ser.movedown(1)
+        ser.move_down{}
         time.sleep(1)
 
     ser.strln(@"Hide Cursor")
-    ser.hidecursor()
+    ser.hide_cursor{}
     time.msleep(3000)
 
     ser.strln(@"Show cursor")
-    ser.showcursor()
+    ser.show_cursor{}
     time.msleep(3000)
 
     repeat 5
-        ser.scrollup(1)
+        ser.scroll_up{}
         time.msleep(500)
 
     repeat 5
-        ser.scrolldown(1)
+        ser.scroll_down{}
         time.msleep(500)
 
     ser.newline{}
