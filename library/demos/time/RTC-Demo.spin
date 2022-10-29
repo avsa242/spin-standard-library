@@ -1,11 +1,11 @@
 {
     --------------------------------------------
     Filename: RTC-Demo.spin
-    Author: Jesse Burt
     Description: RTC date/time set/display demo
+    Author: Jesse Burt
     Copyright (c) 2022
     Started Nov 18, 2020
-    Updated Jul 9, 2022
+    Updated Oct 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -33,7 +33,7 @@ OBJ
     cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    int     : "string.integer"
+    str     : "string"
 #ifdef PCF8563
     rtc     : "time.rtc.pcf8563"
 #elseifdef DS3231
@@ -53,33 +53,33 @@ PUB Main{} | wkday, month, date, yr
 '    setdatetime(08, 51, 00, NOV, 18, WED, 20)
 
     repeat
-        rtc.pollrtc{}
+        rtc.poll_rtc{}
         ' get weekday and month name strings from DAT table below
         wkday := @wkday_name[(rtc.weekday{} - 1) * 4]
         month := @month_name[(rtc.month{} - 1) * 4]
-        date := int.deczeroed(rtc.date{}, 2)
+        date := str.decpadz(rtc.date{}, 2)
         yr := rtc.year{}
 
         ser.position(0, 3)
         ser.str(wkday)
         ser.printf3(string(" %s %s 20%d "), date, month, yr)
 
-        ser.str(int.deczeroed(rtc.hours{}, 2))    ' Discrete statements
+        ser.str(str.decpadz(rtc.hours{}, 2))    ' Discrete statements
         ser.char(":")                               ' due to a bug in
-        ser.str(int.deczeroed(rtc.minutes{}, 2))  ' string.integer
+        ser.str(str.decpadz(rtc.minutes{}, 2))  ' string.integer
         ser.char(":")
-        ser.str(int.deczeroed(rtc.seconds{}, 2))
+        ser.str(str.decpadz(rtc.seconds{}, 2))
 
 PUB SetDateTime(h, m, s, mmm, dd, wkday, yy)
 
-    rtc.sethours(h)                             ' 00..23
-    rtc.setminutes(m)                           ' 00..59
-    rtc.setseconds(s)                           ' 00..59
+    rtc.set_hours(h)                             ' 00..23
+    rtc.set_minutes(m)                           ' 00..59
+    rtc.set_seconds(s)                           ' 00..59
 
-    rtc.setmonth(mmm)                           ' 01..12
-    rtc.setdate(dd)                             ' 01..31
-    rtc.setweekday(wkday)                       ' 01..07
-    rtc.setyear(yy)                             ' 00..99
+    rtc.set_month(mmm)                           ' 01..12
+    rtc.set_date(dd)                             ' 01..31
+    rtc.set_weekday(wkday)                       ' 01..07
+    rtc.set_year(yy)                             ' 00..99
 
 PUB Setup{}
 
@@ -130,22 +130,20 @@ DAT
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 }
+
