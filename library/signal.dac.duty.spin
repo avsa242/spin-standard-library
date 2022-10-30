@@ -12,7 +12,7 @@
 
 VAR
 
-    long _dac_stack[6]
+    long _dac_stack[50]
     long _ctra, _ctrb, _frqa, _frqb
     byte _dac_res
     byte _ch0, _ch1

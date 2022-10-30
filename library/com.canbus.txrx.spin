@@ -4,7 +4,7 @@
     Description: CANbus engine (bi-directional, 500kbps)
     Author: Jesse Burt
     Created: 2015
-    Updated: Oct 17, 2022
+    Updated: Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -75,11 +75,13 @@ PUB arb_errs{}: errcnt
 '   The error counters are reset after bus recovery
     return _arb_errs
 
+PUB can_ready = can_rdy
 PUB can_rdy{}
 ' Check engine for readiness
-    ifnot (_flags_var & BUSY_FLAG) and not (check_error{})
+    ifnot (_flags_var & BUSY_FLAG) and not (check_err{})
         return TRUE
 
+PUB check_error = check_err
 PUB check_err{}
 ' Check engine for error status
     if (_flags_var & ERROR_FLAG)
