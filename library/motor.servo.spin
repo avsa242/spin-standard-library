@@ -6,7 +6,7 @@
     Author: Beau Schwabe
     Modified by: Jesse Burt
     Started Dec 29, 2006
-    Updated Oct 27, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -69,7 +69,7 @@ PUB set_ramp(pin, width, delay) | s_width
 
 
     if (s_width == width)
-        dira[in] := 1                           ' set servo pin to output
+        dira[pin] := 1                          ' set servo pin to output
     else
         dira[pin] := 0                          ' or as input if width out of range
     _servo_pin_dir := dira                      ' read I/O state of ALL pins

@@ -7,7 +7,7 @@
         Show effect of clock speed on loops using delays
         that are clock speed-sensitive
     Started Jul 16, 2012
-    Updated Oct 22, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is based on Clock Demo.spin, originally
@@ -78,7 +78,7 @@ OBJ
 PUB main
 ' Launch cog to scroll LEDs right/left and occasionally switch clock sources (indicated by
 '   flash on all LEDs).
-    clk.setclock(5_000_000)                     ' Initialize Clock object
+    clk.clk_set(5_000_000)                      ' Initialize Clock object
     dira[SLED..ELED]~~                          ' Drive LEDs
     cognew(scrollleds, @_scrl_stack)            ' Launch cog to scroll time-dependant LEDs
 

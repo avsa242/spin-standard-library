@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: I2C-Scanner.spin
+    Filename: I2C-Scan.spin
     Author: Jesse Burt
     Description: Utility to scan for active devices on an I2C bus
     Copyright (c) 2022
     Started Jun 17, 2019
-    Updated Oct 23, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -52,7 +52,7 @@ PUB main{} | slave_addr, flag, x, y, offsetx, offsety
     ser.italic{}
     ser.printf1(string(" (%d-bit format)"), _fmt)
     ser.reset{}
-    ser.hide_curs{}
+    ser.hide_cursor{}
 
     { probe all _legal_ addresses (write devices only) for a device;
         'reserved' addresses (0..6, 120..127) are not touched since it's possible doing so

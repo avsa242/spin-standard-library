@@ -5,7 +5,7 @@
     Description: Runtime clock mode and frequency setting
     Copyright (c) 2022
     Started 2006 (estimated)
-    Updated Oct 15, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -73,7 +73,8 @@ PUB clk_mode(mode): new
 
     { Switch to new clock mode, indicate new frequency (ideal RCFAST, ideal RCSLOW, or }
     { XINFreq * PLL multiplier) and update return value (new frequency) }
-    clkset(mode, newFreq := _ideal_rcf_freq[mode <# 2] * |<(mode & $7 - 3 #> 0))
+    clkset(mode, new := _ideal_rcf_freq[mode <# 2] * |<(mode & $7 - 3 #> 0))
+
 DAT
 
     { ideal RCFAST frequency }

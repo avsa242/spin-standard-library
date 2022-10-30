@@ -5,7 +5,7 @@
     Author: Beau Schwabe
     Modified by: Jesse Burt
     Started May 11, 2009
-    Updated Oct 27, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -56,123 +56,123 @@ ch02                sub     dly + 01,   #1      wc
                     call    #ramp_core
 
 ch03                sub     dly + 02,   #1      wc
-            if_c    rdlong  dly + 02,   addr
+            if_c    rdlong  dly + 02,   addr3
                     call    #ramp_core
 
 ch04                sub     dly + 04,   #1      wc
-            if_c    rdlong  dly + 04,   addr
+            if_c    rdlong  dly + 04,   addr3
                     call    #ramp_core
 
 ch05                sub     dly + 05,   #1      wc
-            if_c    rdlong  dly + 05,   addr
+            if_c    rdlong  dly + 05,   addr3
                     call    #ramp_core
 
 ch06                sub     dly + 06,   #1      wc
-            if_c    rdlong  dly + 06,   addr
+            if_c    rdlong  dly + 06,   addr3
                     call    #ramp_core
 
 ch07                sub     dly + 07,   #1      wc
-            if_c    rdlong  dly + 07,   addr
+            if_c    rdlong  dly + 07,   addr3
                     call    #ramp_core
 
 ch08                sub     dly + 08,   #1      wc
-            if_c    rdlong  dly + 08,   addr
+            if_c    rdlong  dly + 08,   addr3
                     call    #ramp_core
 
 ch09                sub     dly + 09,   #1      wc
-            if_c    rdlong  dly + 09,   addr
+            if_c    rdlong  dly + 09,   addr3
                     call    #ramp_core
 
 ch10                sub     dly + 10,   #1      wc
-            if_c    rdlong  dly + 10,   addr
+            if_c    rdlong  dly + 10,   addr3
                     call    #ramp_core
 
 ch11                sub     dly + 11,   #1      wc
-            if_c    rdlong  dly + 11,   addr
+            if_c    rdlong  dly + 11,   addr3
                     call    #ramp_core
 
 ch12                sub     dly + 12,   #1      wc
-            if_c    rdlong  dly + 12,   addr
+            if_c    rdlong  dly + 12,   addr3
                     call    #ramp_core
 
 ch13                sub     dly + 13,   #1      wc
-            if_c    rdlong  dly + 13,   addr
+            if_c    rdlong  dly + 13,   addr3
                     call    #ramp_core
 
 ch14                sub     dly + 14,   #1      wc
-            if_c    rdlong  dly + 14,   addr
+            if_c    rdlong  dly + 14,   addr3
                     call    #ramp_core
 
 ch15                sub     dly + 15,   #1      wc
-            if_c    rdlong  dly + 15,   addr
+            if_c    rdlong  dly + 15,   addr3
                     call    #ramp_core
 
 ch16                sub     dly + 16,   #1      wc
-            if_c    rdlong  dly + 16,   addr
+            if_c    rdlong  dly + 16,   addr3
                     call    #ramp_core
 
 ch17                sub     dly + 17,   #1      wc
-            if_c    rdlong  dly + 17,   addr
+            if_c    rdlong  dly + 17,   addr3
                     call    #ramp_core
 
 ch18                sub     dly + 18,   #1      wc
-            if_c    rdlong  dly + 18,   addr
+            if_c    rdlong  dly + 18,   addr3
                     call    #ramp_core
 
 ch19                sub     dly + 19,   #1      wc
-            if_c    rdlong  dly + 19,   addr
+            if_c    rdlong  dly + 19,   addr3
                     call    #ramp_core
 
 ch20                sub     dly + 20,   #1      wc
-            if_c    rdlong  dly + 20,   addr
+            if_c    rdlong  dly + 20,   addr3
                     call    #ramp_core
 
 ch21                sub     dly + 21,   #1      wc
-            if_c    rdlong  dly + 21,   addr
+            if_c    rdlong  dly + 21,   addr3
                     call    #ramp_core
 
 ch22                sub     dly + 22,   #1      wc
-            if_c    rdlong  dly + 22,   addr
+            if_c    rdlong  dly + 22,   addr3
                     call    #ramp_core
 
 ch23                sub     dly + 23,   #1      wc
-            if_c    rdlong  dly + 23,   addr
+            if_c    rdlong  dly + 23,   addr3
                     call    #ramp_core
 
 ch24                sub     dly + 24,   #1      wc
-            if_c    rdlong  dly + 24,   addr
+            if_c    rdlong  dly + 24,   addr3
                     call    #ramp_core
 
 ch25                sub     dly + 25,   #1      wc
-            if_c    rdlong  dly + 25,   addr
+            if_c    rdlong  dly + 25,   addr3
                     call    #ramp_core
 
 ch26                sub     dly + 26,   #1      wc
-            if_c    rdlong  dly + 26,   addr
+            if_c    rdlong  dly + 26,   addr3
                     call    #ramp_core
 
 ch27                sub     dly + 27,   #1      wc
-            if_c    rdlong  dly + 27,   addr
+            if_c    rdlong  dly + 27,   addr3
                     call    #ramp_core
 
 ch28                sub     dly + 28,   #1      wc
-            if_c    rdlong  dly + 28,   addr
+            if_c    rdlong  dly + 28,   addr3
                     call    #ramp_core
 
 ch29                sub     dly + 29,   #1      wc
-            if_c    rdlong  dly + 29,   addr
+            if_c    rdlong  dly + 29,   addr3
                     call    #ramp_core
 
 ch30                sub     dly + 30,   #1      wc
-            if_c    rdlong  dly + 30,   addr
+            if_c    rdlong  dly + 30,   addr3
                     call    #ramp_core
 
 ch31                sub     dly + 31,   #1      wc
-            if_c    rdlong  dly + 31,   addr
+            if_c    rdlong  dly + 31,   addr3
                     call    #ramp_core
 
 ch32                sub     dly + 32,   #1      wc
-            if_c    rdlong  dly + 32,   addr
+            if_c    rdlong  dly + 32,   addr3
                     call    #ramp_core
 
                     jmp     #ramp_start

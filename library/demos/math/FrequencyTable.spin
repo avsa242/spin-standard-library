@@ -6,7 +6,7 @@
     Description: Calculate a table of frequencies
         from their corresponding musical notes.
     Started Jan 4, 2016
-    Updated Oct 22, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -34,18 +34,18 @@ PUB main{} | idx, f0, fn, a, n
     term.clear{}
     fp.start{}
 
-    f0 := fp.floatf(440)
-    a  := fp.pow(fp.floatf(2), fp.divf(fp.floatf(1), fp.floatf(12)))
+    f0 := fp.ffloat(440)
+    a  := fp.pow(fp.ffloat(2), fp.fdiv(fp.ffloat(1), fp.ffloat(12)))
 
     term.strln(string("f(x) = f0*(2^(1/12))^n, x = (0, 60)"))
     term.strln(string("     x   f(x)"))
 
     repeat idx from 0 to 60
-        n := fp.floatf(idx)
-        fn := fp.mulf(f0, fp.pow(a, n))
+        n := fp.ffloat(idx)
+        fn := fp.fmul(f0, fp.pow(a, n))
 
         term.chars(" ", 3)
-        term.str(str.decspc(idx, 3))
+        term.str(str.decpads(idx, 3))
         term.chars(" ", 3)
         term.str(fs.float_str(fn))
         term.newline{}

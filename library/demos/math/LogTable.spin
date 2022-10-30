@@ -6,7 +6,7 @@
     Description: Display logarithm (base e) table
         (floating point)
     Started Jan 3, 2016
-    Updated Oct 22, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -35,10 +35,10 @@ PUB main | idx, a
     term.strln(string("     x   log(x)"))
 
     repeat idx from 1 to 20
-        a := fp.log(fp.floatf(idx))
+        a := fp.log(fp.ffloat(idx))
 
         term.chars(" ", 3)
-        term.str(str.decz(idx, 3))
+        term.str(str.decpadz(idx, 3))
         term.chars(" ", 3)
         term.str(fs.float_str(a))
         term.newline{}
