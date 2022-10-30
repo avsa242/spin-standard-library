@@ -85,7 +85,7 @@ PUB check_can{} | a
         if (canbus.check_rtr{})
             ser.str(string("Remote transmission request"))
         else
-            a := canbus.rx_ptr{}                ' pointer to str of data bytes
+            a := canbus.ptr_rx{}                ' pointer to str of data bytes
             repeat byte[a++]                    ' first byte contains str len
                 ser.puthexs(byte[a++], 2)       '  Display bytes
                 ser.putchar(" ")

@@ -93,7 +93,7 @@ PUB check_rtr{}
     if (_rx_ident[_index_array] & $8000_0000)
         return TRUE
 
-PUB rx_ptr{}: ptr
+PUB ptr_rx{}: ptr
 ' Address of the current receive data buffer
 '   NOTE: The address can be used as a length-prefaced string
     return @_rx_data[_index_array * 9]
