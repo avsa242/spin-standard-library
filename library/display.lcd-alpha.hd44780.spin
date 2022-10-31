@@ -5,7 +5,7 @@
     Description: Driver for HD44780 alphanumeric LCDs
     Copyright (c) 2022
     Started Sep 06, 2021
-    Updated Sep 19, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -45,7 +45,7 @@ OBJ
 PUB null{}
 ' This is not a top-level object
 
-PUB Start{}: status
+PUB start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
@@ -68,22 +68,24 @@ PUB stop{}
 PUB defaults{}
 ' Set factory defaults
 
-PUB char(ch) | tmp
+PUB tx = putchar
+PUB char = putchar
+PUB putchar(ch) | tmp
 ' Display single character
     _disp_ctrl |= RS                            ' RS high (data)
-    if _charmode == LITERAL
+    if (_charmode == LITERAL)
         wr_nib(ch)                              ' MS nibble first
         wr_nib(ch << 4)                         ' LS nibble
-    elseif _charmode == TERM
+    elseif (_charmode == TERM)
         case ch
             HM:                                 ' -Home:-
                 wr_cmd(core#HOME)
                 time.msleep(2)                  ' wait for display (1.52ms)
             BEL:                                ' -Bell (flash display):-
-                tmp := enablebacklight(-2) ^ 1  ' get current backlight state,
-                enablebacklight(tmp)            '   and set the inverse
+                tmp := backlight_ena(-2) ^ 1  ' get current backlight state,
+                backlight_ena(tmp)            '   and set the inverse
                 time.msleep(50)                 ' short delay for visible blink
-                enablebacklight(tmp ^ 1)        ' revert to original state
+                backlight_ena(tmp ^ 1)        ' revert to original state
                 wr_cmd(core#CRSDISPSHFT & !core#CRSMOVE & !core#SHIFTL)
             BS, DEL:                            ' -Backspace/Delete:-
                 wr_cmd(core#CRSDISPSHFT & !core#CRSMOVE & !core#SHIFTL)
@@ -99,7 +101,8 @@ PUB char(ch) | tmp
                 wr_nib(ch)                      ' MS nibble first
                 wr_nib(ch << 4)                 ' LS nibble
 
-PUB charmode(mode): curr_mode
+PUB charmode = char_mode
+PUB char_mode(mode): curr_mode
 ' Set character processing/display mode
 '   Valid values:
 '      *LITERAL (0):
@@ -116,11 +119,11 @@ PUB charmode(mode): curr_mode
             return _charmode
 
 PUB clear{}
-' Clear display contents, and set cursor position to 0, 0
+' Clear display contents, and set cursor pos_xy to 0, 0
     wr_cmd(core#CLEAR)
     time.msleep(5)
 
-PUB cursormode(mode): curr_mode
+PUB cursor_mode(mode): curr_mode
 ' Set cursor mode
 '       0: No cursor
 '       1: Block, blinking
@@ -143,7 +146,7 @@ PUB cursormode(mode): curr_mode
 
     wr_cmd(core#DISPONOFF | _disponoff)
 
-PUB displayvisibility(mode): curr_mode
+PUB disp_vis_ena(mode): curr_mode
 ' Set display visibility
 '   OFF (0): display off (display RAM contents unaffected)
 '   ON (1): display on
@@ -157,7 +160,7 @@ PUB displayvisibility(mode): curr_mode
 
     wr_cmd(core#DISPONOFF | _disponoff)
 
-PUB enablebacklight(state)
+PUB backlight_ena(state)
 ' Enable backlight, if equipped
     case state
         0:
@@ -172,7 +175,7 @@ PUB enablebacklight(state)
                                                 '   just for the backlight bit
     _disp_ctrl &= !RW                           ' set LCD back to WRITE
 
-PUB position(x, y)
+PUB pos_xy(x, y)
 ' Set cursor position
     wr_cmd(core#DDRAM_ADDR | ((y * $40) + x))
 
@@ -206,7 +209,7 @@ PRI wr_nib(nib)
     ioexp.wr_byte( (nib & $f0) | _disp_ctrl | E)' clock high
     ioexp.wr_byte( (nib & $f0) | _disp_ctrl)    ' clock low
 
-' Pull in standard terminal methods (Bin(), Dec(), Hex(), Str(), etc)
+' Pull in standard terminal methods (putbin(), putdec(), puthex(), puts(), etc)
 #include "terminal.common.spinh"
 
 DAT

@@ -5,7 +5,7 @@
     Description: Driver for Microchip MCP9808 temperature sensors
     Copyright (c) 2022
     Started Jul 26, 2020
-    Updated Sep 25, 2022
+    Updated Oct 31, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -79,13 +79,15 @@ PUB defaults{}
     powered(TRUE)
     temp_res(0_0625)
 
-PUB dev_id{}: id
+PUB dev_id{}: id | tmp[2]
 ' Read device identification
 '   Returns:
 '       Manufacturer ID: $0054 (MSW)
 '       Revision: $0400 (LSW)
-    readreg(core#MFR_ID, 2, @id.word[1])        ' 9808 doesn't support seq. R/W
-    readreg(core#DEV_ID, 2, @id.word[0])        '   so do discrete reads
+    readreg(core#MFR_ID, 2, @tmp[1])            ' 9808 doesn't support seq. R/W
+    readreg(core#DEV_ID, 2, @tmp[2])            '   so do discrete reads
+    id.word[1] := tmp[1]
+    id.word[0] := tmp[0]
 
 PUB int_polarity(state): curr_state
 ' Set interrupt active state

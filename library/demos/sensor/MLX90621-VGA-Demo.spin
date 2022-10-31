@@ -6,7 +6,7 @@
         VGA display
     Copyright (c) 2022
     Started: Jun 27, 2020
-    Updated: Oct 16, 2022
+    Updated: Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -76,7 +76,7 @@ PUB Main{}
 
 PUB DrawFrame(fx, fy, pixw, pixh) | x, y, color_c, ir_offset, pixsx, pixsy, pixex, pixey, maxx, maxy, maxp
 ' Draw the thermal image
-    vga.waitvsync{}                             ' wait for vertical sync
+    vga.wait_vsync{}                             ' wait for vertical sync
     repeat y from 0 to mlx#YMAX
         repeat x from 0 to mlx#XMAX
             if _invert_x                        ' Invert X display if set

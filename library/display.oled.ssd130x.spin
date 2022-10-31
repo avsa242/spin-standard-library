@@ -97,12 +97,15 @@ PUB startx(CS_PIN, SCK_PIN, SDIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbu
 '   HEIGHT: 32, 64
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(SDIN_PIN: 0..31) and lookdown(DC_PIN: 0..31)
-        if (status := spi.init(CS_PIN, SCK_PIN, SDIN_PIN, SDIN_PIN, core#SPI_MODE))
+        if (status := spi.init(SCK_PIN, SDIN_PIN, SDIN_PIN, core#SPI_MODE))
             time.usleep(core#TPOR)              ' wait for device startup
+            _CS := CS_PIN
             _DC := DC_PIN
             _RES := RES_PIN                     ' -1 to disable
             reset{}
 
+            outa[_CS] := 1
+            dira[_CS] := 1
             outa[_DC] := 0
             dira[_DC] := 1
             _disp_width := WIDTH
@@ -274,9 +277,10 @@ PUB clear{}
     i2c.stop
 #elseifdef SSD130X_SPI
     outa[_DC] := DATA
-    spi.deselectafter(true)
+    outa[_CS] := 0
     repeat _buff_sz
         spi.wr_byte(_bgcolor)
+    outa[_CS] := 1
 #endif
 #else
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
@@ -462,8 +466,9 @@ PUB show{} | tmp
     i2c.stop{}
 #elseifdef SSD130X_SPI
     outa[_DC] := DATA
-    spi.deselectafter(true)
+    outa[_CS] := 0
     spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
+    outa[_CS] := 1
 #endif
 
 PUB vcomh_voltage(level)
@@ -512,8 +517,9 @@ PUB wr_buffer(ptr_buff, buff_sz) | tmp
     i2c.stop{}
 #elseifdef SSD130X_SPI
     outa[_DC] := DATA
-    spi.deselectafter(true)
+    outa[_CS] := 0
     spi.wrblock_lsbf(ptr_buff, buff_sz)
+    outa[_CS] := 1
 #endif
 
 #ifndef GFX_DIRECT
@@ -567,8 +573,9 @@ PRI writereg(reg_nr, nr_bytes, val) | cmd_pkt[2], tmp, ackbit
             return
 
     outa[_DC] := CMD
-    spi.deselectafter(true)
+    outa[_CS] := 0
     spi.wrblock_lsbf(@cmd_pkt, nr_bytes)
+    outa[_CS] := 1
 #endif
 
 DAT

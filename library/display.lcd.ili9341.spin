@@ -5,7 +5,7 @@
     Description: Driver for ILI9341 LCD controllers
     Copyright (c) 2022
     Started Oct 14, 2021
-    Updated Oct 16, 2022
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -478,6 +478,9 @@ PUB reset{}
     else                                        ' if not, just soft-reset
         com.wrbyte_cmd(core#SWRESET)
         time.msleep(5)
+
+PUB show{}
+' dummy method for compatibility with other drivers
 
 PUB subpix_order(order): curr_ord
 ' Set subpixel color order

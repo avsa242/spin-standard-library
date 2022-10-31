@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Jun 22, 2021
-    Updated: Oct 16, 2022
+    Updated: Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,7 +22,7 @@ CON
 
     I2C_SCL     = 28
     I2C_SDA     = 29
-    I2C_HZ      = 400_000                       ' max is 400_000
+    I2C_FREQ    = 400_000                       ' max is 400_000
     ADDR_BITS   = %000                          ' %000..%111
 
     ' number of digits/characters width and height the display has
@@ -50,69 +50,67 @@ PUB main{} | i, b
     disp.blink_rate(0)
     time.sleep(1)
 
-    demo_msg(string("CHAR"))
+    demo_msg(string("CHAR"))                    ' display printable ASCII chars
 
     repeat i from 32 to 126
-        disp.pos(0, 0)
-        disp.char(i)
+        disp.pos_xy(0, 0)
+        disp.putchar(i)
         time.msleep(100)
     time.sleep(2)
 
 
-    demo_msg(string("STR"))
+    demo_msg(string("STR"))                     ' display strings
 
-    disp.str(string("This"))
+    disp.puts(string("This"))
     time.sleep(1)
     disp.clear{}
-    disp.str(string("is"))
+    disp.puts(string("is"))
     time.sleep(1)
     disp.clear{}
-    disp.str(string("the"))
+    disp.puts(string("the"))
     time.sleep(1)
     disp.clear{}
-    disp.str(string("STR"))
+    disp.puts(string("STR"))
     time.sleep(1)
     disp.clear{}
-    disp.str(string("demo"))
+    disp.puts(string("demo"))
     time.sleep(2)
 
 
-    demo_msg(string("HEX"))
+    demo_msg(string("HEX"))                     ' display hexadecimal numbers
 
     repeat i from 0 to $1ff
-        disp.pos(0, 0)
-        disp.hex(i, 4)
+        disp.pos_xy(0, 0)
+        disp.puthex(i, 4)
     time.sleep(2)
 
-    demo_msg(string("BIN"))
+    demo_msg(string("BIN"))                     ' display binary numbers
 
     repeat i from 0 to %1111
-        disp.pos(0, 0)
+        disp.pos_xy(0, 0)
         disp.printf1(string("%04.4b"), i)
         time.msleep(200)
     time.sleep(2)
 
-    demo_msg(string("DEC"))
+    demo_msg(string("DEC"))                     ' display decimal numbers
 
     repeat i from 0 to 1000
-        disp.pos(0, 0)
+        disp.pos_xy(0, 0)
         disp.printf1(string("%4.4d"), i)
     time.sleep(2)
 
-
     demo_msg(string("FLT"))
 
-    disp.str(fs.floattostring(3.141))
+    disp.puts(fs.float_str(3.141))
     time.sleep(1)
-    disp.str(fs.floattostring(31.41))
+    disp.puts(fs.float_str(31.41))
     time.sleep(1)
-    disp.str(fs.floattostring(314.1))
+    disp.puts(fs.float_str(314.1))
     time.sleep(1)
-    disp.str(fs.floattostring(3141.0))
+    disp.puts(fs.float_str(3141.0))
     time.sleep(2)
 
-
-    demo_msg(string("TYPE"))
+    demo_msg(string("TYPE"))                    ' echo characters typed into the serial terminal
 
     repeat
         b := ser.charin{}
@@ -121,7 +119,7 @@ PUB main{} | i, b
 PRI demo_msg(ptr_str)
 ' Clear the display, show a message, wait 2 seconds, then clear again
     disp.clear{}
-    disp.str(ptr_str)
+    disp.puts(ptr_str)
     time.sleep(2)
     disp.clear
 
@@ -131,7 +129,7 @@ PUB setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if disp.startx(I2C_SCL, I2C_SDA, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT)
+    if disp.startx(I2C_SCL, I2C_SDA, I2C_FREQ, ADDR_BITS, WIDTH, HEIGHT)
         ser.strln(string("HT16K33 driver started"))
         disp.defaults{}
     else

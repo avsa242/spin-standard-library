@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: sensor.uv.veml6075.i2c.spin
+    Filename: sensor.light.veml6075.spin
     Author: Jesse Burt
     Description: Driver for the Vishay VEML6075 UVA/UVB sensor
     Copyright (c) 2022
     Started Aug 18, 2019
-    Updated Jan 15, 2022
+    Updated Sep 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -42,48 +42,47 @@ OBJ
     core: "core.con.veml6075"                   ' HW-specific constants
     time: "time"                                ' timekeeping methods
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start{}: status
+PUB start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
     return startx(DEF_SCL, DEF_SDA, DEF_HZ)
 
-PUB Startx(SCL_PIN, SDA_PIN, I2C_HZ): status
+PUB startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
+    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#T_POR)
             i2c.stop{}                          ' attempt to make startup
             i2c.write($ff)                      '   more reliable
-            if deviceid{} == core#DEV_ID_RESP
+            if (dev_id{} == core#DEV_ID_RESP)
                 return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     powered(FALSE)
     time.msleep(1)
     i2c.deinit{}
 
-PUB Preset_Active{}
+PUB preset_active{}
 ' Enable sensor power, set to 100ms integration time, continuous measurements
     powered(TRUE)
     dynamic(DYNAMIC_NORM)
-    integrationtime(100)
+    integr_time(100)
     opmode(CONT)
 
-PUB DeviceID{}: id
+PUB dev_id{}: id
 ' Device ID of the chip
 '   Known values: $0026
     id := 0
     readreg(core#DEV_ID, 2, @id)
 
-PUB Dynamic(level): curr_lvl
+PUB dynamic(level): curr_lvl
 ' Set sensor dynamic
 '   Valid values: DYNAMIC_NORM (0), DYNAMIC_HI (1)
 '   Any other value polls the chip and returns the current setting
@@ -98,7 +97,7 @@ PUB Dynamic(level): curr_lvl
     level := ((curr_lvl & core#HD_MASK) | level) & core#UV_CONF_MASK
     writereg(core#UV_CONF, 2, @level)
 
-PUB IntegrationTime(itime): curr_itime
+PUB integr_time(itime): curr_itime
 ' Set sensor ADC integration time, in ms
 '   Valid values: 50, 100, 200, 400, 800
 '   Any other value polls the chip and returns the current setting
@@ -114,28 +113,28 @@ PUB IntegrationTime(itime): curr_itime
     itime := ((curr_itime & core#UV_IT_MASK) | itime) & core#UV_CONF_MASK
     writereg(core#UV_CONF, 2, @itime)
 
-PUB IRData{}: ir
+PUB ir_data{}: ir
 ' Read Infrared sensor data
 '   Returns: 16-bit word
     readreg(core#UVCOMP2, 2, @ir)
 
-PUB Measure{} | tmp
+PUB measure{} | tmp
 ' Trigger a single measurement
-'   NOTE: For use when OpMode() is set to SINGLE
+'   NOTE: For use when opmode() is set to SINGLE
     tmp := 0
     readreg(core#UV_CONF, 2, @tmp)
     tmp.byte[0] |= (1 << core#UV_TRIG)
     tmp.byte[1] := 0
     writereg(core#UV_CONF, 2, @tmp)
 
-PUB OpMode(mode): curr_mode
+PUB opmode(mode): curr_mode
 ' Set measurement mode
 '   Valid values:
 '       CONT (0): Continuous measurement mode
 '       SINGLE (1): Single-measurement mode
 '   Any other value polls the chip and returns the current setting
 '   NOTE: In SINGLE mode, measurements must be triggered manually using the
-'       Measure() method
+'       measure() method
     curr_mode := 0
     readreg(core#UV_CONF, 2, @curr_mode)
     case mode
@@ -147,7 +146,7 @@ PUB OpMode(mode): curr_mode
     mode := ((curr_mode & core#UV_AF_MASK) | mode) & core#UV_CONF_MASK
     writereg(core#UV_CONF, 2, @mode)
 
-PUB Powered(state): curr_state
+PUB powered(state): curr_state
 ' Power on sensor
 '   Valid values:
 '       TRUE (-1 or 1): Power on
@@ -164,31 +163,31 @@ PUB Powered(state): curr_state
     state := ((curr_state & core#SD_MASK) | state) & core#UV_CONF_MASK
     writereg(core#UV_CONF, 2, @state)
 
-PUB UVAData{}: uva
+PUB uva_data{}: uva
 ' Read UV-A sensor data
 '   Returns: 16-bit word
     readreg(core#UVA_DATA, 2, @uva)
 
-PUB UVBData{}: uvb
+PUB uvb_data{}: uvb
 ' Read UV-B sensor data
 '   Returns: 16-bit word
     readreg(core#UVB_DATA, 2, @uvb)
 
-PUB UVIndex{}: uvidx | uva_raw, uva_comp, uvb_raw, uvb_comp, uvcomp1, uvcomp2
+PUB uv_index{}: uvidx | uva_raw, uva_comp, uvb_raw, uvb_comp, uvcomp1, uvcomp2
 ' Return UV Index, in hundredths of a point (e.g. 103 == 1.03)
-    uva_raw := uvadata{} * 100
-    uvb_raw := uvbdata{} * 100
-    uvcomp1 := visibledata{}
-    uvcomp2 := irdata{}
+    uva_raw := uva_data{} * 100
+    uvb_raw := uvb_data{} * 100
+    uvcomp1 := white_data{}
+    uvcomp2 := ir_data{}
 
     uva_comp := uva_raw - (CO_A * uvcomp1) - (CO_B * uvcomp2)
     uvb_comp := uvb_raw - (CO_C * uvcomp1) - (CO_D * uvcomp2)
     return (((uva_comp * UVA_RESP) + (uvb_comp * UVB_RESP)) / 2) / 1_000_000
 
-PUB VisibleData{}: vis
-' Read Visible sensor data
+PUB white_data{}: w
+' Read white/visible sensor data
 '   Returns: 16-bit word
-    readreg(core#UVCOMP1, 2, @vis)
+    readreg(core#UVCOMP1, 2, @w)
 
 PRI present{}: flag
 ' Flag indicating the device responds on the I2C bus
@@ -226,22 +225,20 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }

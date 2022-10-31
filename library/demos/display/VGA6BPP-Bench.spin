@@ -39,7 +39,7 @@ VAR
 
     byte _framebuff[BUFFSZ]                     ' display buffer
 
-PUB Main{}
+PUB main{}
 
     ser.start(SER_BAUD)
     time.msleep(30)

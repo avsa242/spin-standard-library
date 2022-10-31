@@ -6,7 +6,7 @@
         Free-fall detection functionality
     Copyright (c) 2022
     Started Dec 22, 2021
-    Updated Jul 9, 2022
+    Updated Oct 1, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -52,7 +52,6 @@ OBJ
     cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
-    int     : "string.integer"
     accel   : "sensor.accel.3dof.lis3dh"
 
 VAR
@@ -60,7 +59,7 @@ VAR
     long _isr_stack[50]                         ' stack for ISR core
     long _intflag                               ' interrupt flag
 
-PUB Main{} | intsource
+PUB main{} | intsource
 
     setup{}
     accel.preset_freefall{}                     ' default settings, but enable
@@ -74,12 +73,12 @@ PUB Main{} | intsource
     '   is cleared after the user presses a key
     ' The preset for free-fall detection sets a free-fall threshold of
     '   0.320g's for a minimum time of 100ms. This can be tuned using
-    '   accel.FreeFallThresh() and accel.FreeFallTime():
-    accel.freefallthresh(0_320000)              ' 0.315g's
-    accel.freefalltime(100_000)                 ' 100_000us/100ms
+    '   accel.freefall_set_thresh() and accel.freefall_set_time():
+    accel.freefall_set_thresh(0_320000)         ' 0.315g's
+    accel.freefall_set_time(100_000)            ' 100_000us/100ms
 
     repeat
-        if _intflag                             ' interrupt triggered?
+        if (_intflag)                           ' interrupt triggered?
             intsource := accel.interrupt{}      ' read & clear interrupt flags
             if (intsource & %01_01_01)          ' free-fall event?
                 ser.position(0, 4)
@@ -93,18 +92,18 @@ PUB Main{} | intsource
                 ser.position(0, 4)
                 ser.str(string("Sensor stable"))
                 ser.clearline{}
-        if ser.rxcheck{} == "c"                 ' press the 'c' key in the demo
+        if (ser.rxcheck{} == "c")               ' press the 'c' key in the demo
             calibrate{}                         ' to calibrate sensor offsets
 
-PUB Calibrate{}
+PUB calibrate{}
 ' Calibrate sensor/set bias offsets
     ser.position(0, 7)
     ser.str(string("Calibrating..."))
-    accel.calibrateaccel{}
+    accel.calibrate_accel{}
     ser.positionx(0)
     ser.clearline{}
 
-PRI ISR{}
+PRI cog_isr{}
 ' Interrupt service routine
     dira[INT1] := 0                             ' INT1 as input
     dira[LED1] := 1                             ' LED as output
@@ -118,7 +117,7 @@ PRI ISR{}
         outa[LED1] := 0                         ' turn off LED
         _intflag := 0                           '   clear flag
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -135,28 +134,25 @@ PUB Setup{}
         ser.strln(string("LIS3DH driver failed to start - halting"))
         repeat
 
-    cognew(isr{}, @_isr_stack)                  ' start ISR in another core
+    cognew(cog_isr{}, @_isr_stack)                  ' start ISR in another core
 
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Oct 16, 2022
+    Updated: Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -129,6 +129,9 @@ PUB point(x, y): pix_clr
 
     return byte[_ptr_drawbuffer][x + (y * _disp_width)] >> 2
 #endif
+
+PUB show{}
+' dummy method for compatibility with other drivers
 
 PUB wait_vsync
 ' Waits for the display vertical refresh.
