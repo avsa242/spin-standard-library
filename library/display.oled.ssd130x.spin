@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created: Apr 26, 2018
-    Updated: Oct 16, 2022
+    Updated: Nov 1, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -13,6 +13,12 @@
 #define MEMMV_NATIVE bytemove
 #include "lib.gfx.bitmap.spin"
 
+{ if a specific display controller isn't defined, default to SSD1306 }
+#ifndef SSD1306
+#ifndef SSD1309
+#define SSD1306
+#endif
+#endif
 CON
 
     SLAVE_WR        = core#SLAVE_ADDR
@@ -40,10 +46,16 @@ OBJ
 
     core: "core.con.ssd130x"
     time: "time"
-#ifdef SSD130X_I2C
-    i2c : "com.i2c"                             ' PASM I2C engine (~1MHz)
-#elseifdef SSD130X_SPI
+
+#ifdef SSD130X_SPI
     spi : "com.spi.4mhz"                        ' PASM SPI engine (~4MHz)
+
+#else
+
+{ default to I2C }
+#define SSD130X_I2C
+    i2c : "com.i2c"                             ' PASM I2C engine (~1MHz)
+
 #endif
 
 VAR
