@@ -1,11 +1,11 @@
 {
     --------------------------------------------
     Filename: input.keyboard.ps2.spin
+    Description: Driver for PS/2-connected keyboards
     Author: Chip Gracey
     Modified by: Jesse Burt
-    Description: Driver for PS/2-connected keyboards
     Started 2004
-    Updated May 13, 2021
+    Updated Nov 1, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is based on Keyboard.spin, originally
@@ -17,16 +17,16 @@ VAR
 
     long _cog
 
-    long _par_tail        'key buffer tail        read/write      (19 contiguous longs)
-    long _par_head        'key buffer head        read-only
-    long _par_present     'keyboard present       read-only
-    long _par_states[8]   'key states (256 bits)  read-only
-    long _par_keys[8]     'key buffer (16 words)  read-only       (also used to pass initial parameters)
+    long _par_tail                              ' key buffer tail        r/w (19 contiguous longs)
+    long _par_head                              ' key buffer head        r/o
+    long _par_present                           ' keyboard present       r/o
+    long _par_states[8]                         ' key states (256 bits)  r/o
+    long _par_keys[8]                           ' key buffer (16 words)  r/o (init params)
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start(DATA_PIN, CLK_PIN): status
+PUB start(DATA_PIN, CLK_PIN): status
 ' Start PS/2 keyboard engine - starts a cog
 '   DATA_PIN  = data signal on PS/2 jack
 '   CLK_PIN  = clock signal on PS/2 jack
@@ -43,7 +43,7 @@ PUB Start(DATA_PIN, CLK_PIN): status
 ' and auto-repeat will be set to 15cps with a delay of .5s
     return startx(DATA_PIN, CLK_PIN, %0_000_100, %01_01000)
 
-PUB Startx(DATA_PIN, CLK_PIN, locks, auto): status
+PUB startx(DATA_PIN, CLK_PIN, locks, auto): status
 ' Like Start, but allows you to specify lock settings and auto-repeat
 '
 '   locks = lock setup
@@ -60,45 +60,47 @@ PUB Startx(DATA_PIN, CLK_PIN, locks, auto): status
     longmove(@_par_keys, @DATA_PIN, 4)
     return _cog := cognew(@entry, @_par_tail) + 1
 
-PUB Stop{}
+PUB stop{}
 ' Stop PS/2 engine - frees a cog
     if _cog
         cogstop(_cog - 1)
     longfill(@_cog, 0, 20)
 
-PUB Clearkeys{}
+PUB clearkeys = flush
+PUB flush{}
 ' Clear key buffer
     _par_tail := _par_head
 
-PUB Getkey{}: keycode
+PUB getkey = getchar
+PUB getchar{}: keycode
 ' Get next key (may wait for keypress)
 '   Returns: keycode of key pressed
     repeat until (keycode := key{})
 
-PUB Gotkey{}: is_keybuff
+PUB gotkey{}: is_keybuff
 ' Check if any key in buffer
 '   Returns: TRUE (-1) or FALSE (0)
     return (_par_tail <> _par_head)
 
-PUB Key{}: keycode
+PUB key{}: keycode
 ' Get key (never waits)
 '   Returns: keycode of key pressed, or 0 if buffer empty
-    if _par_tail <> _par_head
+    if (_par_tail <> _par_head)
         keycode := _par_keys.word[_par_tail]
         _par_tail := ++_par_tail & $F
 
-PUB Keystate(k): state
+PUB keystate(k): state
 ' Get the state of a particular key
 '   Returns: TRUE (-1) or FALSE (0)
     return -(_par_states[k >> 5] >> k & 1)
 
-PUB Newkey{}: keycode
+PUB newkey{}: keycode
 ' Clear buffer and get new key (always waits for keypress)
 '   Returns: keycode of key pressed
     _par_tail := _par_head
     return getkey{}
 
-PUB Present{}: is_pres
+PUB present{}: is_pres
 ' Check if keyboard present - valid ~2s after start
 '   Returns: TRUE (-1) or FALSE (0)
     return -_par_present
@@ -665,4 +667,22 @@ _auto                   res     1       'read-only at start
 '
 '      eg. Ctrl-Alt-Delete = $6C9
 '
+
+DAT
+{
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 

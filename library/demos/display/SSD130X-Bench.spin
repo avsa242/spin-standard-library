@@ -5,10 +5,17 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Started: Feb 19, 2022
-    Updated: Feb 19, 2022
+    Updated: Nov 1, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
+{ if a specific display controller isn't defined, default to SSD1306 }
+#ifndef SSD1306
+#ifndef SSD1309
+#define SSD1306
+#endif
+#endif
+
 CON
 
     _clkmode    = cfg#_clkmode
@@ -56,10 +63,10 @@ PUB Main{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-#ifdef SSD130X_I2C
-    if disp.startx(SCL_PIN, SDA_PIN, RES_PIN, SCL_FREQ, ADDR_BITS, WIDTH, HEIGHT, @_framebuff)
-#elseifdef SSD130X_SPI
+#ifdef SSD130X_SPI
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+#else
+    if disp.startx(SCL_PIN, SDA_PIN, RES_PIN, SCL_FREQ, ADDR_BITS, WIDTH, HEIGHT, @_framebuff)
 #endif
         ser.printf1(string("%s driver started"), @_drv_name)
         disp.fontspacing(1, 0)
@@ -71,18 +78,15 @@ PUB Main{}
         repeat
 
     disp.preset_128x{}
-
+    disp.mirror_h(FALSE)
+    disp.mirror_v(FALSE)
     benchmark{}                                 ' start demo
 
 { benchmark routines (common to all display types) included here }
 #include "GFXBench-common.spinh"
 
 DAT
-#ifdef SSD130X_I2C
-    _drv_name   byte    "SSD130X (I2C)", 0
-#elseifdef SSD130X_SPI
-    _drv_name   byte    "SSD130X (SPI)", 0
-#endif
+    _drv_name   byte    "SSD130X", 0
 
 {
 TERMS OF USE: MIT License
