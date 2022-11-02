@@ -53,10 +53,6 @@ PUB pos_delta(enc_id): deltapos
     deltapos := 0 + -(enc_id < _nr_delta) * -long[_ptr_posbuff][_nr_enc+enc_id] {
 }   + (long[_ptr_posbuff][_nr_enc+enc_id] := long[_ptr_posbuff][enc_id])
 
-CON
-
-    SELFMOD = 0-0                               ' symbol used where code will  |
-                                                '   be modified at runtime
 DAT
 ' Read all encoders and update encoder positions in main memory.
 ' See "Theory of Operation," below, for operational explanation.
@@ -65,7 +61,7 @@ DAT
 entry           mov     ptr_ipos,   #intpos     ' Clear encoder position values
                 movd    :iclear,    ptr_ipos    '  set starting internal pointer
                 mov     idx,        _nr_enc     '  for all encoders...
-:iclear         mov     SELFMOD,    #0          '  clear internal memory
+:iclear         mov     0-0,        #0          '  clear internal memory
                 add     ptr_ipos,   #1          '  increment pointer
                 movd    :iclear,    ptr_ipos
                 djnz    idx,        #:iclear    '  loop for each encoder
@@ -98,8 +94,8 @@ entry           mov     ptr_ipos,   #intpos     ' Clear encoder position values
 :updatepos      ror     st1,        #2          ' Rotate current bit pair into 31:30
                 mov     diff,       st1         ' Convert 2-bit signed to 32-bit signed diff
                 sar     diff,       #30
-:ipos           add     SELFMOD,    diff        ' Add to encoder position value
-                wrlong  SELFMOD,    mposaddr    ' Write new pos. to memory
+:ipos           add     0-0,        diff        ' Add to encoder position value
+                wrlong  0-0,        mposaddr    ' Write new pos. to memory
                 add     ptr_ipos,   #1          ' Increment encoder pos. ptr
                 movd    :ipos+0,    ptr_ipos
                 movd    :ipos+1,    ptr_ipos
@@ -161,18 +157,21 @@ To use this object:
 Example Code:
 
 OBJ
-  Encoder : "input.encoder.quadrature"
+
+    encoder: "input.encoder.quadrature"
 
 VAR
-  long _ptr_posbuff[3]                            'Create buffer for two encoders (plus room for delta position support of 1st encoder)
 
-PUB Init
-  Encoder.Start(8, 2, 1, @_ptr_posbuff)           'Start continuous two-encoder reader (encoders connected to pins 8 - 11)
+    long _ptr_posbuff[3]                      'Create buffer for two encoders (plus room for delta position support of 1st encoder)
 
-PUB Main
-  repeat
-    <read _ptr_posbuff[0] or Pos[1] here>         'Read each encoder's absolute position
-    <variable> := Encoder.ReadDelta(0)   'Read 1st encoder's delta position (value since last read)
+PUB main
+
+    encoder.startx(8, 2, 1, @_ptr_posbuff)     'Start continuous two-encoder reader (encoders connected to pins 8 - 11)
+
+    repeat
+        <read _ptr_posbuff[0] or pos[1] here>   'Read each encoder's absolute position
+        <variable> := encoder.pos_delta(0)      'Read 1st encoder's delta position (value since last read)
+
 
 # REQUIRED CYCLES AND MAXIMUM RPM:
 ----------------------------------
