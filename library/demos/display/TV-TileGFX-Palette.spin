@@ -44,7 +44,7 @@ VAR
 OBJ
 
   tv    : "display.tv"
-  gr    : "display.tv.graphics"
+  gr    : "display.gfx.tile"
   mouse : "input.mouse.ps2"
 
 

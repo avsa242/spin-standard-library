@@ -5,7 +5,7 @@
     Author: Chip Gracey
     Modified by: Jesse Burt
     Started 2005
-    Updated Oct 25, 2022
+    Updated Nov 2, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -68,7 +68,7 @@ VAR
 OBJ
 
     tv : "display.tv"
-    gr : "display.tv.graphics"
+    gr : "display.gfx.tile"
 
 PUB null{}
 ' This is not a top-level object
