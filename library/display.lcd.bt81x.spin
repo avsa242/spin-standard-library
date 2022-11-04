@@ -6,7 +6,7 @@
         Advanced Embedded Video Engine (EVE) Graphic controller
     Copyright (c) 2022
     Started Sep 25, 2019
-    Updated Sep 27, 2022
+    Updated Nov 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -142,7 +142,6 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, RST_PIN, PTR_DISP): status
             pll_clk_ext{}
             clk_set_freq(DEF)                   ' set clock to default (59MHz)
             repeat until (dev_id{} == core#CHIPID_VALID)
-            cpu_reset(%111)
             repeat until cpu_state{} == READY
             if (coproc_err{})                    ' reset coprocessor if it's
                 reset_copro{}                    '   in an error state
