@@ -5,7 +5,7 @@
     Description: Driver for IL3897/SSD1675 AM E-Paper display controller
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Oct 5, 2022
+    Updated Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -157,7 +157,7 @@ PUB preset_2_13_bw{}
     addr_mode(HORIZ)
     addr_ctr_mode(YI_XI)
 
-    disp_area(0, 0, 121, 249)
+    draw_area(0, 0, 121, 249)
 
     border_mode(HIZ)
     border_vbd_lev(BRD_VSS)
@@ -320,7 +320,7 @@ PUB dig_blk_ctrl{} | tmp
     tmp := $3b
     writereg(core#DIGI_BLK_CTRL, 1, @tmp)
 
-PUB disp_area(sx, sy, ex, ey) | tmpx, tmpy
+PUB draw_area(sx, sy, ex, ey) | tmpx, tmpy
 ' Set drawable display region for subsequent drawing operations
 '   Valid values:
 '       sx, ex: 0..159

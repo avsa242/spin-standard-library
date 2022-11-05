@@ -5,7 +5,7 @@
     Description: Driver for the IL3820 electrophoretic display controller
     Copyright (c) 2022
     Started Nov 30, 2019
-    Updated Oct 5, 2022
+    Updated Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -158,7 +158,7 @@ PUB preset_2p9_bw{}
     addr_mode(HORIZ)
     addr_ctr_mode(YI_XI)
 
-    disp_area(0, 0, 127, 295)
+    draw_area(0, 0, 127, 295)
 
 '    bordermode(HIZ)
 '    bordervbdlev(BRD_VSS)
@@ -242,7 +242,7 @@ PUB dig_blk_ctrl{} | tmp
     tmp := $3b
     writereg(core#DIGI_BLK_CTRL, 1, @tmp)
 
-PUB disp_area(sx, sy, ex, ey) | tmpx, tmpy
+PUB draw_area(sx, sy, ex, ey) | tmpx, tmpy
 ' Set drawable display region for subsequent drawing operations
 '   Valid values:
 '       sx, ex: 0..127
@@ -478,12 +478,12 @@ PUB reset{} | tmp
 
     repeat until disp_rdy{}
 
-    disp_area(0, 0, _disp_width-1, _disp_height-1)
+    draw_area(0, 0, _disp_width-1, _disp_height-1)
     disp_pos(0, 0)
 
 PUB show{} | tmp
 ' Send the draw buffer to the display
-    disp_area(0, 0, _disp_width-1, _disp_height-1)
+    draw_area(0, 0, _disp_width-1, _disp_height-1)
     disp_pos(0, 0)
 
     repeat until disp_rdy{}

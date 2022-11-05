@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
     Copyright (c) 2022
     Started: Mar 11, 2020
-    Updated: Oct 30, 2022
+    Updated: Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -95,22 +95,22 @@ PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuf
 
 PUB stop{}
 ' Stop the driver
-    disp_vis_ena(ALL_OFF)
+    visibility(ALL_OFF)
     powered(FALSE)
     spi.deinit{}
 
 PUB defaults{}
 ' Apply power-on-reset default settings
-    disp_vis_ena(ALL_OFF)
+    visibility(ALL_OFF)
     disp_start_line(0)
     disp_lines(128)
     clk_freq(3020)
     clk_div(1)
     contrast_abc(138, 81, 138)
     powered(TRUE)
-    disp_area(0, 0, 127, 127)
+    draw_area(0, 0, 127, 127)
     clear{}
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB preset_clickc_away{}
 ' Preset: MikroE OLED C Click (96x96)
@@ -118,7 +118,7 @@ PUB preset_clickc_away{}
 '   **Oriented so glass panel is facing away from user user, PCB facing towards
 '   origin (upper-left) isn't at 0, 0 on this panel
 '   start at 16 pixels in from the left, and add that to the right-hand side
-    disp_area(0, 0, 95, 95)
+    draw_area(0, 0, 95, 95)
     addr_mode(ADDR_HORIZ)
     subpix_order(RGB)
     interlace_ena(FALSE)
@@ -133,7 +133,7 @@ PUB preset_clickc_away{}
     disp_lines(96)
 
     powered(TRUE)
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB preset_clickc_towards{}
 ' Preset: MikroE OLED C Click (96x96)
@@ -141,7 +141,7 @@ PUB preset_clickc_towards{}
 '   **Oriented so glass panel is facing towards user, PCB facing away
 '   origin (upper-left) isn't at 0, 0 on this panel
 '   start at 16 pixels in from the left, and add that to the right-hand side
-    disp_area(0, 0, 95, 95)
+    draw_area(0, 0, 95, 95)
     addr_mode(ADDR_HORIZ)
     subpix_order(RGB)
     interlace_ena(FALSE)
@@ -156,11 +156,11 @@ PUB preset_clickc_towards{}
     disp_lines(96)
 
     powered(TRUE)
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB preset_128x{}
 ' Preset: 128px wide, determine settings for height at runtime
-    disp_area(0, 0, _disp_xmax, _disp_ymax)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
     addr_mode(ADDR_HORIZ)
     subpix_order(RGB)
     interlace_ena(FALSE)
@@ -173,11 +173,11 @@ PUB preset_128x{}
     disp_lines(_disp_height)
 
     powered(TRUE)
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB preset_128x128{}
 ' Preset: 128px wide, 128px high
-    disp_area(0, 0, 127, 127)
+    draw_area(0, 0, 127, 127)
     addr_mode(ADDR_HORIZ)
     subpix_order(RGB)
     interlace_ena(FALSE)
@@ -190,12 +190,12 @@ PUB preset_128x128{}
     disp_lines(128)
 
     powered(TRUE)
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB preset_128xhiperf{}
 ' Preset: 128px wide, determine settings for height at runtime
 '   display osc. set to max clock
-    disp_area(0, 0, _disp_xmax, _disp_ymax)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
     addr_mode(ADDR_HORIZ)
     subpix_order(RGB)
     interlace_ena(FALSE)
@@ -208,7 +208,7 @@ PUB preset_128xhiperf{}
     disp_lines(_disp_height)
 
     powered(TRUE)
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB address(addr): curr_addr
 ' Set framebuffer/display buffer address
@@ -233,7 +233,7 @@ PUB bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
 '   (xs, ys): upper-left corner of bitmap
 '   bm_wid: width of bitmap, in pixels
 '   bm_lns: number of lines in bitmap
-    disp_area(xs, ys, xs+(bm_wid-1), ys+(bm_lns-1))
+    draw_area(xs, ys, xs+(bm_wid-1), ys+(bm_lns-1))
     outa[_CS] := 0
     outa[_DC] := core#CMD
     spi.wr_byte(core#WRITERAM)
@@ -280,28 +280,28 @@ PUB box(x1, y1, x2, y2, c, fill) | cmd_pkt[2]
         outa[_DC] := core#DATA
         spi.wrwordx_msbf(c, ((y2-y1)+1) * ((x2-x1)+1))
     else
-        disp_area(x1, y1, x2, y1)               ' top
+        draw_area(x1, y1, x2, y1)               ' top
         outa[_CS] := 0
         outa[_DC] := core#CMD
         spi.wr_byte(core#WRITERAM)
         outa[_DC] := core#DATA
         spi.wrwordx_msbf(c, (x2-x1)+1)
 
-        disp_area(x1, y2, x2, y2)               ' bottom
+        draw_area(x1, y2, x2, y2)               ' bottom
         outa[_CS] := 0
         outa[_DC] := core#CMD
         spi.wr_byte(core#WRITERAM)
         outa[_DC] := core#DATA
         spi.wrwordx_msbf(c, (x2-x1)+1)
 
-        disp_area(x1, y1, x1, y2)               ' left
+        draw_area(x1, y1, x1, y2)               ' left
         outa[_CS] := 0
         outa[_DC] := core#CMD
         spi.wr_byte(core#WRITERAM)
         outa[_DC] := core#DATA
         spi.wrwordx_msbf(c, (y2-y1)+1)
 
-        disp_area(x2, y1, x2, y2)               ' right
+        draw_area(x2, y1, x2, y2)               ' right
         outa[_CS] := 0
         outa[_DC] := core#CMD
         spi.wr_byte(core#WRITERAM)
@@ -311,46 +311,9 @@ PUB box(x1, y1, x2, y2, c, fill) | cmd_pkt[2]
 #endif
 
 #ifdef GFX_DIRECT
-PUB tx = putchar
-PUB char = putchar
-PUB putchar(ch) | gl_c, gl_r, lastgl_c, lastgl_r
-' Draw character from currently loaded font
-    lastgl_c := _font_width-1
-    lastgl_r := _font_height-1
-    case ch
-        CR:
-            _charpx_x := 0
-        LF:
-            _charpx_y += _charcell_h
-            if (_charpx_y > _charpx_xmax)
-                _charpx_y := 0
-        0..127:                                 ' validate ASCII code
-            ' walk through font glyph data
-            repeat gl_c from 0 to lastgl_c      ' column
-                repeat gl_r from 0 to lastgl_r  ' row
-                    ' if the current offset in the glyph is a set bit, draw it
-                    if (byte[_font_addr][(ch << 3) + gl_c] & (|< gl_r))
-                        plot((_charpx_x + gl_c), (_charpx_y + gl_r), _fgcolor)
-                    else
-                    ' otherwise, draw the background color, if enabled
-                        if _char_attrs & DRAWBG
-                            plot((_charpx_x + gl_c), (_charpx_y + gl_r), _bgcolor)
-            ' move the cursor to the next column, wrapping around to the left,
-            ' and wrap around to the top of the display if the bottom is reached
-            _charpx_x += _charcell_w
-            if (_charpx_x > _charpx_xmax)
-                _charpx_x := 0
-                _charpx_y += _charcell_h
-            if (_charpx_y > _charpx_ymax)
-                _charpx_y := 0
-        other:
-            return
-#endif
-
-#ifdef GFX_DIRECT
 PUB clear{}
 ' Clear the display directly, bypassing the display buffer
-    disp_area(0, 0, _disp_xmax, _disp_ymax)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
     outa[_DC] := core#CMD
     outa[_CS] := 0
     spi.wr_byte(core#WRITERAM)
@@ -412,7 +375,7 @@ PUB contrast_abc(a, b, c) | tmp
     tmp.byte[2] := (0 #> c <# 255)
     writereg(core#SETCNTRSTABC, 3, @tmp)
 
-PUB disp_area(sx, sy, ex, ey) | tmpx, tmpy
+PUB draw_area(sx, sy, ex, ey) | tmpx, tmpy
 ' Set drawable display region for subsequent drawing operations
 '   Valid values:
 '       sx, ex: 0..127
@@ -446,10 +409,10 @@ PUB disp_lines(lines)
     lines := ((16 #> lines <# 128) - 1)
     writereg(core#SETMUXRATIO, 1, @lines)
 
-PUB disp_inverted(state)
+PUB invert_colors(state)
 ' Invert display colors
 '   Valid values: TRUE (non-zero), *FALSE (0)
-    disp_vis_ena(INVERTED - ((state <> 0) & 1))
+    visibility(INVERTED - ((state <> 0) & 1))
 
 PUB disp_offset(x, y)
 ' Set display offset
@@ -463,7 +426,7 @@ PUB disp_start_line(sline)
     sline := (0 #> sline <# 127)
     writereg(core#STARTLINE, 1, @sline)
 
-PUB disp_vis_ena(mode)
+PUB visibility(mode)
 ' Set display visibility
 '   Valid values:
 '       ALL_OFF (0): Turns off all pixels
@@ -488,7 +451,7 @@ PUB interlace_ena(state)
 PUB line(x1, y1, x2, y2, c) | sx, sy, ddx, ddy, err, e2
 ' Draw line from x1, y1 to x2, y2, in color c
     if (x1 == x2)
-        disp_area(x1, y1, x1, y2)               ' vertical
+        draw_area(x1, y1, x1, y2)               ' vertical
         outa[_CS] := 0
         outa[_DC] := core#CMD
         spi.wr_byte(core#WRITERAM)
@@ -497,7 +460,7 @@ PUB line(x1, y1, x2, y2, c) | sx, sy, ddx, ddy, err, e2
         outa[_CS] := 1
         return
     if (y1 == y2)
-        disp_area(x1, y1, x2, y1)               ' horizontal
+        draw_area(x1, y1, x2, y1)               ' horizontal
         outa[_CS] := 0
         outa[_DC] := core#CMD
         spi.wr_byte(core#WRITERAM)
@@ -567,7 +530,7 @@ PUB phase2_period(clks)
 ' Set charge/phase 2 period, in display clocks
 '   Valid values: 3..15 (clamped to range; POR: 8)
     clks := ((3 #> clks <# 15) << core#PHASE2)
-    _phs1_2 := ((curr_per & core#PHASE2_MASK) | ((3 #> clks <# 15) << core#PHASE2))
+    _phs1_2 := ((_phs1_2 & core#PHASE2_MASK) | ((3 #> clks <# 15) << core#PHASE2))
     writereg(core#PRECHG, 1, @_phs1_2)
 
 PUB phase3_period(clks)
@@ -578,7 +541,7 @@ PUB phase3_period(clks)
 
 PUB plot(x, y, color) | cmd_pkt[3]
 ' Plot pixel at (x, y) in color
-    if ((x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax))
+    if ((x < 0) or (x > _disp_xmax) or (y < 0) or (y > _disp_ymax))
         return                                  ' coords out of bounds, ignore
 #ifdef GFX_DIRECT
 ' direct to display
@@ -636,6 +599,43 @@ PUB prechg_level(level)
     level := (((200 #> level <# 600) - 200) / 13)
     writereg(core#PRECHGLEVEL, 1, @level)
 
+#ifdef GFX_DIRECT
+PUB tx = putchar
+PUB char = putchar
+PUB putchar(ch) | gl_c, gl_r, lastgl_c, lastgl_r
+' Draw character from currently loaded font
+    lastgl_c := _font_width-1
+    lastgl_r := _font_height-1
+    case ch
+        CR:
+            _charpx_x := 0
+        LF:
+            _charpx_y += _charcell_h
+            if (_charpx_y > _charpx_xmax)
+                _charpx_y := 0
+        0..127:                                 ' validate ASCII code
+            ' walk through font glyph data
+            repeat gl_c from 0 to lastgl_c      ' column
+                repeat gl_r from 0 to lastgl_r  ' row
+                    ' if the current offset in the glyph is a set bit, draw it
+                    if (byte[_font_addr][(ch << 3) + gl_c] & (|< gl_r))
+                        plot((_charpx_x + gl_c), (_charpx_y + gl_r), _fgcolor)
+                    else
+                    ' otherwise, draw the background color, if enabled
+                        if _char_attrs & DRAWBG
+                            plot((_charpx_x + gl_c), (_charpx_y + gl_r), _bgcolor)
+            ' move the cursor to the next column, wrapping around to the left,
+            ' and wrap around to the top of the display if the bottom is reached
+            _charpx_x += _charcell_w
+            if (_charpx_x > _charpx_xmax)
+                _charpx_x := 0
+                _charpx_y += _charcell_h
+            if (_charpx_y > _charpx_ymax)
+                _charpx_y := 0
+        other:
+            return
+#endif
+
 PUB subpix_order(order)
 ' Set subpixel color order
 '   Valid values:
@@ -657,7 +657,7 @@ PUB reset{}
 PUB show{}
 ' Send the draw buffer to the display
 #ifndef GFX_DIRECT
-    disp_area(0, 0, _disp_xmax, _disp_ymax)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
     outa[_DC] := core#CMD
     outa[_CS] := 0
     spi.wr_byte(core#WRITERAM)

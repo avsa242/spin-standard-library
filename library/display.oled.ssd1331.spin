@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
     Copyright (c) 2022
     Started: Apr 28, 2019
-    Updated: Oct 22, 2022
+    Updated: Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -95,7 +95,7 @@ PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_drawbuf
 
 PUB stop{}
 ' Turn off display, stop SPI engine, clear out variable space
-    disp_vis_ena(ALL_OFF)
+    visibility(ALL_OFF)
     powered(FALSE)
     spi.deinit{}
     longfill(@_CS, 0, 3)
@@ -109,7 +109,7 @@ PUB defaults{}
 #ifdef HAS_RESET
     reset{}
 #else
-    disp_vis_ena(ALL_OFF)
+    visibility(ALL_OFF)
     disp_start_line(0)
     disp_lines(64)
     ext_supply_ena{}
@@ -117,14 +117,14 @@ PUB defaults{}
     clk_div(1)
     contrast(127)
     powered(TRUE)
-    disp_area(0, 0, 95, 63)
+    draw_area(0, 0, 95, 63)
     clear{}
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 #endif
 
 PUB preset_96x64{}
 ' Preset: 96px wide, setup for 64px height
-    disp_vis_ena(ALL_OFF)
+    visibility(ALL_OFF)
     color_depth(COLOR_65K)
     powered(FALSE)
     disp_lines(64)
@@ -134,13 +134,13 @@ PUB preset_96x64{}
     contrast(127)
     interlace_ena(false)
     powered(TRUE)
-    disp_area(0, 0, 95, 63)
+    draw_area(0, 0, 95, 63)
     clear{}
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB preset_96x64_hi_perf{}
 ' Preset: 96px wide, setup for 64px height, display osc. set to max clock
-    disp_vis_ena(ALL_OFF)
+    visibility(ALL_OFF)
     color_depth(COLOR_65K)
     powered(FALSE)
     disp_lines(64)
@@ -150,13 +150,13 @@ PUB preset_96x64_hi_perf{}
     contrast(127)
     interlace_ena(false)
     powered(TRUE)
-    disp_area(0, 0, 95, 63)
+    draw_area(0, 0, 95, 63)
     clear{}
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB preset_96x{}
 ' Preset: 96px wide, determine settings for height at runtime
-    disp_vis_ena(ALL_OFF)
+    visibility(ALL_OFF)
     color_depth(COLOR_65K)
     powered(FALSE)
     disp_lines(_disp_height)
@@ -166,9 +166,9 @@ PUB preset_96x{}
     contrast(127)
     interlace_ena(false)
     powered(TRUE)
-    disp_area(0, 0, _disp_width, _disp_height)
+    draw_area(0, 0, _disp_width, _disp_height)
     clear{}
-    disp_vis_ena(NORMAL)
+    visibility(NORMAL)
 
 PUB address(addr): curr_addr
 ' Set framebuffer/display buffer address
@@ -199,7 +199,7 @@ PUB bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
 '   (xs, ys): upper-left corner of bitmap
 '   bm_wid: width of bitmap, in pixels
 '   bm_lns: number of lines in bitmap
-    disp_area(xs, ys, xs+(bm_wid-1), ys+(bm_lns-1))
+    draw_area(xs, ys, xs+(bm_wid-1), ys+(bm_lns-1))
     outa[_CS] := 0
     ' calc total number of pixels to write, based on dims and color depth
     ' clamp to a minimum of 1 to avoid odd behavior
@@ -418,7 +418,7 @@ PUB current_limit(divisor): curr_div
     _sh_MASTERCCTRL := ((1 #> divisor <# 16) - 1)
     writereg(core#MASTERCURRENT, 1, @_sh_MASTERCCTRL)
 
-PUB disp_area(sx, sy, ex, ey) | tmp
+PUB draw_area(sx, sy, ex, ey) | tmp
 ' Set drawable display region for subsequent drawing operations
 '   Valid values:
 '       sx, ex: 0..95
@@ -437,12 +437,12 @@ PUB disp_area(sx, sy, ex, ey) | tmp
 
     writereg(core#SETROW, 2, @tmp)
 
-PUB disp_inverted(state) | tmp
+PUB invert_colors(state) | tmp
 ' Invert display colors
     if (state)
-        disp_vis_ena(INVERTED)
+        visibility(INVERTED)
     else
-        disp_vis_ena(NORMAL)
+        visibility(NORMAL)
 
 PUB disp_lines(lines)
 ' Set maximum number of display lines
@@ -460,7 +460,7 @@ PUB disp_start_line(line)
     _sh_DISPSTARTLINE := (0 #> st_line <# 63)
     writereg(core#STARTLINE, 1, @_sh_DISPSTARTLINE)
 
-PUB disp_vis_ena(mode): curr_mode
+PUB visibility(mode): curr_mode
 ' Set display visibility
     case mode
         NORMAL, ALL_ON, ALL_OFF, INVERTED:
@@ -542,7 +542,7 @@ PUB phase1_period(clks)
     _sh_PHASE12PER := ((_sh_PHASE12PER & core#PHASE1_MASK) | (1 #> clks <# 15))
     writereg(core#PRECHG, 1, @_sh_PHASE12PER)
 
-PUB phase2period(clks)
+PUB phase2_period(clks)
 ' Set charge/phase 2 period, in display clocks
 '   Valid values: 1..15 (clamped to range)
     _sh_PHASE12PER := ((_sh_PHASE12PER & core#PHASE2_MASK) | ((1 #> clks <# 15) << core#PHASE2))

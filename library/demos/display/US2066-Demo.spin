@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Created Dec 30, 2017
-    Updated Oct 16, 2022
+    Updated Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -278,11 +278,11 @@ PUB invert_demo{} | i
     oled.str(string("Display"))
 
     repeat i from 1 to 3
-        oled.disp_inverted(TRUE)
+        oled.invert_colors(TRUE)
         oled.pos_xy(WIDTH-8, HEIGHT-1)
         oled.str(string("INVERTED"))
         time.sleep(MODE_DELAY)
-        oled.disp_inverted(FALSE)
+        oled.invert_colors(FALSE)
         oled.pos_xy(WIDTH-8, HEIGHT-1)
         oled.str(string("NORMAL  "))
         time.sleep(MODE_DELAY)
@@ -369,7 +369,7 @@ PUB setup{}
     oled.mirror_v(FALSE)
     oled.clear{}
     oled.pos_xy(0, 0)
-    oled.disp_vis_ena(oled#NORM)
+    oled.visibility(oled#NORM)
     time.msleep(100)
 
 DAT
