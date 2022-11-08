@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: sensor.gyroscope.3dof.fxas21002.i2c.spin
+    Filename: sensor.gyroscope.3dof.fxas21002.spin
     Author: Jesse Burt
     Description: Driver for the NXP FXAS21002 3DoF Gyroscope
     Copyright (c) 2022
     Started Jun 07, 2021
-    Updated Oct 1, 2022
+    Updated Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -224,6 +224,7 @@ PUB gyro_set_bias(x, y, z)
 
 PUB gyro_data(ptr_x, ptr_y, ptr_z) | tmp[2]
 ' Reads the Gyroscope output registers
+    longfill(@tmp, 0, 2)
     readreg(core#OUT_X_MSB, 6, @tmp)
     long[ptr_x] := ~~tmp.word[X_AXIS] - _gbias[X_AXIS]
     long[ptr_y] := ~~tmp.word[Y_AXIS] - _gbias[Y_AXIS]
@@ -263,16 +264,15 @@ PUB gyro_data_rdy{}: flag
     return ((flag & core#DRDY) <> 0)
 
 PUB gyro_hpf_freq(freq): curr_freq | hpf_en
-' Set Gyroscope high-pass filter cutoff frequency, in Hz
-'   Valid values: dependent on GyroDataRate(), see table below
+' Set Gyroscope high-pass filter cutoff frequency, in milli-Hz
+'   Valid values: dependent on gyro_data_rate(), see table below
 '   Any other value polls the chip and returns the current setting
     curr_freq := 0
     case gyro_data_rate(-2)                     ' check current data rate to
         800:                                    ' determine avail. HPF freqs
             case freq
                 15_000, 7_700, 3_900, 1_980:
-                    freq := lookdownz(freq: 15_000, 7_700, 3_900, 1_980) {
-}                   << core#SEL
+                    freq := lookdownz(freq: 15_000, 7_700, 3_900, 1_980) << core#SEL
                     hpf_en := 1                 ' if freq is nonzero, enable
                 0:
                     hpf_en := 0                 ' otherwise, disable
@@ -282,8 +282,7 @@ PUB gyro_hpf_freq(freq): curr_freq | hpf_en
         400:
             case freq
                 7_500, 3_850, 1_950, 0_990:
-                    freq := lookdownz(freq: 7_500, 3_850, 1_950, 0_990) {
-}                   << core#SEL
+                    freq := lookdownz(freq: 7_500, 3_850, 1_950, 0_990) << core#SEL
                     hpf_en := 1
                 0:
                     hpf_en := 0
@@ -293,8 +292,7 @@ PUB gyro_hpf_freq(freq): curr_freq | hpf_en
         200:
             case freq
                 3_750, 1_925, 0_975, 0_495:
-                    freq := lookdownz(freq: 3_750, 1_925, 0_975, 0_495) {
-}                   << core#SEL
+                    freq := lookdownz(freq: 3_750, 1_925, 0_975, 0_495) << core#SEL
                     hpf_en := 1
                 0:
                     hpf_en := 0
@@ -304,8 +302,7 @@ PUB gyro_hpf_freq(freq): curr_freq | hpf_en
         100:
             case freq
                 1_875, 0_963, 0_488, 0_248:
-                    freq := lookdownz(freq: 1_875, 0_963, 0_488, 0_248) {
-}                   << core#SEL
+                    freq := lookdownz(freq: 1_875, 0_963, 0_488, 0_248) << core#SEL
                     hpf_en := 1
                 0:
                     hpf_en := 0
@@ -315,8 +312,7 @@ PUB gyro_hpf_freq(freq): curr_freq | hpf_en
         50:
             case freq
                 0_937, 0_481, 0_244, 0_124:
-                    freq := lookdownz(freq: 0_937, 0_481, 0_244, 0_124) {
-}                   << core#SEL
+                    freq := lookdownz(freq: 0_937, 0_481, 0_244, 0_124) << core#SEL
                     hpf_en := 1
                 0:
                     hpf_en := 0
@@ -327,8 +323,7 @@ PUB gyro_hpf_freq(freq): curr_freq | hpf_en
         25:
             case freq
                 0_468, 0_241, 0_122, 0_062:
-                    freq := lookdownz(freq: 0_468, 0_241, 0_122, 0_062) {
-}                   << core#SEL
+                    freq := lookdownz(freq: 0_468, 0_241, 0_122, 0_062) << core#SEL
                     hpf_en := 1
                 0:
                     hpf_en := 0
@@ -339,8 +334,7 @@ PUB gyro_hpf_freq(freq): curr_freq | hpf_en
         12:
             case freq
                 0_234, 0_120, 0_061, 0_031:
-                    freq := lookdownz(freq: 0_234, 0_120, 0_061, 0_031) {
-}                   << core#SEL
+                    freq := lookdownz(freq: 0_234, 0_120, 0_061, 0_031) << core#SEL
                     hpf_en := 1
                 0:
                     hpf_en := 0
@@ -382,7 +376,7 @@ PUB gyro_int_polarity(state): curr_state
     state := ((curr_state & core#IPOL_MASK) | state)
     writereg(core#CTRL_REG2, 1, @state)
 
-PUB gyro_int_mask(mask): curr_mask | reg2, rtcfg
+PUB gyro_int_mask(mask): curr_mask | reg2, rtcfg, tmp[2]
 ' Set gyroscope interrupt mask
 '   Bits 11..0
 '       11: latch interrupts
@@ -398,9 +392,10 @@ PUB gyro_int_mask(mask): curr_mask | reg2, rtcfg
 '       1: not used
 '       0: not used
 '   Any other value polls the chip and returns the current setting
-    curr_mask := 0
-    readreg(core#CTRL_REG2, 1, @curr_mask.byte[0])
-    readreg(core#RT_CFG, 1, @curr_mask.byte[1])
+    readreg(core#CTRL_REG2, 1, @tmp[0])
+    readreg(core#RT_CFG, 1, @tmp[1])
+    curr_mask.byte[1] := tmp[1]
+    curr_mask.byte[0] := tmp[0]
     case mask
         0..%1111_11111111:
             reg2 := mask.byte[0] & core#INT_EN_BITS

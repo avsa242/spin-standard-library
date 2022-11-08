@@ -5,7 +5,7 @@
     Description: Driver for the Analog Devices ADXL345 3DoF Accelerometer
     Copyright (c) 2022
     Started Mar 14, 2020
-    Updated Oct 16, 2022
+    Updated Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -167,7 +167,7 @@ PUB defaults{}
     accel_scale(2)
     accel_self_test(FALSE)
     fifo_mode(BYPASS)
-    int_set_mask(%00000000)
+    accel_int_set_mask(%00000000)
     accel_opmode(STANDBY)
 
 PUB preset_active{}
@@ -196,7 +196,7 @@ PUB preset_freefall{}
     freefall_set_time(100_000)                  ' 100_000us/100ms min time
     freefall_set_thresh(0_315000)               ' 0.315g's
     accel_opmode(MEAS)
-    int_set_mask(INT_FFALL)                     ' enable free-fall interrupt
+    accel_int_set_mask(INT_FFALL)               ' enable free-fall interrupt
 
 PUB accel_adc_res(bits): curr_res
 ' Set accelerometer ADC resolution, in bits
@@ -281,6 +281,98 @@ PUB accel_data_rdy{}: flag
     flag := 0
     readreg(core#INT_SOURCE, 1, @flag)
     return (((flag >> core#DATA_RDY) & 1) == 1)
+
+PUB accel_int{}: int_src
+' Flag indicating interrupt(s) asserted
+'   Bits: 76543210
+'       7: Data Ready
+'       6: Single-tap
+'       5: Double-tap
+'       4: Activity
+'       3: Inactivity
+'       2: Free-fall
+'       1: Watermark
+'       0: Overrun
+'   NOTE: Calling this method clears all interrupts
+    int_src := 0
+    readreg(core#INT_SOURCE, 1, @int_src)
+
+PUB accel_int_mask{}: mask
+' Get interrupt mask
+'   Bits: 76543210
+'       7: Data Ready (Always enabled, regardless of setting)
+'       6: Single-tap
+'       5: Double-tap
+'       4: Activity
+'       3: Inactivity
+'       2: Free-fall
+'       1: Watermark (Always enabled, regardless of setting)
+'       0: Overrun (Always enabled, regardless of setting)
+    mask := 0
+    readreg(core#INT_ENABLE, 1, @mask)
+
+PUB accel_int_polarity(state): curr_state
+' Set interrupt pin active state/logic level
+'   Valid values: LOW (0), HIGH (1)
+'   Any other value polls the chip and returns the current setting
+    curr_state := 0
+    readreg(core#DATA_FORMAT, 1, @curr_state)
+    case state
+        LOW, HIGH:
+            ' invert the passed param;
+            '   0 is active high, 1 is active low
+            state := ((state ^ 1) << core#INT_INVERT)
+        other:
+            return (((curr_state ^ 1) >> core#INT_INVERT) & 1)
+
+    state := ((curr_state & core#INT_INVERT_MASK) | state)
+    writereg(core#DATA_FORMAT, 1, @state)
+
+PUB accel_int_set_mask(mask)
+' Set interrupt mask
+'   Bits: 76543210
+'       7: Data Ready (Always enabled, regardless of setting)
+'       6: Single-tap
+'       5: Double-tap
+'       4: Activity
+'       3: Inactivity
+'       2: Free-fall
+'       1: Watermark (Always enabled, regardless of setting)
+'       0: Overrun (Always enabled, regardless of setting)
+'   Valid values: %00000000..%11111111 (other bits masked off)
+    mask &= %1111_1111
+    writereg(core#INT_ENABLE, 1, @mask)
+
+PUB accel_int_routing{}: mask
+' Get interrupt pin routing mask
+'   Bit clear (0): route to INT1 pin, set (1): route to INT2 pin
+'   Bits: 76543210
+'       7: Data Ready
+'       6: Single-tap
+'       5: Double-tap
+'       4: Activity
+'       3: Inactivity
+'       2: Free-fall
+'       1: Watermark
+'       0: Overrun
+    mask := 0
+    readreg(core#INT_MAP, 1, @mask)
+
+PUB accel_int_set_routing(mask)
+' Set interrupt pin routing mask
+'   Bit clear (0): route to INT1 pin, set (1): route to INT2 pin
+'   Bits: 76543210
+'       7: Data Ready
+'       6: Single-tap
+'       5: Double-tap
+'       4: Activity
+'       3: Inactivity
+'       2: Free-fall
+'       1: Watermark
+'       0: Overrun
+'   Valid values: %00000000..%11111111 (other bits masked off)
+    mask &= %1111_1111
+    writereg(core#INT_MAP, 1, @mask)
 
 PUB accel_opmode(mode): curr_mode | curr_lp, lpwr
 ' Set operating mode
@@ -444,12 +536,12 @@ PUB click_axis_ena(mask): curr_mask
 PUB clicked{}: flag
 ' Flag indicating the sensor was single-clicked
 '   NOTE: Calling this method clears all interrupts
-    return ((interrupt{} & INT_SNGTAP) <> 0)
+    return ((accel_int{} & INT_SNGTAP) <> 0)
 
 PUB clicked_int{}: intstat
 ' Clicked interrupt status
 '   NOTE: Calling this method clears all interrupts
-    return (interrupt{} >> core#TAP) & core#TAP_BITS
+    return (accel_int{} >> core#TAP) & core#TAP_BITS
 
 PUB clicked_x{}: flag
 ' Flag indicating click event on X axis
@@ -483,7 +575,7 @@ PUB click_int_ena(state): curr_state | tmp
 ' Enable click interrupts
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
-    curr_state := int_mask{}
+    curr_state := accel_int_mask{}
     case ||(state)
         0:
         1:
@@ -492,7 +584,7 @@ PUB click_int_ena(state): curr_state | tmp
             return ((curr_state >> core#TAP) & core#TAP_BITS)
 
     state := ((curr_state & core#TAP_MASK) | state)
-    int_set_mask(state)
+    accel_int_set_mask(state)
 
 PUB click_latency{}: latency
 ' Get minimum interval/wait between detection of first click and start of window during which a
@@ -542,7 +634,7 @@ PUB dev_id{}: id
 PUB dbl_clicked{}: flag
 ' Flag indicating sensor was double-clicked
 '   NOTE: Calling this method clears all interrupts
-    return ((interrupt{} & INT_DBLTAP) <> 0)
+    return ((accel_int{} & INT_DBLTAP) <> 0)
 
 PUB dbl_click_win{}: dctime
 ' Get window of time after click_latency() elapses that a second click can be detected
@@ -702,99 +794,7 @@ PUB in_freefall{}: flag
 '       TRUE (-1): device is in free-fall
 '       FALSE (0): device isn't in free-fall
     flag := 0
-    return ((interrupt{} & INT_FFALL) == INT_FFALL)
-
-PUB int_polarity(state): curr_state
-' Set interrupt pin active state/logic level
-'   Valid values: LOW (0), HIGH (1)
-'   Any other value polls the chip and returns the current setting
-    curr_state := 0
-    readreg(core#DATA_FORMAT, 1, @curr_state)
-    case state
-        LOW, HIGH:
-            ' invert the passed param;
-            '   0 is active high, 1 is active low
-            state := ((state ^ 1) << core#INT_INVERT)
-        other:
-            return (((curr_state ^ 1) >> core#INT_INVERT) & 1)
-
-    state := ((curr_state & core#INT_INVERT_MASK) | state)
-    writereg(core#DATA_FORMAT, 1, @state)
-
-PUB interrupt{}: int_src
-' Flag indicating interrupt(s) asserted
-'   Bits: 76543210
-'       7: Data Ready
-'       6: Single-tap
-'       5: Double-tap
-'       4: Activity
-'       3: Inactivity
-'       2: Free-fall
-'       1: Watermark
-'       0: Overrun
-'   NOTE: Calling this method clears all interrupts
-    int_src := 0
-    readreg(core#INT_SOURCE, 1, @int_src)
-
-PUB int_mask{}: mask
-' Get interrupt mask
-'   Bits: 76543210
-'       7: Data Ready (Always enabled, regardless of setting)
-'       6: Single-tap
-'       5: Double-tap
-'       4: Activity
-'       3: Inactivity
-'       2: Free-fall
-'       1: Watermark (Always enabled, regardless of setting)
-'       0: Overrun (Always enabled, regardless of setting)
-    mask := 0
-    readreg(core#INT_ENABLE, 1, @mask)
-
-PUB int_set_mask(mask)
-' Set interrupt mask
-'   Bits: 76543210
-'       7: Data Ready (Always enabled, regardless of setting)
-'       6: Single-tap
-'       5: Double-tap
-'       4: Activity
-'       3: Inactivity
-'       2: Free-fall
-'       1: Watermark (Always enabled, regardless of setting)
-'       0: Overrun (Always enabled, regardless of setting)
-'   Valid values: %00000000..%11111111 (other bits masked off)
-    mask &= %1111_1111
-    writereg(core#INT_ENABLE, 1, @mask)
-
-PUB int_routing{}: mask
-' Get interrupt pin routing mask
-'   Bit clear (0): route to INT1 pin, set (1): route to INT2 pin
-'   Bits: 76543210
-'       7: Data Ready
-'       6: Single-tap
-'       5: Double-tap
-'       4: Activity
-'       3: Inactivity
-'       2: Free-fall
-'       1: Watermark
-'       0: Overrun
-    mask := 0
-    readreg(core#INT_MAP, 1, @mask)
-
-PUB int_set_routing(mask)
-' Set interrupt pin routing mask
-'   Bit clear (0): route to INT1 pin, set (1): route to INT2 pin
-'   Bits: 76543210
-'       7: Data Ready
-'       6: Single-tap
-'       5: Double-tap
-'       4: Activity
-'       3: Inactivity
-'       2: Free-fall
-'       1: Watermark
-'       0: Overrun
-'   Valid values: %00000000..%11111111 (other bits masked off)
-    mask &= %1111_1111
-    writereg(core#INT_MAP, 1, @mask)
+    return ((accel_int{} & INT_FFALL) == INT_FFALL)
 
 PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from slave device into ptr_buff

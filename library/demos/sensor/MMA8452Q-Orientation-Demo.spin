@@ -6,7 +6,7 @@
         detection functionality.
     Copyright (c) 2022
     Started Aug 8, 2021
-    Updated Oct 16, 2022
+    Updated Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -42,8 +42,8 @@ PUB main{}
     accel.orient_detect_ena(true)                   ' enable orientation detection
 
     repeat
-        ser.position(0, 3)
-        ser.str(string("Orientation: "))
+        ser.pos_xy(0, 3)
+        ser.puts(string("Orientation: "))
         case accel.orientation{}
             accel#PORTUP_FR:
                 ser.str(string("Portrait-up, front-facing"))
@@ -62,18 +62,18 @@ PUB main{}
             accel#LANDLT_BK:
                 ser.str(string("Landscape-left, back-facing"))
             other:
-        ser.clearline{}
+        ser.clear_line{}
 
         if (ser.rxcheck{} == "c")               ' press the 'c' key in the demo
             calibrate{}                         ' to calibrate sensor offsets
 
 PUB calibrate{}
 
-    ser.position(0, 5)
-    ser.str(string("Calibrating..."))
+    ser.pos_xy(0, 5)
+    ser.puts(string("Calibrating..."))
     accel.calibrate_accel{}
-    ser.positionx(0)
-    ser.clearline{}
+    ser.pos_x(0)
+    ser.clear_line{}
 
 PUB setup{}
 

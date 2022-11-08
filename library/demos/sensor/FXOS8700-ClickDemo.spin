@@ -6,7 +6,7 @@
         click-detection functionality
     Copyright (c) 2022
     Started Nov 19, 2021
-    Updated Oct 16, 2022
+    Updated Nov 7, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -39,12 +39,12 @@ OBJ
 PUB main{} | click_src, int_act, dclicked, sclicked, z_clicked, y_clicked, x_clicked
 
     setup{}
-    accel.preset_click_det{}                     ' preset settings for
+    accel.preset_click_det{}                    ' preset settings for
                                                 ' click-detection
 
-    ser.hidecursor{}                            ' hide terminal cursor
+    ser.hide_cursor{}                           ' hide terminal cursor
 
-    repeat until (ser.rxcheck{} == "q")         ' press q to quit
+    repeat until (ser.rx_check{} == "q")        ' press q to quit
         click_src := accel.clicked_int{}
         int_act := ((click_src >> 7) & 1)
         dclicked := ((click_src >> 3) & 1)
@@ -52,7 +52,7 @@ PUB main{} | click_src, int_act, dclicked, sclicked, z_clicked, y_clicked, x_cli
         z_clicked := ((click_src >> 6) & 1)
         y_clicked := ((click_src >> 5) & 1)
         x_clicked := ((click_src >> 4) & 1)
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         ser.printf1(string("Click interrupt: %s\n\r"), yesno(int_act))
         ser.printf1(string("Double-clicked:  %s\n\r"), yesno(dclicked))
         ser.printf1(string("Single-clicked:  %s\n\r"), yesno(sclicked))
@@ -60,7 +60,7 @@ PUB main{} | click_src, int_act, dclicked, sclicked, z_clicked, y_clicked, x_cli
         ser.printf1(string("Y-axis clicked:  %s\n\r"), yesno(y_clicked))
         ser.printf1(string("X-axis clicked:  %s\n\r"), yesno(x_clicked))
 
-    ser.showcursor{}                            ' restore terminal cursor
+    ser.show_cursor{}                           ' restore terminal cursor
     repeat
 
 PRI yesno(val): resp

@@ -6,7 +6,7 @@
         detection functionality.
     Copyright (c) 2022
     Started Nov 20, 2021
-    Updated Oct 16, 2022
+    Updated Nov 7, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -45,7 +45,7 @@ PUB main{}
     sensor.orient_detect_ena(true)                    ' enable orientation detection
 
     repeat
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         ser.str(string("Orientation: "))
         case sensor.orientation{}
             sensor#PORTUP_FR:
@@ -65,18 +65,18 @@ PUB main{}
             sensor#LANDLT_BK:
                 ser.str(string("Landscape-left, back-facing"))
             other:
-        ser.clearline{}
+        ser.clear_line{}
 
-        if (ser.rxcheck{} == "c")               ' press the 'c' key in the demo
+        if (ser.rx_check{} == "c")               ' press the 'c' key in the demo
             calibrate{}                         ' to calibrate sensor offsets
 
 PUB calibrate{}
 
-    ser.position(0, 5)
+    ser.pos_xy(0, 5)
     ser.str(string("Calibrating..."))
     sensor.calibrate_accel{}
-    ser.positionx(0)
-    ser.clearline{}
+    ser.pos_x(0)
+    ser.clear_line{}
 
 PUB setup{}
 

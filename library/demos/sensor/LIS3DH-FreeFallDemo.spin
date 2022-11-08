@@ -6,7 +6,7 @@
         Free-fall detection functionality
     Copyright (c) 2022
     Started Dec 22, 2021
-    Updated Oct 1, 2022
+    Updated Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -66,8 +66,8 @@ PUB main{} | intsource
                                                 ' sensors, set scale factors,
                                                 ' and free-fall parameters
 
-    ser.position(0, 3)
-    ser.str(string("Waiting for free-fall condition..."))
+    ser.pos_xy(0, 3)
+    ser.puts(string("Waiting for free-fall condition..."))
 
     ' When the sensor detects free-fall, a message is displayed and
     '   is cleared after the user presses a key
@@ -79,29 +79,29 @@ PUB main{} | intsource
 
     repeat
         if (_intflag)                           ' interrupt triggered?
-            intsource := accel.interrupt{}      ' read & clear interrupt flags
+            intsource := accel.accel_int{}      ' read & clear interrupt flags
             if (intsource & %01_01_01)          ' free-fall event?
-                ser.position(0, 4)
-                ser.str(string("Sensor in free-fall!"))
-                ser.clearline{}
+                ser.pos_xy(0, 4)
+                ser.puts(string("Sensor in free-fall!"))
+                ser.clear_line{}
                 ser.newline{}
-                ser.str(string("Press any key to reset"))
-                ser.charin{}
-                ser.positionx(0)
-                ser.clearline{}
-                ser.position(0, 4)
-                ser.str(string("Sensor stable"))
-                ser.clearline{}
+                ser.puts(string("Press any key to reset"))
+                ser.getchar{}
+                ser.pos_x(0)
+                ser.clear_line{}
+                ser.pos_xy(0, 4)
+                ser.puts(string("Sensor stable"))
+                ser.clear_line{}
         if (ser.rxcheck{} == "c")               ' press the 'c' key in the demo
             calibrate{}                         ' to calibrate sensor offsets
 
 PUB calibrate{}
 ' Calibrate sensor/set bias offsets
-    ser.position(0, 7)
+    ser.pos_xy(0, 7)
     ser.str(string("Calibrating..."))
     accel.calibrate_accel{}
-    ser.positionx(0)
-    ser.clearline{}
+    ser.pos_x(0)
+    ser.clear_line{}
 
 PRI cog_isr{}
 ' Interrupt service routine

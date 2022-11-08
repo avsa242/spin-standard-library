@@ -6,7 +6,7 @@
         Inactivity interrupt functionality
     Copyright (c) 2022
     Started Aug 29, 2021
-    Updated Oct 1, 2022
+    Updated Nov 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -64,7 +64,7 @@ PUB main{} | i
     accel.inact_set_time(3)
     accel.act_axis_ena(%110)
     accel.inact_axis_ena(%110)
-    accel.int_set_mask(accel#INT_ACTIV | accel#INT_INACT)
+    accel.accel_int_set_mask(accel#INT_ACTIV | accel#INT_INACT)
     accel.auto_sleep_ena(TRUE)
     accel.calibrate_accel{}
 
@@ -72,7 +72,7 @@ PUB main{} | i
     ser.printf1(string("Inactivity threshold: %dug\n\r"), accel.inact_thresh{})
     ser.printf1(string("Inactivity time: %dsecs\n\r"), accel.inact_time{})
     ser.printf1(string("Auto-sleep enabled: %d\n\r"), accel.auto_sleep_ena(-2))
-    ser.str(string("Activity axes enabled (%XYZ): %"))
+    ser.puts(string("Activity axes enabled (%XYZ): %"))
     ser.bin(accel.act_axis_ena(-2), 3)
     ser.newline{}
     ser.printf1(string("Inactivity axes enabled (%XYZ): %b\n\r"), accel.inact_axis_ena(-2))
@@ -80,7 +80,7 @@ PUB main{} | i
     ser.strln(string("This can be done again, once it reports INACTIVE."))
 
     repeat
-        i := accel.interrupt{}
+        i := accel.accel_int{}
         if (i & accel#INT_INACT)
             ser.strln(string("INACTIVE"))
         if (i & accel#INT_ACTIV)
