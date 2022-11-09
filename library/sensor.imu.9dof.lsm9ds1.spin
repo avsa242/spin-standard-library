@@ -5,7 +5,7 @@
     Description: Driver for the ST LSM9DS1 9DoF/3-axis IMU
     Copyright (c) 2022
     Started Aug 12, 2017
-    Updated Oct 22, 2022
+    Updated Nov 8, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -41,10 +41,6 @@ CON
     READ                    = 1 << 7
     WRITE                   = 0
     MS                      = 1 << 6
-
-' Bias adjustment (AccelBias(), GyroBias(), MagBias()) read or write
-    R                       = 0
-    W                       = 1
 
 ' Axis-specific constants
     X_AXIS                  = 0
@@ -236,7 +232,7 @@ PUB preset_active{}
     mag_opmode(MAG_OPMODE_CONT)
 
 PUB accel_axis_ena(mask): curr_mask
-' Enable data output for Accelerometer - per axis
+' Enable data output for accelerometer - per axis
 '   Valid values: FALSE (0) or TRUE (1 or -1), for each axis
 '   Any other value polls the chip and returns the current setting
     curr_mask := 0
@@ -266,7 +262,7 @@ PUB accel_set_bias(x, y, z)
     _abias[Z_AXIS] := -32768 #> z <# 32767
 
 PUB accel_data(ax, ay, az) | tmp[2]
-' Reads the Accelerometer output registers
+' Reads the accelerometer output registers
     readreg(XLG, core#OUT_X_L_XL, 6, @tmp)
 
     { accel ADC words are 15-bit signed - extend sign and }
@@ -275,7 +271,7 @@ PUB accel_data(ax, ay, az) | tmp[2]
     long[ay] := ~~tmp.word[Y_AXIS] - _abias[Y_AXIS]
     long[az] := ~~tmp.word[Z_AXIS] - _abias[Z_AXIS]
 
-PUB accel_data_ord(order): curr_order
+PUB accel_data_byte_order(order): curr_order
 ' Byte order of accelerometer output data
 '   Valid values: LSBF (0) or MSBF (1)
 '   Any other value polls the chip and returns the current setting
@@ -299,7 +295,7 @@ PUB accel_data_rate(rate): curr_rate
     return xlg_data_rate(rate)
 
 PUB accel_data_rdy{} | tmp
-' Accelerometer sensor new data available
+' Flag indicating new accelerometer data available
 '   Returns TRUE or FALSE
     tmp := 0
     readreg(XLG, core#STATUS_REG, 1, @tmp)
@@ -326,7 +322,7 @@ PUB accel_int{}: int_src
     int_src := 0
     readreg(XLG, core#INT_GEN_SRC_XL, 1, @int_src)
 
-PUB accel_int_dur(samples): curr_smp
+PUB accel_int_duration(samples): curr_smp
 ' Set number of samples accelerometer data must be past threshold to be
 '   considered an interrupt
 '   Valid values: 0..127
@@ -444,7 +440,7 @@ PUB accel_int_set_thresh_z(thresh) | ascl, lsb
     writereg(XLG, core#INT_GEN_THS_Z_XL, 1, @thresh)
 
 PUB accel_scale(scale): curr_scl
-' Sets the full-scale range of the Accelerometer, in g's
+' Sets the full-scale range of the accelerometer, in g's
 '   Valid values: 2, 4, 8, 16
 '   Any other value polls the chip and returns the current setting
     curr_scl := 0
@@ -461,12 +457,14 @@ PUB accel_scale(scale): curr_scl
     scale := ((curr_scl & core#FS_XL_MASK) | scale)
     writereg(XLG, core#CTRL_REG6_XL, 1, @scale)
 
-PUB dev_id{}: id
+PUB dev_id{}: id | tmp[2]
 ' Read device identification
 '   Returns: $683D
     id := 0
-    readreg(XLG, core#WHO_AM_I_XG, 1, @id.byte[1])
-    readreg(MAG, core#WHO_AM_I_M, 1, @id.byte[0])
+    readreg(XLG, core#WHO_AM_I_XG, 1, @tmp[1])
+    readreg(MAG, core#WHO_AM_I_M, 1, @tmp[0])
+    id.byte[1] := tmp[1]
+    id.byte[0] := tmp[0]
 
 PUB fifo_ena(state): curr_state
 ' Enable FIFO memory
@@ -536,7 +534,7 @@ PUB fifo_nr_unread{}: nr_samples
     return nr_samples & core#FSS_BITS
 
 PUB gyro_axis_ena(mask): curr_mask
-' Enable Gyroscope data output, per axis mask
+' Enable gyroscope data output, per axis mask
 '   Valid values: 0 or 1, for each axis
 '   Any other value polls the chip and returns the current setting
     curr_mask := 0
@@ -551,14 +549,14 @@ PUB gyro_axis_ena(mask): curr_mask
     writereg(XLG, core#CTRL_REG4, 1, @mask)
 
 PUB gyro_bias(x, y, z)
-' Read Gyroscope calibration offset values
+' Read gyroscope calibration offset values
 '   x, y, z: pointers to copy offsets to
     long[x] := _gbias[X_AXIS]
     long[y] := _gbias[Y_AXIS]
     long[z] := _gbias[Z_AXIS]
 
 PUB gyro_set_bias(x, y, z)
-' Write Gyroscope calibration offset values
+' Write gyroscope calibration offset values
 '   Valid values:
 '       -32768..32767
     _gbias[X_AXIS] := -32768 #> x <# 32767
@@ -573,19 +571,19 @@ PUB gyro_data(ptr_x, ptr_y, ptr_z) | tmp[2]
     long[ptr_y] := ~~tmp.word[Y_AXIS] - _gbias[Y_AXIS]
     long[ptr_z] := ~~tmp.word[Z_AXIS] - _gbias[Z_AXIS]
 
-PUB gyro_data_ord(order): curr_order
+PUB gyro_data_byte_order(order): curr_order
 ' Byte order of gyroscope output data
 '   Valid values: LSBF (0) or MSBF (1)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: This setting also affects accelerometer output data
 '       (hardware limitation)
-    return accel_data_ord(order)
+    return accel_data_byte_order(order)
 
 PUB gyro_data_rate(rate): curr_rate
-' Set Gyroscope Output Data Rate, in Hz
+' Set gyroscope output data rate, in Hz
 '   Valid values: 0, 15, 60, 119, 238, 476, 952
 '   Any other value polls the chip and returns the current setting
-'   NOTE: 0 powers down the Gyroscope
+'   NOTE: 0 powers down the gyroscope
 '   NOTE: 15 and 60 are rounded up from the datasheet specifications of 14.9
 '       and 59.5, respectively
     curr_rate := 0
@@ -608,7 +606,7 @@ PUB gyro_data_rdy{}: flag
     return (((flag >> core#GDA) & 1) == 1)
 
 PUB gyro_hpf_freq(freq): curr_freq
-' Set Gyroscope high-pass filter cutoff frequency, in milli-Hz
+' Set gyroscope high-pass filter cutoff frequency, in milli-Hz
 '   Valid values: dependent on GyroDataRate(), see table below
 '   Any other value polls the chip and returns the current setting
     curr_freq := 0
@@ -666,13 +664,13 @@ PUB gyro_inact_dur{}: dur
     readreg(XLG, core#ACT_DUR, 1, @dur)
 
 PUB gyro_inact_set_dur(dur)
-' Set gyroscope inactivity timer (use GyroInactiveSleep() to define behavior on
+' Set gyroscope inactivity timer (use gyro_inact_sleep_ena() to define behavior on
 '   inactivity)
 '   Valid values: 0..255 (0 effectively disables the feature)
     writereg(XLG, core#ACT_DUR, 1, @dur)
 
 PUB gyro_inact_thresh(thresh): curr_thr
-' Set gyroscope inactivity threshold (use GyroInactiveSleep() to define
+' Set gyroscope inactivity threshold (use gyro_inact_sleep_ena() to define
 '   behavior on inactivity)
 '   Valid values: 0..127 (0 effectively disables the feature)
 '   Any other value polls the chip and returns the current setting
@@ -687,10 +685,10 @@ PUB gyro_inact_thresh(thresh): curr_thr
     writereg(XLG, core#ACT_THS, 1, @thresh)
 
 PUB gyro_inact_sleep_ena(state): curr_state
-' Enable gyroscope sleep mode when inactive (see GyroActivityThr())
+' Enable gyroscope sleep mode when inactive (see gyro_inact_thresh())
 '   Valid values:
-'       FALSE (0): Gyroscope powers down
-'       TRUE (1 or -1) Gyroscope enters sleep mode
+'       FALSE (0): gyroscope powers down
+'       TRUE (1 or -1) gyroscope enters sleep mode
 '   Any other value polls the chip and returns the current setting
     return bool_choice(XLG, core#ACT_THS, core#SLP_ON_INACT, {
 }   core#SLP_ON_INACT_MASK, core#ACT_THS_MASK, state, 1)
@@ -728,7 +726,7 @@ PUB gyro_int_data_filt(mode): curr_mode
     mode := ((curr_mode & core#INT_SEL_MASK) | mode)
     writereg(XLG, core#CTRL_REG2_G, 1, @mode)
 
-PUB gyro_int_dur(samples): curr_smp
+PUB gyro_int_duration(samples): curr_smp
 ' Set number of samples gyroscope data must be past threshold to be considered an interrupt
 '   Valid values: 0..127
 '   Any other value polls the chip and returns the current setting
@@ -747,7 +745,7 @@ PUB gyro_int_hyst_ena(state): curr_state
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: The hysteresis used is equivalent to/set by the interrupt
-'       duration time GyroIntDur()
+'       duration time gyro_int_duration()
     curr_state := 0
     readreg(XLG, core#INT_GEN_DUR_G, 1, @curr_state)
     case ||(state)
@@ -760,7 +758,7 @@ PUB gyro_int_hyst_ena(state): curr_state
     writereg(XLG, core#INT_GEN_DUR_G, 1, @state)
 
 PUB gyro_int_thresh_x{}: thresh | gscl, lsb
-' Get gyroerometer interrupt threshold, X-axis
+' Get gyroscope interrupt threshold, X-axis
 '   Returns: micro-g's
     gscl := (gyro_scale(-2) * 1_000000)
     lsb := (gscl / 16384)
@@ -771,7 +769,7 @@ PUB gyro_int_thresh_x{}: thresh | gscl, lsb
     return (~~thresh * lsb)
 
 PUB gyro_int_thresh_y{}: thresh | gscl, lsb
-' Get gyroerometer interrupt threshold, X-axis
+' Get gyroscope interrupt threshold, X-axis
 '   Returns: micro-g's
     gscl := (gyro_scale(-2) * 1_000000)
     lsb := (gscl / 16384)
@@ -782,7 +780,7 @@ PUB gyro_int_thresh_y{}: thresh | gscl, lsb
     return (~~thresh * lsb)
 
 PUB gyro_int_thresh_z{}: thresh | gscl, lsb
-' Get gyroerometer interrupt threshold, X-axis
+' Get gyroscope interrupt threshold, X-axis
 '   Returns: micro-g's
     gscl := (gyro_scale(-2) * 1_000000)
     lsb := (gscl / 16384)
@@ -793,7 +791,7 @@ PUB gyro_int_thresh_z{}: thresh | gscl, lsb
     return (~~thresh * lsb)
 
 PUB gyro_int_set_thresh_x(thresh) | gscl, lsb
-' Set gyroerometer interrupt thresholds per axis, in micro-g's (unsigned)
+' Set gyroscope interrupt thresholds per axis, in micro-g's (unsigned)
 '   Valid values: 0..(full-scale * 1_000_000)
     gscl := (gyro_scale(-2) * 1_000000)
     lsb := (gscl / 16384)
@@ -801,7 +799,7 @@ PUB gyro_int_set_thresh_x(thresh) | gscl, lsb
     writereg(XLG, core#INT_GEN_THS_XH_G, 2, @thresh)
 
 PUB gyro_int_set_thresh_y(thresh) | gscl, lsb
-' Set gyroerometer interrupt thresholds per axis, in micro-g's (unsigned)
+' Set gyroscope interrupt thresholds per axis, in micro-g's (unsigned)
 '   Valid values: 0..(full-scale * 1_000_000)
     gscl := (gyro_scale(-2) * 1_000000)
     lsb := (gscl / 16384)
@@ -809,7 +807,7 @@ PUB gyro_int_set_thresh_y(thresh) | gscl, lsb
     writereg(XLG, core#INT_GEN_THS_YH_G, 2, @thresh)
 
 PUB gyro_int_set_thresh_z(thresh) | gscl, lsb
-' Set gyroerometer interrupt thresholds per axis, in micro-g's (unsigned)
+' Set gyroscope interrupt thresholds per axis, in micro-g's (unsigned)
 '   Valid values: 0..(full-scale * 1_000_000)
     gscl := (gyro_scale(-2) * 1_000000)
     lsb := (gscl / 16384)
@@ -920,7 +918,7 @@ PUB int_inactivity{}: flag
     return (((flag >> core#INACT) & 1) == 1)
 
 PUB mag_bias(x, y, z) | tmp[2]
-' Read Magnetometer calibration offset values
+' Read magnetometer calibration offset values
 '   x, y, z: pointers to copy offsets to
     longfill(@tmp, 0, 2)
     readreg(MAG, core#OFFSET_X_REG_L_M, 6, @tmp)
@@ -929,7 +927,7 @@ PUB mag_bias(x, y, z) | tmp[2]
     long[z] := ~~tmp.word[Z_AXIS]
 
 PUB mag_set_bias(x, y, z)
-' Write Magnetometer calibration offset values
+' Write magnetometer calibration offset values
 '   Valid values:
 '       -32768..32767 (clamped to range)
     x := -32768 #> x <# 32767
@@ -941,7 +939,7 @@ PUB mag_set_bias(x, y, z)
     writereg(MAG, core#OFFSET_Z_REG_L_M, 2, @z)
 
 PUB mag_data(ptr_x, ptr_y, ptr_z) | tmp[2]
-' Read the Magnetometer output registers
+' Read the magnetometer output registers
     longfill(@tmp, 0, 2)
     readreg(MAG, core#OUT_X_L_M, 6, @tmp)
     long[ptr_x] := ~~tmp.word[X_AXIS]           ' no offset correction
@@ -982,7 +980,7 @@ PUB mag_data_overrun{}: status
     return ((status >> core#OVERRN) & core#OVERRN_BITS)
 
 PUB mag_data_rate(rate): curr_rate
-' Set Magnetometer Output Data Rate, in Hz
+' Set magnetometer output data rate, in Hz
 '   Valid values: 0 (0.625), 1 (1.250), 2 (2.5), 5, *10, 20, 40, 80
 '   Any other value polls the chip and returns the current setting
     curr_rate := 0
@@ -1153,7 +1151,7 @@ PUB mag_perf(mode): curr_mode
     writereg(MAG, core#CTRL_REG4_M, 1, @curr_mode.byte[1])
 
 PUB mag_scale(scale): curr_scl
-' Set full scale of Magnetometer, in Gauss
+' Set full scale of magnetometer, in Gauss
 '   Valid values: 4, 8, 12, 16
 '   Any other value polls the chip and returns the current setting
     case(scale)
@@ -1234,7 +1232,7 @@ PUB xlg_data_rate(rate): curr_rate
     writereg(XLG, core#CTRL_REG1_G, 1, @rate)
 
 PUB xlg_int_polarity(state): curr_state
-' Set active state for interrupts from Accelerometer and Gyroscope
+' Set active state for interrupts from accelerometer and gyroscope
 '   Valid values: ACTIVE_HIGH (0) - active high, ACTIVE_LOW (1) - active low
 '   Any other value polls the chip and returns the current setting
     curr_state := 0
@@ -1283,7 +1281,7 @@ PRI blk_updt_ena{} | tmp
     writereg(MAG, core#CTRL_REG5_M, 1, @tmp)
 
 PRI mag_i2c_ena(state): curr_state
-' Enable Magnetometer I2C interface
+' Enable magnetometer I2C interface
 '   Valid values: *TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
     curr_state := 0
