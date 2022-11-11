@@ -6,7 +6,7 @@
         Threshold interrupt functionality
     Copyright (c) 2022
     Started: Jan 6, 2022
-    Updated: Jan 6, 2022
+    Updated: Nov 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -64,14 +64,14 @@ PUB main{}
     '   resistor
     repeat
         if (_intflag)
-            ser.position(0, 8)
+            ser.pos_xy(0, 8)
             ser.strln(string("interrupt - press any key to clear"))
-            ser.charin{}
+            ser.getchar{}
             rgb.int_clr{}
-            ser.position(0, 8)
-            ser.clearline{}
+            ser.pos_xy(0, 8)
+            ser.clear_line{}
 
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         ser.printf1(string("White: %x\n"), rgb.white_data{})
         ser.printf1(string("Red:   %x\n"), rgb.red_data{})
         ser.printf1(string("Green: %x\n"), rgb.green_data{})
@@ -99,7 +99,7 @@ PUB setup{}
         ser.strln(string("TCS3X7X driver failed to start - halting"))
         repeat
 
-    cognew(isr, @_isr_stack)                    ' start ISR in another core
+    cognew(isr{}, @_isr_stack)                    ' start ISR in another core
 
 DAT
 {

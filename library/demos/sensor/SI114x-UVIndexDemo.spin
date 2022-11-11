@@ -6,7 +6,7 @@
         Display UV index
     Copyright (c) 2022
     Started Jul 5, 2022
-    Updated Oct 16, 2022
+    Updated Nov 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -37,7 +37,7 @@ PUB main{}
     setup{}
 
     si.preset_uvi{}
-    si.data_rate(5_000)
+    si.als_data_rate(5_000)
 
     repeat
         repeat until si.als_data_rdy{}

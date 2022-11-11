@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Started Nov 23, 2019
-    Updated Sep 27, 2022
+    Updated Nov 10, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -100,27 +100,17 @@ PUB als_data{}: als_adc
 ' Read Ambient Light Sensor data
 '   Returns: u16:u16 [31..16]: IR, [15..0]: Full-spectrum (IR+Vis)
     readreg(core#C0DATAL, 4, @als_adc)
-    _ir_adc := als_adc.word[1] & $FFFF
-    _full_adc := als_adc.word[0] & $FFFF
-    _ir_adc_scl := _ir_adc * FPSCALE
-    _full_adc_scl := _full_adc * FPSCALE
+    _ir_adc := (als_adc.word[1] & $FFFF)
+    _full_adc := (als_adc.word[0] & $FFFF)
+    _ir_adc_scl := (_ir_adc * FPSCALE)
+    _full_adc_scl := (_full_adc * FPSCALE)
 
 PUB als_data_rdy{}: flag
 ' Flag indicating new luminosity data is ready
 '   Returns: TRUE (-1) or FALSE (0)
     flag := 0
     readreg(core#STATUS, 1, @flag)
-    return ((flag >> core#AVALID) & 1) == 1
-
-PUB dev_factor(df)
-' Set device factor
-    _dev_fact := df
-
-PUB dev_id{}: id
-' Device ID of chip
-'   Known values: $50
-    id := 0
-    readreg(core#ID, 1, @id)
+    return (((flag >> core#AVALID) & 1) == 1)
 
 PUB als_gain(gainx): curr_gain
 ' Set gain gain/factor
@@ -157,6 +147,16 @@ PUB als_integr_time(time_ms): curr_time
     time_ms := ((curr_time & core#ATIME_MASK) | time_ms) & core#CONTROL_MASK
     writereg(core#CONTROL, 1, time_ms)
     update_cpl{}                                 ' update counts per lux equ.
+
+PUB dev_factor(df)
+' Set device factor
+    _dev_fact := df
+
+PUB dev_id{}: id
+' Device ID of chip
+'   Known values: $50
+    id := 0
+    readreg(core#ID, 1, @id)
 
 PUB glass_atten(ga)
 ' Set glass attenuation factor
@@ -205,16 +205,16 @@ PUB int_ena(state): curr_state
         0, 1:
             state := ||(state) << core#NPIEN
         other:
-            return ((curr_state >> core#NPIEN) & 1) == 1
+            return (((curr_state >> core#NPIEN) & 1) == 1)
 
     state := ((curr_state & core#NPIEN_MASK) | state) & core#ENABLE_MASK
     writereg(core#ENABLE, 1, state)
 
 PUB int_force{}
 ' Force an ALS Interrupt
-' NOTE: An active interrupt will always be visible using Interrupt(),
-'   however, to be visible on the INT pin, IntsEnabled() or
-'   PersistIntsEnabled() must be set to TRUE
+' NOTE: An active interrupt will always be visible using interrupt(),
+'   however, to be visible on the INT pin, int_ena() or
+'  int_latch_ena() must be set to TRUE
     writereg(core#SF_FORCEINT, 0, 0)
 
 PUB int_latch_ena(state): curr_state
@@ -228,7 +228,7 @@ PUB int_latch_ena(state): curr_state
         0, 1:
             state := ||(state) << core#AIEN
         other:
-            return ((curr_state >> core#AIEN) & 1) == 1
+            return (((curr_state >> core#AIEN) & 1) == 1)
 
     state := ((curr_state & core#AIEN_MASK) | state) & core#ENABLE_MASK
     writereg(core#ENABLE, 1, state)
@@ -305,7 +305,7 @@ PUB opmode(mode): curr_mode
         STDBY, CONT:
             mode := ||(mode) << core#AEN
         other:
-            return ((curr_mode >> core#AEN) & 1) == 1
+            return (((curr_mode >> core#AEN) & 1) == 1)
 
     mode := ((curr_mode & core#AEN_MASK) | mode) & core#ENABLE_MASK
     writereg(core#ENABLE, 1, mode)
@@ -327,14 +327,14 @@ PUB powered(state): curr_state
         0, 1:
             state := ||(state)
         other:
-            return (curr_state & 1) == 1
+            return ((curr_state & 1) == 1)
 
     state := ((curr_state & core#PON_MASK) | state) & core#ENABLE_MASK
     writereg(core#ENABLE, 1, state)
 
 PUB reset{}
 ' Resets the TSL2591 (equivalent to POR)
-    writereg(core#CONTROL, 1, 1 << core#SRESET)
+    writereg(core#CONTROL, 1, (1 << core#SRESET))
 
 PUB slp_after_int(state): curr_state
 ' Enable Sleep After Interrupt
@@ -347,7 +347,7 @@ PUB slp_after_int(state): curr_state
         0, 1:
             state := ||(state) << core#SAI
         other:
-            return ((curr_state >> core#SAI) & 1) == 1
+            return (((curr_state >> core#SAI) & 1) == 1)
 
     state := ((curr_state & core#SAI_MASK) | state) & core#ENABLE_MASK
     writereg(core#ENABLE, 1, state)

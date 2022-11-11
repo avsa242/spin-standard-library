@@ -5,7 +5,7 @@
     Description: Driver for the Silicon Labs Si114[5|6|7] Proximity/UV/Amblient light sensor
     Copyright (c) 2022
     Started Jun 1, 2019
-    Updated Sep 27, 2022
+    Updated Nov 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,7 +40,7 @@ CON
     NORMAL                  = $00
     HIGH                    = $20
 
-' Read/write for UVCoeffecients()
+' Read/write for uv_coeffs()
     R                       = 0
     W                       = 1
 
@@ -110,7 +110,7 @@ PUB preset_als{}
 ' Preset settings for ambient light sensing mode
     reset{}                                     ' start with POR defaults
     opmode(CONT_ALS)
-    data_rate(32_000_000)
+    als_data_rate(32_000_000)
     aux_chan_ena(FALSE)
     uv_chan_ena(FALSE)
     ir_chan_ena(TRUE)
@@ -128,7 +128,7 @@ PUB preset_uvi{}
 ' Preset settings for measuring UV Index
     reset{}
     opmode(CONT_ALS)
-    data_rate(32_000_000)
+    als_data_rate(32_000_000)
     ' These are the factory default part-to-part variance coefficients.
     ' They are restored by calling Reset(), but show them here so the user
     '   doesn't have to look far for them.
@@ -146,6 +146,19 @@ PUB preset_uvi{}
     white_gain(1)
 
     int_mask(core.INTSRC_ALS)
+
+PUB als_data_rate(rate): curr_rate
+' Set measurement data rate, in milli-Hz
+'   Valid values: 489..32_000_000 (= 0.489Hz .. 32kHz)
+'   Any other value polls the chip and returns the current setting
+    case rate
+        489..32_000_000:
+            rate := (32_000_000 / rate)
+            writereg(core#MEAS_RATE0, 2, @rate)
+        other:
+            curr_rate := 0
+            readreg(core#MEAS_RATE0, 2, @curr_rate)
+            return (32_000_000 / curr_rate)
 
 PUB als_data_rdy{}: flag
 ' Flag indicating ALS data is ready
@@ -177,19 +190,6 @@ PUB cal_data(idx): cal_word
             return _cal_data[idx]
         other:
             return
-
-PUB data_rate(rate): curr_rate
-' Set measurement data rate, in milli-Hz
-'   Valid values: 489..32_000_000 (= 0.489Hz .. 32kHz)
-'   Any other value polls the chip and returns the current setting
-    case rate
-        489..32_000_000:
-            rate := (32_000_000 / rate)
-            writereg(core#MEAS_RATE0, 2, @rate)
-        other:
-            curr_rate := 0
-            readreg(core#MEAS_RATE0, 2, @curr_rate)
-            return (32_000_000 / curr_rate)
 
 PUB dev_id{}: id
 ' Part ID of sensor

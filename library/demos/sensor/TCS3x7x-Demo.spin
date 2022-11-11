@@ -5,7 +5,7 @@
     Description: Demo of the TCS3x7x driver
     Copyright (c) 2022
     Started: Jun 24, 2018
-    Updated: Oct 16, 2022
+    Updated: Nov 9, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -52,7 +52,7 @@ PUB main{}
 
         rgb.measure{}
 
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         ser.printf1(string("White: %4.4x\n\r"), rgb.last_white{})
         ser.printf1(string("Red:   %4.4x\n\r"), rgb.last_red{})
         ser.printf1(string("Green: %4.4x\n\r"), rgb.last_green{})
