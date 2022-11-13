@@ -7,7 +7,7 @@
         display: ILI9341 (320x240)
     Copyright (c) 2022
     Started: Jul 7, 2022
-    Updated: Oct 22, 2022
+    Updated: Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -57,10 +57,10 @@ PUB main{}
     disp.font_scl(3)
     disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
     disp.font_addr(fnt.ptr{})
-    disp.preset{}
+    disp.preset_def{}
 
     { set up for landscape orientation, B-G-R subpixels }
-    disp.disp_rot_ena(true)
+    disp.rotation(1)
     disp.mirror_v(true)
     disp.mirror_h(false)
     disp.subpix_order(disp.BGR)

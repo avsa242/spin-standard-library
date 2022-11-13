@@ -1,13 +1,11 @@
  {
     --------------------------------------------
-    Filename: MLX90621-OLED96.spin
+    Filename: thermal-imager-common.spinh
     Author: Jesse Burt
-    Description: Basic thermal imager
-        thermal sensor: MLX90621
-        display: SSD1331 (96x64)
+    Description: Basic thermal imager - common code
     Copyright (c) 2022
     Started: Jul 6, 2022
-    Updated: Jul 7, 2022
+    Updated: Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -96,11 +94,11 @@ PUB draw_scale_h(y, h) | x, reflvl
 
 PUB update_settings{} | reftmp, cscl
 ' Settings have been changed by the user - update the sensor and the displayed settings
-    sensor.adc_res(_sens_adcres)                  ' Update sensor with current
-    sensor.refresh_rate(_sens_rate)               '   settings
+    sensor.temp_adc_res(_sens_adcres)           ' Update sensor with current
+    sensor.refresh_rate(_sens_rate)             '   settings
     sensor.adc_ref(_sens_adcref)
 
-    reftmp := sensor.adc_ref(-2)                  ' read from sensor for display
+    reftmp := sensor.adc_ref(-2)                ' read from sensor for display
     disp.fgcolor(disp#MAX_COLOR)
     disp.pos_xy(0, disp.textrows{}/2)
     disp.box(0, CENTERY, XMAX, YMAX, 0, true)   ' erase prev text
@@ -110,7 +108,7 @@ PUB update_settings{} | reftmp, cscl
     if (_show_sets)
         disp.printf1(string("X %s  "), lookupz(_inv_x: string("Norm"), string("Inv ")))
         disp.printf1(string("%dHz   \n\r"), sensor.refresh_rate(-2))
-        disp.printf2(string("%dbit (%s)\n\r"), sensor.adc_res(-2), {
+        disp.printf2(string("%dbit (%s)\n\r"), sensor.temp_adc_res(-2), {
 }       lookupz(reftmp: string("High ref"), string("Low ref")))
     _fx := CENTERX - ((_fw * sensor#WIDTH) / 2)   ' center justify thermal image
     _fy := 0                                    ' top
