@@ -32,7 +32,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensor:  "sensor.temperature.mcp9808"
+    sensor: "sensor.temperature.mcp9808"
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 

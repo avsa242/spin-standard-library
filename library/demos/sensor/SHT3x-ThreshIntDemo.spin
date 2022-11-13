@@ -6,7 +6,7 @@
         Threshold interrupt functionality
     Copyright (c) 2022
     Started Jan 8, 2022
-    Updated Oct 30, 2022
+    Updated Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -53,25 +53,28 @@ PUB main{} | dr, temp, rh
     dr := 2                                     ' data rate: 0 (0.5), 1, 2, 4, 10Hz
 
     sht3x.temp_scale(C)
-    sht3x.rh_int_hi_thresh(25)                     ' RH hi/lo thresholds
+    sht3x.rh_int_hi_thresh(25)                  ' RH hi/lo thresholds
     sht3x.rh_int_lo_thresh(5)
-    sht3x.rh_int_hi_hyst(24)                      ' hi/lo thresh hysteresis
+    sht3x.rh_int_hi_hyst(24)                    ' hi/lo thresh hysteresis
     sht3x.rh_int_lo_hyst(6)
 
-    sht3x.temp_int_hi_thresh(30)                   ' temp hi/lo thresholds
+    sht3x.temp_int_hi_thresh(30)                ' temp hi/lo thresholds
     sht3x.temp_int_lo_thresh(10)
-    sht3x.temp_int_hi_hyst(29)                    ' hi/lo thresh hysteresis
+    sht3x.temp_int_hi_hyst(29)                  ' hi/lo thresh hysteresis
     sht3x.temp_int_lo_hyst(7)
 
     ser.strln(string("Set thresholds:"))
     ser.printf2(string("RH Set low: %d  hi: %d\n\r"), sht3x.rh_int_lo_thresh(-2), {
-}   sht3x.rh_int_hi_thresh(-2))
+}                                                     sht3x.rh_int_hi_thresh(-2))
+
     ser.printf2(string("RH Clear low: %d  hi: %d\n\r"), sht3x.rh_int_lo_hyst(-2), {
-}   sht3x.rh_int_hi_hyst(-2))
+}                                                       sht3x.rh_int_hi_hyst(-2))
+
     ser.printf2(string("Temp Set low: %d  hi: %d\n\r"), sht3x.temp_int_lo_thresh(-256), {
-}   sht3x.temp_int_hi_thresh(-256))
+}                                                       sht3x.temp_int_hi_thresh(-256))
+
     ser.printf2(string("Temp Clear low: %d  hi: %d\n\r"), sht3x.temp_int_lo_hyst(-256), {
-}   sht3x.temp_int_hi_hyst(-256))
+}                                                         sht3x.temp_int_hi_hyst(-256))
 
     repeat
         if (dr > 0)
@@ -82,17 +85,17 @@ PUB main{} | dr, temp, rh
         temp := sht3x.temperature{}
         rh := sht3x.rh{}
 
-        ser.position(0, 10)
+        ser.pos_xy(0, 10)
 
         ser.printf2(string("Temperature: %3.3d.%02.2d\n\r"), (temp / 100), ||(temp // 100))
         ser.printf2(string("Relative humidity: %3.3d.%02.2d%%\n\r"), (rh / 100), (rh // 100))
 
         if (_intflag)
-            ser.position(0, 12)
+            ser.pos_xy(0, 12)
             ser.str(string("Interrupt"))
         else
-            ser.position(0, 12)
-            ser.clearline{}
+            ser.pos_xy(0, 12)
+            ser.clear_line{}
 
 PRI isr{}
 ' Interrupt service routine
@@ -116,7 +119,7 @@ PUB setup{}
         ser.strln(string("SHT3x driver failed to start - halting"))
         repeat
 
-    cognew(isr, @_isr_stack)                    ' start ISR in another core
+    cognew(isr{}, @_isr_stack)                  ' start ISR in another core
 
 DAT
 {

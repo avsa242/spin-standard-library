@@ -5,7 +5,7 @@
     Description: Driver for Sensirion SHT3x series Temperature/Relative Humidity sensors
     Copyright (c) 2022
     Started Nov 19, 2017
-    Updated Oct 16, 2022
+    Updated Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -70,11 +70,10 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BIT, RESET_PIN): status
                 other:
                     _addr_bit := 1 << 1
             if (i2c.present(SLAVE_WR | _addr_bit))
-                if (serial_num{})               ' check serial num > 0
-                    _reset_pin := RESET_PIN
-                    reset{}
-                    clr_status{}
-                    return status
+                _reset_pin := RESET_PIN
+                reset{}
+                clr_status{}
+                return status
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -335,9 +334,10 @@ PUB rh_word2pct(rh_word): rh
 '   Returns: relative humidity, in hundredths of a percent
     return (100 * (rh_word * 100)) / core#ADC_MAX
 
-PUB serial_num{}: sn
-' Return device Serial Number
-    readreg(core#READ_SN, 4, @sn)
+PUB serial_num(ptr_sn)
+' Get serial number
+'   ptr_sn: pointer to copy serial number to (4 bytes)
+    readreg(core#READ_SN, 4, ptr_sn)
 
 PUB temp_data{}: temp_adc | tmp[2]
 ' Read temperature ADC data

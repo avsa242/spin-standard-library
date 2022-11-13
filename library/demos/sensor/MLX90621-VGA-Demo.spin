@@ -6,7 +6,7 @@
         VGA display
     Copyright (c) 2022
     Started: Jun 27, 2020
-    Updated: Oct 30, 2022
+    Updated: Nov 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -63,23 +63,24 @@ VAR
     byte _invert_x, _col_scl
     byte _hotspot_mark
 
-PUB Main{}
+PUB main{}
 
     setup{}
-    drawvscale(XMAX-5, 0, YMAX)
+    draw_vscale(XMAX-5, 0, YMAX)
 
     repeat
-        if _settings_changed
-            updatesettings{}
+        if (_settings_changed)
+            update_settings{}
         mlx.get_frame(@_ir_frame)
-        drawframe(_fx, _fy, _fw, _fh)
+        draw_frame(_fx, _fy, _fw, _fh)
 
-PUB DrawFrame(fx, fy, pixw, pixh) | x, y, color_c, ir_offset, pixsx, pixsy, pixex, pixey, maxx, maxy, maxp
+PUB draw_frame(fx, fy, pixw, pixh) | x, y, color_c, ir_offset, pixsx, pixsy, pixex, pixey, maxx, {
+}                                   maxy, maxp
 ' Draw the thermal image
     vga.wait_vsync{}                             ' wait for vertical sync
     repeat y from 0 to mlx#YMAX
         repeat x from 0 to mlx#XMAX
-            if _invert_x                        ' Invert X display if set
+            if (_invert_x)                      ' Invert X display if set
                 ir_offset := ((mlx#XMAX-x) * 4) + y
             else
                 ir_offset := (x * 4) + y
@@ -89,13 +90,14 @@ PUB DrawFrame(fx, fy, pixw, pixh) | x, y, color_c, ir_offset, pixsx, pixsy, pixe
             pixsy := fy + (y * (pixh + 1))      '   coords
             pixex := pixsx + pixw
             pixey := pixsy + pixh
-            if _ir_frame[ir_offset] > maxp      ' Check if this is the hottest
+
+            if (_ir_frame[ir_offset] > maxp)    ' Check if this is the hottest
                 maxp := _ir_frame[ir_offset]    '   spot in the image
                 maxx := pixsx
                 maxy := pixsy
             vga.box(pixsx, pixsy, pixex, pixey, color_c, TRUE)
 
-    if _hotspot_mark                            ' Mark hotspot
+    if (_hotspot_mark)                          ' Mark hotspot
         ' white box
 '        vga.box(maxx, maxy, maxx+pixw, maxy+pixh, vga#MAX_COLOR, false)
 
@@ -103,7 +105,7 @@ PUB DrawFrame(fx, fy, pixw, pixh) | x, y, color_c, ir_offset, pixsx, pixsy, pixe
         vga.line(maxx, maxy+(pixh/2), maxx+pixw, maxy+(pixh/2), vga#MAX_COLOR)
         vga.line(maxx+(pixw/2), maxy, maxx+(pixw/2), maxy+pixh, vga#MAX_COLOR)
 
-PUB DrawVScale(x, y, ht) | idx, color, scl_width, bottom, top, range
+PUB draw_vscale(x, y, ht) | idx, color, scl_width, bottom, top, range
 ' Draw the color scale setup at program start
     range := bottom := y+ht
     top := 0
@@ -113,22 +115,22 @@ PUB DrawVScale(x, y, ht) | idx, color, scl_width, bottom, top, range
         color := _palette[(range-idx)]
         vga.line(x, idx, x+scl_width, idx, color)
 
-PUB UpdateSettings{} | col, row, reftmp
+PUB update_settings{} | col, row, reftmp
 ' Settings have been changed by the user - update the sensor and the
 '   displayed settings
-    mlx.adc_res(_mlx_adc_res)                     ' Update sensor with current
-    mlx.refresh_rate(_mlx_refrate)               '   settings
+    mlx.temp_adc_res(_mlx_adc_res)              ' Update sensor with current
+    mlx.refresh_rate(_mlx_refrate)              '   settings
     mlx.adc_ref(_mlx_adcref)
 
-    reftmp := mlx.adc_ref(-2)              ' read from sensor for display
+    reftmp := mlx.adc_ref(-2)                   ' read from sensor for display
     col := 0
     row := (vga.textrows{}-1) - 5               ' Position at screen bottom
     vga.fgcolor(vga#MAX_COLOR)
-    vga.position(col, row)
+    vga.pos_xy(col, row)
 
     vga.printf1(string("X-axis invert: %s\n"), lookupz(_invert_x: string("No "), string("Yes")))
     vga.printf1(string("FPS: %dHz   \n"), mlx.refresh_rate(-2))
-    vga.printf1(string("ADC: %dbits\n"), mlx.adc_res(-2))
+    vga.printf1(string("ADC: %dbits\n"), mlx.temp_adc_res(-2))
     vga.printf1(string("ADC reference: %s\n"), lookupz(reftmp: string("High"), string("Low  ")))
 
     _fx := CENTERX - ((_fw * 16) / 2)           ' Approx center of screen
@@ -137,10 +139,10 @@ PUB UpdateSettings{} | col, row, reftmp
                                                 ' (in case resizing smaller)
     _settings_changed := FALSE
 
-PUB cog_keyInput{} | cmd
+PUB cog_key_input{} | cmd
 
     repeat
-        repeat until cmd := ser.charin{}
+        repeat until cmd := ser.getchar{}
         case cmd
             "A":                                ' ADC resolution (bits)
                 _mlx_adc_res := (_mlx_adc_res + 1) <# 18
@@ -172,21 +174,21 @@ PUB cog_keyInput{} | cmd
                 _invert_x ^= 1
             other:
                 next
-        _settings_changed := TRUE               ' trigger for main loop to call
-                                                '   UpdateSettings()
-PUB Setup{}
+        _settings_changed := TRUE               ' trigger for main loop to call update_settings()
+
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    setuppalette{}
+    setup_palette{}
     vga.startx(VGA_PINGROUP, WIDTH, HEIGHT, @_framebuffer)
         ser.strln(string("VGA 8bpp driver started"))
-        vga.fontaddress(fnt.ptr{})
-        vga.fontscale(1)
-        vga.fontsize(6, 8)
+        vga.font_addr(fnt.ptr{})
+        vga.font_scl(1)
+        vga.font_sz(6, 8)
         vga.clear{}
 
     if mlx.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
@@ -204,10 +206,10 @@ PUB Setup{}
     _fw := 6
     _fh := 6
     _invert_x := 0
-    cognew(cog_keyinput, @_keyinput_stack)
+    cognew(cog_key_input{}, @_keyinput_stack)
     _settings_changed := TRUE
 
-PUB SetupPalette{} | i, r, g, b, c, d
+PUB setup_palette{} | i, r, g, b, c, d
 ' Set up palette
     d := 4
     r := g := b := c := 0

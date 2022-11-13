@@ -5,7 +5,7 @@
     Description: Driver for Microchip MCP9808 temperature sensors
     Copyright (c) 2022
     Started Jul 26, 2020
-    Updated Oct 31, 2022
+    Updated Nov 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,14 +20,11 @@ CON
     DEF_SCL     = 28
     DEF_SDA     = 29
     DEF_HZ      = 100_000
+    DEF_ADDR    = %000
 
 ' Interrupt active states
     LOW         = 0
     HIGH        = 1
-
-' Interrupt modes
-    COMP        = 0
-    INT         = 1
 
 VAR
 
@@ -49,7 +46,7 @@ PUB null{}
 
 PUB start{}: status
 ' Start using "standard" Propeller I2C pins, default slave address and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ, %000)
+    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom I/O pins and I2C bus speed
@@ -60,7 +57,7 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
             _addr_bits := ADDR_BITS << 1
             time.usleep(core#T_POR)
             ' check device bus presence:
-            if i2c.present(SLAVE_WR | _addr_bits)
+            if (i2c.present(SLAVE_WR | _addr_bits))
                 if (dev_id{} == core#DEVID_RESP)
                     return
     ' if this point is reached, something above failed
@@ -82,28 +79,11 @@ PUB defaults{}
 PUB dev_id{}: id | tmp[2]
 ' Read device identification
 '   Returns:
-'       Manufacturer ID: $0054 (MSW)
-'       Revision: $0400 (LSW)
+'       Bits: [15..8]: $0054 (mfr ID), [7..0]: $0400 (rev)
     readreg(core#MFR_ID, 2, @tmp[1])            ' 9808 doesn't support seq. R/W
-    readreg(core#DEV_ID, 2, @tmp[2])            '   so do discrete reads
+    readreg(core#DEV_ID, 2, @tmp[0])            '   so do discrete reads
     id.word[1] := tmp[1]
     id.word[0] := tmp[0]
-
-PUB int_polarity(state): curr_state
-' Set interrupt active state
-'   Valid values: *LOW (0), HIGH (1)
-'   Any other value polls the chip and returns the current setting
-'   NOTE: LOW (Active-low) requires the use of a pull-up resistor
-    curr_state := 0
-    readreg(core#CONFIG, 2, @curr_state)
-    case state
-        LOW, HIGH:
-            state <<= core#ALTPOL
-        other:
-            return (curr_state >> core#ALTPOL) & 1
-
-    state := ((curr_state & core#ALTPOL_MASK) | state)
-    writereg(core#CONFIG, 2, @state)
 
 PUB int_clr{} | tmp
 ' Clear interrupt
@@ -111,14 +91,34 @@ PUB int_clr{} | tmp
     tmp |= (1 << core#INTCLR)
     writereg(core#CONFIG, 2, @tmp)
 
-PUB interrupt{}: active_ints
-' Flag indicating interrupt(s) asserted
-'   Returns: 3-bit mask, [2..0]
-'       2: Temperature at or above Critical threshold
-'       1: Temperature above high threshold
-'       0: Temperature below low threshold
-    readreg(core#TEMP, 2, @active_ints)
-    active_ints >>= 13
+PUB int_crit_thresh{}: thresh
+' Get critical (high) temperature interrupt threshold
+'   Returns: hundredths of a degree Celsius
+    thresh := 0
+    readreg(core#ALERT_CRIT, 2, @thresh)
+    return temp_word2deg(thresh)
+
+PUB int_ena(state): curr_state
+' Enable interrupts
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value polls the chip and returns the current setting
+    curr_state := 0
+    readreg(core#CONFIG, 2, @curr_state)
+    case ||state
+        0, 1:
+            state := ||(state) << core#ALTCNT
+        other:
+            return (((curr_state >> core#ALTCNT) & 1) == 1)
+
+    state := ((curr_state & core#ALTCNT_MASK) | state)
+    writereg(core#CONFIG, 2, @state)
+
+PUB int_hi_thresh{}: thresh
+' Get high temperature interrupt threshold
+'   Returns: hundredths of a degree Celsius
+    thresh := 0
+    readreg(core#ALERT_UPPER, 2, @thresh)
+    return temp_word2deg(thresh)
 
 PUB int_hyst(deg): curr_setting
 ' Set interrupt Upper and Lower threshold hysteresis, in degrees Celsius
@@ -141,6 +141,33 @@ PUB int_hyst(deg): curr_setting
     deg := ((curr_setting & core#HYST_MASK) | deg)
     writereg(core#CONFIG, 2, @deg)
 
+PUB int_latch_ena(mode): curr_mode
+' Enable interrupt latch
+'   Valid values:
+'      *FALSE (0) (default): triggered interrupts clear automatically when measurements return
+'           inside set thresholds
+'       TRUE (-1): triggered interrupts will only be cleared by calling int_clr()
+'   Any other value polls the chip and returns the current setting
+'   NOTE: This can't be set to TRUE when interrupts are asserted only for crossing the critical
+'       threhsold, int_mask() == 1 (hardware limitation)
+    curr_mode := 0
+    readreg(core#CONFIG, 2, @curr_mode)
+    case ||(mode)
+        0, 1:
+            mode &= 1
+        other:
+            return (curr_mode & 1)
+
+    mode := ((curr_mode & core#ALTMOD_MASK) | mode)
+    writereg(core#CONFIG, 2, @mode)
+
+PUB int_lo_thresh{}: thresh
+' Get low temperature interrupt threshold
+'   Returns: hundredths of a degree Celsius
+    thresh := 0
+    readreg(core#ALERT_LOWER, 2, @thresh)
+    return temp_word2deg(thresh)
+
 PUB int_mask(mask): curr_mask
 ' Set interrupt mask
 '   Valid values:
@@ -158,43 +185,21 @@ PUB int_mask(mask): curr_mask
     mask := ((curr_mask & core#ALTSEL_MASK) | mask)
     writereg(core#CONFIG, 2, @mask)
 
-PUB int_mode(mode): curr_mode
-' Set interrupt mode
-'   Valid values:
-'      *COMP (0): Comparator output
-'       INT (1): Interrupt output
+PUB int_polarity(state): curr_state
+' Set interrupt active state
+'   Valid values: *LOW (0), HIGH (1)
 '   Any other value polls the chip and returns the current setting
-    curr_mode := 0
-    readreg(core#CONFIG, 2, @curr_mode)
-    case mode
-        COMP, INT:
-        other:
-            return curr_mode & 1
-
-    mode := ((curr_mode & core#ALTMOD_MASK) | mode)
-    writereg(core#CONFIG, 2, @mode)
-
-PUB int_ena(state): curr_state
-' Enable interrupts
-'   Valid values: TRUE (-1 or 1), FALSE (0)
-'   Any other value polls the chip and returns the current setting
+'   NOTE: LOW (Active-low) requires the use of a pull-up resistor
     curr_state := 0
     readreg(core#CONFIG, 2, @curr_state)
-    case ||state
-        0, 1:
-            state := ||(state) << core#ALTCNT
+    case state
+        LOW, HIGH:
+            state <<= core#ALTPOL
         other:
-            return (((curr_state >> core#ALTCNT) & 1) == 1)
+            return (curr_state >> core#ALTPOL) & 1
 
-    state := ((curr_state & core#ALTCNT_MASK) | state)
+    state := ((curr_state & core#ALTPOL_MASK) | state)
     writereg(core#CONFIG, 2, @state)
-
-PUB int_crit_thresh{}: thresh
-' Get critical (high) temperature interrupt threshold
-'   Returns: hundredths of a degree Celsius
-    thresh := 0
-    readreg(core#ALERT_CRIT, 2, @thresh)
-    return temp_word2deg(thresh)
 
 PUB int_set_crit_thresh(thresh)
 ' Set critical (high) temperature interrupt threshold, in hundredths of a degree Celsius
@@ -202,31 +207,26 @@ PUB int_set_crit_thresh(thresh)
     thresh := calc_temp_word(-256_00 #> thresh <# 255_94)
     writereg(core#ALERT_CRIT, 2, @thresh)
 
-PUB int_hi_thresh{}: thresh
-' Get high temperature interrupt threshold
-'   Returns: hundredths of a degree Celsius
-    thresh := 0
-    readreg(core#ALERT_UPPER, 2, @thresh)
-    return temp_word2deg(thresh)
-
 PUB int_set_hi_thresh(thresh)
 ' Set high temperature interrupt threshold, in hundredths of a degree Celsius
 '   Valid values: -256_00..255_94 (-256.00C .. 255.94C; clamped to range)
     thresh := calc_temp_word(-256_00 #> thresh <# 255_94)
     writereg(core#ALERT_UPPER, 2, @thresh)
 
-PUB int_lo_thresh{}: thresh
-' Get low temperature interrupt threshold
-'   Returns: hundredths of a degree Celsius
-    thresh := 0
-    readreg(core#ALERT_LOWER, 2, @thresh)
-    return temp_word2deg(thresh)
-
 PUB int_set_lo_thresh(thresh)
 ' Set low temperature interrupt threshold, in hundredths of a degree Celsius
 '   Valid values: -256_00..255_94 (-256.00C .. 255.94C)
     thresh := calc_temp_word(-256_00 #> thresh <# 255_94)
     writereg(core#ALERT_LOWER, 2, @thresh)
+
+PUB interrupt{}: active_ints
+' Flag indicating interrupt(s) asserted
+'   Returns: 3-bit mask, [2..0]
+'       2: Temperature at or above Critical threshold
+'       1: Temperature above high threshold
+'       0: Temperature below low threshold
+    readreg(core#TEMP, 2, @active_ints)
+    active_ints >>= 13
 
 PUB powered(state): curr_state
 ' Enable sensor power

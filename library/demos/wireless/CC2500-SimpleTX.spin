@@ -5,7 +5,7 @@
     Description: Simple transmit demo of the cc2500 driver
     Copyright (c) 2022
     Started Nov 29, 2020
-    Updated Oct 16, 2022
+    Updated Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -64,7 +64,7 @@ PUB main{} | counter, i, pktlen
     cc2500.tx_pwr(1)
 
     ser.clear{}
-    ser.position(0, 0)
+    ser.pos_xy(0, 0)
     ser.printf1(string("Transmit mode - %dkHz\n\r"), cc2500.carrier_freq(-2))
 
     counter := 0
@@ -79,7 +79,7 @@ PUB main{} | counter, i, pktlen
         _pkt_tmp[POS_PKTLEN] := pktlen          ' 1st byte is payload length
         _pkt_tmp[POS_TONODE] := TO_NODE         ' 2nd byte is destination addr
 
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         ser.printf2(string("Sending (%d): %s\n\r"), pktlen, @_pkt_tmp[POS_PAYLD])
 
         { show hexdump of the packet, including non-payload data (length) }

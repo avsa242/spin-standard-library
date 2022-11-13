@@ -11,7 +11,7 @@
 }
 #define 1BPP
 #define MEMMV_NATIVE bytemove
-#include "lib.gfx.bitmap.spin"
+#include "graphics.common.spinh"
 
 { if a specific display controller isn't defined, default to SSD1306 }
 #ifndef SSD1306

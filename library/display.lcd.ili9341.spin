@@ -13,7 +13,7 @@
 ' memory usage for a buffered display would vastly exceed what's available
 '   on the P1, so hardcode direct-to-display directive:
 #define GFX_DIRECT
-#include "lib.gfx.bitmap.spin"
+#include "graphics.common.spinh"
 
 CON
 
@@ -267,7 +267,6 @@ PUB horiz_refresh_dir(mode)
 '   (refresh direction relative to panel's top-left (0, 0) location)
 '   NORM (0): normal
 '   INV (1): inverted
-'   Any other value returns the current (cached) setting
     mode := ((NORM #> mode <# INV) << core#MH)
 
     _madctl := ((_madctl & core#MH_MASK) | mode)
@@ -332,7 +331,6 @@ PUB mirror_v(state)
 ' Mirror display, vertically
 '   Valid values:
 '       TRUE (-1 or 1), FALSE (0)
-'   Any other value returns the current (cached) setting
     state := (((state <> 0) & 1) << core#MY)
 
     _madctl := ((_madctl & core#MY_MASK) | state)
@@ -466,7 +464,6 @@ PUB vert_refresh_dir(mode)
 '   (refresh direction relative to panel's top-left (0, 0) location)
 '   NORM (0): normal
 '   INV (1): inverted
-'   Any other value returns the current (cached) setting
     mode := ((NORM #> mode <# INV) << core#ML)
 
     _madctl := ((_madctl & core#ML_MASK) | mode)

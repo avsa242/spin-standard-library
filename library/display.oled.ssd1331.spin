@@ -10,7 +10,7 @@
     --------------------------------------------
 }
 #define MEMMV_NATIVE wordmove
-#include "lib.gfx.bitmap.spin"
+#include "graphics.common.spinh"
 
 CON
 
@@ -99,9 +99,9 @@ PUB stop{}
     powered(FALSE)
     spi.deinit{}
     longfill(@_CS, 0, 3)
-    longfill(@_ptr_drawbuffer, 0, 14)           ' lib.gfx.bitmap.spin
-    wordfill(@_charpx_xmax, 0, 4)               ' lib.gfx.bitmap.spin
-    bytefill(@_charcell_w, 0, 6)                ' lib.gfx.bitmap.spin
+    longfill(@_ptr_drawbuffer, 0, 14)           ' graphics.common.spinh
+    wordfill(@_charpx_xmax, 0, 4)               ' graphics.common.spinh
+    bytefill(@_charcell_w, 0, 6)                ' graphics.common.spinh
     bytefill(@_sh_SETCOLUMN, 0, 26)
 
 PUB defaults{}

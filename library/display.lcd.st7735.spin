@@ -10,7 +10,7 @@
     --------------------------------------------
 }
 #define MEMMV_NATIVE wordmove
-#include "lib.gfx.bitmap.spin"
+#include "graphics.common.spinh"
 
 CON
 

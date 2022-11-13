@@ -5,7 +5,7 @@
     Description: Driver for the Melexis MLX90621 16x4 IR array
     Copyright (c) 2022
     Started: Jan 4, 2018
-    Updated: Sep 22, 2022
+    Updated: Nov 12, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -95,10 +95,9 @@ OBJ
 
 VAR
 
+    long _res, _kt1scl, _kt2scl, _vth25, _kt1, _kt2, _adcres_bits
     word _ptat
     byte _ee_data[EE_SIZE]
-
-    long _res, _kt1scl, _kt2scl, _vth25, _kt1, _kt2, _adcres_bits
 
 PUB null{}
 ' This is not a top-level object
@@ -132,22 +131,25 @@ PUB stop{}
 
 PUB defaults{}
 ' Write osc trimming val extracted from EEPROM address $F7
-    osc_trim(_ee_data[EE_OSCTRIM])
+    osc_trim(_ee_data[EE_OSCTRIM])              ' write oscillator trim val from EE
+    writereg(core#CONFIG, _ee_data[EE_CFG])     ' write default configuration from EE
+
+{   The above is the equivalent of calling the following:
     refresh_rate(1)
-    adc_res(18)
+    temp_adc_res(18)
     opmode(CONT)
     powered(TRUE)
     i2cfm(TRUE)
     eeprom_ena(TRUE)
     adc_ref(ADCREF_LO)
-    reset(TRUE)
+}
     time.msleep(5)
 
 PUB adc_ref(mode): curr_mode
 ' Set ADC reference high, low
 '   Valid values:
-'      ADCREF_HI (0) - ADC High reference enabled
-'     *ADCREF_LO (1) - ADC Low reference enabled
+'       ADCREF_HI (0) - ADC High reference enabled
+'       ADCREF_LO (1) - ADC Low reference enabled (default)
 '   Any other value polls the chip and returns the current setting
 ' NOTE: Re-calibration must be done after this method is called
     readreg(core#CONFIG, 2, 0, @curr_mode)
@@ -159,24 +161,6 @@ PUB adc_ref(mode): curr_mode
 
     mode := ((curr_mode & core#ADCHIGHREF_MASK) | mode)
     writereg(core#CONFIG, mode)
-
-'TODO: Call Re-cal method here
-
-PUB adc_res(bits): curr_res
-' Set ADC resolution, in bits
-'   Valid values: 15..18 (default: 18)
-'   Any other value polls the chip and returns the current setting
-    readreg(core#CONFIG, 2, 0, @curr_res)
-    case bits
-        15..18:
-            _adcres_bits := (1 << (3-lookdownz(bits: 15, 16, 17, 18)) )
-            bits := lookdownz(bits: 15, 16, 17, 18) << core#ADCRES
-        other:
-            curr_res := (curr_res >> core#ADCRES) & core#ADCRES_BITS
-            return lookupz(curr_res: 15, 16, 17, 18)
-
-    bits := ((curr_res & core#ADCRES_MASK) | bits)
-    writereg(core#CONFIG, bits)
 
 PUB amb_temp{}: ta | ptat, kt1, kt2, kt1scl, kt2scl, vth25, t1_64[2], t1_32, t2_64[2], t2_32, t3, t3sign
 ' Read Proportional To Ambient Temperature sensor
@@ -262,7 +246,8 @@ PUB get_frame(ptr_buff) | tmpframe[32], offs
         long[ptr_buff][offs] := ~~tmpframe.word[offs]
 
 PUB get_frame_ext(ptr_buff) | tmpframe[33], offs, line, col
-' Read entire frame, as well as PTAT and compensation pixel data from sensor and stores it in buffer at ptr_buff
+' Read entire frame, as well as PTAT and compensation pixel data from sensor and stores it in
+'   buffer at ptr_buff
 '   NOTE: This buffer must be at least 66 longs
     readreg(0, 66, 1, @tmpframe)
     repeat offs from 0 to 65
@@ -298,8 +283,15 @@ PUB get_pixel(ptr_buff, col, line): pix_word | tmpframe, offs
     readreg(offs, 1, 0, @tmpframe)
     long[ptr_buff][offs] := pix_word := ~~tmpframe.word[0]
 
+PUB is_reset{}: flag
+' Flag indicating POR or brown-out occurred
+'   Returns: TRUE (-1) or FALSE (0)
+    flag := 0
+    readreg(core#CONFIG, 2, 0, @flag)
+    return (((flag >> core#RESET) & 1) == 0)
+
 PUB measure{}
-' Perform measurement, when OpMode is set to SINGLE
+' Perform measurement, when opmode() is set to SINGLE
 '   NOTE: This method waits/blocks while a measurement is ongoing
     writereg(core#CMD_STEP_MEASURE, 0)
     repeat while measuring{}
@@ -309,17 +301,17 @@ PUB measuring{}: flag
 '   Returns:
 '       FALSE (0): No IR measurement running
 '       TRUE (-1): IR measurement running
-'   NOTE: This method is intended for use when MeasureMode is set to SINGLE
+'   NOTE: This method is intended for use when opmode() is set to SINGLE
     readreg(core#CONFIG, 2, 0, @flag)
     return ((flag >> core#MEASURING) & 1) == 1
 
 PUB opmode(mode): curr_mode
 ' Set measurement mode
 '   Valid values:
-'     *CONT (0) - Continuous measurement mode
-'      SINGLE (1) - Single-measurement mode only
+'       CONT (0) - Continuous measurement mode (default)
+'       SINGLE (1) - Single-measurement mode only
 '   Any other value polls the chip and returns the current setting
-'   NOTE: In SINGLE mode, measurements must be triggered manually using the Measure method
+'   NOTE: In SINGLE mode, measurements must be triggered manually by calling measure()
     readreg(core#CONFIG, 2, 0, @curr_mode)
     case mode
         CONT, SINGLE:
@@ -346,8 +338,8 @@ PUB osc_trim(val): curr_val
 PUB powered(state): curr_state
 ' Power on sensor
 '   Valid values:
-'      *FALSE (0) - Sleep
-'       TRUE (-1 or 1) - Powered on/normal operation
+'       FALSE (0) - Sleep (default)
+'       TRUE (-1 or 1) - Power on
 '   Any other value polls the chip and returns the current setting
     readreg(core#CONFIG, 2, 0, @curr_state)
     case ||(state)
@@ -362,19 +354,20 @@ PUB powered(state): curr_state
 
 PUB rd_eeprom(ptr_buff): status | ackbit, tries
 ' Read sensor EEPROM contents into RAM
-'   ptr_buff: buffer to copy EEPROM image to (0 to ignore; only the internal copy will be used)
+'   ptr_buff: buffer to copy EEPROM image to (set to 0 to only use the driver's internal copy)
 '   Returns:
 '       TRUE (-1): success
 '       FALSE (0): failure
     bytefill(@_ee_data, 0, EE_SIZE)             ' clear RAM copy of EEPROM
     tries := 0
 
-    i2c.start{}                                 ' try to talk to the EEPROM
+    { make three attempts to talk to the sensor's EEPROM }
+    i2c.start{}
     repeat
         ackbit := i2c.write(core#EE_SLAVE_ADDR)
-        if (++tries > 3)                        ' give up after 3 tries
+        if (++tries > 3)
             i2c.stop{}
-            return FALSE
+            return FALSE                        ' no response - give up
     until (ackbit == i2c#ACK)
     i2c.write($00)
 
@@ -388,7 +381,7 @@ PUB rd_eeprom(ptr_buff): status | ackbit, tries
     i2c.rdblock_lsbf(@_ee_data, EE_SIZE, i2c#NAK)
     i2c.stop{}
 
-    _adcres_bits := (1 << (3-lookdownz(adc_res(-2): 15, 16, 17, 18)) )
+    _adcres_bits := (1 << (3-lookdownz(temp_adc_res(-2): 15, 16, 17, 18)) )
 
     bytemove(@_vth25, @_ee_data+EE_VTH25, 2)
     bytemove(@_kt1, @_ee_data+EE_KT1, 2)
@@ -423,21 +416,21 @@ PUB refresh_rate(rate): curr_rate
     rate := ((curr_rate & core#REFRATE_MASK) | rate) & core#CONFIG_MASK
     writereg(core#CONFIG, rate)
 
-PUB reset(set): flag    ' XXX should be renamed - doesn't do what 'Reset()' normally does
-' Set sensor reset flag
-'   Valid values: TRUE (-1 or 1)
+PUB temp_adc_res(bits): curr_res
+' Set ADC resolution, in bits
+'   Valid values: 15..18 (default: 18)
 '   Any other value polls the chip and returns the current setting
-'   NOTE: This must be done any time the sensor is initialized, _after_ the configuration register has been updated
-'       If FALSE is returned, POR or brown-out has occurred and the process must be repeated
-    readreg(core#CONFIG, 2, 0, @flag)
-    case ||(set)
-        1:
-            set := 1 << core#RESET
+    readreg(core#CONFIG, 2, 0, @curr_res)
+    case bits
+        15..18:
+            _adcres_bits := (1 << (3-lookdownz(bits: 15, 16, 17, 18)) )
+            bits := lookdownz(bits: 15, 16, 17, 18) << core#ADCRES
         other:
-            return (((flag >> core#RESET) & 1) == 1)
+            curr_res := (curr_res >> core#ADCRES) & core#ADCRES_BITS
+            return lookupz(curr_res: 15, 16, 17, 18)
 
-    set := ((flag & core#RESET_MASK) | set)
-    writereg(core#CONFIG, set)
+    bits := ((curr_res & core#ADCRES_MASK) | bits)
+    writereg(core#CONFIG, bits)
 
 PRI i2cfm(mode): curr_mode
 ' Enable I2C Fast Mode+
@@ -488,6 +481,7 @@ PRI writereg(reg_nr, val) | cmd_pkt[2], nr_bytes
     cmd_pkt.byte[0] := SLAVE_WR
     case reg_nr
         core#CONFIG:
+            val |= core#RESET                   ' RESET bit must be set when updating CONFIG
             cmd_pkt.byte[1] := core#CMD_WRITEREG_CFG
             cmd_pkt.byte[2] := val.byte[0] - CFG_CKBYTE
             cmd_pkt.byte[3] := val.byte[0]
@@ -505,7 +499,6 @@ PRI writereg(reg_nr, val) | cmd_pkt[2], nr_bytes
             cmd_pkt.byte[1] := core#CMD_STEP_MEASURE & $FF
             cmd_pkt.byte[2] := (core#CMD_STEP_MEASURE >> 8) & $FF
             nr_bytes := 3
-
         other:
             return
 

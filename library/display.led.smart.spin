@@ -12,7 +12,7 @@
         originally written by Jon McPhalen
 }
 #define MEMMV_NATIVE longmove
-#include "lib.gfx.bitmap.spin"
+#include "graphics.common.spinh"
 
 CON
 
@@ -358,7 +358,7 @@ shift_out               mov     nbits, pixelbits                ' set for pixel 
 
 next_pixel              djnz    npix, #frame_loop               ' done with all leds?                  
 
-reset_delay             mov     bittimer, resettix              ' set reset timing  
+reset_delay             mov     bittimer, resettix              ' set reset timing
                         add     bittimer, cnt                   ' sync timer 
                         waitcnt bittimer, #0                    ' let timer expire 
 

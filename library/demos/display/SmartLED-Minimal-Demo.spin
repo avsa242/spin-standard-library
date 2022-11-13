@@ -5,7 +5,7 @@
     Description: Demo of minimum code to light a
         single smart LED
     Started Jun 13, 2021
-    Updated Jun 13, 2021
+    Updated Oct 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,7 +22,7 @@ OBJ
 
     led : "display.led.smart"
 
-PUB Main | pixel
+PUB main{} | pixel
 
     led.start(SMLED_PIN, 1, 1, MODEL, @pixel)   ' pin, width, height, model, addr
     led.plot(0, 0, $ff_00_00_00)                ' x, y, R_G_B or R_G_B_W color
