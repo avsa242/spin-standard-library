@@ -8,7 +8,7 @@
         * Quadrature encoder
     Copyright (c) 2022
     Started Aug 29, 2022
-    Updated Oct 22, 2022
+    Updated Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -55,8 +55,8 @@ PUB main{} | delta
     radio.channel(2)                            ' 0..125 (2.400 .. 2.525GHz)
     radio.tx_pwr(0)                             ' -18, -12, -6, 0 (dBm)
 
-    { set transmit address (note: order in string() is LSB, ..., MSB) }
-    radio.node_addr(string($e7, $e7, $e7, $e7, $e7))
+    { set syncword (note: order in string() is LSB, ..., MSB) }
+    radio.set_syncwd(string($e7, $e7, $e7, $e7, $e7))
 
 ' --
 
@@ -81,7 +81,7 @@ PUB setup{}
         radio.preset_tx2m_noaa{}                ' 2Mbps, no Auto-Ack
         radio.crc_check_ena(true)
         radio.crc_len(2)
-        radio.payld_len(4, 0)
+        radio.payld_len(4)
     else
         ser.strln(string("nRF24L01+ driver failed to start - halting"))
         repeat
