@@ -508,7 +508,7 @@ PUB idle{}
 ' Change chip state to idle (standby)
     opmode(STDBY)
 
-PUB int_clr(mask)
+PUB int_clear(mask)
 ' Clear interrupt flags
 '   Valid values:
 '   Bits 7..0 (0: don't clear interrupt, 1: clear interrupt)

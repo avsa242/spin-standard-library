@@ -154,7 +154,7 @@ PUB cj_data{}: cj_word
     cj_word ~>= 2                               ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
 
-PUB int_clr{} | tmp
+PUB int_clear{} | tmp
 ' Clear fault status
 '   NOTE: This has no effect when int_latch_ena() is set to FALSE
     readreg(core#CR0, 1, @tmp)
@@ -168,7 +168,7 @@ PUB int_latch_ena(state): curr_state
 '       *FALSE (0): fault flag will be asserted when fault condition is true, and will clear when
 '           the condition is no longer true, _with a 2deg C hysteresis._
 '       TRUE (1): fault flag will be asserted when fault condition is true, and will remain
-'           asserted until fault status is explicitly cleared with int_clr().
+'           asserted until fault status is explicitly cleared with int_clear().
 '       NOTE: If the fault condition is still true when the status is cleared,
 '       the flag will be asserted again immediately.
 '   Any other value polls the chip and returns the current setting

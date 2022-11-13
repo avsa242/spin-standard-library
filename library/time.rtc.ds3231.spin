@@ -222,7 +222,7 @@ PUB clkout_freq(freq): curr_freq
     freq := ((curr_freq & core#RS_MASK) | freq)
     writereg(core#CONTROL, 1, @freq)
 
-PUB int_clr(mask) | tmp
+PUB int_clear(mask) | tmp
 ' Clear asserted interrupts
     tmp := 0
     readreg(core#CTRL_STAT, 1, @tmp)

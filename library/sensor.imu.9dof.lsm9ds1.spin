@@ -1043,7 +1043,7 @@ PUB mag_int_polarity(state): curr_state
     state := ((curr_state & core#IEA_MASK) | state)
     writereg(MAG, core#INT_CFG_M, 1, @state)
 
-PUB mag_int_clr{}
+PUB mag_int_clear{}
 ' Clear magnetometer interrupts
 '   NOTE: This is only required if MagIntsLatched() is set to TRUE
     mag_int{}

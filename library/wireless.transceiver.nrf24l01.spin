@@ -96,7 +96,7 @@ PUB defaults{} | pipe_nr
     pll_lock(FALSE)
     data_rate(2_000_000)
     tx_pwr(0)
-    int_clr(%111)
+    int_clear(%111)
 
     set_pipe_nr(1)
     set_syncwd(string($C2, $C2, $C2, $C2, $C2))
@@ -125,7 +125,7 @@ PUB preset_rx250k{}
     rx_mode{}
     flush_rx{}
     powered(TRUE)
-    int_clr(%111)
+    int_clear(%111)
     pipes_ena(%000011)
     auto_ack_pipes_ena(%111111)
     data_rate(250_000)
@@ -135,7 +135,7 @@ PUB preset_rx250k_noaa{}
     rx_mode{}
     flush_rx{}
     powered(TRUE)
-    int_clr(%111)
+    int_clear(%111)
     pipes_ena(%000011)
     auto_ack_pipes_ena(%000000)
     data_rate(250_000)
@@ -145,7 +145,7 @@ PUB preset_rx1m{}
     rx_mode{}
     flush_rx{}
     powered(TRUE)
-    int_clr(%111)
+    int_clear(%111)
     pipes_ena(%000011)
     auto_ack_pipes_ena(%111111)
     data_rate(1_000_000)
@@ -155,7 +155,7 @@ PUB preset_rx1m_noaa{}
     rx_mode{}
     flush_rx{}
     powered(TRUE)
-    int_clr(%111)
+    int_clear(%111)
     pipes_ena(%000011)
     auto_ack_pipes_ena(%000000)
     data_rate(1_000_000)
@@ -165,7 +165,7 @@ PUB preset_rx2m{}
     rx_mode{}
     flush_rx{}
     powered(TRUE)
-    int_clr(%111)
+    int_clear(%111)
     pipes_ena(%000011)
     auto_ack_pipes_ena(%111111)
     data_rate(2_000_000)
@@ -175,7 +175,7 @@ PUB preset_rx2m_noaa{}
     rx_mode{}
     flush_rx{}
     powered(TRUE)
-    int_clr(%111)
+    int_clear(%111)
     pipes_ena(%000011)
     auto_ack_pipes_ena(%000000)
     data_rate(2_000_000)
@@ -186,7 +186,7 @@ PUB preset_tx250k{}
     flush_tx{}
     powered(true)
     auto_ack_pipes_ena(%111111)
-    int_clr(%111)
+    int_clear(%111)
     data_rate(250_000)
     auto_retrans_dly(1500)                   ' covers worst-case
 
@@ -196,7 +196,7 @@ PUB preset_tx250k_noaa{}
     flush_tx{}
     powered(true)
     auto_ack_pipes_ena(%000000)
-    int_clr(%111)
+    int_clear(%111)
     data_rate(250_000)
 
 PUB preset_tx1m{}
@@ -205,7 +205,7 @@ PUB preset_tx1m{}
     flush_tx{}
     powered(true)
     auto_ack_pipes_ena(%111111)
-    int_clr(%111)
+    int_clear(%111)
     data_rate(1_000_000)
     auto_retrans_dly(500)                    ' covers worst-case
 
@@ -215,7 +215,7 @@ PUB preset_tx1m_noaa{}
     flush_tx{}
     powered(true)
     auto_ack_pipes_ena(%000000)
-    int_clr(%111)
+    int_clear(%111)
     data_rate(1_000_000)
 
 PUB preset_tx2m{}
@@ -224,7 +224,7 @@ PUB preset_tx2m{}
     flush_tx{}
     powered(true)
     auto_ack_pipes_ena(%111111)
-    int_clr(%111)
+    int_clear(%111)
     data_rate(2_000_000)
     auto_retrans_dly(500)                    ' covers worst-case
 
@@ -234,7 +234,7 @@ PUB preset_tx2m_noaa{}
     flush_tx{}
     powered(true)
     auto_ack_pipes_ena(%000000)
-    int_clr(%111)
+    int_clear(%111)
     data_rate(2_000_000)
 
 PUB chip_ena(state)
@@ -468,7 +468,7 @@ PUB idle{}
 ' Set to idle state
     outa[_CE] := 0
 
-PUB int_clr(mask)
+PUB int_clear(mask)
 ' Clear interrupts
 '   Valid values: [bits 2..0]
 '       Bit:    Interrupt:

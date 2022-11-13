@@ -535,7 +535,7 @@ PUB int_polarity(state): curr_state
     state := ((curr_state & core#ACTL_MASK) | state) & core#INT_BYPASS_CFG_MASK
     writereg(core#INT_BYPASS_CFG, 1, @state)
 
-PUB int_clr_mode(mode): curr_mode
+PUB int_clear_mode(mode): curr_mode
 ' Select mode by which interrupt status may be cleared
 '   Valid values:
 '      *READ_INT_FLAG (0): Only by reading interrupt flags
