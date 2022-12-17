@@ -5,7 +5,7 @@
     Description: Driver for the SEMTECH SX1276 LoRa/FSK/OOK transceiver (LoRa mode)
     Copyright (c) 2022
     Started Oct 6, 2019
-    Updated Nov 13, 2022
+    Updated Dec 17, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -635,7 +635,7 @@ PUB low_freq_mode(state): curr_state | lfmask
         other:
             return ((curr_state >> core#LOWFREQMODEON) & 1) == 1
 
-    if (curr_state & core#LORA)
+    if (curr_state & core#LORAMODE)
         lfmask := core#LOWFREQMODEONL_MASK
     else
         lfmask := core#LOWFREQMODEONL_MASK
@@ -677,8 +677,8 @@ PUB modulation(mode): curr_mode | lr_mode, opmode_orig
     '   set operating mode to SLEEP (required to change the LORAMODE bit)
     '   OPMODE's regmask is different when already in LoRa mode
     '   some register bits meaning differ in the two modes (LoRa vs FSK/OOK)
-    if (curr_mode & core#LORA)                  ' currently in LoRa mode?
-        if (mode & core#LORA)                   ' requested mode is also LoRa
+    if (curr_mode & core#LORAMODE)              ' currently in LoRa mode?
+        if (mode & core#LORAMODE)               ' requested mode is also LoRa
             return                              '   - no change, so bail out
         lr_mode := (curr_mode & core#MODEL_MASK & core#LORAMODEL_MASK)
         mode := (curr_mode & core#MODE_MASK & core#LORAMODE_MASK) | mode
@@ -710,7 +710,7 @@ PUB opmode(mode): curr_mode | modemask
         other:
             return curr_mode & core#MODE_BITS
 
-    if (curr_mode & core#LORA)
+    if (curr_mode & core#LORAMODE)
         modemask := core#MODEL_MASK
     else
         modemask := core#MODE_MASK
