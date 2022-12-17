@@ -5,7 +5,7 @@
     Description: Driver for Microchip MCP320x Analog to Digital Converters
     Copyright (c) 2022
     Started Nov 26, 2019
-    Updated Sep 24, 2022
+    Updated Nov 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -51,18 +51,12 @@ PUB stop{}
 
 PUB defaults{}
 ' Factory defaults
-    adc_chan_ena(0)
-    ref_voltage(3_300000)
+    set_adc_channel(0)
+    set_ref_voltage(3_300000)
 
-PUB adc_chan_ena(ch)
-' Set ADC channel for subsequent reads
-'   Valid values: 0, 1
-'   Any other value returns the current setting
-    case ch
-        0..1:
-            _ch := ch
-        other:
-            return _ch
+PUB adc_channel{}: ch
+' Get currently set ADC channel (cached)
+    return _ch
 
 PUB adc_data{}: adc_word | cfg
 ' ADC data word
@@ -82,15 +76,20 @@ PUB adc2volts(adc_word): volts
 ' Scale ADC word to microvolts
     return u64.multdiv(_adc_ref, adc_word, 4096)
 
-PUB ref_voltage(v): curr_v
+PUB ref_voltage{}: v
+' Get currently set reference voltage
+'   Returns: microvolts
+    return _adc_ref
+
+PUB set_adc_channel(ch)
+' Set ADC channel for subsequent reads
+'   Valid values: 0, 1
+    _ch := 0 #> ch <# 1
+
+PUB set_ref_voltage(v): curr_v
 ' Set ADC reference/supply voltage (Vdd), in microvolts
 '   Valid values: 2_700_000..5_500_000 (2.7 .. 5.5V)
-'   Any other value returns the current setting
-    case v
-        2_700_000..5_500_000:
-            _adc_ref := v
-        other:
-            return _adc_ref
+    _adc_ref := (2_700000 #> v <# 5_500000)
 
 DAT
 {

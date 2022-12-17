@@ -5,7 +5,7 @@
     Description: Demo of the MCP320X driver
         * Power data output
     Started Nov 26, 2019
-    Updated Oct 16, 2022
+    Updated Nov 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,10 +20,10 @@ CON
     SER_BAUD    = 115_200
 
     { SPI configuration }
-    CS_PIN      = 8                             ' CSn/SHDN
-    SCK_PIN     = 9                             ' CLK
-    MOSI_PIN    = 10                            ' DIN
-    MISO_PIN    = 11                            ' DOUT
+    CS_PIN      = 0                             ' CSn/SHDN
+    SCK_PIN     = 1                             ' CLK
+    MOSI_PIN    = 2                             ' DIN
+    MISO_PIN    = 3                             ' DOUT
 ' --
 
 OBJ
@@ -46,6 +46,7 @@ PUB main{}
         repeat
 
     adc.defaults{}
+    adc.set_adc_channel(0)                      ' select channel (# available is model-dependent)
     show_adc_data{}
 
 #include "adcdemo.common.spinh"

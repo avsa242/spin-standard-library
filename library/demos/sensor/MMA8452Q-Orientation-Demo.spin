@@ -64,7 +64,7 @@ PUB main{}
             other:
         ser.clear_line{}
 
-        if (ser.rxcheck{} == "c")               ' press the 'c' key in the demo
+        if (ser.rx_check{} == "c")              ' press the 'c' key in the demo
             calibrate{}                         ' to calibrate sensor offsets
 
 PUB calibrate{}

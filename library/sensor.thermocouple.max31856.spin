@@ -5,7 +5,7 @@
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
     Copyright (c) 2022
     Created: Sep 30, 2018
-    Updated: Sep 25, 2022
+    Updated: Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }

@@ -5,7 +5,7 @@
     Description: Demo of the ADS1115 driver
         * Power data output
     Started Dec 29, 2019
-    Updated Oct 16, 2022
+    Updated Nov 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -48,7 +48,7 @@ PUB main{}
     adc.adc_scale(4_096)                        ' 256, 512, 1024, 2048, 4096, 6144 (mV)
     adc.adc_data_rate(128)                      ' 8, 16, 32, 64, 128, 250, 475, 860 (Hz)
     adc.opmode(adc#CONT)
-    adc.adc_chan_ena(0)
+    adc.set_adc_channel(0)
     show_adc_data{}
 
 #include "adcdemo.common.spinh"

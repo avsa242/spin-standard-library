@@ -6,7 +6,7 @@
         * 9DoF data output
     Copyright (c) 2022
     Started Aug 12, 2017
-    Updated Nov 8, 2022
+    Updated Nov 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -69,6 +69,10 @@ PUB setup{}
         show_accel_data{}
         show_gyro_data{}
         show_mag_data{}
+        if (ser.rx_check{} == "c")
+            cal_accel{}
+            cal_gyro{}
+            cal_mag{}
 
 #include "acceldemo.common.spinh"
 #include "gyrodemo.common.spinh"

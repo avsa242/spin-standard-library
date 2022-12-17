@@ -5,7 +5,7 @@
     Description: Driver for the Melexis MLX90614 IR thermometer
     Copyright (c) 2022
     Started Mar 17, 2019
-    Updated Nov 12, 2022
+    Updated Nov 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -88,12 +88,14 @@ PUB rd_eeprom(ptr_buff)
 '   NOTE: ptr_buff must be at least 64 bytes
     readreg(core#CMD_EEPROM, $00, 64, ptr_buff)
 
-PUB temp_chan(ch): curr_ch
+PUB set_temp_channel(ch)
 ' Set temperature sensor channel #
 '   Valid values: 1, 2 (CH2 availability is device-dependent)
-'   Any other value returns the current setting
-    if (lookdown(ch: 1..2))
-        ch -= 1
+    _temp_ch := ((1 #> ch <# 2) - 1)
+
+PUB temp_channel{}: curr_ch
+' Get temperature sensor currently set channel #
+    return (_temp_ch + 1)
 
 PUB temp_data{}: temp_word
 ' Read object temperature ADC word

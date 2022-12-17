@@ -5,7 +5,7 @@
     Description: Driver for the TDK/Invensense ICM20649 6DoF IMU
     Copyright (c) 2022
     Started Aug 28, 2020
-    Updated Nov 7, 2022
+    Updated Nov 20, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -41,10 +41,6 @@ CON
     CAL_XL_DR               = 200
     CAL_G_DR                = 200
     CAL_M_DR                = 0
-
-' Bias adjustment (AccelBias(), GyroBias()) read or write
-    R                       = 0
-    W                       = 1
 
 ' Axis-specific constants
     X_AXIS                  = 0

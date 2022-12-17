@@ -5,7 +5,7 @@
     Description: Driver for the Semtech SX1231 UHF Transceiver IC
     Copyright (c) 2022
     Started Apr 19, 2019
-    Updated Oct 9, 2022
+    Updated Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -245,8 +245,7 @@ PUB defaults{} | tmp[4]
     pa_ramp_time(40)
     rx_bw(10_400)
     sequencer(OPMODE_AUTO)
-    bytefill(@tmp, $01, 8)
-    syncwd(SW_WRITE, @tmp)
+    set_syncwd(string($01, $01, $01, $01, $01, $01, $01, $01))
     syncwd_ena(TRUE)
     syncwd_len(4)
     syncwd_max_bit_err(0)
@@ -1237,6 +1236,7 @@ PUB rssi_int_thresh(thresh): curr_thr
             readreg(core#RSSITHRESH, 1, @curr_thr)
             return -(curr_thr / 2)
 
+PUB rx_bandwidth = rx_bw
 PUB rx_bw(bw): curr_bw | exp_mod, exp, mant, mant_tmp, rxb_calc
 ' Set receiver channel filter bandwidth, in Hz
 '   Valid values: 2600, 3100, 3900, 5200, 6300, 7800, 10400, 12500, 15600,
@@ -1316,18 +1316,17 @@ PUB sleep{}
 ' Power down chip
     opmode(OPMODE_SLEEP)
 
-PUB syncwd(rw, ptr_buff)
+PUB set_syncwd(ptr_syncwd)
 ' Set sync word to value at ptr_buff
-'   Valid values:
-'       rw: SW_READ (0), SW_WRITE (1)
-'       variable at address ptr_buff: All bytes can be $01..$FF
-'   For rw, any value other than SW_WRITE (1) polls the chip and returns the current setting
-'   NOTE: Variable pointed to by ptr_buff must be at least 8 bytes in length
-    case rw
-        SW_WRITE:
-            writereg(core#SYNCVALUE1, 8, ptr_buff)
-        other:
-            readreg(core#SYNCVALUE1, 8, ptr_buff)
+'   ptr_syncwd: pointer to copy syncword data from
+'   NOTE: 8 bytes will be copied from buffer
+    writereg(core#SYNCVALUE1, 8, ptr_syncwd)
+
+PUB syncwd(ptr_syncwd)
+' Get current sync word
+'   ptr_syncwd: pointer to copy syncword data to
+'   NOTE: Variable pointed to by ptr_syncwd must be at least 8 bytes in length
+    readreg(core#SYNCVALUE1, 8, ptr_syncwd)
 
 PUB syncwd_ena(state): curr_state
 ' Enable sync word generation (TX) and detection (RX)

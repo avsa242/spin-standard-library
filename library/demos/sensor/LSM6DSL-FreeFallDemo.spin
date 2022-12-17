@@ -6,7 +6,7 @@
         Free-fall detection functionality
     Copyright (c) 2022
     Started Sep 6, 2021
-    Updated Nov 8, 2022
+    Updated Nov 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -55,7 +55,7 @@ PUB main{}
     repeat
         ser.pos_xy(0, 3)
         ' check if sensor detects free-fall condition
-        ' Note that InFreeFall() reads the WAKE_UP_SRC register, which also
+        ' Note that calling in_freefall() reads the WAKE_UP_SRC register, which also
         '   clears the interrupt. This is necessary when routing the free-fall
         '   interrupt to one of the sensor's INT pins, if interrupts are being
         '   latched
@@ -75,7 +75,6 @@ PUB calibrate{}
     ser.pos_xy(0, 7)
     ser.str(string("Calibrating..."))
     imu.calibrate_accel{}
-    imu.calibrate_gyro{}
     ser.pos_x(0)
     ser.clear_line{}
 

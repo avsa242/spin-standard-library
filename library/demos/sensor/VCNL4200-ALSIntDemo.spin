@@ -6,7 +6,7 @@
         ALS sensor interrupt functionality
     Copyright (c) 2022
     Started Feb 10, 2021
-    Updated Oct 16, 2022
+    Updated Dec 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -42,27 +42,28 @@ PUB main{}
 
     setup{}
 
-    vcnl.preset_als{}                           ' set to prox. sensor
-                                                ' operating mode
+    vcnl.preset_als{}                           ' set to ambient light sensing mode
 
+    { enable interrupts and set low and high thresholds }
     vcnl.als_int_ena(TRUE)
-    vcnl.int_clear{}                              ' ensure ints are cleared
-    vcnl.als_set_int_lo_thresh(55_000)          ' set low and high thresholds
-    vcnl.als_set_int_hi_thresh(75_000)          '   (in milli-lux)
+    vcnl.int_clear{}
+    vcnl.als_int_set_lo_thresh(55_000)          ' units: milli-lux (1_000 = 0.001 lx)
+    vcnl.als_int_set_hi_thresh(75_000)          '
 
-    ser.position(0, 3)
-    ser.printf2(string("Thresh  low: %d high: %d"), vcnl.als_int_lo_thresh{}, vcnl.als_int_hi_thresh{})
+    ser.pos_xy(0, 3)
+    ser.printf2(string("Thresh  low: %d high: %d"), vcnl.als_int_lo_thresh{}, {
+}                                                   vcnl.als_int_hi_thresh{})
 
     repeat
-        ser.position(0, 5)
+        ser.pos_xy(0, 5)
         ser.str(string("Lux: "))
-        ser.position(DAT_COL, 5)
+        ser.pos_xy(DAT_COL, 5)
         ser.dec(vcnl.lux{})
         if (_interrupt)
             ser.str(string("   INTERRUPT (press c to clear)"))
 
-        ser.clearline{}
-        if (ser.rxcheck{} == "c")
+        ser.clear_line{}
+        if (ser.rx_check{} == "c")
             vcnl.int_clear{}
 
 PUB cog_isr{}

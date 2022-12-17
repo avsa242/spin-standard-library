@@ -36,10 +36,10 @@ OBJ
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(10)
+    time.msleep(20)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 

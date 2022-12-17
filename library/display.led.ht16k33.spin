@@ -13,7 +13,7 @@
 #define 1BPP
 #define MEMMV_NATIVE bytemove
 #include "ht16k33.common.spinh"
-#include "lib.gfx.bitmap.spin"
+#include "graphics.common.spinh"
 
 CON
 

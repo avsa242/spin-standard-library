@@ -6,7 +6,7 @@
         * 6DoF data output
     Copyright (c) 2022
     Started Sep 19, 2020
-    Updated Nov 7, 2022
+    Updated Nov 19, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -57,6 +57,9 @@ PUB setup{}
         ser.pos_xy(0, 3)
         show_accel_data{}
         show_mag_data{}
+        if (ser.rx_check{} == "c")
+            cal_accel{}
+            cal_mag{}
 
 #include "acceldemo.common.spinh"
 #include "magdemo.common.spinh"

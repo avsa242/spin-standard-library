@@ -6,7 +6,7 @@
         * 6DoF data output
     Copyright (c) 2022
     Started Aug 12, 2017
-    Updated Oct 16, 2022
+    Updated Nov 20, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -26,7 +26,6 @@ CON
     SCL_PIN     = 28
     SDA_PIN     = 29
     I2C_FREQ    = 400_000
-    ADDR_BITS   = 0
 ' --
 
 OBJ
@@ -52,9 +51,12 @@ PUB setup{}
     sensor.preset_active{}
 
     repeat
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         show_accel_data{}
         show_mag_data{}
+        if (ser.rx_check{} == "c")
+            cal_accel{}
+            cal_mag{}
 
 #include "acceldemo.common.spinh"
 #include "magdemo.common.spinh"

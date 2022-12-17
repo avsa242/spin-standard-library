@@ -5,7 +5,7 @@
     Description: Driver for IL3897/SSD1675 AM E-Paper display controller
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Nov 5, 2022
+    Updated Dec 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -86,8 +86,8 @@ VAR
 
 OBJ
 
-    spi : "com.spi.20mhz"                   ' PASM SPI engine (20MHz/10MHz)
-    core: "core.con.il3897"                     ' hw-specific low-level const's
+    spi : "com.spi.20mhz"                       ' PASM SPI engine
+    core: "core.con.il3897"                     ' HW-specific constants
     time: "time"                                ' Basic timing functions
 
 PUB null{}
@@ -101,8 +101,6 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, 
         if (status := spi.init(SCK_PIN, MOSI_PIN, -1, core#SPI_MODE))
             time.usleep(core#T_POR)             ' wait for device startup
             dira[DC_PIN] := 1
-            outa[RST_PIN] := 1
-            dira[RST_PIN] := 1
             dira[BUSY_PIN] := 0
             outa[CS_PIN] := 1
             dira[CS_PIN] := 1
@@ -442,7 +440,7 @@ PUB interlace_ena(state): curr_state
 
 PUB master_act{}
 
-    writereg(core#MASTER_ACT, 0, 0)
+    command(core#MASTER_ACT)
 
 PUB mirror_v(state): curr_state  'XXX not functional yet
 ' Mirror display, vertically
@@ -494,12 +492,14 @@ PUB point(x, y): pix_clr
 PUB reset{}
 ' Reset the device
     if (lookdown(_RST: 0..31))                  ' only touch the reset pin
-        outa[_RST] := 0                         '   if it's defined
+        outa[_RST] := 1                         ' if it's defined
+        dira[_RST] := 1
+        outa[_RST] := 0
         time.msleep(200)
         outa[_RST] := 1
         time.msleep(200)
     else                                        ' otherwise, just perform
-        writereg(core#SWRESET, 0, 0)            '   soft-reset
+        command(core#SWRESET)                   '   soft-reset
         time.usleep(core#T_POR)
     repeat until disp_rdy{}
 
@@ -508,7 +508,7 @@ PUB show{}
     writereg(core#WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
     disp_upd_ctrl2{}
     master_act{}
-    writereg(core#NOOP, 0, 0)
+    command(core#NOOP)
 
     repeat until disp_rdy{}
 

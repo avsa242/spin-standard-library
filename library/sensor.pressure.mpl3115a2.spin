@@ -5,7 +5,7 @@
     Description: Driver for MPL3115A2 Pressure sensor with altimetry
     Copyright (c) 2022
     Started Feb 01, 2021
-    Updated Sep 28, 2022
+    Updated Nov 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }

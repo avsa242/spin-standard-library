@@ -35,7 +35,7 @@
 
 }}
 #define MEMMV_NATIVE bytemove
-#include "lib.gfx.bitmap.spin"
+#include "graphics.common.spinh"
 
 CON
 

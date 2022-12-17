@@ -32,22 +32,14 @@ OBJ
     time    : "time"
     iaq     : "sensor.iaq.sgp30"
 
-VAR
-
-    word _sn[3]
-
 PUB main{}
 
     setup{}
 
     iaq.reset{}                                 ' reset first for reliability
 
-    iaq.serial_num(@_sn)
-
-    ser.printf3(string("SN: %04.4x%04.4x%04.4x\n\r"), _sn[0], _sn[1], _sn[2])
-
     repeat
-        ser.position(0, 5)
+        ser.pos_xy(0, 5)
         ser.printf1(string("CO2Eq: %5.5dppm\n\r"), iaq.co2_equiv{})
         ser.printf1(string("TVOC: %5.5dppb"), iaq.tvoc{})
         time.msleep(1000)                       ' 1Hz rate for best performance

@@ -52,14 +52,12 @@ PUB start{}: status
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom I/O settings and I2C bus speed
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
+    if (lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and I2C_HZ =< core#I2C_MAX_FREQ)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.usleep(core#T_POR)             ' wait for device startup
-            if i2c.present(SLAVE_WR)            ' test device bus presence
-                reset{}
-                if (dev_id{} == core#DEVID_RESP)' validate device
-                    return status
+            reset{}
+            if (dev_id{} == core#DEVID_RESP)    ' validate device
+                return status
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog

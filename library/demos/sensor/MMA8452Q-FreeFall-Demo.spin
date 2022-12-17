@@ -6,7 +6,7 @@
         Free-fall detection functionality
     Copyright (c) 2022
     Started Nov 7, 2021
-    Updated Nov 5, 2022
+    Updated Nov 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -25,7 +25,7 @@ CON
     I2C_FREQ    = 400_000                       ' max is 400_000
     ADDR_BITS   = 0                             ' 0, 1
 
-    INT1        = 16
+    INT1        = 24
 ' --
 
     DAT_X_COL   = 20
@@ -59,15 +59,15 @@ PUB main{} | intsource, temp
     ' The preset for free-fall detection sets a free-fall threshold of
     '   0.315g's for a minimum time of 30ms. This can be tuned using
     '   sensor.freefall_thresh() and sensor.freefall_time():
-    sensor.freefall_thresh(0_315000)              ' 0.315g's
-    sensor.freefall_time(30_000)                  ' 30_000us/30ms
+    sensor.freefall_thresh(0_315000)            ' 0.315g's
+    sensor.freefall_time(30_000)                ' 30_000us/30ms
     repeat
         ser.pos_xy(0, 3)
         show_accel_data{}                       ' show accel data
         if (_intflag)                           ' interrupt triggered
             intsource := sensor.accel_int{}
-            if (intsource & sensor#INT_FFALL)    ' free-fall event
-                temp := sensor.in_freefall{}     ' clear the free-fall interrupt
+            if (intsource & sensor#INT_FFALL)   ' free-fall event
+                temp := sensor.in_freefall{}    ' clear the free-fall interrupt
             ser.pos_xy(0, 5)
             ser.strln(string("Sensor in free-fall!"))
             ser.puts(string("Press any key to reset"))
@@ -77,7 +77,7 @@ PUB main{} | intsource, temp
             ser.pos_xy(0, 5)
             ser.puts(string("Sensor stable       "))
             
-        if (ser.rxcheck{} == "c")               ' press the 'c' key in the demo
+        if (ser.rx_check{} == "c")              ' press the 'c' key in the demo
             cal_accel{}                         ' to calibrate sensor offsets
 
 PRI cog_isr{}

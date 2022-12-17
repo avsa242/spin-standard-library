@@ -6,7 +6,7 @@
         Display illuminance in lux
     Copyright (c) 2022
     Started Jul 4, 2022
-    Updated Oct 16, 2022
+    Updated Nov 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -39,9 +39,9 @@ PUB main{} | luxsc
     si.preset_als{}
 
     repeat
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         luxsc := si.lux{}
-        ser.printf2(@"lux: %6.6d.%01.1d", (luxsc / 10), ||(luxsc // 10))
+        ser.printf2(string("lux: %6.6d.%01.1d"), (luxsc / 10), ||(luxsc // 10))
 
 PUB setup{}
 

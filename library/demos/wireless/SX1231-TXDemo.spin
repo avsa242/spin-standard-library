@@ -5,7 +5,7 @@
     Description: Simple transmit demo of the SX1231 driver
     Copyright (c) 2022
     Started Dec 15, 2020
-    Updated Oct 16, 2022
+    Updated Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -22,7 +22,7 @@ CON
     SCK_PIN         = 1
     MOSI_PIN        = 2
     MISO_PIN        = 3
-    RESET_PIN       = 12                        ' use is recommended
+    RESET_PIN       = 4                         ' use is recommended
                                                 '   (-1 to disable)
 ' --
 
@@ -38,10 +38,10 @@ VAR
 
     byte _buffer[256]
 
-PUB main{} | sw[2], count
+PUB main{} | count
 
     setup{}
-    ser.position(0, 3)
+    ser.pos_xy(0, 3)
     ser.strln(string("Transmit mode"))
     sx1231.preset_tx4k8{}                       ' 4800bps, use Automodes to
                                                 ' handle transition between
@@ -51,10 +51,8 @@ PUB main{} | sw[2], count
     sx1231.carrier_freq(902_300_000)            ' US 902.3MHz
     sx1231.payld_len(8)                         ' test packet size
     sx1231.fifo_thresh(sx1231.payld_len(-2)-1)  ' trigger int at payld len-1
-    sw[0] := $E7E7E7E7
-    sw[1] := $E7E7E7E7
-    sx1231.syncwd_len(8)                     ' 1..8
-    sx1231.syncwd(1, @sw)
+    sx1231.syncwd_len(8)                        ' syncword bytes 1..8 (set syncword accordingly)
+    sx1231.set_syncwd(string($E7, $E7, $E7, $E7, $E7, $E7, $E7, $E7))
 ' --
 
 ' -- TX-specific settings
@@ -67,12 +65,12 @@ PUB main{} | sw[2], count
     repeat
         bytefill(@_buffer, 0, 256)              ' clear local TX buffer
 
-        ' payload is the string 'TEST' with hexadecimal counter after
+        ' the payload is the string 'TEST' with a 4-digit hexadecimal counter after
         str.sprintf1(@_buffer, string("TEST%04.4d"), count)
         sx1231.tx_payld(8, @_buffer)            ' queue the data
 
         count++
-        ser.position(0, 5)
+        ser.pos_xy(0, 5)
         ser.str(string("Sending: "))
         ser.str(@_buffer)
         time.msleep(1000)                       ' wait in between packets

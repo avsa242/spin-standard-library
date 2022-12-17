@@ -6,7 +6,7 @@
         * 3DoF data output
     Copyright (c) 2022
     Started Nov 27, 2019
-    Updated Oct 16, 2022
+    Updated Nov 20, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -29,12 +29,13 @@ CON
     SDA_PIN     = 29
     I2C_FREQ    = 400_000                       ' max is 400_000
     ADDR_BITS   = 0                             ' 0, 1
+    ' NOTE: To use I2C, electrically connect the SDA and SDO pins together
 
     { SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    MISO_PIN    = 3
+    CS_PIN      = 0                             ' Datasheet equivalent naming:
+    SCK_PIN     = 1                             ' SCL/SPC
+    MOSI_PIN    = 2                             ' SDA/SDI/SDO
+    MISO_PIN    = 3                             ' SDO
 ' --
 
 OBJ
@@ -44,7 +45,7 @@ OBJ
     ser: "com.serial.terminal.ansi"
     time: "time"
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(10)
@@ -64,31 +65,30 @@ PUB Setup{}
     sensor.preset_active{}
 
     repeat
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
             show_gyro_data{}
+            if (ser.rx_check{} == "c")
+                cal_gyro{}
 
 #include "gyrodemo.common.spinh"                ' code common to all IMU demos
 
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 

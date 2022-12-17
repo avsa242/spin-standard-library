@@ -23,8 +23,8 @@ CON
     SER_BAUD    = 115_200
 
     { I2C configuration }
-    SCL_PIN     = 24
-    SDA_PIN     = 25
+    SCL_PIN     = 28
+    SDA_PIN     = 29
     I2C_FREQ    = 400_000                       ' max is 400_000
     ADDR_BITS   = 0
 ' --
@@ -52,7 +52,7 @@ PUB setup{}
     sensor.preset_als_prox{}
     demo{}
 
-#include "luxdemo.common.spinh"                ' code common to all lux demos
+#include "luxdemo.common.spinh"                 ' code common to all lux demos
 
 DAT
 {

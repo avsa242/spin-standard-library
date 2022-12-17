@@ -6,7 +6,7 @@
         Display UV index
     Copyright (c) 2022
     Started Jul 5, 2022
-    Updated Nov 9, 2022
+    Updated Nov 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -41,7 +41,7 @@ PUB main{}
 
     repeat
         repeat until si.als_data_rdy{}
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         ser.printf2(string("UV Index: %2.2d.%02.2d"), (si.uv_data{} / 100), (si.uv_data{} // 100))
 
 PUB setup{}

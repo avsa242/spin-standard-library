@@ -5,7 +5,7 @@
     Description: Driver for ILI9341 LCD controllers
     Copyright (c) 2022
     Started Oct 14, 2021
-    Updated Nov 5, 2022
+    Updated Nov 20, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -77,6 +77,7 @@ PUB startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT)
             _disp_ymax := _disp_height - 1
             _buff_sz := (_disp_width * _disp_height)
             _bytesperln := _disp_width * BYTESPERPX
+            return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog

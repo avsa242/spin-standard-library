@@ -6,7 +6,7 @@
         Proximity and Ambient Light sensor
     Copyright (c) 2022
     Started Feb 07, 2021
-    Updated Sep 27, 2022
+    Updated Dec 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -125,7 +125,7 @@ PUB als_data{}: als_adc
 
 PUB als_data_rate(rate): curr_rate
 ' Set ALS data rate, in Hz
-'   Valid values: 2_5 (2.5), 5, 10, *20
+'   Valid values: 2_5 (2.5), 5, 10, 20 (default: 20)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: This affects both als_data() and white_data() output
     readreg(core#ALS_CONF, 2, @curr_rate)
@@ -155,7 +155,7 @@ PUB als_int_lo_thresh{}: thresh
     readreg(core#ALS_THDL, 2, @thresh)
     thresh *= _als_res
 
-PUB als_set_int_hi_thresh(thresh)
+PUB als_int_set_hi_thresh(thresh)
 ' Set ALS interrupt high threshold, in milli-lux
 '   Valid values: dependent on als_data_rate() - see table below
     case _als_res
@@ -171,7 +171,7 @@ PUB als_set_int_hi_thresh(thresh)
     thresh /= _als_res
     writereg(core#ALS_THDH, 2, @thresh)
 
-PUB als_set_int_lo_thresh(thresh)
+PUB als_int_set_lo_thresh(thresh)
 ' Set ALS interrupt low threshold, in milli-lux
 '   Valid values: dependent on als_data_rate() - see table below
     case _als_res
@@ -190,7 +190,7 @@ PUB als_set_int_lo_thresh(thresh)
 PUB als_int_duration(cycles): curr_cyc
 ' Set number of cycles beyond threshold needed to generate an ALS interrupt
 '   Valid values:
-'      *1, 2, 4, 8
+'      1, 2, 4, 8 (default: 1)
 '   Any other value polls the chip and returns the current setting
     readreg(core#ALS_CONF, 2, @curr_cyc)
     case cycles
@@ -205,7 +205,7 @@ PUB als_int_duration(cycles): curr_cyc
 
 PUB als_int_ena(state): curr_state
 ' Enable ALS interrupts
-'   Valid values: TRUE (-1 or 1), *FALSE (0)
+'   Valid values: TRUE (-1 or 1), FALSE (0) (default: FALSE)
 '   Any other value polls the chip and returns the current setting
     readreg(core#ALS_CONF, 2, @curr_state)
     case ||(state)
@@ -224,8 +224,7 @@ PUB dev_id{}: id
 
 PUB int_clear{}
 ' Clear interrupts
-    interrupt{}                                 ' simply reading interrupt
-                                                ' flags clears them
+    interrupt{}                                 ' simply reading interrupt flags clears them
 
 PUB interrupt{}: src
 ' Read interrupt flags
@@ -246,8 +245,7 @@ PUB ired_current(led_i): curr_i
     readreg(core#PS_CONF3, 2, @curr_i)
     case led_i
         50, 75, 100, 120, 140, 160, 180, 200:
-            led_i := lookdownz(led_i: 50, 75, 100, 120, 140, 160, 180, 200) {
-}           << core#LED_I
+            led_i := lookdownz(led_i: 50, 75, 100, 120, 140, 160, 180, 200) << core#LED_I
         other:
             curr_i := ((curr_i >> core#LED_I) & core#LED_I_BITS)
             return lookupz(curr_i: 50, 75, 100, 120, 140, 160, 180, 200)
@@ -256,7 +254,7 @@ PUB ired_current(led_i): curr_i
 
 PUB ired_duty_cycle(ratio): curr_rat
 ' Set IRED duty cycle, as a ratio of 1 / ...
-'   Valid values: *160, 320, 640, 1280
+'   Valid values: 160, 320, 640, 1280 (default: 160)
 '   Any other value polls the chip and returns the current setting
     readreg(core#PS_CONF1, 2, @curr_rat)
     case ratio
@@ -276,7 +274,7 @@ PUB lux{}: mlx
 PUB opmode(mode): curr_mode | alsconf, psconf
 ' Set operating mode
 '   Valid values:
-'      *SLEEP (0): Power down both ALS+PROX sensors
+'       SLEEP (0): Power down both ALS+PROX sensors (default)
 '       ALS (1): Ambient Light Sensor active
 '       PROX (2): Proximity sensor active
 '       BOTH (3): Both sensors active
@@ -319,16 +317,10 @@ PUB prox_adc_res(adc_res): curr_res
     adc_res := ((curr_res & core#PS_HD_MASK) | adc_res)
     writereg(core#PS_CONF1, 2, @adc_res)
 
-PUB prox_bias(level): curr_lev
-' Set proximity sensor bias offset
-'   Valid values: *0..65535
-'   Any other value polls the chip and returns the current setting
-    case level
-        0..65535:
-            writereg(core#PS_CANC, 2, @level)
-        other:
-            readreg(core#PS_CANC, 2, @curr_lev)
-            return
+PUB prox_bias{}: p
+' Get currently set proximity sensor bias/offset
+    p := 0
+    readreg(core#PS_CANC, 2, @p)
 
 PUB prox_data{}: prox_adc
 ' Read proximity data
@@ -345,13 +337,13 @@ PUB prox_int_lo_thresh{}: curr_thr
     curr_thr := 0
     readreg(core#PS_THDL, 2, @curr_thr)
 
-PUB prox_set_int_hi_thresh(thresh)
+PUB prox_int_set_hi_thresh(thresh)
 ' Set proximity interrupt high threshold
 '   Valid values: 0..65535
     thresh := 0 #> thresh <# 65535
     writereg(core#PS_THDH, 2, @thresh)
 
-PUB prox_set_int_lo_thresh(thresh)
+PUB prox_int_set_lo_thresh(thresh)
 ' Set proximity interrupt low threshold
 '   Valid values: 0..65535
     thresh := 0 #> thresh <# 65535
@@ -360,8 +352,8 @@ PUB prox_set_int_lo_thresh(thresh)
 PUB prox_int_mask(mask): curr_mask
 ' Set proximity sensor interrupt mask
 '   Valid values:
-'       Bit 1: assert when far
-'           0: assert when near
+'       Bit 1: (INT_FAR) assert when far
+'           0: (INT_NEAR) assert when near
 '   Any other value polls the chip and returns the current setting
     readreg(core#PS_CONF1, 2, @curr_mask)
     case mask
@@ -375,7 +367,7 @@ PUB prox_int_mask(mask): curr_mask
 
 PUB prox_int_duration(cycles): curr_cyc
 ' Set number of cycles beyond threshold needed to generate a proximity interrupt
-'   Valid values: *1, 2, 3, 4
+'   Valid values: 1, 2, 3, 4 (default: 1)
 '   Any other value polls the chip and returns the current setting
     readreg(core#PS_CONF1, 2, @curr_cyc)
     case cycles
@@ -402,6 +394,12 @@ PUB prox_integr_time(itime): curr_itime
 
     itime := ((curr_itime & core#PS_IT_MASK) | itime)
     writereg(core#PS_CONF1, 2, @itime)
+
+PUB prox_set_bias(p)
+' Set proximity sensor bias/offset
+'   Valid values: 0..65535 (clamped to range; default: 0)
+    p := 0 #> p <# 65535
+    writereg(core#PS_CANC, 2, @p)
 
 PUB reset{}
 ' Reset the device

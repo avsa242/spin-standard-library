@@ -54,7 +54,7 @@ PUB setup{}
     env.preset_active{}
     demo{}
 
-#include "co2demo.common.spinh"                 ' code common to all IMU demos
+#include "co2demo.common.spinh"                 ' code common to all CO2 demos
 
 DAT
 {

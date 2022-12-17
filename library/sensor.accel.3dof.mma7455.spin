@@ -5,7 +5,7 @@
     Description: Driver for the NXP/Freescale MMA7455 3-axis accelerometer
     Copyright (c) 2022
     Started Nov 27, 2019
-    Updated Nov 5, 2022
+    Updated Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }

@@ -5,7 +5,7 @@
     Description: Driver for the MAX9744 20W audio amplifier IC
     Copyright (c) 2022
     Started Jul 7, 2018
-    Updated Sep 22, 2022
+    Updated Nov 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -55,7 +55,7 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, SHDN_PIN): status
 }   I2C_HZ =< core#I2C_MAX_FREQ
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.msleep(1)
-            if i2c.present(SLAVE_WR)            ' test device bus presence
+            if (i2c.present(SLAVE_WR))          ' test device bus presence
                 _shdn := SHDN_PIN
                 powered(TRUE)                   ' SHDN pin high
                 return status
@@ -70,65 +70,62 @@ PUB stop{}
     powered(FALSE)
     i2c.deinit{}
 
-PUB modulationmode(mode): curr_mode
-' Set output filter mode
-'   Valid values:
-'       NONE (0): Filterless
-'       PWM (1): Classic PWM
-'   Any other value returns the current setting
-    case mode
-        0:                                      ' filterless modulation
-            _mod_mode := core#MOD_FILTERLESS
-        1:                                      ' classic PWM
-            _mod_mode := core#MOD_CLASSICPWM
-        other:
-            return _mod_mode
-
-    powered(FALSE)                              ' cycle power
-    powered(TRUE)                               '   to effect changes
-  
-    writereg(_mod_mode)
+PUB modulation_mode{}: curr_mode
+' Get current output filter mode (cached)
+    return _mod_mode
 
 PUB mute{}
 ' Set 0 Volume
-    volume(0)
+    set_volume(0)
 
-PUB powered(state): curr_state
+PUB is_powered{}: curr_state
+' Get current powered state
+    return outa[_shdn]
+
+PUB powered(state)
 ' Power on or off
 '   Valid values:
 '       FALSE (0): Power off
-'       TRUE (-1 or 1): Power on
-'   Any other value returns the current setting
-    case ||(state)
-        0:
-            outa[_shdn] := 0
-            dira[_shdn] := 1
-        1:
-            outa[_shdn] := 1
-            dira[_shdn] := 1
-            volume(_vol_level)
-        other:
-            return outa[_shdn]
+'       TRUE (non-zero): Power on
+    if (state)
+        outa[_shdn] := 1
+        dira[_shdn] := 1
+        set_volume(_vol_level)
+    else
+        outa[_shdn] := 0
+        dira[_shdn] := 1
 
-PUB voldown{}
+PUB set_modulation(mode)
+' Set modulation/output filter mode
+'   NONE (0): Filterless
+'   PWM (1): Classic PWM
+    if (mode == NONE)
+        _mod_mode := core#MOD_FILTERLESS        ' filterless modulation
+    elseif (mode == PWM)
+        _mod_mode := core#MOD_CLASSICPWM        ' classic PWM
+
+    powered(FALSE)                              ' cycle power to effect changes
+    powered(TRUE)
+
+    writereg(_mod_mode)
+
+PUB set_volume(level)
+' Set Volume to a specific level
+'   Valid values: 0..63
+    _vol_level := 0 #> level <# 63
+    writereg(_vol_level)
+
+PUB vol_down{}
 ' Decrease volume level
     writereg(core#CMD_VOL_DN)
 
-PUB volume(level): curr_lvl
-' Set Volume to a specific level
-'   Valid values: 0..63
-'   Any other value returns the current setting
-    case level
-        0..63:
-            _vol_level := level
-        other:
-            return _vol_level
-
-    writereg(_vol_level)
-
-PUB volup{}
+PUB vol_up{}
 ' Increase volume level
     writereg(core#CMD_VOL_UP)
+
+PUB volume{}: curr_lvl
+' Get current volume level (cached)
+    return _vol_level
 
 PRI writereg(reg_nr) | cmd_pkt
 ' Write register/command to device

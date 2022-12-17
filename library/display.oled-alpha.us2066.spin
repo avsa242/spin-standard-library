@@ -2,10 +2,10 @@
     --------------------------------------------
     Filename: display.oled.us2066.spin
     Author: Jesse Burt
-    Description: I2C driver for US2066-based OLED alphanumeric displays
+    Description: Driver for US2066-based OLED alphanumeric displays
     Copyright (c) 2022
     Created Dec 30, 2017
-    Updated Nov 5, 2022
+    Updated Dec 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -241,7 +241,7 @@ PUB clk_freq(freq)
 '   Valid values:
 '       454..556 (clamped to range; see table below; POR: 501)
     _freq := ((0 #> lookdown(freq: 454, 460, 467, 474, 481, 488, 494, 501, 508, 515, 522, 528, {
-}   535, 542, 549, 556) <# 15) << core#OSC_FREQ)
+}                                  535, 542, 549, 556) <# 15) << core#OSC_FREQ)
 
     writereg(1, CMDSET_OLED, core#DISP_CLKDIV_OSC, _freq | _clkdiv)
 
@@ -424,7 +424,7 @@ PUB dbl_height(mode)
 PUB fnt_width(sz)
 ' Set Font width, in pixels
 '   Valid values: 5 or 6 (clamped to range; POR: 5)
-    _fnt_wid := sz := ((0 #> sz <# 1) << core#FNTWIDTH)
+    _fnt_wid := sz := ((0 #> (sz-5) <# 1) << core#FNTWIDTH)
     writereg(1, CMDSET_EXTD, core#EXTD_FUNCSET | (_fnt_wid | _curs_invert | _disp_lines_nw), 0)
 
 PUB get_pos{}: addr
@@ -461,14 +461,14 @@ PUB invert_colors(state)
 PUB mirror_h(state)
 ' Mirror display, horizontally
 '   Valid values: TRUE (non-zero), FALSE (0)
-    _mirror_h := state := ((state <> 0) & 1)
-    writereg(1, CMDSET_EXTD, core#ENTRY_MODE_SET | (_mirror_h | _mirror_v), 0)
+    _mirror_h := ((state <> 0) & 1)
+    writereg(1, CMDSET_EXTD, core.ENTRY_MODE_SET | (_mirror_h | _mirror_v), 0)
 
 PUB mirror_v(state)
 ' Mirror display, vertically
 '   Valid values: TRUE (non-zero), FALSE (0)
-    _mirror_h := state := (((state <> 0) & 1) << 1)
-    writereg(1, CMDSET_EXTD, core#ENTRY_MODE_SET | (_mirror_h | _mirror_v), 0)
+    _mirror_v := ((( (state <> 0) & 1) ^ 1) << 1)
+    writereg(1, CMDSET_EXTD, core.ENTRY_MODE_SET | (_mirror_h | _mirror_v), 0)
 
 PUB pin_cfg(cfg)
 ' Change mapping between display data column address and segment driver.

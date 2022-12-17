@@ -5,7 +5,7 @@
     Description: Driver for the PCF8563 Real Time Clock
     Copyright (c) 2022
     Started Sep 6, 2020
-    Updated Sep 22, 2022
+    Updated Nov 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -58,8 +58,7 @@ PUB start{}: status
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom I/O pins and bus speed
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
+    if (lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and I2C_HZ =< core#I2C_MAX_FREQ)
         if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
             time.msleep(1)
             if (i2c.present(SLAVE_WR))          ' test device bus presence
@@ -138,7 +137,7 @@ PUB int_mask(mask): curr_mask
     case mask
         %00..%11:
         other:
-            return curr_mask & core#IE_BITS
+            return (curr_mask & core#IE_BITS)
 
     mask := ((curr_mask & core#IE_MASK) | mask)
     writereg(core#CTRLSTAT2, 1, @mask)
@@ -146,13 +145,13 @@ PUB int_mask(mask): curr_mask
 PUB int_pin_state(state): curr_state
 ' Set interrupt pin active state
 '   WHEN_TF_ACTIVE (0): /INT is active when timer interrupt asserted
-'   INT_PULSES (1): /INT pulses at rate set by TimerClockFreq()
+'   INT_PULSES (1): /INT pulses at rate set by timer_clk_freq()
     curr_state := 0
     readreg(core#CTRLSTAT2, 1, @curr_state)
     case state
         WHEN_TF_ACTIVE, INT_PULSES:
         other:
-            return (curr_state >> core#TI_TP) & 1
+            return ((curr_state >> core#TI_TP) & 1)
 
     state := ((curr_state & core#TI_TP_MASK) | state)
     writereg(core#CTRLSTAT2, 1, @state)
@@ -262,26 +261,21 @@ PUB set_year(y)
         other:
             return
 
-PUB timer(val): curr_val
+VAR byte _timer
+PUB set_timer(val): curr_val
 ' Set countdown timer value
-'   Valid values: 0..255
-'   Any other value polls the chip and returns the current setting
-'   NOTE: The countdown period in seconds is equal to
-'       timer() / timer_clk_freq()
-'       e.g., if timer() is set to 255, and timer_clk_freq() is set to 1,
+'   Valid values: 0..255 (clamped to range)
+'   NOTE: The countdown period in seconds is equal to timer() / timer_clk_freq()
+'       e.g., if set_timer() is set to 255, and timer_clk_freq() is set to 1,
 '       the period is 255 seconds
-    case val
-        0..255:
-            writereg(core#TIMER, 1, @val)
-        other:
-            repeat 2                                    ' Datasheet recommends
-                curr_val := 0                           ' 2 reads to check for
-                readreg(core#TIMER, 1, @curr_val.byte[0]) ' consistent results
-                readreg(core#TIMER, 1, @curr_val.byte[1]) '
-                if (curr_val.byte[0] == curr_val.byte[1])
-                    curr_val.byte[1] := 0
-                    quit
-            return curr_val & core#TIMER_MASK
+    _timer := val := (0 #> val <# 255)
+    writereg(core#TIMER, 1, @val)
+
+PUB timer{}: t
+' Get currently set value of countdown timer (cached)
+'   NOTE: This returns the value set by set_timer(). For the current remaining time,
+'       use timer_remaining()
+    return _timer
 
 PUB timer_clk_freq(freq): curr_freq
 ' Set timer source clock frequency, in Hz
@@ -300,7 +294,7 @@ PUB timer_clk_freq(freq): curr_freq
     freq := ((curr_freq & core#TD_MASK) | freq)
     writereg(core#CTRL_TIMER, 1, @freq)
 
-PUB timer_enabled(state): curr_state
+PUB timer_ena(state): curr_state
 ' Enable timer
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -310,13 +304,27 @@ PUB timer_enabled(state): curr_state
         0, 1:
             state := ||(state) << core#TE
         other:
-            return ((curr_state >> core#TE) & 1) == 1
+            return (((curr_state >> core#TE) & 1) == 1)
 
     if (state == 0)                             ' If disabling the timer,
         timer_clk_freq(1_60)                    ' set freq to 1/60Hz for
                                                 ' lowest power usage
     state := ((curr_state & core#TE_MASK) | state)
     writereg(core#CTRL_TIMER, 1, @state)
+
+PUB timer_remaining{}: t | tmp[2]
+' Get current value of countdown timer
+    { NXP recommends reading the current countdown value twice and checking for consistent results
+        We'll try this two times, and skip the second try if the values were good the first time }
+'   Returns: current timer value, or 0 on failure
+    repeat 2
+        t := tmp := 0
+        readreg(core#TIMER, 1, @tmp[0])
+        readreg(core#TIMER, 1, @tmp[1])
+        if (tmp[0] == tmp[1])                   ' reads matched; return
+            t := tmp[0]
+            quit
+    return
 
 PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 ' Read nr_bytes from device into ptr_buff

@@ -6,7 +6,7 @@
         * 3DoF data output
     Copyright (c) 2022
     Started Jul 7, 2021
-    Updated Nov 5, 2022
+    Updated Nov 19, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -54,6 +54,8 @@ PUB setup{}
     repeat
         ser.pos_xy(0, 3)
         show_gyro_data{}
+        if (ser.rx_check{} == "c")
+            cal_gyro{}
 
 #include "gyrodemo.common.spinh"                 ' code common to all IMU demos
 

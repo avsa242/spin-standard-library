@@ -99,8 +99,8 @@ PUB null{}
 
 PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, RESET_PIN): status
 ' Start using custom I/O settings
-    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) {
-}   and lookdown(MISO_PIN: 0..31)
+    if (lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) {
+}      and lookdown(MISO_PIN: 0..31))
         if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
             time.usleep(core#T_POR)
             _CS := CS_PIN

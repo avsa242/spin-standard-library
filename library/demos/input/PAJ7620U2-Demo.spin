@@ -5,7 +5,7 @@
     Description: Demo of the PAJ7620U2 driver
     Copyright (c) 2022
     Started May 21, 2020
-    Updated Oct 16, 2022
+    Updated Nov 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,9 +19,9 @@ CON
     LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    I2C_SCL     = 28
-    I2C_SDA     = 29
-    I2C_HZ      = 400_000
+    SCL_PIN     = 28
+    SDA_PIN     = 29
+    I2C_FREQ    = 400_000
 ' --
 
 OBJ
@@ -34,33 +34,33 @@ OBJ
 PUB main{} | gest, gestct
 
     setup{}
+    gesture.powered(true)
 
     gestct := 0
 
     repeat
-        ser.position(0, 4)
+        ser.pos_xy(0, 4)
         ser.str(string("Gesture: "))
 
-        ' wait for gesture to be recognized
-        repeat until gest := gesture.lastgesture{}
-            time.msleep(1)
+        { wait for gesture to be recognized }
+        repeat until gest := gesture.last_gesture{}
 
-        ser.str(lookup(gest: string("RIGHT"), string("LEFT"), string("UP"),{
-}       string("DOWN"), string("FORWARD"), string("BACKWARD"),{
-}       string("CLOCKWISE"), string("COUNTER-CLOCKWISE"), string("WAVE")))
-        ser.clearline{}
+        ser.str(lookup(gest: string("RIGHT"), string("LEFT"), string("UP"), string("DOWN"), {
+}                            string("FORWARD"), string("BACKWARD"), string("CLOCKWISE"), {
+}                            string("COUNTER-CLOCKWISE"), string("WAVE")))
+        ser.clear_line{}
         gestct++
         ser.newline{}
         ser.printf1(string("(%d total gestures recognized)"), gestct)
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if gesture.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+    if gesture.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
         ser.strln(string("PAJ7620U2 driver started"))
     else
         ser.strln(string("PAJ7620U2 driver failed to start - halting"))

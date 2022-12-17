@@ -6,7 +6,7 @@
         Threshold interrupt functionality
     Copyright (c) 2022
     Started: Jan 6, 2022
-    Updated: Nov 9, 2022
+    Updated: Dec 2, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -56,10 +56,10 @@ PUB main{}
     rgb.int_set_hi_thresh(15)                   ' (low, high): 0..65535
     rgb.int_duration(10)                        ' 0..3, 5..60 (in steps of 5)
     ' Wait for the sensor to read less than the low threshold or greater than
-    '   the high threshold. int_duration() sets the umber of measurement cycles
+    '   the high threshold. int_duration() sets the number of measurement cycles
     '   the readings must be outside of the thresholds in order to assert an
     '   interrupt (to reduce false positives)
-    ' NOTE: The interrupt applies only to the _clear_ color channel
+    ' NOTE: The interrupt applies only to the _white_ color channel
     ' NOTE: The interrupt is active low, and open drain, so requires a pullup
     '   resistor
     repeat
@@ -72,10 +72,10 @@ PUB main{}
             ser.clear_line{}
 
         ser.pos_xy(0, 3)
-        ser.printf1(string("White: %x\n"), rgb.white_data{})
-        ser.printf1(string("Red:   %x\n"), rgb.red_data{})
-        ser.printf1(string("Green: %x\n"), rgb.green_data{})
-        ser.printf1(string("Blue:  %x\n"), rgb.blue_data{})
+        ser.printf1(string("White: %4.4x\n\r"), rgb.white_data{})
+        ser.printf1(string("Red:   %4.4x\n\r"), rgb.red_data{})
+        ser.printf1(string("Green: %4.4x\n\r"), rgb.green_data{})
+        ser.printf1(string("Blue:  %4.4x\n\r"), rgb.blue_data{})
 
 PRI isr{}
 ' Interrupt service routine

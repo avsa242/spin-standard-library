@@ -5,7 +5,7 @@
     Description: Simple receive demo of the SX1231 driver (P2 version)
     Copyright (c) 2022
     Started Dec 15, 2020
-    Updated Oct 16, 2022
+    Updated Nov 13, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -40,7 +40,7 @@ VAR
 PUB main{} | sw[2], payld_len
 
     setup{}
-    ser.position(0, 3)
+    ser.pos_xy(0, 3)
     ser.strln(string("Receive mode"))
     sx1231.preset_rx4k8{}                       ' 4800bps, use Automodes to
                                                 ' handle transition between
@@ -51,10 +51,8 @@ PUB main{} | sw[2], payld_len
     sx1231.payld_len(8)                         ' test packet size
     payld_len := sx1231.payld_len(-2)           ' read back from radio
     sx1231.fifo_thresh(payld_len-1)             ' trigger int at payld len-1
-    sw[0] := $E7E7E7E7                          ' sync word bytes
-    sw[1] := $E7E7E7E7
-    sx1231.syncwd_len(8)                     ' 1..8
-    sx1231.syncwd(sx1231#SW_WRITE, @sw)
+    sx1231.syncwd_len(8)                        ' syncword bytes 1..8 (set syncword accordingly)
+    sx1231.set_syncwd(string($E7, $E7, $E7, $E7, $E7, $E7, $E7, $E7))
 ' --
 
 ' -- RX-specific settings
@@ -63,7 +61,7 @@ PUB main{} | sw[2], payld_len
     ' change these if having difficulty with reception
     sx1231.lna_gain(0)                          ' -6, -12, -24, -26, -48 dB
                                                 ' or LNA_AGC (0), LNA_HIGH (1)
-    sx1231.rssi_int_thresh(-80)                 ' set rcvd signal level thresh
+    sx1231.rssi_int_thresh(-80)                 ' set rcvd signal level threshold
                                                 '   considered a valid signal
                                                 ' -127..0 (dBm)
 ' --
@@ -72,10 +70,10 @@ PUB main{} | sw[2], payld_len
         bytefill(@_buffer, 0, 256)              ' clear local RX buffer
         ' if the FIFO fill level reaches the set threshold,
         '   read the payload in from the radio
-        if sx1231.interrupt{} & sx1231#INT_FIFO_THR
+        if (sx1231.interrupt{} & sx1231#INT_FIFO_THR)
             sx1231.rx_payld(payld_len, @_buffer)
         ' display the received payload on the terminal
-        ser.position(0, 5)
+        ser.pos_xy(0, 5)
         ser.hexdump(@_buffer, 0, 4, payld_len, 16 <# payld_len)
         repeat until (sx1231.opmode(-2) == sx1231#OPMODE_SLEEP)
 

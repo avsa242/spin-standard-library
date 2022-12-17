@@ -89,9 +89,9 @@ OBJ
 
 { decide: Bytecode SPI engine, or PASM? Default is PASM if BC isn't specified }
 #ifdef IL3820_SPI_BC
-    spi : "com.spi.25khz.nocog"                       ' BC SPI engine
+    spi : "com.spi.25khz.nocog"                 ' BC SPI engine
 #else
-    spi : "com.spi.1mhz"                          ' PASM SPI engine
+    spi : "com.spi.1mhz"                        ' PASM SPI engine
 #endif
     core: "core.con.il3820"
     time: "time"

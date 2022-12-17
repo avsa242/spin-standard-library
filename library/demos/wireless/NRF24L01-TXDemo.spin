@@ -5,7 +5,7 @@
     Description: nRF24L01+ Transmit demo
     Copyright (c) 2022
     Started Nov 23, 2019
-    Updated Nov 13, 2022
+    Updated Nov 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -79,7 +79,7 @@ PUB main{} | payld_cnt, max_retrans, pkts_retrans, lost_pkts
 
     repeat
         { payload to transmit }
-        str.sprintf1(@_payload, @"TEST%04.4d", payld_cnt++)
+        str.sprintf1(@_payload, string("TEST%04.4d"), payld_cnt++)
 
         { collect and display some packet statistics }
         max_retrans := nrf24.max_retrans_reached{}
@@ -87,14 +87,14 @@ PUB main{} | payld_cnt, max_retrans, pkts_retrans, lost_pkts
         lost_pkts := nrf24.lost_pkts{}
         ser.pos_xy(0, 2)
         ser.str(string("Max retransmissions reached? "))
-        ser.strln(lookupz(||(max_retrans): @"No ", @"Yes"))
+        ser.strln(lookupz(||(max_retrans): string("No "), string("Yes")))
         ser.printf1(string("Packets retransmitted: %2.2d\n\r"), pkts_retrans)
         ser.printf1(string("Lost packets: %2.2d\n\r"), lost_pkts)
 
         { display payload and transmit it }
         ser.pos_xy(0, 6)
         ser.printf5(string("Transmitting packet (to %02.2x:%02.2x:%02.2x:%02.2x:%02.2x)\n\r"), {
-}       _syncwd[4], _syncwd[3], _syncwd[2], _syncwd[1], _syncwd[0])
+}                          _syncwd[4], _syncwd[3], _syncwd[2], _syncwd[1], _syncwd[0])
         ser.hexdump(@_payload, 0, 4, _payld_len, 16 <# _payld_len)
         nrf24.tx_payld(_payld_len, @_payload)
 

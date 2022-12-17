@@ -6,7 +6,7 @@
         Proximity sensor interrupt functionality
     Copyright (c) 2022
     Started Feb 10, 2021
-    Updated Oct 16, 2022
+    Updated Dec 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -25,6 +25,14 @@ CON
     INT_PIN     = 24
 ' --
 
+    { IMPORTANT NOTE:
+        Ensure you power the VCNL4200's IR LED from a high current 5V source (>800mA); powering it
+        via some boards' 5V outputs (e.g., from a Parallax FLiP's USB5V when connected to a PC USB
+        port) isn't recommended. The high current draw can cause strange serial behavior and failure
+        to load code to the Propeller.
+
+        On the MikroE Click board (Parallax #64211), this is the 5V pin. }
+
     DAT_COL     = 20
 
 OBJ
@@ -42,27 +50,31 @@ PUB main{}
 
     setup{}
 
-    vcnl.preset_prox_long_range{}               ' set to prox. sensor
-                                                ' operating mode
+    vcnl.preset_prox_long_range{}               ' set to proximity sensor mode
 
-    vcnl.int_clear{}                              ' ensure ints are cleared
-    vcnl.prox_set_int_lo_thresh(100)            ' set low and high thresholds
-    vcnl.prox_set_int_hi_thresh(200)
-    vcnl.prox_int_mask(vcnl#INT_NEAR)           ' INT_NEAR, INT_FAR
-
-    ser.position(0, 3)
-    ser.printf2(string("Thresh  low: %d high: %d"), vcnl.prox_int_lo_thresh{}, vcnl.prox_int_hi_thresh{})
+    { clear interrupts, and set low and high thresholds }
+    vcnl.int_clear{}
+    vcnl.prox_int_set_lo_thresh(100)
+    vcnl.prox_int_set_hi_thresh(200)
+    { interrupt mask:
+        INT_NEAR: trigger when proximity < prox_int_set_lo_thresh()
+        INT_FAR: trigger when proximity > prox_int_set_hi_thresh()
+    }
+    vcnl.prox_int_mask(vcnl#INT_NEAR)
+    ser.pos_xy(0, 3)
+    ser.printf2(string("Thresh  low: %d high: %d"), vcnl.prox_int_lo_thresh{}, {
+}                                                   vcnl.prox_int_hi_thresh{})
 
     repeat
-        ser.position(0, 5)
+        ser.pos_xy(0, 5)
         ser.str(string("Proximity ADC: "))
-        ser.position(DAT_COL, 5)
+        ser.pos_xy(DAT_COL, 5)
         ser.dec(vcnl.prox_data{})
         if (_interrupt)
             ser.str(string("   INTERRUPT (press c to clear)"))
 
-        ser.clearline{}
-        if (ser.rxcheck{} == "c")
+        ser.clear_line{}
+        if (ser.rx_check{} == "c")
             vcnl.int_clear{}
 
 PUB cog_isr{}

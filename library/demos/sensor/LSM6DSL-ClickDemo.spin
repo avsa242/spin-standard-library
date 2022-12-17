@@ -3,10 +3,10 @@
     Filename: LSM6DSL-ClickDemo.spin
     Author: Jesse Burt
     Description: Demo of the LSM6DSL driver
-        click-detection functionality
+        * click-detection functionality
     Copyright (c) 2022
     Started Mar 7, 2021
-    Updated Nov 8, 2022
+    Updated Nov 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -57,12 +57,12 @@ PUB main{} | click_src, int_act, dclicked, sclicked, z_clicked, y_clicked, x_cli
         y_clicked := ((click_src >> 1) & 1)
         x_clicked := (click_src & 2)
         ser.pos_xy(0, 3)
-        ser.printf1(string("Click interrupt: %s (%d)\n"), yesno(int_act))
-        ser.printf1(string("Double-clicked:  %s (%d)\n"), yesno(dclicked))
-        ser.printf1(string("Single-clicked:  %s (%d)\n"), yesno(sclicked))
-        ser.printf1(string("Z-axis clicked:  %s\n"), yesno(z_clicked))
-        ser.printf1(string("Y-axis clicked:  %s\n"), yesno(y_clicked))
-        ser.printf1(string("X-axis clicked:  %s\n"), yesno(x_clicked))
+        ser.printf1(string("Click interrupt: %s\n\r"), yesno(int_act))
+        ser.printf1(string("Double-clicked:  %s\n\r"), yesno(dclicked))
+        ser.printf1(string("Single-clicked:  %s\n\r"), yesno(sclicked))
+        ser.printf1(string("Z-axis clicked:  %s\n\r"), yesno(z_clicked))
+        ser.printf1(string("Y-axis clicked:  %s\n\r"), yesno(y_clicked))
+        ser.printf1(string("X-axis clicked:  %s\n\r"), yesno(x_clicked))
 
     ser.show_cursor{}                            ' restore terminal cursor
     repeat

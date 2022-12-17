@@ -73,7 +73,7 @@ PUB main{} | intsource, temp
             ser.pos_xy(0, 5)
             ser.strln(string("Sensor in free-fall!"))
             ser.str(string("Press any key to reset"))
-            ser.getchar{}
+            ser.getchar{}                       ' wait for keypress
             ser.pos_x(0)
             ser.clear_line{}
             ser.pos_xy(0, 5)

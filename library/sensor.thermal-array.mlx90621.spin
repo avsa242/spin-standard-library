@@ -5,7 +5,7 @@
     Description: Driver for the Melexis MLX90621 16x4 IR array
     Copyright (c) 2022
     Started: Jan 4, 2018
-    Updated: Nov 12, 2022
+    Updated: Nov 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -227,6 +227,25 @@ PUB eeprom_ena(state): curr_state
     state := ((curr_state & core#EEPROMENA_MASK) | state)
     writereg(core#CONFIG, state)
 
+PUB refresh_rate = frame_rate
+PUB frame_rate(rate): curr_rate
+' Set sensor refresh rate
+'   Valid values are 0, for 0.5Hz, or 1 to 512 in powers of 2 (default: 1)
+'   Any other value polls the chip and returns the current setting
+'   NOTE: Higher rates will yield noisier images
+    readreg(core#CONFIG, 2, 0, @curr_rate)
+    case rate
+        512, 256, 128, 64, 32, 16, 8, 4, 2, 1, 0:
+            rate := lookdownz(rate: 512, 512, 512, 512, 512, 512, 256, 128, 64, 32, 16, 8, 4, 2, {
+}                                   1, 0)
+        other:
+            curr_rate &= core#REFRATE_BITS
+            return lookupz(curr_rate: 512, 512, 512, 512, 512, 512, 256, 128, 64, 32, 16, 8, 4, {
+}                                     2, 1, 0)
+
+    rate := ((curr_rate & core#REFRATE_MASK) | rate) & core#CONFIG_MASK
+    writereg(core#CONFIG, rate)
+
 PUB get_column(ptr_buff, col) | tmpframe[2], tmp, offs, line
 ' Read a single column of pixels from the sensor into ptr_buff
 '   NOTE This buffer must be at least 4 longs
@@ -397,24 +416,6 @@ PUB rd_eeprom(ptr_buff): status | ackbit, tries
     if (ptr_buff)
         bytemove(ptr_buff, @_ee_data, EE_SIZE)
     return TRUE
-
-PUB refresh_rate(rate): curr_rate
-' Set sensor refresh rate
-'   Valid values are 0, for 0.5Hz, or 1 to 512 in powers of 2 (default: 1)
-'   Any other value polls the chip and returns the current setting
-'   NOTE: Higher rates will yield noisier images
-    readreg(core#CONFIG, 2, 0, @curr_rate)
-    case rate
-        512, 256, 128, 64, 32, 16, 8, 4, 2, 1, 0:
-            rate := lookdownz(rate: 512, 512, 512, 512, 512, 512, 256, 128,{
-}           64, 32, 16, 8, 4, 2, 1, 0)
-        other:
-            curr_rate &= core#REFRATE_BITS
-            return lookupz(curr_rate: 512, 512, 512, 512, 512, 512, 256, 128,{
-}           64, 32, 16, 8, 4, 2, 1, 0)
-
-    rate := ((curr_rate & core#REFRATE_MASK) | rate) & core#CONFIG_MASK
-    writereg(core#CONFIG, rate)
 
 PUB temp_adc_res(bits): curr_res
 ' Set ADC resolution, in bits

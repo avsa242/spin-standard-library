@@ -5,7 +5,7 @@
     Description: Demo of the VCNL4200 driver
     Copyright (c) 2022
     Started Feb 07, 2021
-    Updated Oct 16, 2022
+    Updated Dec 3, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -36,13 +36,12 @@ PUB main{} | lux
 
     setup{}
 
-    vcnl.preset_als_prox{}                      ' set to combined ALS and prox.
-                                                ' sensor operating mode
+    vcnl.preset_als_prox{}                      ' set to combined ALS and proximity mode
 
     repeat
         lux := vcnl.lux{}
-        ser.position(0, 3)
-        ser.printf2(string("Lux: %d.%03.3x\n\r"), (lux / 1000), (lux // 1000))
+        ser.pos_xy(0, 3)
+        ser.printf2(string("Lux: %d.%03.3d     \n\r"), (lux / 1000), (lux // 1000))
         ser.printf1(string("White ADC: %04.4x\n\r"), vcnl.white_data{})
         ser.printf1(string("Proximity ADC: %04.4x\n\r"), vcnl.prox_data{})
 

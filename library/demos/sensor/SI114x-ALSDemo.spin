@@ -6,7 +6,7 @@
         Ambient light sensing data
     Copyright (c) 2022
     Started Jul 5, 2022
-    Updated Oct 16, 2022
+    Updated Nov 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,9 +20,9 @@ CON
     SER_BAUD    = 115_200
     LED         = cfg#LED1
 
-    I2C_SCL     = 28
-    I2C_SDA     = 29
-    I2C_HZ      = 1_000_000                     ' max is 3_400_000
+    SCL_PIN     = 28
+    SDA_PIN     = 29
+    I2C_FREQ    = 1_000_000                     ' max is 3_400_000
 ' --
 
 OBJ
@@ -38,7 +38,7 @@ PUB main{}
 
     si.preset_als{}
     repeat
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         ser.printf1(string("IR data: %04.4x\n\r"), si.ir_data{})
         ser.printf1(string("White data: %04.4x"), si.white_data{})
 
@@ -49,7 +49,7 @@ PUB setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if si.startx(I2C_SCL, I2C_SDA, I2C_HZ)
+    if si.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
         ser.strln(string("SI114x driver started"))
     else
         ser.strln(string("SI114x driver failed to start - halting"))

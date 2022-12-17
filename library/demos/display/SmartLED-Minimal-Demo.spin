@@ -14,7 +14,7 @@ CON
     _clkmode    = xtal1 + pll16x                ' _must_ be 80MHz
     _xinfreq    = 5_000_000
 
-    SMLED_PIN   = 15
+    SMLED_PIN   = 0
     MODEL       = led#WS2812
     ' WS2811, WS2812, WS2812B, WS2813, SK6812_24, SK6812_32 (RGBW), TM1803
 

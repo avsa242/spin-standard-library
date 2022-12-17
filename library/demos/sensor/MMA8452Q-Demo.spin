@@ -6,7 +6,7 @@
         * 3DoF data output
     Copyright (c) 2022
     Started Aug 12, 2017
-    Updated Nov 5, 2022
+    Updated Nov 26, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -27,7 +27,7 @@ CON
     SCL_PIN     = 28
     SDA_PIN     = 29
     I2C_FREQ    = 400_000                       ' max is 400_000
-    ADDR_BITS   = 1                             ' 0, 1
+    ADDR_BITS   = 0                             ' 0, 1
 ' --
 
 OBJ
@@ -59,6 +59,8 @@ PUB setup{}
     repeat
         ser.pos_xy(0, 3)
         show_accel_data{}
+        if (ser.rx_check{} == "c")
+            cal_accel{}
 
 #include "acceldemo.common.spinh"                 ' code common to all IMU demos
 
