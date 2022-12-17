@@ -54,6 +54,7 @@ bytecode-based engine that while much slower, doesn't use another cog.
 methods, in order to reduce memory usage.
 
 7. Some drivers also provide the following methods:
+
 | Method          | Description                                      | Param    | Returns         |
 | --------------- | ------------------------------------------------ | -------- | --------------- |
 | `reset()`       | Perform a hard or soft-reset of the device       | n/a      | n/a             |
