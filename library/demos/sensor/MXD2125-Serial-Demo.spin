@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Serial terminal demo of the
         MXD2125 driver
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Sep 8, 2020
-    Updated Apr 29, 2021
+    Updated Dec 23, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -35,63 +35,34 @@ OBJ
 
     cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
-    int     : "string.integer"
     accel   : "sensor.accel.2dof.mxd2125"
     time    : "time"
 
-PUB Main{} | ax, ay, az
+PUB main{} | ax, ay, az
 
     setup{}
 
     repeat
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
 
-        repeat until accel.acceldataready{}
-        accel.accelg(@ax, @ay, @az)
+        repeat until accel.accel_data_rdy{}
+        accel.accel_g(@ax, @ay, @az)
         ser.str(string("Accel g: "))
-        ser.positionx(DAT_X_COL)
-        decimal(ax, 1000)                        ' data is in micro-g's; display
-        ser.positionx(DAT_Y_COL)                    ' it as if it were a float
-        decimal(ay, 1000)
-        ser.positionx(DAT_Z_COL)
-        decimal(az, 1000)
-        ser.clearline{}
+        ser.pos_x(DAT_X_COL)
+        ser.printf6(string("%3.3d.%04.4d   %3.3d.%04.4d   %3.3d.%04.4d"), (ax/1000), ||(ax//1000),{
+                                                                        } (ay/1000), ||(ay//1000),{
+                                                                        } (az/1000), ||(az//1000))
+        ser.clear_line{}
         ser.newline{}
 
-PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign
-' Display a scaled up number as a decimal
-'   Scale it back down by divisor (e.g., 10, 100, 1000, etc)
-    whole := scaled / divisor
-    tmp := divisor
-    places := 0
-    part := 0
-    sign := 0
-    if scaled < 0
-        sign := "-"
-    else
-        sign := " "
-
-    repeat
-        tmp /= 10
-        places++
-    until tmp == 1
-    scaled //= divisor
-    part := int.deczeroed(||(scaled), places)
-
-    ser.char(sign)
-    ser.dec(||(whole))
-    ser.char(".")
-    ser.str(part)
-    ser.chars(" ", 5)
-
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    accel.start(MXD_XPIN, MXD_YPIN)
+    accel.startx(MXD_XPIN, MXD_YPIN)
     ser.strln(string("MXD2125 driver started"))
 
 {{
@@ -104,22 +75,18 @@ PUB Setup{}
 }}
 
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }

@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Graphical demo of the Memsic MXD2125 driver
     Started 2009
-    Updated Nov 2, 2022
+    Updated Dec 23, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -82,7 +82,7 @@ PUB Start{} | i, dx, dy, d, e, f, fdeg, offset, bar, dx1, dy1, dx2, dy2, cordlen
         d := mxd2125.theta{}                            ' Get raw 32-bit deg
         d := d >> 19                                    ' 32-bit angle > 13-Bit
 
-        mxd2125.acceltilt(@fdeg, @e, 0)
+        mxd2125.accel_tilt(@fdeg, @e, 0)
         f := 180 - fdeg                                 ' Get xTilt Deg
         f := (f * 1024) / 45                            ' Deg to 13-Bit Angle
         e := 180 - e                                    ' Get yTilt Deg
@@ -212,7 +212,7 @@ PUB Setup{} | i, dx, dy, clk_scale
     gr.start
     gr.setup(16, 12, 128, 96, BITMAP_BASE)
 
-    mxd2125.start(MXD_XPIN, MXD_YPIN)                   ' Initialize Mx2125
+    mxd2125.startx(MXD_XPIN, MXD_YPIN)                   ' Initialize Mx2125
 
     clk_scale := clkfreq / 500_000                      ' based on system clock
 

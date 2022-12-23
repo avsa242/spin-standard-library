@@ -1,33 +1,17 @@
 {
     --------------------------------------------
-    Filename: sensor.accel.2dof.mxd2125.pwm.spin
+    Filename: sensor.accel.2dof.mxd2125.spin
     Author: Jesse Burt
     Description: Driver for the Memsic MXD2125
         2DoF accelerometer (PWM)
-        (based on driver originally by Beau Schwabe)
     Started 2006
-    Updated Sep 8, 2020
+    Updated Dec 23, 2022
     See end of file for terms of use.
     --------------------------------------------
-}
 
-{{
-*****************************************
-* Memsic 2125 Driver v1.2               *
-* Author: Beau Schwabe                  *
-* Copyright (c) 2006 - 2009 Parallax    *
-* See end of file for terms of use.     *
-*****************************************
+    NOTE: This is based on Memsic2125_v1.2.spin,
+    originally by Beau Schwabe
 
-
-History:
-
-Version 1.0 - (07-31-2006) original release
-Version 1.1 - (08-17-2008) modified code to return RAW x and y values
-Version 1.2 - (12-18-2009) Added X and Y Tilt values
-
-}}
-{
          ┌──────────┐
 Tout ──│1  6│── VDD
          │  ┌────┐  │
@@ -63,10 +47,10 @@ OBJ
     ctrs    : "core.con.counters"                   ' Counter setup constants
     time    : "time"
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Start(MXD_XPIN, MXD_YPIN): okay
+PUB startx(MXD_XPIN, MXD_YPIN): status
 ' Start driver - starts a cog
 ' returns false if no cog available
     stop{}
@@ -75,72 +59,54 @@ PUB Start(MXD_XPIN, MXD_YPIN): okay
     ctra_value := ctrs#LOGIC_A + MXD_XPIN
     ctrb_value := ctrs#LOGIC_A + MXD_YPIN
     mask_value := (|< MXD_XPIN) + (|< MXD_YPIN)
-    okay := _cog := cognew(@entry, @_cal_flag) + 1
-    calibrateaccel{}
+    status := _cog := (cognew(@entry, @_cal_flag) + 1)
+    calibrate_accel{}
     time.msleep(100)
 
-PUB Stop{}
+PUB stop{}
 ' Stop driver - frees a cog
-    if _cog
+    if (_cog)
        cogstop(_cog~ - 1)
     longfill(@_cal_flag, 0, 3)
 
-PUB AccelADCRes(bits)
-' dummy method
-
-PUB AccelAxisEnabled(xyz_mask)
-' Enable accelerometer axis per bit mask
-'   NOTE: Read-only
-'   Returns: %110 (x = 1, y = 1, z = 0)
-    return %110
-
-PUB AccelBias(x, y, z, rw)
-' dummy method
-
-PUB AccelData(ptr_x, ptr_y, ptr_z)
+PUB accel_data(ptr_x, ptr_y, ptr_z)
 ' Read accelerometer raw data
     long[ptr_x] := _xraw
     long[ptr_y] := _yraw
     long[ptr_z] := 0
 
-PUB AccelDataOverrun{}: flag
-' dummy method
-
-PUB AccelDataRate(Hz): curr_rate
+PUB accel_data_rate(rate): curr_rate
 ' Set Accelerometer output data rate, in Hz
 '   NOTE: Read-only
 '   Returns: 100
     return 100
 
-PUB AccelDataReady{}: flag
+PUB accel_data_rdy{}: flag
 ' Flag indicating new accelerometer data available
 '   Returns: TRUE (-1)
     return true
 
-PUB AccelG(ptr_x, ptr_y, ptr_z)
+PUB accel_g(ptr_x, ptr_y, ptr_z)
 ' Read accelerometer calibrated data (g's)
     long[ptr_x] := _ro / (clkfreq / 500_000) 'XXX separate measurements?
     long[ptr_y] := _ro / (clkfreq / 500_000) 'XXX
 
-PUB AccelInt{}: flag
-' dummy method
-
-PUB AccelScale(g): curr_setting
+PUB accel_scale(g): curr_setting
 ' Set full-scale range of accelerometer
 '   NOTE: Read-only
 '   Returns: 3
     return 3
 
-PUB AccelTilt(ptr_x, ptr_y, ptr_z)
+PUB accel_tilt(ptr_x, ptr_y, ptr_z)
 ' Read accelerometer tilt
     long[ptr_x] := (_xraw * 90 - _offset) / _scale
     long[ptr_y] := (_yraw * 90 - _offset) / _scale
 
-PUB CalibrateAccel{}
+PUB calibrate_accel{}
 ' Calibrate the accelerometer
     _cal_flag := 1
 
-PUB Theta{}: angle
+PUB theta{}: angle
 
     return _theta
 
@@ -257,22 +223,21 @@ cx                      res     1
 cy                      res     1
 ca                      res     1
 
+DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+
