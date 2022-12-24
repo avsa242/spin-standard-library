@@ -1,18 +1,17 @@
 {
     --------------------------------------------
     Filename: RangeSensor-Serial-Demo.spin
-    Description: Demo of the ultrasonic/laser
-        range sensor driver (serial display)
+    Description: Demo of the ultrasonic/laser range sensor driver (serial display)
         * PING))) Parallax #28015
         * LaserPing Parallax #28041
     Author: Jesse Burt
     Created May 8, 2006
-    Updated Sep 5, 2022
+    Updated Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 
-    NOTE: This is based on Ping_Demo.spin, originally by
-        Chris Savage and Jeff Martin (Copyright 2006 Parallax, inc)
+    NOTE: This is based on Ping_Demo.spin,
+    originally by Chris Savage and Jeff Martin (Copyright 2006 Parallax, inc)
 }
 
 CON
@@ -21,7 +20,7 @@ CON
     _xinfreq    = 5_000_000
 
 ' -- User-modifiable constants
-' Ultrasonic or LaserPing
+    { Ultrasonic or LaserPing I/O pin }
     PING_PIN    = 0
 
     SER_BAUD    = 115_200
@@ -39,7 +38,7 @@ PUB main{} | mm, inches
     ser.strln(string("PING))) Demo"))
     repeat
         inches := ping.inches(PING_PIN)
-        ser.position(0, 1)
+        ser.pos_xy(0, 1)
         ser.printf1(string("Inches: %4.4d.0\n\r"), inches)
 
         mm := ping.millimeters(PING_PIN)

@@ -1,6 +1,6 @@
 {
     --------------------------------------------
-    Filename: motor.brushed.hbridge-pwm.spin
+    Filename: motor.brushed-dc.spin
     Author: Jesse Burt
     Description: PWM control of H-bridge for
         brushed DC-motors

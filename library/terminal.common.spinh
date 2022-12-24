@@ -6,7 +6,7 @@
         standard terminal routines
     Copyright (c) 2022
     Started Dec 14, 2019
-    Updated Oct 22, 2022
+    Updated Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This is based on std_text_routines.spinh,
@@ -42,13 +42,13 @@ PUB bin = putbin
 PUB putbin(val, digits)
 ' Output a binary number (zero-padded)
     stl.itoab(val, @_tmp, stl#IBIN)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB dec = putdec
 PUB putdec(val)
 ' Output a signed decimal number
     stl.itoa(val, @_tmp)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB decuns = putudec
 PUB udec = putudec
@@ -57,7 +57,7 @@ PUB putudec(val, digits)
 '   val: value to print
 '   digits: number of digits to display
     stl.atoib(val, stl#IDEC)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB hex = puthex
 PUB puthex(val, digits)
@@ -65,14 +65,14 @@ PUB puthex(val, digits)
 '   val: value to print
 '   digits: number of digits to display
     stl.itoab(val, @_tmp, stl#IHEX)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB hexs = puthexs
 PUB puthexs(val, digits)
 ' Output a hexadecimal number (zero-padded; small implementation)
 '   val: value to print
 '   digits: number of digits to display
-    str(stl.hexs(val, digits))
+    puts(stl.hexs(val, digits))
 
 #ifndef _HAS_NEWLINE_
 PUB newline{}
@@ -113,67 +113,67 @@ PUB printf(fmt, ptr_args)
 '       -: left-justify (e.g. %-4.8x for left-justified hex with 4..8 digits)
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, ptr_args)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf1(fmt, arg1)
 ' 1-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf2(fmt, arg1, arg2)
 ' 2-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf3(fmt, arg1, arg2, arg3)
 ' 3-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf4(fmt, arg1, arg2, arg3, arg4)
 ' 4-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf5(fmt, arg1, arg2, arg3, arg4, arg5)
 ' 5-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf6(fmt, arg1, arg2, arg3, arg4, arg5, arg6)
 ' 6-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf7(fmt, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 ' 7-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf8(fmt, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 ' 8-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf9(fmt, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 ' 9-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB printf10(fmt, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
 ' 10-arg variant of printf()
     bytefill(@_tmp, 0, TMPBUFF_SZ)
     stl.sprintf(@_tmp, fmt, @arg1)
-    str(@_tmp)
+    puts(@_tmp)
 
 PUB str = puts
 PUB puts(s) | c
@@ -184,7 +184,7 @@ PUB puts(s) | c
 
 PUB strln(s)
 ' Output a string, with a newline appended
-    str(s)
+    puts(s)
     newline{}
 
 PUB wr_bytex(b, bcnt)

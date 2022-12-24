@@ -5,7 +5,7 @@
     Modified by: Jesse Burt
     Description: FAT16/32 filesystem driver
     Started 2008
-    Updated Nov 1, 2022
+    Updated Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -69,24 +69,24 @@ PUB main{}
 PUB dir{} | row
 ' Display a directory listing of the SD card
     row := DIR_ROW
-    ser.position(0, row)
+    ser.pos_xy(0, row)
     ser.strln(string("DIR:"))
     row++
     sdfat.opendir{}
     repeat while 0 == sdfat.nextfile(@_tbuf)
         ser.str(@_tbuf)
-        ser.clearline{}
+        ser.clear_ln{}
         ser.newline{}
         row++
-        if row == DIR_ROW+ROWS-1
+        if (row == DIR_ROW+ROWS-1)
             ser.str(string("Press any key for more"))
-            ser.charin{}
+            ser.getchar{}
             row := DIR_ROW+1
-            ser.position(0, row)
+            ser.pos_xy(0, row)
 
 PUB speedtest{} | count, nr_bytes, start, elapsed, secs, bps, scale
 
-    ser.position(0, SPEEDTEST_ROW)
+    ser.pos_xy(0, SPEEDTEST_ROW)
     ser.strln(string("Speed test"))
 
     scale := 1_000                              ' Bytes per second ends up
@@ -133,15 +133,11 @@ PUB setup{}
         time.msleep(30)
         ser.clear{}
         ser.strln(string("Serial terminal started"))
-    ifnot _sdfat_status := \sdfat.mount(SD_BASEPIN)
+    ifnot (_sdfat_status := \sdfat.mount(SD_BASEPIN))
         ser.strln(string("SD driver started. Card mounted."))
     else
-        ser.str(string("SD driver failed to start - err#"))
-        ser.dec(_sdfat_status)
-        ser.strln(string(", halting"))
+        ser.printf1(string("SD driver failed to start - err# %d, halting\n\r"), _sdfat_status)
         sdfat.unmount{}
-        time.msleep(500)
-        ser.stop{}
         repeat
 
 DAT

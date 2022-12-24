@@ -5,7 +5,7 @@
     Description: Demo of the H-Bridge brushed DC motor
         engine
     Started May 31, 2021
-    Updated Sep 5, 2022
+    Updated Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -38,7 +38,7 @@ OBJ
     cfg     : "boardcfg.flip"
     time    : "time"
     ser     : "com.serial.terminal.ansi"
-    motor   : "motor.brushed.hbridge-pwm"
+    motor   : "motor.brushed-dc"
 
 PUB main{} | duty
 
@@ -59,7 +59,7 @@ PUB main{} | duty
 
 PRI update_motors(duty)
 
-    ser.position(0, 3)
+    ser.pos_xy(0, 3)
     ser.printf2(string("Duty cycle: %d.%d%% "), duty/10, ||(duty//10))
     motor.left_duty(duty)
     motor.right_duty(duty)

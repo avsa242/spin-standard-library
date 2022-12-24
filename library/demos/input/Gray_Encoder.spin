@@ -5,7 +5,7 @@
     Description: Simple demo/test of the
         input.encoder.graycode.spin Gray-code encoder driver
     Started May 18, 2019
-    Updated Apr 26, 2021
+    Updated Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -43,39 +43,38 @@ OBJ
     ser     : "com.serial.terminal.ansi"
     encoder : "input.encoder.graycode"
     time    : "time"
-    io      : "io"
 
 VAR
 
     long _swstack[50]
 
-PUB Main{} | newlevel, oldlevel
+PUB main{} | newlevel, oldlevel
 
     setup{}
     newlevel := encoder.read                    ' Read initial value
     repeat
-        ser.position(0, 3)                      ' Display it
+        ser.pos_xy(0, 3)                      ' Display it
         ser.printf1(string("Encoder: %d"), newlevel)
-        ser.clearline{}
+        ser.clear_ln{}
         oldlevel := newlevel                    ' Setup to detect change
         repeat
             newlevel := encoder.read{}          ' Poll encoder
         until (newlevel <> oldlevel)            '   until it changes
 
-PUB cog_WatchSwitch{}
+PUB cog_watchswitch{}
 ' Watch for I/O pin connected to switch to go low
 '   and light LED if so
-    io.low(SW_LED_PIN)
-    io.output(SW_LED_PIN)
-    io.input(SWITCH_PIN)
+    outa[SW_LED_PIN] := 0
+    dira[SW_LED_PIN] := 1
+    dira[SWITCH_PIN] := 0
 
     repeat
         waitpne(|< SWITCH_PIN, |< SWITCH_PIN, 0)' wait for pin to go low
-        io.high(SW_LED_PIN)                     ' turn on the LED
+        outa[SW_LED_PIN] := 1                   ' turn on the LED
         waitpeq(|< SWITCH_PIN, |< SWITCH_PIN, 0)' wait for pin to go high
-        io.low(SW_LED_PIN)                      ' turn off the LED
+        outa[SW_LED_PIN] := 0                   ' turn off the LED
 
-PUB Setup{}
+PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -86,3 +85,22 @@ PUB Setup{}
     ser.strln(string("Gray-code encoder input driver started"))
 
     cognew(cog_watchswitch{}, @_swstack)
+
+DAT
+{
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
+

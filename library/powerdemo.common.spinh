@@ -4,12 +4,13 @@
     Author: Jesse Burt
     Description: Power sensor demo - code common to all drivers
     Started Jul 31, 2022
-    Updated Oct 11, 2022
+    Updated Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
 CON
 
+    { scaling factors for display }
     VF  = 1000000
     CF  = 1000000
     PF  = 1000000
@@ -17,10 +18,10 @@ CON
 PUB show_power_data{}
 
     ser.printf2(string("Voltage: %d.%06.6dv\n\r"), (sensor.voltage{} / VF), {
-}   (sensor.voltage{} // VF))
+}                                                  (sensor.voltage{} // VF))
 
     ser.printf2(string("Current: %d.%06.6dA\n\r"), (sensor.current{} / CF), {
-}   ||(sensor.current{} // CF))
+}                                                  ||(sensor.current{} // CF))
 
     ser.printf2(string("Power: %d.%06.6dW\n\r"), (sensor.power{} / PF), (sensor.power{} // PF))
 
@@ -29,7 +30,7 @@ PUB show_power_data{}
 PUB demo{}
 
     repeat
-        ser.position(0, 3)
+        ser.pos_xy(0, 3)
         show_power_data{}
         time.msleep(250)
 #endif

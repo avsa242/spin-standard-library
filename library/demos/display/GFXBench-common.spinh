@@ -6,7 +6,7 @@
     Author: Jesse Burt
     Copyright (c) 2022
     Started: Feb 20, 2022
-    Updated: Oct 30, 2022
+    Updated: Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -50,7 +50,7 @@ PUB benchmark{} | time_ms, sz, maxsz, iteration, bench, ch, color
 
     disp.fgcolor(disp#MAX_COLOR)
     disp.bgcolor(0)
-    disp.position(0, 0)
+    disp.pos_xy(0, 0)
     disp.printf1(string("%s\n\r"), @_drv_name)
     disp.printf1(string("P8X32A\n\r @%dMHz\n\r"), clkfreq/1_000_000)
     disp.printf2(string("%dx%d"), WIDTH, HEIGHT)
@@ -69,7 +69,7 @@ PUB benchmark{} | time_ms, sz, maxsz, iteration, bench, ch, color
 
     ch := $20
     sz := 1
-    ser.position(0, 3)
+    ser.pos_xy(0, 3)
     repeat
         ser.printf2(string("Bench %s (%dpx): "), @_bench_name[bench*14], sz)
 
@@ -117,8 +117,9 @@ PUB benchmark{} | time_ms, sz, maxsz, iteration, bench, ch, color
                     disp.show{}
                     iteration++
             TEXT:
+                { convert powers of 2 to 1..7 }
                 disp.fontscale(lookdown(sz: 2, 4, 8, 16, 32, 64, 128))
-                disp.position(0, 0)
+                disp.pos_xy(0, 0)
                 repeat while _timer_set
                     disp.char(ch)
                     ch++

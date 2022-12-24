@@ -6,7 +6,7 @@
         sets the software RTC by it, and continuously
         displays the date and time from the software RTC
     Started Sep 7, 2020
-    Updated Oct 22, 2022
+    Updated Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -87,7 +87,7 @@ PUB main{} | hyr, hmo, hdy, hwkd, hhr, hmin, hsec
         softrtc.parse_date_stamp(@_datestamp)
         softrtc.parse_time_stamp(@_timestamp)
 
-        ser.position(0, 7)
+        ser.pos_xy(0, 7)
         ser.strln(string("SoftRTC date & time:"))
         ser.str(@_datestamp)
         ser.char(" ")
