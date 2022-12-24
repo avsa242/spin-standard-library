@@ -108,7 +108,7 @@ VAR
 
 OBJ
   tv    : "display.tv"
-  gr    : "display.gfx.tile"
+  gr    : "graphics.tile"
   RC    : "signal.adc.rctime"
   Num   : "misc.numbers"
 

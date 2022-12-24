@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Graphical demo of the Memsic MXD2125 driver
     Started 2009
-    Updated Dec 23, 2022
+    Updated Dec 24, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -68,7 +68,7 @@ OBJ
 
     cfg     : "boardcfg.demoboard"
     tv      : "display.tv"
-    gr      : "display.gfx.tile"
+    gr      : "graphics.tile"
     mxd2125 : "sensor.accel.2dof.mxd2125"
     math    : "math.int"
 
