@@ -60,10 +60,10 @@ outside the allowable range.
 	* If supported by the device, `dev_id()` didn't return the expected value
 
 6. `defaults()` may simply call `reset()`, if sensible, as opposed to calling several other driver
-
 methods, in order to reduce memory usage.
 
 7. Most (but not all) drivers also provide the following methods:
+
 | Method          | Description                                      | Param    | Returns         |
 | --------------- | ------------------------------------------------ | -------- | --------------- |
 | `dev_id()`      | Read model-unique identification register        | n/a      | model/dev ID    |
