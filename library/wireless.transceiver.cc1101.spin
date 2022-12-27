@@ -5,7 +5,7 @@
     Description: Driver for TI's CC1101 ISM-band transceiver
     Copyright (c) 2022
     Started Mar 25, 2019
-    Updated Nov 13, 2022
+    Updated Dec 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -446,16 +446,16 @@ PUB data_rate(rate): curr_rate | curr_exp, curr_mant, dr_exp, dr_mant
     readreg(core#MDMCFG3, 1, @curr_mant)
     case rate
         600..500_000:
-            dr_exp := log2( u64.multdiv(rate, TWO20, F_XOSC) )
+            dr_exp := >|( u64.multdiv(rate, TWO20, F_XOSC) )-1
             dr_mant := (u64.multdiv(rate, TWO28, u64.multdiv(F_XOSC, {
-}            (1 << dr_exp), 1_000) )-256_000) / 1_000
+}                      (1 << dr_exp), 1_000) )-256_000) / 1_000
             if (dr_mant > 255)                  ' mantissa overflow?
                 dr_mant := 0                    ' clear and carry it into
                 dr_exp := (dr_exp + 1) <# $0E   ' the exponent
         other:
             curr_exp &= core#DRATE_E_BITS
             curr_rate := u64.multdiv( (256+curr_mant) * (1 << curr_exp), {
-}            U64SCALE, TWO28)
+}                                    U64SCALE, TWO28)
             return u64.multdiv(curr_rate, F_XOSC, U64SCALE)
 
     curr_exp &= core#DRATE_E_MASK
@@ -563,8 +563,7 @@ PUB flush_tx{}
 PUB freq_dev(freq): curr_freq | tmp, deviat_m, deviat_e, tmp_m
 ' Set frequency deviation from carrier, in Hz
 '   Valid values:
-'       1_586..380_859
-'   Default value: 47_607
+'       1_586..380_859 (default: 47_607)
 '   NOTE: This setting has no effect when Modulation format is ASK/OOK.
 '   NOTE: This setting applies to both TX and RX roles. When role is RX, setting must be
 '           approximately correct for reliable demodulation.
@@ -574,7 +573,7 @@ PUB freq_dev(freq): curr_freq | tmp, deviat_m, deviat_e, tmp_m
     case freq
         1_587..380_859:
             deviat_e := u64.multdiv(freq, TWO14, F_XOSC)
-            deviat_e := log2(deviat_e)
+            deviat_e := >|(deviat_e)
             tmp_m := F_XOSC * (1 << deviat_e)
             deviat_m := u64.multdiv(freq, TWO17, tmp_m)
             freq := (deviat_e << core#DEVIAT_E) | deviat_m
@@ -592,10 +591,11 @@ PUB freq_synth_ena{}
 
 PUB gpio0(mode): curr_mode 'XXX review: consolidation with other like methods? (API change)
 ' Configure test signal output on GDO0 pin
-'   Valid values: $00..$0F, $16..$17, $1B..$1D, $24..$39, $41, $43, $46..$3F (see IO_* constants near top of this file)
-'   Default value: $3F
+'   Valid values: $00..$0F, $16..$17, $1B..$1D, $24..$39, $41, $43, $46..$3F (default: $3f)
+'       (see IO_* constants near top of this file)
 '   Any other value polls the chip and returns the current setting
-'   NOTE: The default setting is IO_CLK_XODIV192, which outputs the CC1101's XO clock, divided by 192 on the pin.
+'   NOTE: The default setting is IO_CLK_XODIV192, which outputs the CC1101's XO clock,
+'           divided by 192 on the pin.
 '       TI recommends the clock outputs be disabled when the radio is active, for best performance.
 '       Only one IO pin at a time can be configured as a clock output.
     curr_mode := 0
@@ -648,7 +648,7 @@ PUB idle{}
 
 PUB interm_freq(freq): curr_freq
 ' Intermediate Frequency (IF), in Hz
-'   Valid values: 25_390..787_109 (result will be rounded to the nearest 5-bit result)
+'   Valid values: 25_390..787_109 (default: 380_859; rounded to the nearest value)
 '   Default value: 380_859
 '   Any other value polls the chip and returns the current setting
     curr_freq := 0
@@ -879,19 +879,19 @@ PUB rssi{}: level
 PUB rx_bandwidth = rx_bw
 PUB rx_bw(width): curr_wid
 ' Set receiver channel filter bandwidth, in kHz
-'   Valid values: 812, 650, 541, 464, 406, 325, 270, 232, *203, 162, 135, 116, 102, 81, 68, 58
+'   Valid values: 812, 650, 541, 464, 406, 325, 270, 232, 203, 162, 135, 116, 102, 81, 68, 58
+'       (default: 203)
 '   Any other value polls the chip and returns the current setting
     curr_wid := 0
     readreg(core#MDMCFG4, 1, @curr_wid)
     case width
-        812, 650, 541, 464, 406, 325, 270, 232, 203, 162, 135, 116, 102, 81,{
-        } 68, 58:
+        812, 650, 541, 464, 406, 325, 270, 232, 203, 162, 135, 116, 102, 81, 68, 58:
             width := (lookdown(width: 812, 650, 541, 464, 406, 325, 270, 232,{
-            } 203, 162, 135, 116, 102, 81, 68, 58)-1) << core#CHANBW
+}                                     203, 162, 135, 116, 102, 81, 68, 58)-1) << core#CHANBW
         other:
             curr_wid := ((curr_wid >> core#CHANBW) & core#CHANBW_BITS)+1
             return lookup(curr_wid: 812, 650, 541, 464, 406, 325, 270, 232,{
-            } 203, 162, 135, 116, 102, 81, 68, 58)
+}                                   203, 162, 135, 116, 102, 81, 68, 58)
 
     width := ((curr_wid & core#CHANBW_MASK) | width)
     writereg(core#MDMCFG4, 1, @width)
@@ -900,7 +900,7 @@ PUB rx_fifo_thresh(thresh): curr_thr
 ' Set receive FIFO thresh, in bytes
 '   The threshold is exceeded when the number of bytes in the FIFO is greater
 '       than or equal to this value.
-'   Valid values: 4, 8, 12, 16, 20, 24, 28, *32, 36, 40, 44, 48, 52, 56, 60, 64
+'   Valid values: 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64 (default: 32)
 '   Any other value polls the chip and returns the current setting
 '   NOTE: This affects the TX FIFO, inversely
     curr_thr := 0
@@ -1044,18 +1044,6 @@ PRI getstatus{}: curr_status
 ' Read the status byte
     writereg(core#CS_SNOP, 0, 0)
     return _status
-
-PRI log2(num): l2
-' Return log2 of num
-    l2 := 0
-    case num > 1
-        TRUE:
-            repeat
-                num >>= 1
-                l2++
-            until num == 1
-        FALSE:
-    return
 
 PRI readreg(reg_nr, nr_bytes, ptr_buff)
 ' Read nr_bytes from device into ptr_buff
