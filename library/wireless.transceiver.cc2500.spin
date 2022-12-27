@@ -5,7 +5,7 @@
     Description: Driver for TI's CC2500 ISM-band (2.4GHz) transceiver
     Copyright (c) 2022
     Started Jul 7, 2019
-    Updated Nov 13, 2022
+    Updated Dec 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -442,16 +442,16 @@ PUB data_rate(rate): curr_rate | curr_exp, curr_mant, dr_exp, dr_mant
     readreg(core#MDMCFG3, 1, @curr_mant)
     case rate
         600..500_000:
-            dr_exp := log2( u64.multdiv(rate, TWO20, F_XOSC) )
+            dr_exp := >|( u64.multdiv(rate, TWO20, F_XOSC) )-1
             dr_mant := (u64.multdiv(rate, TWO28, u64.multdiv(F_XOSC, {
-}            (1 << dr_exp), 1_000) )-256_000) / 1_000
+}                       (1 << dr_exp), 1_000))-256_000) / 1_000
             if (dr_mant > 255)                  ' mantissa overflow?
-                dr_mant := 0                    ' clear and carry it into
-                dr_exp := (dr_exp + 1) <# $0E   ' the exponent
+                dr_mant := 0                    '   clear and carry it into the exponent
+                dr_exp := (dr_exp + 1) <# $0E
         other:
             curr_exp &= core#DRATE_E_BITS
             curr_rate := u64.multdiv( (256+curr_mant) * (1 << curr_exp), {
-}            U64SCALE, TWO28)
+}                                    U64SCALE, TWO28)
             return u64.multdiv(curr_rate, F_XOSC, U64SCALE)
 
     curr_exp &= core#DRATE_E_MASK
@@ -569,7 +569,7 @@ PUB freq_dev(freq): curr_freq | tmp, deviat_m, deviat_e, tmp_m
     case freq
         1_587..380_859:
             deviat_e := u64.multdiv(freq, TWO14, F_XOSC)
-            deviat_e := log2(deviat_e)
+            deviat_e := (>|(deviat_e))-1
             tmp_m := F_XOSC * (1 << deviat_e)
             deviat_m := u64.multdiv(freq, TWO17, tmp_m)
             freq := (deviat_e << core#DEVIAT_E) | deviat_m
@@ -879,14 +879,13 @@ PUB rx_bw(width): curr_wid
     curr_wid := 0
     readreg(core#MDMCFG4, 1, @curr_wid)
     case width
-        812, 650, 541, 464, 406, 325, 270, 232, 203, 162, 135, 116, 102, 81,{
-        } 68, 58:
+        812, 650, 541, 464, 406, 325, 270, 232, 203, 162, 135, 116, 102, 81, 68, 58:
             width := (lookdown(width: 812, 650, 541, 464, 406, 325, 270, 232,{
-            } 203, 162, 135, 116, 102, 81, 68, 58)-1) << core#CHANBW
+}                                     203, 162, 135, 116, 102, 81, 68, 58)-1) << core#CHANBW
         other:
             curr_wid := ((curr_wid >> core#CHANBW) & core#CHANBW_BITS)+1
             return lookup(curr_wid: 812, 650, 541, 464, 406, 325, 270, 232,{
-            } 203, 162, 135, 116, 102, 81, 68, 58)
+}                                   203, 162, 135, 116, 102, 81, 68, 58)
 
     width := ((curr_wid & core#CHANBW_MASK) | width)
     writereg(core#MDMCFG4, 1, @width)
@@ -987,17 +986,16 @@ PUB tx_pwr(pwr): curr_pwr
     curr_pwr := 0
     readreg(core#PATABLE, 1, @curr_pwr)
     case pwr
-        -55, -30, -28, -26, -24, -22, -20, -18, -16, -14, -12, -10, -8, -6, {
-}       -4, -2, 0, 1:
-            pwr := lookdown(pwr: -55, -30, -28, -26, -24, -22, -20, -18, -16,{
-}           -14, -12, -10, -8, -6, -4, -2, 0, 1)
-            pwr := lookup(pwr: $00, $50, $44, $C0, $84, $81, $46, $93, $55,{
-}           $8D, $C6, $97, $6E, $7F, $A9, $BB, $FE, $FF)
+        -55, -30, -28, -26, -24, -22, -20, -18, -16, -14, -12, -10, -8, -6, -4, -2, 0, 1:
+            pwr := lookdown(pwr: -55, -30, -28, -26, -24, -22, -20, -18, -16, -14, -12, -10, -8, {
+}                                -6, -4, -2, 0, 1)
+            pwr := lookup(pwr: $00, $50, $44, $C0, $84, $81, $46, $93, $55, $8D, $C6, $97, $6E, {
+}                              $7F, $A9, $BB, $FE, $FF)
         other:
-            curr_pwr := lookdown(curr_pwr: $00, $50, $44, $C0, $84, $81, $46,{
-}           $93, $55, $8D, $C6, $97, $6E, $7F, $A9, $BB, $FE, $FF)
-            return lookup(curr_pwr: -55, -30, -28, -26, -24, -22, -20, -18, -16,{
-}           -14, -12, -10, -8, -6, -4, -2, 0, 1)
+            curr_pwr := lookdown(curr_pwr: $00, $50, $44, $C0, $84, $81, $46, $93, $55, $8D, $C6,{
+}                                          $97, $6E, $7F, $A9, $BB, $FE, $FF)
+            return lookup(curr_pwr: -55, -30, -28, -26, -24, -22, -20, -18, -16, -14, -12, -10, {
+}                                   -8, -6, -4, -2, 0, 1)
 
     writereg(core#PATABLE, 1, @pwr)
 
@@ -1029,18 +1027,6 @@ PRI getstatus{}: curr_status
 ' Read the status byte
     writereg(core#CS_SNOP, 0, 0)
     return _status
-
-PRI log2(num): l2
-' Return log2 of num
-    l2 := 0
-    case num > 1
-        TRUE:
-            repeat
-                num >>= 1
-                l2++
-            until num == 1
-        FALSE:
-    return
 
 PRI readreg(reg_nr, nr_bytes, ptr_buff)
 ' Read nr_bytes from device into ptr_buff
