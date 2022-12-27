@@ -35,7 +35,7 @@ blocks, __if__ they're used throughout the object (doesn't pertain to labels in 
 * Parameters representing I/O pins are capitalized (e.g., `SCL_PIN`)
 
 * Parameterless methods are suffixed with {}, to make it easier for automated tools to convert to
-SPIN2 parameterless method definitions or calls (e.g., `spin_method{}` becomes `spin_method{}` when
+SPIN2 parameterless method definitions or calls (e.g., `spin_method{}` becomes `spin_method()` when
 converted). Note that this isn't required by the language; it's only a convention.
 
 * Variables have standard prefixes and suffixes, where possible. Some examples are:
