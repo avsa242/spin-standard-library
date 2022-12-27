@@ -6,7 +6,7 @@
         VGA display
     Copyright (c) 2022
     Started: Jun 27, 2020
-    Updated: Nov 12, 2022
+    Updated: Dec 27, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -128,10 +128,10 @@ PUB update_settings{} | col, row, reftmp
     vga.fgcolor(vga#MAX_COLOR)
     vga.pos_xy(col, row)
 
-    vga.printf1(string("X-axis invert: %s\n"), lookupz(_invert_x: string("No "), string("Yes")))
-    vga.printf1(string("FPS: %dHz   \n"), mlx.refresh_rate(-2))
-    vga.printf1(string("ADC: %dbits\n"), mlx.temp_adc_res(-2))
-    vga.printf1(string("ADC reference: %s\n"), lookupz(reftmp: string("High"), string("Low  ")))
+    vga.printf1(string("X-axis invert: %s\n\r"), lookupz(_invert_x: string("No "), string("Yes")))
+    vga.printf1(string("FPS: %dHz   \n\r"), mlx.refresh_rate(-2))
+    vga.printf1(string("ADC: %dbits\n\r"), mlx.temp_adc_res(-2))
+    vga.printf1(string("ADC reference: %s\n\r"), lookupz(reftmp: string("High"), string("Low  ")))
 
     _fx := CENTERX - ((_fw * 16) / 2)           ' Approx center of screen
     _fy := 10
@@ -190,6 +190,7 @@ PUB setup{}
         vga.font_scl(1)
         vga.font_sz(6, 8)
         vga.clear{}
+        vga.char_attrs(vga#DRAWBG)
 
     if mlx.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
         ser.strln(string("MLX90621 driver started"))
