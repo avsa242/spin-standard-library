@@ -1,12 +1,12 @@
 {
     --------------------------------------------
-    Filename: sensor.temp_rh.shtc3.i2c.spin
+    Filename: sensor.temp_rh.shtc3.spin
     Author: Jesse Burt
     Description: Driver for the Sensirion SHT-C3
         Temperature/RH sensor
     Copyright (c) 2022
     Started Jul 27, 2020
-    Updated Oct 16, 2022
+    Updated Dec 28, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -76,6 +76,9 @@ PUB dev_id{}: id
 '   Returns: $0807
     readreg(core#DEVID, 2, @id)
     id &= $083F                                 ' only some bits are relevant
+
+PUB measure{}
+' dummy method
 
 PUB opmode(mode): curr_mode
 ' Set device operating mode

@@ -5,7 +5,7 @@
     Description: Driver for the HTU21D Temp/RH sensor
     Copyright (c) 2022
     Started Jun 16, 2021
-    Updated Sep 24, 2022
+    Updated Dec 28, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -114,6 +114,9 @@ PUB last_rh_valid{}: isvalid
 PUB last_temp_valid{}: isvalid
 ' Flag indicating CRC check of last temperature measurement was good
     return _lasttempvalid
+
+PUB measure{}
+' dummy method
 
 PUB reset{}
 ' Reset the device

@@ -38,7 +38,7 @@ OBJ
 PUB setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(20)
+    time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
