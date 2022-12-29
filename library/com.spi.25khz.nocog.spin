@@ -7,7 +7,7 @@
             Write speed: 25.641kHz actual (25% duty - 10uS H : 29uS L)
             Read speed: 26.315kHz actual (26% duty - 10uS H : 28uS L)
     Started 2009
-    Updated Oct 12, 2022
+    Updated Dec 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 
@@ -208,9 +208,9 @@ PUB wrblock_msbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
             repeat b_num from nr_bytes-1 to 0       ' byte loop
                 tmp := (byte[ptr_buff][b_num] << 24)' align byte with MSBit of long
                 repeat 8                            ' bit loop
+                    outa[MOSI] := (tmp <-= 1) & 1   ' next bit into pos and isolate it
                     !outa[SCK]                      ' clock
                     !outa[SCK]
-                    outa[MOSI] := (tmp <-= 1) & 1   ' next bit into pos and isolate it
 
 #include "com.spi.common.spinh"                 ' R/W methods common to all SPI engines
 
