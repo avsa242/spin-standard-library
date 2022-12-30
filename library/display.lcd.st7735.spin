@@ -5,7 +5,7 @@
     Description: Driver for Sitronix ST7735-based displays
     Copyright (c) 2022
     Started Mar 7, 2020
-    Updated Nov 5, 2022
+    Updated Dec 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -86,12 +86,7 @@ PUB startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, WIDTH, HEIGHT, ptr_drawb
             outa[_DC] := 1
             dira[_DC] := 1
             reset{}
-            _disp_width := WIDTH
-            _disp_height := HEIGHT
-            _disp_xmax := _disp_width-1
-            _disp_ymax := _disp_height-1
-            _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
-            _bytesperln := _disp_width * BYTESPERPX
+            set_dims(WIDTH,HEIGHT)
 #ifndef GFX_DIRECT
             address(ptr_drawbuff)
 #endif
@@ -164,7 +159,7 @@ PUB preset_greentab128x128{}
 
     mirror_h(TRUE)
     mirror_v(TRUE)
-    subpix_order(RGB)
+    subpix_order(BGR)
 
     color_depth(16)
     disp_offset(2, 3)
@@ -176,6 +171,46 @@ PUB preset_greentab128x128{}
     disp_part_area(0, _disp_ymax)
     opmode(NORMAL)
     visibility(NORMAL)
+
+PUB preset_adafruit_1p44_128x128_land_up{}
+' Adafruit 1.44" 128x128 (#2088, green tab), landscape (up)
+    set_dims(128, 128)
+    preset_greentab128x128{}
+    rotation(0)
+    mirror_h(false)
+    mirror_v(false)
+    disp_offset(2, 1)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
+
+PUB preset_adafruit_1p44_128x128_land_down{}
+' Adafruit 1.44" 128x128 (#2088, green tab), landscape (down)
+    set_dims(128, 128)
+    preset_greentab128x128{}
+    rotation(0)
+    mirror_h(true)
+    mirror_v(true)
+    disp_offset(2, 3)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
+
+PUB preset_adafruit_1p44_128x128_port_up{}
+' Adafruit 1.44" 128x128 (#2088, green tab), portrait (up)
+    set_dims(128, 128)
+    preset_greentab128x128{}
+    rotation(1)
+    mirror_h(false)
+    mirror_v(true)
+    disp_offset(3, 2)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
+
+PUB preset_adafruit_1p44_128x128_port_down{}
+' Adafruit 1.44" 128x128 (#2088, green tab), portrait (up)
+    set_dims(128, 128)
+    preset_greentab128x128{}
+    rotation(1)
+    mirror_h(true)
+    mirror_v(false)
+    disp_offset(1, 2)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
 
 PUB address(addr): curr_addr
 ' Set framebuffer/display buffer address
