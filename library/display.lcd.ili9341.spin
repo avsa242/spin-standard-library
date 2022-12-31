@@ -5,7 +5,7 @@
     Description: Driver for ILI9341 LCD controllers
     Copyright (c) 2022
     Started Oct 14, 2021
-    Updated Nov 20, 2022
+    Updated Dec 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -71,19 +71,14 @@ PUB startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, WIDTH, HEIGHT)
 }   lookdown(WR_PIN: 0..31))
         if (status := com.init(DATA_BASEPIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN))
             _RESET := RES_PIN
-            _disp_width := WIDTH
-            _disp_height := HEIGHT
-            _disp_xmax := _disp_width - 1
-            _disp_ymax := _disp_height - 1
-            _buff_sz := (_disp_width * _disp_height)
-            _bytesperln := _disp_width * BYTESPERPX
+            set_dims(WIDTH, HEIGHT)
             return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB preset_def{}
+PUB defaults{}
 ' Preset settings: defaults
     reset{}
     time.msleep(5)
@@ -129,6 +124,50 @@ PUB preset_def{}
 
     powered(true)
     visibility(NORMAL)
+
+PUB preset_hiletgo_2p4_320x240_land_up{}
+' HiLetGo 2.4"
+'   Landscape (320x * 240y), up (K1 button to left)
+    defaults{}
+    set_dims(320, 240)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
+    subpix_order(BGR)
+    mirror_h(false)
+    mirror_v(false)
+    rotation(1)
+
+PUB preset_hiletgo_2p4_320x240_land_down{}
+' HiLetGo 2.4"
+'   Landscape (320x * 240y), down (K1 button to right)
+    defaults{}
+    set_dims(320, 240)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
+    subpix_order(BGR)
+    mirror_h(true)
+    mirror_v(true)
+    rotation(1)
+
+PUB preset_hiletgo_2p4_240x320_port_up{}
+' HiLetGo 2.4"
+'   Portrait (240x * 320y), up (K1 button to top)
+    defaults{}
+    set_dims(240, 320)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
+    subpix_order(BGR)
+    mirror_h(true)
+    mirror_v(false)
+    rotation(0)
+
+PUB preset_hiletgo_2p4_240x320_port_down{}
+' HiLetGo 2.4"
+'   Portrait (240x * 320y), up (K1 button to bottom)
+    defaults{}
+    set_dims(240, 320)
+    draw_area(0, 0, _disp_xmax, _disp_ymax)
+    subpix_order(BGR)
+    mirror_h(false)
+    mirror_v(true)
+    rotation(0)
 
 PUB stop{}
 ' Power off the display, and stop the engine
