@@ -2,80 +2,49 @@
     --------------------------------------------
     Filename: LCD-Serial-Demo.spin
     Description: Demo of the serial LCD driver
+        Works with e.g.:
+            Parallax #27977 (2x16), #27979 (4x20)
     Author: Jesse Burt
     Started Apr 29, 2006
-    Updated Oct 29, 2022
+    Updated Jan 1, 2023
     See end of file for terms of use.
     --------------------------------------------
 
-    NOTE: This is based on Serial_Lcd.spin,
-        originally by Jon Williams, Jeff Martin.
 }
 
     _clkmode    = xtal1 + pll16x
     _xinfreq    = 5_000_000
 
-' -- User definable constants
-    LCD_PIN     = 0
+' -- User-defined constants
+    SER_BAUD    = 115_200
+
+    LCD_PIN     = 16
     LCD_BAUD    = 19_200                        ' 2400, 9600, 19200 (must match DIP switches)
     LCD_LINES   = 4
 ' --
 
 OBJ
 
-    lcd     : "display.lcd.serial"
-    time    : "time"
+    cfg :   "boardcfg.flip"
+    disp:   "display.lcd.serial"
 
-PUB main{} | idx
+PUB main{}
 
-    lcd.start(LCD_PIN, LCD_BAUD, LCD_LINES)     ' start lcd
+    ser.start(SER_BAUD)
+    time.msleep(30)
+    ser.clear{}
+    ser.strln(string("Serial terminal started"))
+
+    disp.startx(LCD_PIN, LCD_BAUD, LCD_LINES)
+    ser.strln(string("HD44780 driver started (Serial)"))
+
     time.msleep(1_000)
-    lcd.curs_mode(0)                            ' cursor off
-    lcd.backlight_ena(true)                     ' backlight on (if available)
-    lcd.def_chars(0, @bullet)                   ' create custom character 0
-    lcd.clear{}
-    lcd.strln(string("LCD DEBUG"))
-    lcd.putchar(0)                              ' display custom bullet character
-    lcd.strln(string(" Dec"))
-    lcd.putchar(0)
-    lcd.strln(string(" Hexs"))
-    lcd.putchar(0)
-    lcd.strln(string(" Bin"))
+    disp.curs_mode(0)                            ' cursor off
+    disp.backlight_ena(1)
 
-    repeat
-        repeat idx from 0 to 255
-            update_lcd(idx)
-            time.msleep(200)                    ' pad with 1/5 sec
+    demo{}
 
-        lcd.disp_vis_ena(false)                 ' turn off the LCD for 2secs
-        time.msleep(2000)
-        lcd.disp_vis_ena(true)                  ' then back on - contents should still be there
-
-        repeat idx from -255 to 0
-            update_lcd(idx)
-            time.msleep(200)
-
-PRI update_lcd(value)
-
-    lcd.pos_xy(12, 1)
-    lcd.putdec(||value)
-
-    lcd.pos_xy(12, 2)
-    lcd.puthexs(value, 8)
-
-    lcd.pos_xy(8, 3)
-    lcd.putbin(value, 12)
-
-DAT
-
-    bullet  byte    %00000000
-            byte    %00000100
-            byte    %00001110
-            byte    %00011111
-            byte    %00001110
-            byte    %00000100
-            byte    %00000000
-            byte    %00000000
+#include "alphanum-disp-demo.common.spinh"
 
 DAT
 {
