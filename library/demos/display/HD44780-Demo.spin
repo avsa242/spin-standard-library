@@ -5,7 +5,7 @@
     Description: Demo of the HD44780 LCD driver
     Copyright (c) 2022
     Started Sep 08, 2021
-    Updated Oct 30, 2022
+    Updated Jan 1, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -27,41 +27,28 @@ CON
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
-    time: "time"
-    lcd : "display.lcd-alpha.hd44780"
+    cfg :   "boardcfg.flip"
+    disp:   "display.lcd-alpha.hd44780"
 
 PUB main{}
-
-    setup{}
-    lcd.reset{}
-
-    lcd.backlight_ena(1)
-    lcd.puts(string("Testing 1 2 3"))
-    time.sleep(2)
-    lcd.clear{}
-    lcd.puts(string("Backlight"))
-    repeat 10
-        lcd.backlight_ena(0)
-        time.msleep(100)
-        lcd.backlight_ena(1)
-        time.msleep(100)
-
-    repeat
-
-PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if lcd.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
+    if disp.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
         ser.strln(string("HD44780 driver started (I2C)"))
     else
         ser.strln(string("HD44780 driver failed to start - halting"))
         repeat
+
+    disp.reset{}
+    disp.backlight_ena(1)
+
+    demo{}
+
+#include "alphanum-disp-demo.common.spinh"
 
 DAT
 {
