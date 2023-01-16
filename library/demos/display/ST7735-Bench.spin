@@ -3,9 +3,9 @@
     Filename: ST7735-Bench.spin
     Description: ST7735-specific setup for graphics benchmark
     Author: Jesse Burt
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started: Feb 19, 2022
-    Updated: Feb 19, 2022
+    Updated: Jan 16, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -47,7 +47,7 @@ VAR
     byte _framebuff                             ' dummy VAR for GFX_DIRECT
 #endif
 
-PUB Main{}
+PUB main{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
@@ -56,16 +56,25 @@ PUB Main{}
 
     if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
         ser.printf1(string("%s driver started"), @_drv_name)
-        disp.fontspacing(1, 0)
-        disp.fontscale(1)
-        disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
-        disp.fontaddress(fnt.ptr{})
+        disp.font_spacing(1, 0)
+        disp.font_scl(1)
+        disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
+        disp.font_addr(fnt.ptr{})
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
 
+    { Presets for ST7735R }
+    disp.preset_adafruit_1p44_128x128_land_up{}
+'    disp.preset_adafruit_1p44_128x128_land_down{}
+'    disp.preset_adafruit_1p44_128x128_port_up{}
+'    disp.preset_adafruit_1p44_128x128_port_down{}
 
-    disp.preset_greentab128x128{}
+    { Presets for ST7789VW }
+'    disp.preset_adafruit_1p3_240x240_land_up{}
+'    disp.preset_adafruit_1p3_240x240_land_down{}
+'    disp.preset_adafruit_1p3_240x240_port_up{}
+'    disp.preset_adafruit_1p3_240x240_port_down{}
 
     benchmark{}                                 ' start demo
 
@@ -73,26 +82,28 @@ PUB Main{}
 #include "GFXBench-common.spinh"
 
 DAT
+#ifdef ST7789
+    _drv_name   byte    "ST7789 (SPI)", 0
+#else
     _drv_name   byte    "ST7735 (SPI)", 0
+#endif
 
+DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
