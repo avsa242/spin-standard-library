@@ -19,11 +19,14 @@ VAR
 
 OBJ
 
-' choose an SPI engine below
-'    spi : "com.spi.20mhz"                      ' PASM SPI engine (20MHz W/10R)
-'    spi : "com.spi.1mhz"                       ' PASM SPI engine (up to 1MHz)
-'    spi : "com.spi.4mhz"                       ' PASM SPI engine (~4MHz)
-'    spi : "com.spi.25khz.nocog"                ' SPIN SPI engine (TBD kHz)
+{ decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
+#ifdef XXXXX_I2C_BC
+    spi : "com.spi.nocog"                       ' BC I2C engine
+#else
+'    spi : "com.spi.20mhz"                      ' PASM SPI engine (20MHz W/10MHz R)
+'    spi : "com.spi.1mhz"                       ' PASM SPI engine (1MHz)
+'    spi : "com.spi.4mhz"                       ' PASM SPI engine (4.5MHz)
+#endif
     core: "core.con.your_spi_device_here"       ' hw-specific low-level const's
     time: "time"                                ' Basic timing functions
 
@@ -37,30 +40,30 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
         if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
             time.msleep(core#T_POR)             ' wait for device startup
             _CS := CS_PIN                       ' copy i/o pin to hub var
-            io.high(_CS)                        ' make sure CS starts high
-            io.output(_CS)
+            outa[_CS] := 1                      ' make sure CS starts high
+            dira[_CS] := 1
 
-            if deviceid{} == core#DEVID_RESP    ' validate device
+            if (dev_id{} == core#DEVID_RESP)    ' validate device
                 return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     spi.deinit{}
 
-PUB Defaults{}
+PUB defaults{}
 ' Set factory defaults
 
-PUB DeviceID{}: id
+PUB dev_id{}: id
 ' Read device identification
 
-PUB Reset{}
+PUB reset{}
 ' Reset the device
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff)
+PRI readreg(reg_nr, nr_bytes, ptr_buff)
 ' Read nr_bytes from the device into ptr_buff
     case reg_nr                                 ' validate register num
         $00:
@@ -69,21 +72,21 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff)
         other:                                  ' invalid reg_nr
             return
 
-    io.low(_CS)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr)
 
 ' choose the block below appropriate to your device
     ' read LSByte to MSByte
     spi.rdblock_lsbf(ptr_buff, nr_bytes)
-    io.high(_CS)
+    outa[_CS] := 1
     '
 
     ' read MSByte to LSByte
     spi.rdblock_msbf(ptr_buff, nr_bytes)
-    io.high(_CS)
+    outa[_CS] := 1
     '
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff)
+PRI writereg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to the device from ptr_buff
     case reg_nr
         $00:
@@ -92,38 +95,35 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff)
         other:
             return
 
-    io.low(_CS)
+    outa[_CS] := 0
     spi.wr_byte(reg_nr)
 
 ' choose the block below appropriate to your device
     ' write LSByte to MSByte
     spi.wrblock_lsbf(ptr_buff, nr_bytes)
-    io.high(_CS)
+    outa[_CS] := 1
     '
 
     ' write MSByte to LSByte
     spi.wrblock_msbf(ptr_buff, nr_bytes)
-    io.high(_CS)
+    outa[_CS] := 1
     '
 
 DAT
 {
-    --------------------------------------------------------------------------------------------------------
-    TERMS OF USE: MIT License
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
-    following conditions:
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-    The above copyright notice and this permission notice shall be included in all copies or substantial
-    portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
-    LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    --------------------------------------------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+
