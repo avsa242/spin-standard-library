@@ -8,9 +8,9 @@
         getchar()   - Read one character from terminal
         dec(num)    - Output a decimal number to terminal
     Author: Jesse Burt
-    Copyright (c) 2022
+    Copyright (c) 2023
     Created: Jun 18, 2019
-    Updated: Oct 29, 2022
+    Updated: Jan 26, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -124,6 +124,18 @@ PUB bgcolor(bcolor)
     csi{}
     putchar(";")
     dec(BG + bcolor)
+    putchar("m")
+
+PUB bgcolor_24bpp(bcolor)
+' Set background color
+'   Valid values: $00_00_00_00..$ff_ff_ff_00 (RR_GG_BB 24bpp, left-justified)
+    csi{}
+    puts(string("48;2;"))                       ' BG color
+    dec(bcolor.byte[3])                         ' R
+    putchar(";")
+    dec(bcolor.byte[2])                         ' G
+    putchar(";")
+    dec(bcolor.byte[1])                         ' B
     putchar("m")
 
 PUB blink{}
@@ -313,6 +325,18 @@ PUB fgcolor(fcolor)
 '   (add BRIGHT (60) to color value for brighter/lighter shade)
     csi{}
     dec(FG + fcolor)
+    putchar("m")
+
+PUB fgcolor_24bpp(bcolor)
+' Set foreground color (24-bpp)
+'   Valid values: $00_00_00_00..$ff_ff_ff_00 (RR_GG_BB 24bpp, left-justified)
+    csi{}
+    puts(string("38;2;"))                       ' FG color
+    dec(bcolor.byte[3])                         ' R
+    putchar(";")
+    dec(bcolor.byte[2])                         ' G
+    putchar(";")
+    dec(bcolor.byte[1])                         ' B
     putchar("m")
 
 PUB framed{}
