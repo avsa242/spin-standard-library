@@ -3,9 +3,9 @@
     Filename: gui.button.spin
     Author: Jesse Burt
     Description: Generic object for manipulating GUI button structures
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Jul 18, 2022
-    Updated Sep 11, 2022
+    Updated Feb 2, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -34,6 +34,7 @@ con
 var
 
     long _ptr_btns, _nr_btns
+    byte _spacing_x, _spacing_y
 
 pub init(ptr_btnbuff, nr_btns)
 ' Initialize
@@ -45,6 +46,16 @@ pub deinit{}
 ' Deinitialize
     _ptr_btns := 0
     _nr_btns := 0
+
+pub above(btn_nr): y
+' Get coordinate immediately to the right of a button (including inter-button spacing)
+'   btn_nr: button to read coordinate of
+    return get_sy(btn_nr) - _spacing_y
+
+pub below(btn_nr): y
+' Get coordinate immediately to the right of a button (including inter-button spacing)
+'   btn_nr: button to read coordinate of
+    return get_ey(btn_nr) + _spacing_y
 
 pub destroy(btn_idx)
 ' Destroy a button definition
@@ -74,6 +85,11 @@ pub get_sy(btn_idx): c
 ' Get the ending X coordinate of the button, based on its starting coord and width
     return (get_attr(btn_idx, SY))
 
+pub left_of(btn_nr): x
+' Get coordinate immediately to the left of a button (including inter-button spacing)
+'   btn_nr: button to read coordinate of
+    return get_sx(btn_nr) - _spacing_x
+
 pub min_height(btn_nr): w
 ' Get the minimum height of a button, considering its font size
     return (get_attr(btn_nr, TSZ))
@@ -91,6 +107,11 @@ pub ptr_e(btn_nr): p
 '   Directly compatible with EVE ButtonPtr()
     return _ptr_btns + ( ((btn_nr-1) * STRUCTSZ) * 4) + 8
 
+pub right_of(btn_nr): x
+' Get coordinate immediately to the right of a button (including inter-button spacing)
+'   btn_nr: button to read coordinate of
+    return get_ex(btn_nr) + _spacing_x
+
 pub set_attr_all(param, val) | b
 ' Set attribute of ALL buttons
 '   param: attribute to modify
@@ -105,6 +126,11 @@ pub set_attr(btn_idx, param, val)
 '   val: new value for attribute
     if (btn_idx => 1 and btn_idx =< _nr_btns) ' button idx 1-based so it maps 1:1 with tag #
         long[ptr(btn_idx)][param] := val
+
+pub set_spacing(x, y)
+' Set inter-button spacing
+    _spacing_x := 0 #> x
+    _spacing_y := 0 #> y
 
 pub set_id_all(st_nr) | b
 ' Set ID attribute of all buttons in ascending order
