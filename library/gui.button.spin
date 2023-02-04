@@ -5,7 +5,7 @@
     Description: Generic object for manipulating GUI button structures
     Copyright (c) 2023
     Started Jul 18, 2022
-    Updated Feb 2, 2023
+    Updated Feb 4, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -116,7 +116,7 @@ pub set_attr_all(param, val) | b
 ' Set attribute of ALL buttons
 '   param: attribute to modify
 '   val: new value for attribute
-    repeat b from 0 to _nr_btns-1
+    repeat b from 1 to _nr_btns
         set_attr(b, param, val)
 
 pub set_attr(btn_idx, param, val)
@@ -127,10 +127,25 @@ pub set_attr(btn_idx, param, val)
     if (btn_idx => 1 and btn_idx =< _nr_btns) ' button idx 1-based so it maps 1:1 with tag #
         long[ptr(btn_idx)][param] := val
 
+pub set_pos(btn_idx, x, y)
+' Set button position
+'   btn_idx: button number
+'   x, y: coordinates of upper-left button corner
+    set_attr(btn_idx, SX, x)
+    set_attr(btn_idx, SY, y)
+
 pub set_spacing(x, y)
 ' Set inter-button spacing
     _spacing_x := 0 #> x
     _spacing_y := 0 #> y
+
+pub set_sx(btn_idx, x)
+' Set starting X coordinate of button
+    set_attr(btn_idx, SX, x)
+
+pub set_sy(btn_idx, y)
+' Set starting Y coordinate of button
+    set_attr(btn_idx, SY, y)
 
 pub set_id_all(st_nr) | b
 ' Set ID attribute of all buttons in ascending order
