@@ -4,7 +4,7 @@
     Description: ANSI-compatible serial terminal
     Author: Jesse Burt
     Started Nov 9, 2020
-    Updated Oct 23, 2022
+    Updated Apr 8, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -82,6 +82,8 @@ PUB gets_max(ptr_buff, max_len)
     repeat while (max_len--)
         if ((byte[ptr_buff++] := getchar{}) == CR)
             quit
+        if ( _termio_attrs & ECHO )
+            putchar(byte[ptr_buff-1])
 
     { zero terminate string; overwrite CR or append 0 char }
     byte[ptr_buff+(byte[ptr_buff-1] == CR)] := NUL
