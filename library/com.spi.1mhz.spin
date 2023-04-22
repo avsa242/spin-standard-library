@@ -11,7 +11,7 @@
             wr_bytex(): 88uS
             Read: 72uS
     Started 2009
-    Updated Oct 12, 2022
+    Updated Apr 22, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -127,12 +127,14 @@ PUB wrblock_lsbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
     longmove(@SCK, @_SCK, 3)
     repeat b_num from 0 to nr_bytes-1
         shiftout(MOSI, SCK, MSBFIRST, 8, byte[ptr_buff][b_num])
+    repeat while _command
 
 PUB wrblock_msbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 ' Write block of data to SPI bus from ptr_buff, most-significant byte first
     longmove(@SCK, @_SCK, 3)
     repeat b_num from nr_bytes-1 to 0
         shiftout(MOSI, SCK, MSBFIRST, 8, byte[ptr_buff][b_num])
+    repeat while _command
 
 PRI setcommand(cmd, argptr)
     _command := cmd << 16 + argptr              ' write cmd and pointer
@@ -391,7 +393,7 @@ arg4            long    0
 DAT
 
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
