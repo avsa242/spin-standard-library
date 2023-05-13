@@ -4,7 +4,7 @@
     Description: ANSI-compatible serial terminal
     Author: Jesse Burt
     Started Nov 9, 2020
-    Updated Apr 8, 2023
+    Updated May 13, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -50,7 +50,7 @@ PUB getdec{}: d
 ' Receive CR-terminated string representing a decimal value
 '   Returns: the corresponding decimal value
     gets_max(@_str_buff, SER_STR_BUFF_SZ)
-    return stl.atoib(@_str_buff, stl#IDEC)
+    return stl.atoi(@_str_buff)
 
 PUB hexin = gethex
 PUB rx_hex = gethex
