@@ -1,0 +1,303 @@
+{
+    --------------------------------------------
+    Filename: debug.spinh
+    Author: Jesse Burt
+    Description: Serial debugging output methods
+    Copyright (c) 2023
+    Started May 16, 2023
+    Updated May 16, 2023
+    See end of file for terms of use.
+    --------------------------------------------
+
+    Steps to use:
+    1) declare an instance of com.serial.terminal.ansi.spin with the symbol 'ser' in your object
+    2) optionally change the indentation and serial I/O settings shown below,
+        _in your object_, do _not_ change them here
+    3) #include this file in the object
+    4) methods starting with 'dl' provide built-in indentation level setting:
+        The first parameter is the indentation level of the message
+        The second parameter is the indentation level to set after the message
+        The third is a special formatting setting or 'log level'
+            Available symbols to use with it are:
+                NORM (0): normal grey text, no special formatting
+                INFO (1): bold and underlined text
+                WARN (2): yellow text
+                ERR (3): red text
+        The remaining parameter(s) operate like their normal terminal output counterparts
+            (e.g, str(), strln(), printf1(), printf2(), etc)
+    set_indent_level() can be used to manually set the indentation change/delta for the next
+        debug output using one of:
+            -1: decrease indent
+            0: leave it as-is
+            1: increase indent
+    ddi() decrease the indent level
+    dii() increases the indent level
+    dreset() resets the indent level to 0 (i.e., none)
+
+    indentation levels change by the number of spaces #defined in INDENT_SPACES
+    again, _don't change it here_, #define it in your object (it will override the setting here)
+}
+
+{ default spaces for each indent step and serial I/O parameters:
+    NOTE: don't change these here - #define them in your code to change/override these defaults }
+#ifndef INDENT_SPACES
+#define INDENT_SPACES 4
+#endif
+
+#ifndef DBG_RX
+#define DBG_RX 24
+#endif
+
+#ifndef DBG_TX
+#define DBG_TX 25
+#endif
+
+#ifndef DBG_BAUD
+#define DBG_BAUD 115_200
+#endif
+
+
+{ shortened aliases to some serial output methods }
+#define dnewline ser.newline
+#define dhexdump ser.hexdump
+#define dclear ser.clear
+#define dposxy ser.pos_xy
+
+
+CON
+
+    #0, NORM, INFO, WARN, ERR                   ' 'logging' levels
+
+DAT
+
+    _indent_level byte 0                        ' set initial/store current indentation level
+
+
+pri dlprintf1(pre_ind, post_ind, log_lvl, fmt, p1)
+' debug printf1()
+'   pre_ind, post_ind: change indentation levels before and after this message
+'       -1: reduce indent level
+'       0: leave indent level unchanged
+'       1: increase indent level
+'   log_lvl: 'logging' level/formatting of this message
+'       NORM (0): normal
+'       INFO (1): special information
+'       WARN (2): warning
+'       ERR (3): error
+'   fmt: printf1() format
+'   p1: printf1() parameter
+
+    indent_and_set_format(pre_ind, log_lvl)
+
+    ser.printf1(fmt, p1)
+    ser.fgcolor(ser.GREY)                       '
+    ser.bold_off()                              ' clear any formatting that was set
+    ser.underline_off()                         '
+
+    set_indent_level(post_ind)
+
+pri dlprintf2(pre_ind, post_ind, log_lvl, fmt, p1, p2)
+' debug printf2()
+'   pre_ind, post_ind: change indentation levels before and after this message
+'       -1: reduce indent level
+'       0: leave indent level unchanged
+'       1: increase indent level
+'   log_lvl: 'logging' level/formatting of this message
+'       NORM (0): normal
+'       INFO (1): special information
+'       WARN (2): warning
+'       ERR (3): error
+'   fmt: printf2() format
+'   p1, p2: printf2() parameters
+
+    indent_and_set_format(pre_ind, log_lvl)
+
+    ser.printf2(fmt, p1, p2)
+    ser.fgcolor(ser.GREY)                       '
+    ser.bold_off()                              ' clear any formatting that was set
+    ser.underline_off()                         '
+
+    set_indent_level(post_ind)
+
+pri dlstr(pre_ind, post_ind, log_lvl, s)
+' debug string
+'   pre_ind, post_ind: change indentation levels beofre and after this message
+'       -1: reduce indent level
+'       0: leave indent level unchanged
+'       1: increase indent level
+'   log_lvl: 'logging' level/formatting of this message
+'       NORM (0): normal
+'       INFO (1): special information
+'       WARN (2): warning
+'       ERR (3): error
+'   s: string to print
+
+    indent_and_set_format(pre_ind, log_lvl)
+
+    ser.str(s)
+    ser.fgcolor(ser.GREY)
+    ser.bold_off()
+    ser.underline_off()
+
+    set_indent_level(post_ind)
+
+pri dlstrln(pre_ind, post_ind, log_lvl, s)
+' debug string, with newline
+'   pre_ind, post_ind: change indentation levels before and after this message
+'       -1: reduce indent level
+'       0: leave indent level unchanged
+'       1: increase indent level
+'   log_lvl: 'logging' level/formatting of this message
+'       NORM (0): normal
+'       INFO (1): special information
+'       WARN (2): warning
+'       ERR (3): error
+'   s: string to print
+
+    indent_and_set_format(pre_ind, log_lvl)
+
+    ser.strln(s)
+    ser.fgcolor(ser.GREY)
+    ser.bold_off()
+    ser.underline_off()
+
+    set_indent_level(post_ind)
+ 
+pri indent_and_set_format(ind_delta, log_lvl)
+' change indent and set formatting for following message(s)
+    set_indent_level(ind_delta)
+    ser.chars(" ", 0 #> _indent_level)
+    set_format(ind_delta, log_lvl)
+
+pri set_format(ind_change, log_lvl)
+' Set formatting for next debug output
+    { set color based on log level }
+    case log_lvl
+        NORM:
+            ser.fgcolor(ser.GREY)
+        ERR:
+            ser.fgcolor(ser.RED)
+        WARN:
+            ser.fgcolor(ser.YELLOW)
+        INFO:
+            ser.bold()
+            ser.underline()
+
+pri set_indent_level(delta)
+' set indentation level for following message(s)
+'   delta:
+'       -1: outdent/reduce indentation level by one step
+'       0: leave indentation level unchanged
+'       1: indent/increase indentation level by one step
+    case delta
+        -1:
+            { decrease indent level }
+            ddi()
+        0:
+            { do nothing/leave as-is }
+        1:
+            { increase indent level }
+            dii()
+
+pri dprintf1(fmt, p1)
+' simple printf1
+'   fmt: printf1() format
+'   p1: printf1() parameter
+    ser.chars(" ", _indent_level)               ' indent this message
+    ser.printf1(fmt, p1)
+
+pri dprintf1_err(fmt, p1)
+' simple printf1, formatted as an error
+'   fmt: printf1() format
+'   p1: printf1() parameter
+    ser.chars(" ", _indent_level)
+    ser.fgcolor(ser.RED)
+    ser.printf1(fmt, p1)
+    ser.fgcolor(ser.GREY)
+
+pri dprintf1_info(fmt, p1)
+' simple printf1, formatted as informative/special info
+'   fmt: printf1() format
+'   p1: printf1() parameter
+    ser.chars(" ", _indent_level)
+    ser.fgcolor(ser.YELLOW)
+    ser.printf1(fmt, p1)
+    ser.fgcolor(ser.GREY)
+
+pri dprintf2(fmt, p1, p2)
+' simple printf2
+'   fmt: printf2() format
+'   p1, p2: printf2() parameters
+    ser.chars(" ", _indent_level)
+    ser.printf2(fmt, p1, p2)
+
+pri dstrln(s)
+' simple strln()
+'   s: string to print
+    ser.chars(" ", _indent_level)
+    ser.strln(s)
+
+pri dstrln_info(s)
+' simple strln(), formatted as informative/special info
+'   s: string to print
+    ser.chars(" ", _indent_level)
+    ser.fgcolor(ser.GREEN)
+    ser.strln(s)
+    ser.fgcolor(ser.GREY)
+
+pri dstrln_err(s)
+' simple strln(), formatted as an error
+'   s: string to print
+    ser.chars(" ", _indent_level)
+    ser.fgcolor(ser.RED)
+    ser.strln(s)
+    ser.fgcolor(ser.GREY)
+
+pri dstrln_warn(s)
+' simple strln(), formatted as a warning
+'   s: string to print
+    ser.chars(" ", _indent_level)
+    ser.fgcolor(ser.YELLOW)
+    ser.strln(s)
+    ser.fgcolor(ser.GREY)
+
+pri dstr(s)
+' simple str()
+'   s: string to print
+    ser.chars(" ", _indent_level)
+    ser.str(s)
+
+pri ddi()
+' decrease indent level of debug output
+    _indent_level := 0 #> _indent_level-INDENT_SPACES
+    'ser.printf1(@"indent level is now %d\n\r", _indent_level)
+
+pri dii()
+' increase indent level of debug  output
+    _indent_level += INDENT_SPACES
+    'ser.printf1(@"indent level is now %d\n\r", _indent_level)
+
+pri dreset()
+' reset indent level of debug output to 0
+    _indent_level := 0
+
+dat
+{
+Copyright 2023 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
+
