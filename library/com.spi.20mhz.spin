@@ -11,7 +11,7 @@
             Read speed: 10MHz:
                 9.99MHz actual (52% duty - 0.052uS H : 0.048uS L) 100ns
     Started Jun 30, 2021
-    Updated Apr 15, 2023
+    Updated Jun 15, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -235,8 +235,9 @@ rd_blk_msbf_ret ret                             ' complete
 
 wr8_x
 ' Write the same byte to the SPI bus many times
-                call    #setup_ptr
-:byteloop       call    #wr8_bits               ' write it
+                mov     ctr, param_b            ' get setup from hub params
+:byteloop       mov     data, param_a
+                call    #wr8_bits               ' write it
                 djnz    ctr, #:byteloop         ' loop if more bytes to write
 wr8_x_ret       ret
 
@@ -245,8 +246,9 @@ wr16_x_lsbf
 ' Write the same word (LSByte first) to the SPI bus many times
 '   param_a: pointer to word to write
 '   param_b: number of times to write
-                call    #setup_ptr
-:wordloop       call    #wr8_bits               ' write LSB
+                mov     ctr, param_b
+:wordloop       mov     data, param_a
+                call    #wr8_bits               ' write LSB
                 ror     data, #8                ' put the MSB into position,
                 call    #wr8_bits               '   and write
                 djnz    ctr, #:wordloop         ' loop if more words to write
@@ -257,8 +259,9 @@ wr16_x_msbf
 ' Write the same word (MSByte first) to the SPI bus many times
 '   param_a: pointer to word to write
 '   param_b: number of times to write
-                call    #setup_ptr
-:wordloop       ror     data, #8                ' put the MSByte into position
+                mov     ctr, param_b
+:wordloop       mov     data, param_a
+                ror     data, #8                ' put the MSByte into position
                 call    #wr8_bits               '   and write it
                 rol     data, #8                ' put things back, so the LSB
                 call    #wr8_bits               '   is in position, and write
