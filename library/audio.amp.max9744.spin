@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: signal.audio.amp.max9744.spin
+    Filename: audio.amp.max9744.spin
     Author: Jesse Burt
     Description: Driver for the MAX9744 20W audio amplifier IC
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Jul 7, 2018
-    Updated Nov 21, 2022
+    Updated Jun 16, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -118,10 +118,12 @@ PUB set_volume(level)
 PUB vol_down{}
 ' Decrease volume level
     writereg(core#CMD_VOL_DN)
+    _vol_level := 0 #> (_vol_level - 1)
 
 PUB vol_up{}
 ' Increase volume level
     writereg(core#CMD_VOL_UP)
+    _vol_level := (_vol_level + 1) <# 63
 
 PUB volume{}: curr_lvl
 ' Get current volume level (cached)
@@ -138,7 +140,7 @@ PRI writereg(reg_nr) | cmd_pkt
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
