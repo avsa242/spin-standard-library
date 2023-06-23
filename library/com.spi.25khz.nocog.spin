@@ -7,7 +7,7 @@
             Write speed: 25.641kHz actual (25% duty - 10uS H : 29uS L)
             Read speed: 26.315kHz actual (26% duty - 10uS H : 28uS L)
     Started 2009
-    Updated Dec 29, 2022
+    Updated Jun 23, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -49,10 +49,11 @@ PUB init(SCK, MOSI, MISO, SPI_MODE): status
 
     outa[SCK] := _cpol
     dira[SCK] := 1
-    outa[MOSI] := 0
-    dira[MOSI] := 1
+    if ( lookdown(MOSI: 0..31) )                ' MOSI optional (read-only devices)
+        outa[MOSI] := 0
+        dira[MOSI] := 1
 
-    if MISO <> -1                               ' MISO optional
+    if ( lookdown(MISO: 0..31) )                ' MISO optional (write-only devices)
         dira[MISO] := 0
 
     return cogid{}+1                            ' return current cog id
