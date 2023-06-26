@@ -3,9 +3,9 @@
     Filename: I2C-Scan.spin
     Author: Jesse Burt
     Description: Utility to scan for active devices on an I2C bus
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Jun 17, 2019
-    Updated Oct 30, 2022
+    Updated Jun 26, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -33,24 +33,21 @@ OBJ
 
 VAR
 
-    long _key_cog, _keyinput_stack[50]
-    byte _fmt
+    byte _fmt, _sr_supported
 
-PUB main{} | slave_addr, flag, x, y, offsetx, offsety
+PUB main{} | slave_addr, flag, x, y, offsetx, offsety, ch
 
     setup{}
     ser.clear{}
-    ser.bold{}
-    ser.underline{}
-    ser.str(string("I2C Scanner"))
-    ser.underline_off{}
-    ser.bold_off{}
+    ser.strln(@"I2C Scanner")
+    ser.newline{}
 
     offsetx := 3
-    offsety := 3
+    offsety := 6
 
-    ser.italic{}
-    ser.printf1(string(" (%d-bit format)"), _fmt)
+    ser.printf1(@"Display format:        %d-bit (press 7 or 8 to choose)\n\r", _fmt)
+    ser.printf1(@"I2C Rs while scanning: %c     (press r to toggle)", lookupz(_sr_supported: "N", "Y"))
+
     ser.reset{}
     ser.hide_cursor{}
 
@@ -58,19 +55,41 @@ PUB main{} | slave_addr, flag, x, y, offsetx, offsety
         'reserved' addresses (0..6, 120..127) are not touched since it's possible doing so
         could cause issues for some devices }
     repeat
-        ser.pos_xy(13, 0)
+        ser.pos_xy(23, 2)
         ser.dec(_fmt)
-        repeat slave_addr from $08 to $77 step 2
+        ser.pos_xy(23, 3)
+        ser.char(lookupz(_sr_supported: "N", "Y"))
+        repeat slave_addr from $08 to $77
             flag := i2c.present(slave_addr << 1)' probe this address for a device
-            x := ((slave_addr & $F) + (slave_addr & $F)) + offsetx
+            ifnot ( _sr_supported )             ' add a stop condition for devices that need it
+                i2c.stop{}
+            x := ((slave_addr & $f) * 3) + offsetx
             y := (slave_addr >> 4) + offsety
             show_addr(x, y, slave_addr, flag)
-    until (_key_cog == 0)                       ' loop until key input cog is stopped
+        if ( (ch := ser.rx_check{}) > 0 )
+            { check for a keypress  in the terminal }
+            case ch
+                "7":
+                    { 7-bit address display (the "un-shifted" format) }
+                    _fmt := 7
+                "8":
+                    { 8-bit address display ("shifted" format; leaves the LSB clear }
+                    _fmt := 8
+                "r":
+                    { toggle between two probe types:
+                        1) S, W (address)
+                        2) S, W (address), P
+                        Some devices might not respond without the stop condition (P) after the probe
+                        (or vice-versa) }
+                    _sr_supported ^= 1
+                "q":
+                    { quit the scan and restore the cursor and terminal settings }
+                    ser.show_cursor{}
+                    ser.reset{}
+                    ser.newline{}
+                    ser.strln(@"halted")
+                    repeat
 
-    ser.show_cursor{}                           ' restore the terminal settings
-    ser.clear{}
-    ser.reset{}
-    repeat
 
 PUB show_addr(x, y, slave_addr, flag)
 ' Show I2C device address
@@ -93,28 +112,15 @@ PUB show_addr(x, y, slave_addr, flag)
             ser.pos_xy(x, y)
             ser.puthexs(slave_addr << 1, 2)
 
-PRI cog_key_input{}
-' Wait for keypress from user
-    repeat
-        case ser.getchar{}
-            "7":
-                _fmt := 7
-            "8":
-                _fmt := 8
-            "q", "Q":
-                _key_cog := 0
-                cogstop(cogid{})
-
-PUB setup{}
+PUB setup{}|r
 
     ser.start(SER_BAUD)
-    time.msleep(10)
-    ser.reset{}
+    time.msleep(20)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
+
     i2c.init(I2C_SCL, I2C_SDA, I2C_HZ)
     ser.strln(string("I2C driver started"))
-    _key_cog := cognew(cog_key_input{}, @_keyinput_stack)
     _fmt := 7
 
 DAT
