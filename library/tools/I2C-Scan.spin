@@ -46,7 +46,7 @@ PUB main{} | slave_addr, flag, x, y, offsetx, offsety, ch
     offsety := 6
 
     ser.printf1(@"Display format:        %d-bit (press 7 or 8 to choose)\n\r", _fmt)
-    ser.printf1(@"I2C Rs while scanning: %c     (press r to toggle)", lookupz(_sr_supported: "N", "Y"))
+    ser.printf1(@"I2C Sr while scanning: %c     (press r to toggle)", lookupz(_sr_supported: "N", "Y"))
 
     ser.reset{}
     ser.hide_cursor{}
