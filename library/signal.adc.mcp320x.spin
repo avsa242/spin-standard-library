@@ -80,6 +80,9 @@ PUB adc2volts(adc_word): volts
 ' Scale ADC word to microvolts
     return u64.multdiv(_adc_ref, adc_word, _adc_range)
 
+PUB opmode(m)
+' dummy method for API compatibility with other drivers
+
 PUB ref_voltage{}: v
 ' Get currently set reference voltage
 '   Returns: microvolts
