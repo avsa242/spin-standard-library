@@ -7,12 +7,13 @@
         to digitize audio from an electret mic and play
         it back on headphones/speakers
     Started 2006
-    Updated Oct 22, 2022
+    Updated Jul 3, 2023
     See end of file for terms of use.
     --------------------------------------------
 
     NOTE: This is based on microphone_to_headphones.spin,
-        originally by Chip Gracey
+        originally by Chip Gracey, modified for formatting
+        and flexibility
 }
 
 CON
@@ -48,6 +49,7 @@ CON
 OBJ
 
     cfg : "boardcfg.demoboard"                  ' board with a mic
+'    cfg: "boardcfg.propboe"
 
 PUB go{}
 
@@ -62,7 +64,7 @@ DAT
 ' Assembly program
             org
 
-asm_entry   mov       dira, asm_dira            ' make pins 8 (ADC) and 0 (DAC) outputs
+asm_entry   mov       dira, asm_dira            ' set mic and audio pin directions
 
             movs      ctra, #MIC_IN             ' POS W/FEEDBACK mode for CTRA
             movd      ctra, #MIC_FB
@@ -76,7 +78,8 @@ asm_entry   mov       dira, asm_dira            ' make pins 8 (ADC) and 0 (DAC) 
             mov       asm_cnt, cnt              ' prepare for WAITCNT loop
             add       asm_cnt, asm_cycles
 
-:loop       waitcnt   asm_cnt, asm_cycles       ' wait for next CNT value (timing is determinant after WAITCNT)
+:loop       waitcnt   asm_cnt, asm_cycles       ' wait for next CNT value (timing is determinant
+                                                '   after WAITCNT)
 
             mov       asm_sample, phsa          ' capture PHSA and get difference
             sub       asm_sample, asm_old
@@ -88,8 +91,10 @@ asm_entry   mov       dira, asm_dira            ' make pins 8 (ADC) and 0 (DAC) 
             jmp       #:loop                    ' wait for next sample period
 
 ' Data
-asm_cycles  long      |< BITS - 1               ' sample time
-asm_dira    long      $00000E00                 ' output mask
+asm_cycles  long      |<(BITS) - 1              ' sample time
+
+{ output pinmask }
+asm_dira    long      |<(MIC_FB) | |<(AUDIO_L) | |<(AUDIO_R)
 
 asm_cnt     res       1
 asm_old     res       1
@@ -97,8 +102,6 @@ asm_sample  res       1
 
 DAT
 {
-Copyright 2022 Jesse Burt
-
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
 including without limitation the rights to use, copy, modify, merge, publish, distribute,

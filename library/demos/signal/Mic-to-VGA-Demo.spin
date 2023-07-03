@@ -7,12 +7,13 @@
     Author: Chip Gracey
     Modified by: Jesse Burt
     Started 2006
-    Updated Oct 22, 2022
+    Updated Jul 3, 2023
     See end of file for terms of use.
     --------------------------------------------
 
     NOTE: This is based on microphone_to_vga.spin,
-        originally by Chip Gracey
+        originally by Chip Gracey, modified for formatting
+        and flexibility
 }
 
 CON
@@ -33,7 +34,7 @@ CON
 ' 13     9.77 KHz
 ' 14     4.88 KHz
 
-    VGA_BASEPIN = cfg#VGA
+    VGA_BASEPIN = cfg#VGA                       ' change for boards that don't have a fixed basepin
 
     MIC_IN      = cfg#MIC_IN
     MIC_FB      = cfg#MIC_FB
@@ -41,6 +42,9 @@ CON
     BITS        = 12                            ' try different values from table here
     ATTENUATION = 2                             ' try 0-4
     AVERAGING   = 13                            ' 2-power-n samples to compute average with
+
+    AUDIO_L     = cfg#AUDIO_L
+    AUDIO_R     = cfg#AUDIO_R
 ' --
 
     TILES       = vga#XTILES * vga#YTILES
@@ -48,8 +52,8 @@ CON
 
 OBJ
 
-    cfg : "boardcfg.demoboard"
-    vga : "display.vga.bitmap.512x384"
+    cfg:    "boardcfg.demoboard"
+    vga:    "display.vga.bitmap.512x384"
 
 VAR
 
@@ -81,7 +85,7 @@ DAT
 
                 org
 
-asm_entry       mov     dira, asm_dira          ' make pin 8 (ADC) output
+asm_entry       mov     dira, asm_dira          ' set mic pins direction
 
                 movs    ctra, #MIC_IN           ' POS W/FEEDBACK mode for CTRA
                 movd    ctra, #MIC_FB
@@ -175,31 +179,31 @@ plot
 plot_ret        ret
 
 ' Data
-asm_cycles      long      |< BITS - 1           ' sample time
-asm_dira        long      $00000200             ' output mask
-asm_pixels      long      0                     ' pixel base (set at runtime)
-asm_ypos        long      0                     ' y positions (set at runtime)
-average_cnt     long      1
-peak_cnt        long      1
-peak_load       long      512
-trig_mode       long      0
-bignum          long      $FFFFFFFF
-average_load    long      |< AVERAGING
+asm_cycles      long    |<(BITS) - 1            ' sample time
+asm_dira        long    |<(MIC_FB)              ' output pinmask
+asm_pixels      long    0                       ' pixel base (set at runtime)
+asm_ypos        long    0                       ' y positions (set at runtime)
+average_cnt     long    1
+peak_cnt        long    1
+peak_load       long    512
+trig_mode       long    0
+bignum          long    $FFFFFFFF
+average_load    long    |<(AVERAGING)
 
-asm_justify     res       1
-trig_min        res       1
-trig_max        res       1
-average         res       1
-asm_cnt         res       1
-asm_old         res       1
-asm_sample      res       1
-asm_mask        res       1
-asm_data        res       1
-xpos            res       1
-x               res       1
-y               res       1
-peak_min        res       1
-peak_max        res       1
+asm_justify     res     1
+trig_min        res     1
+trig_max        res     1
+average         res     1
+asm_cnt         res     1
+asm_old         res     1
+asm_sample      res     1
+asm_mask        res     1
+asm_data        res     1
+xpos            res     1
+x               res     1
+y               res     1
+peak_min        res     1
+peak_max        res     1
 
 DAT
 {

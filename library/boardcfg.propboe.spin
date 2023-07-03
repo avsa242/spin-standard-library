@@ -5,8 +5,8 @@
     Description: Board configuration file for Propeller Board of Education
         Parallax #32900
     Started Oct 15, 2022
-    Updated Oct 15, 2022
-    Copyright 2022
+    Updated Jul 3, 2023
+    Copyright 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -28,8 +28,8 @@ CON
     SERVO6      = 19
 
     { microphone }
-    MIC_FB      = 20
-    MIC_IN      = 21
+    MIC_IN      = 20
+    MIC_FB      = 21
 
     { micro-sd socket - SPI }
     SD_DO       = 22
@@ -44,6 +44,8 @@ CON
     SOUND       = 26
     SOUND_L     = 26
     SOUND_R     = 27
+    AUDIO_L     = SOUND_L
+    AUDIO_R     = SOUND_R
 
     { 2x amber LEDs }
     LED1        = 26
