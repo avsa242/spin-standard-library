@@ -36,9 +36,10 @@ CON
     SD_CLK      = 23
     SD_DI       = 24
     SD_CS       = 25
-    SD_MISO     = 22
-    SD_MOSI     = 24
-    SD_CD       = 25
+    SD_CD       = SD_CS
+    SD_SCK      = SD_CLK
+    SD_MOSI     = SD_DI
+    SD_MISO     = SD_DO
 
     { sound }
     SOUND       = 26

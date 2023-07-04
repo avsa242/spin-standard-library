@@ -3,9 +3,9 @@
     Filename: memory.sram.23xxxx.spin
     Author: Jesse Burt
     Description: Driver for 23xxxx series SPI SRAM
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started May 20, 2019
-    Updated Sep 21, 2022
+    Updated Jul 4, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -51,7 +51,9 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 
 PUB stop{}
 ' Stop the driver
+'   Stop running cog(s), set used I/O pins to float, clear memory
     spi.deinit{}
+    dira[_CS] := 0                              ' relinquish control over CS
     _CS := 0
 
 PUB defaults{}
@@ -164,7 +166,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
