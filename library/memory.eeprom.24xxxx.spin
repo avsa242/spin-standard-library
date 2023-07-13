@@ -3,9 +3,9 @@
     Filename: memory.eeprom.24xxxx.spin
     Author: Jesse Burt
     Description: Driver for 24xxxx series I2C EEPROM
-    Copyright (c) 2021
+    Copyright (c) 2023
     Started Oct 26, 2019
-    Updated Jul 30, 2022
+    Updated Jul 13, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -25,6 +25,12 @@ CON
 
     ERASE_CELL  = $FF
 
+    { default I/O settings; these can be overridden in the parent object }
+    SCL         = DEF_SCL
+    SDA         = DEF_SDA
+    I2C_FREQ    = DEF_HZ
+    I2C_ADDR    = DEF_ADDR
+
 VAR
 
     byte _page_size                             ' EE page size, in bytes
@@ -32,26 +38,25 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"                             ' PASM bit-banged I2C engine
-    core: "core.con.24xxxx"                     ' HW-specific constants
-    time: "time"                                ' timekeeping methods
+    i2c:    "com.i2c"                           ' PASM bit-banged I2C engine
+    core:   "core.con.24xxxx"                   ' HW-specific constants
+    time:   "time"                              ' timekeeping methods
 
 PUB null{}
 ' This is not a top-level object
 
 PUB start{}: status
 ' Start using "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
+    return startx(SCL, SDA, I2C_FREQ, I2C_ADDR)
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom I/O settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
-        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+    if ( lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) )
+        if ( status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ) )
             time.msleep(1)
             _addr_bits := (ADDR_BITS << 1)
             ee_size(512)                        ' most common P1 EE size
-            if i2c.present(SLAVE_WR)            ' check device bus presence
+            if ( i2c.present(SLAVE_WR) )        ' check device bus presence
                 return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
@@ -135,7 +140,7 @@ PUB wr_block_msbf(addr, ptr_buff, nr_bytes) | cmd_pkt
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
