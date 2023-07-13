@@ -3,9 +3,9 @@
     Filename: memory.fram.85xxxx.spin
     Author: Jesse Burt
     Description: Driver for 85xxxx series I2C FRAM
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Oct 27, 2019
-    Updated Oct 3, 2022
+    Updated Jul 13, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,6 +20,7 @@ CON
     DEF_SCL     = 28
     DEF_SDA     = 29
     DEF_HZ      = 100_000
+    DEF_ADDR    = %000
     I2C_MAX_FREQ= core#I2C_MAX_FREQ
 
     { manufacturers }
@@ -27,6 +28,12 @@ CON
     FUJITSU     = $00A
 
     ERASE_CELL  = $FF
+
+    { default I/O settings; these can be overridden in the parent object }
+    SCL         = DEF_SCL
+    SDA         = DEF_SDA
+    I2C_FREQ    = DEF_HZ
+    I2C_ADDR    = DEF_ADDR
 
 VAR
 
@@ -47,18 +54,22 @@ PUB null{}
 ' This is not a top-level object
 
 PUB start{}: status
-' Start using "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ, %000)
+' Start using default I/O settings
+    return startx(SCL, SDA, I2C_FREQ, I2C_ADDR)
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
-' Start using custom settings
-    if (lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   lookdown(ADDR_BITS: %000..%111) and I2C_HZ =< core#I2C_MAX_FREQ)
-        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+' Start using custom I/O settings
+'   SCL_PIN: I2C serial clock
+'   SDA_PIN: I2C serial data
+'   I2C_HZ: I2C bus speed
+'   ADDR_BITS: optional address bits for alternate bus address
+    if ( (lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and ...
+        lookdown(ADDR_BITS: %000..%111)) )
+        if ( status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ) )
             time.usleep(core#T_POR)
             _addr_bits := ADDR_BITS << 1
             ' check device bus presence
-            if (i2c.present(SLAVE_WR | _addr_bits))
+            if ( i2c.present(SLAVE_WR | _addr_bits) )
                 return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
@@ -191,7 +202,7 @@ PUB wr_block_msbf(addr, ptr_buff, nr_bytes) | cmd_pkt
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
