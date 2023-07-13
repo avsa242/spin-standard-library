@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Simple demo of the 23XXXX SRAM driver
         * Memory hexdump display
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started May 20, 2019
-    Updated Jan 31, 2022
+    Updated Jul 13, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,13 +18,6 @@ CON
 
 ' -- User-modifiable constants
     SER_BAUD    = 115_200
-    LED         = cfg#LED1
-
-    { SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    MISO_PIN    = 3
 
     { memory size }
     PART        = 1024                          ' kbits
@@ -34,21 +27,22 @@ CON
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
-    time: "time"
-    mem : "memory.sram.23xxxx"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
+    mem:    "memory.sram.23xxxx" | CS=0, SCK=1, MOSI=2, MISO=3
 
 PUB setup{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
-    ser.strln(string("Serial terminal started"))
-    if mem.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.strln(string("23XXXX driver started"))
+    ser.strln(@"Serial terminal started")
+
+    if ( mem.start() )
+        ser.strln(@"23XXXX driver started")
     else
-        ser.strln(string("23XXXX driver failed to start - halting"))
+        ser.strln(@"23XXXX driver failed to start - halting")
         repeat
 
     demo{}

@@ -5,7 +5,7 @@
     Description: Driver for 23xxxx series SPI SRAM
     Copyright (c) 2023
     Started May 20, 2019
-    Updated Jul 4, 2023
+    Updated Jul 13, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,24 +21,34 @@ CON
 
     ERASE_CELL  = $00
 
+    { default I/O settings; these can be overridden in the parent object }
+    CS          = 0
+    SCK         = 1
+    MOSI        = 2
+    MISO        = 2
+
 VAR
 
     long _CS
 
 OBJ
 
-    spi : "com.spi.20mhz"                       ' PASM SPI engine
-    core: "core.con.23xxxx"                     ' hw-specific constants
-    time: "time"                                ' basic timekeeping functions
+    spi:    "com.spi.20mhz"                     ' PASM SPI engine
+    core:   "core.con.23xxxx"                   ' hw-specific constants
+    time:   "time"                              ' basic timekeeping functions
 
 PUB null{}
 ' This is not a top-level object
 
+PUB start{}: status
+' Start the driver using default I/O settings
+    return startx(CS, SCK, MOSI, MISO)
+
 PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 ' Start the driver using custom I/O settings
-    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
-}   lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31)
-        if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+    if ( lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and ...
+        lookdown(MOSI_PIN: 0..31) and lookdown(MISO_PIN: 0..31) )
+        if ( status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE) )
             _CS := CS_PIN
             outa[_CS] := 1
             dira[_CS] := 1
