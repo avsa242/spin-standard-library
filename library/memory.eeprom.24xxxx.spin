@@ -46,11 +46,15 @@ PUB null{}
 ' This is not a top-level object
 
 PUB start{}: status
-' Start using "standard" Propeller I2C pins and 100kHz
+' Start using default I/O settings
     return startx(SCL, SDA, I2C_FREQ, I2C_ADDR)
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom I/O settings
+'   SCL_PIN: I2C serial clock
+'   SDA_PIN: I2C serial data
+'   I2C_HZ: I2C bus speed
+'   ADDR_BITS: optional address bits for alternate bus address
     if ( lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) )
         if ( status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ) )
             time.msleep(1)
