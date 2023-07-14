@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Driver for the TI ADS1115 ADC
     Copyright (c) 2023
-    Started Dec 29, 2019
+    Started Feb 8, 2020
     Updated Jun 26, 2023
     See end of file for terms of use.
     --------------------------------------------
@@ -19,6 +19,7 @@ CON
     DEF_SCL         = 28
     DEF_SDA         = 29
     DEF_HZ          = 100_000
+    DEF_ADDR        = 0
     I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
     { Operation modes }
@@ -29,6 +30,12 @@ CON
     LOW             = 0
     HIGH            = 1
 
+    { default I/O settings; these can be overridden in the parent object }
+    SCL             = DEF_SCL
+    SDA             = DEF_SDA
+    I2C_FREQ        = DEF_HZ
+    I2C_ADDR        = DEF_ADDR
+
 VAR
 
     long _uvolts_lsb
@@ -37,27 +44,26 @@ VAR
 
 OBJ
 
-    i2c : "com.i2c"                             ' PASM I2C engine
-    core: "core.con.ads1115"                    ' HW-specific constants
-    time: "time"                                ' Basic timing functions
-    u64 : "math.unsigned64"                     ' unsigned 64-bit int math
+    i2c:    "com.i2c"                             ' PASM I2C engine
+    core:   "core.con.ads1115"                    ' HW-specific constants
+    time:   "time"                                ' Basic timing functions
+    u64:    "math.unsigned64"                     ' unsigned 64-bit int math
 
 PUB null{}
 ' This is not a top-level object
 
 PUB start{}: status
-' Start with "standard" Propeller I2C pins, default slave address, and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ, %00)
+' Start using default I/O settings
+    return startx(SCL, SDA, I2C_FREQ, I2C_ADDR)
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom I/O settings and bus speed
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
-        if lookdown(ADDR_BITS: %00, %01, %10, %11)
-            if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+    if ( lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) )
+        if ( lookdown(ADDR_BITS: %00, %01, %10, %11) )
+            if ( status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ) )
                 time.usleep(core#T_POR)
                 _addr_bits := ADDR_BITS << 1
-                if (i2c.present(SLAVE_WR | _addr_bits))
+                if ( i2c.present(SLAVE_WR | _addr_bits) )
                     defaults{}
                     return
     ' if this point is reached, something above failed
@@ -84,6 +90,7 @@ PUB adc_data{}: adc_word
 ' Read measurement from channel ch
 '   Valid values: *0, 1, 2, 3
 '   Any other value is ignored
+    adc_word := 0
     readreg(core#CONVERSION, 2, @adc_word)
     ~~adc_word                                  ' extend sign bit
     _last_adc := adc_word
@@ -136,7 +143,6 @@ PUB adc_scale(scale): curr_scl
 
 PUB adc2volts(adc_word): volts
 ' Scale ADC word to microvolts
-'   NOTE: It is possible to read negative voltages (down to -300mV)
     return u64.multdiv(adc_word, _uvolts_lsb, 1_0000)
 
 CON
@@ -327,7 +333,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

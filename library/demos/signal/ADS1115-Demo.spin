@@ -4,8 +4,9 @@
     Author: Jesse Burt
     Description: Demo of the ADS1115 driver
         * Power data output
-    Started Dec 29, 2019
-    Updated Nov 22, 2022
+    Copyright (c) 2023
+    Started Feb 8, 2020
+    Updated Jul 14, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,30 +17,24 @@ CON
     _xinfreq        = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED             = cfg#LED1
     SER_BAUD        = 115_200
 
-    { I2C configuration }
-    SCL_PIN         = 28
-    SDA_PIN         = 29
-    I2C_FREQ        = 400_000                   ' max is 400_000
-    ADDR_BITS       = 0                         ' 0..3
 ' --
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
-    adc : "signal.adc.ads1115"
-    time: "time"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi"
+    adc:    "signal.adc.ads1115" | SCL=28, SDA=29, I2C_FREQ=400_000, I2C_ADDR=%00
+    time:   "time"
 
 PUB main{}
 
     ser.start(SER_BAUD)
-    time.msleep(10)
+    time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if adc.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
+    if ( adc.start{} )
         ser.strln(string("ADS1115 driver started"))
     else
         ser.strln(string("ADS1115 driver failed to start - halting"))
@@ -55,7 +50,7 @@ PUB main{}
 
 DAT
 {
-Copyright (c) 2022 Jesse Burt
+Copyright (c) 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
