@@ -3,9 +3,9 @@
     Filename: SGP30-Demo.spin
     Author: Jesse Burt
     Description: Demo of the SGP30 driver
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Nov 20, 2020
-    Updated Oct 16, 2022
+    Updated Jul 15, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,26 +17,28 @@ CON
 
 ' -- User-defined constants
     SER_BAUD    = 115_200
-    LED         = cfg#LED1
-
-    { I2C configuration }
-    SCL_PIN     = 28
-    SDA_PIN     = 29
-    I2C_FREQ    = 400_000                       ' 400_000 max
 ' --
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    iaq     : "sensor.iaq.sgp30"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
+    iaq:    "sensor.iaq.sgp30" | SCL=28, SDA=29, I2C_FREQ=400_000
+
+VAR
+
+    word _sn[3]
 
 PUB main{}
 
     setup{}
 
     iaq.reset{}                                 ' reset first for reliability
+
+    iaq.serial_num(@_sn)
+
+    ser.printf3(@"SN: %04.4x%04.4x%04.4x\n\r", _sn[0], _sn[1], _sn[2])
 
     repeat
         ser.pos_xy(0, 5)
@@ -50,7 +52,7 @@ PUB setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if iaq.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
+    if ( iaq.start{} )
         ser.strln(string("SGP30 driver started"))
     else
         ser.strln(string("SGP30 driver failed to start - halting"))
@@ -58,7 +60,7 @@ PUB setup{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
