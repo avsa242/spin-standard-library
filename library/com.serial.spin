@@ -5,7 +5,7 @@
     Description: UART engine
         (@80MHz Fsys: 250kbps TX/RX, or 1Mbps TX-only)
     Started 2009
-    Updated Oct 26, 2022
+    Updated Jul 15, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -19,13 +19,10 @@ CON
     DEF_RX          = 31
     DEF_TX          = 30
     DEF_MODE        = %0000
+    DEF_BAUD        = 115_200
 
-    ' set size of RX and TX buffers
-    ' recommended: 64 or higher
-    ' 2, 4, 8, 16, 32, 64, 128, 256
-#ifndef UART_BUFF_SZ
-#define UART_BUFF_SZ 64
-#endif
+    { set size of RX and TX buffers: 2, 4, 8, 16, 32, 64, 128, 256 (64 or higher recommended) }
+    UART_BUFF_SZ    = 64
     BUFFER_MASK     = UART_BUFF_SZ - 1
 
 VAR
