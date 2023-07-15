@@ -3,9 +3,9 @@
     Filename: sensor.thermocouple.max31856.spin
     Author: Jesse Burt
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
-    Copyright (c) 2022
+    Copyright (c) 2023
     Created: Sep 30, 2018
-    Updated: Nov 13, 2022
+    Updated: Jul 15, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -48,6 +48,12 @@ CON
     C               = 0
     F               = 1
 
+    { default I/O settings; these can be overridden in the parent object }
+    CS          = 0
+    SCK         = 1
+    MOSI        = 2
+    MISO        = 3
+
 VAR
 
     byte _CS
@@ -65,10 +71,14 @@ OBJ
 PUB null{}
 ' This is not a top-level object
 
+PUB start{}: status
+' Start the driver using default I/O settings
+    return startx(CS, SCK, MOSI, MISO)
+
 PUB startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN): status
 ' Start using custom settings
-    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
-}   lookdown(SDI_PIN: 0..31) and lookdown(SDO_PIN: 0..31)
+    if ( lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and ...
+        lookdown(SDI_PIN: 0..31) and lookdown(SDO_PIN: 0..31) )
         if (status := spi.init(SCK_PIN, SDI_PIN, SDO_PIN, core#SPI_MODE))
             _CS := CS_PIN
             outa[_CS] := 1
@@ -82,6 +92,7 @@ PUB startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN): status
 PUB stop{}
 ' Stop the driver
     spi.deinit{}
+    dira[_CS] := 0
     _CS := 0
 
 PUB cj_int_hi_thresh{}: thresh
@@ -399,7 +410,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | tmp
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

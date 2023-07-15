@@ -6,7 +6,7 @@
         * Temp data output
     Copyright (c) 2022
     Started Sep 30, 2018
-    Updated Oct 16, 2022
+    Updated Jul 15, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -22,32 +22,26 @@ CON
 
 ' -- User-modifiable constants
     SER_BAUD    = 115_200
-
-    { SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2                             ' SDI
-    MISO_PIN    = 3                             ' SDO
 ' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensor:  "sensor.thermocouple.max31856"
+    sensor: "sensor.thermocouple.max31856" | CS=0, SCK=1, MOSI=2, MISO=3
     ser:    "com.serial.terminal.ansi"
     time:   "time"
 
 PUB setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(10)
+    time.msleep(30)
     ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.strln(@"Serial terminal started")
 
-    if (sensor.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
-        ser.strln(string("MAX31856 driver started"))
+    if ( sensor.start{} )
+        ser.strln(@"MAX31856 driver started")
     else
-        ser.strln(string("MAX31856 driver failed to start - halting"))
+        ser.strln(@"MAX31856 driver failed to start - halting")
         repeat
 
     sensor.temp_scale(sensor#C)                   ' C, F, K
@@ -64,7 +58,7 @@ PUB setup{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
