@@ -3,34 +3,51 @@
     Filename: display.led-seg.ht16k33.spin
     Description: Driver for HT16K33-based displays (segment type)
     Author: Jesse Burt
-    Copyright (c) 2022
+    Copyright (c) 2023
     Created: Jun 22, 2021
-    Updated: Oct 30, 2022
+    Updated: Jul 16, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
 #include "ht16k33.common.spinh"
 #include "terminal.common.spinh"
+
+CON
+
+    { these can be overridden in the parent object }
+    { default I/O settings; these can be overridden in the parent object }
+    SCL     = DEF_SCL
+    SDA     = DEF_SDA
+    I2C_FREQ= DEF_HZ
+    I2C_ADDR= DEF_ADDR
+
+    WIDTH   = 2
+    HEIGHT  = 1
+
 VAR
 
     long _col, _row, _disp_width, _disp_height, _disp_xmax, _disp_ymax    
     word _disp_buff[7]                           ' 112 bits/segments
     byte _lastchar
 
-PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS, WIDTH, HEIGHT): status
+PUB start{}: status
+' Start using default I/O settings
+    return startx(SCL, SDA, I2C_FREQ, I2C_ADDR, WIDTH, HEIGHT)
+
+PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS, DISP_W, DISP_H): status
 ' SCL_PIN, SDA_PIN, I2C_HZ: I2C bus I/O pins and speed
 ' ADDR_BITS: specify LSBs of slave address (%000..%111)
-' WIDTH, HEIGHT: dimensions of display, in digits/characters
-    if (lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and I2C_HZ =< core#I2C_MAX_FREQ)
-        if lookdown(ADDR_BITS: %000..%111)
-            if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+' DISP_W, DISP_H: dimensions of display, in digits/characters
+    if ( lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) )
+        if ( lookdown(ADDR_BITS: %000..%111) )
+            if ( status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ) )
                 time.usleep(core#T_POR)         ' wait for device startup
                 _addr_bits := ADDR_BITS << 1
-                _disp_width := WIDTH
-                _disp_height := HEIGHT
+                _disp_width := DISP_W
+                _disp_height := DISP_H
                 _disp_xmax := WIDTH-1
                 _disp_ymax := HEIGHT-1
-                if (i2c.present(SLAVE_WR | _addr_bits)) ' test device presence
+                if ( i2c.present(SLAVE_WR | _addr_bits) ) ' test device presence
                     clear{}
                     return
     ' if this point is reached, something above failed
@@ -44,8 +61,8 @@ PUB putchar(c) | cmd_pkt, i
 '   NOTE: Interprets control characters
     case c
         BS, DEL:                                ' backspace/delete
-            prev_digit{}                         ' move back to previous digit
-            update_buff(" ")                     '   and display a SPACE over it
+            prev_digit{}                        ' move back to previous digit
+            update_buff(" ")                    '   and display a SPACE over it
         LF:
             move_down{}
         FF:                                     ' clear/form feed
@@ -57,9 +74,9 @@ PUB putchar(c) | cmd_pkt, i
             update_buff(c)
             next_digit{}
         ".":                                    ' period/decimal point
-            if (lookdown(_lastchar: "0".."9"))    ' if previous char was a num,
+            if (lookdown(_lastchar: "0".."9"))  ' if previous char was a num,
                 _lastchar := "."                '   draw the decimal point in
-                prev_digit{}                     '   the same digit as the num
+                prev_digit{}                    '   the same digit as the num
                 update_buff(c)
                 next_digit{}
             else
@@ -268,7 +285,7 @@ _fnt_tbl    word    %0000_0000_0000_0000    ' (SP) - 32/$20
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

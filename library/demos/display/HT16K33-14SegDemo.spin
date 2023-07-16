@@ -3,9 +3,9 @@
     Filename: HT16K33-14SegDemo.spin
     Description: Demo of the HT16K33 14-segment driver
     Author: Jesse Burt
-    Copyright (c) 2022
+    Copyright (c) 2023
     Created: Jun 22, 2021
-    Updated: Oct 30, 2022
+    Updated: Jul 16, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -18,28 +18,19 @@ CON
 
 ' -- User-modifiable constants:
     SER_BAUD    = 115_200
-    LED         = cfg#LED1
-
-    I2C_SCL     = 28
-    I2C_SDA     = 29
-    I2C_FREQ    = 400_000                       ' max is 400_000
-    ADDR_BITS   = %000                          ' %000..%111
-
-    ' number of digits/characters width and height the display has
-    ' NOTE: The demo is written to work best with a 4x1 display
-    WIDTH       = 4
-    HEIGHT      = 1
 ' --
-
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
-    time: "time"
-    disp: "display.led-seg.ht16k33"
-    fs  : "string.float"
-    
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
+    fs:     "string.float"
+    disp:   "display.led-seg.ht16k33" | SCL=28, SDA=29, I2C_FREQ=400_000, I2C_ADDR=%000, ...
+                                        WIDTH=4, HEIGHT=1
+    ' WIDTH, HEIGHT: number of digits/characters width and height the display has
+    ' The demo is written to work best with a 4x1 display
+
 PUB main{} | i, b
 
     setup{}
@@ -129,7 +120,7 @@ PUB setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if disp.startx(I2C_SCL, I2C_SDA, I2C_FREQ, ADDR_BITS, WIDTH, HEIGHT)
+    if ( disp.start() )
         ser.strln(string("HT16K33 driver started"))
         disp.defaults{}
     else
@@ -138,7 +129,7 @@ PUB setup{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
