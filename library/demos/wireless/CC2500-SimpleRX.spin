@@ -3,9 +3,9 @@
     Filename: CC2500-SimpleRX.spin
     Author: Jesse Burt
     Description: Simple receive demo of the cc2500 driver
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Nov 29, 2020
-    Updated Nov 13, 2022
+    Updated Jul 16, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -33,11 +33,12 @@ CON
 
 OBJ
 
-    ser     : "com.serial.terminal.ansi"
-    cfg     : "boardcfg.flip"
-    time    : "time"
-    str     : "string"
-    cc2500  : "wireless.transceiver.cc2500"
+    ser:    "com.serial.terminal.ansi"
+    cfg:    "boardcfg.flip"
+    time:   "time"
+    str:    "string"
+    cc2500: "wireless.transceiver.cc2500" | PPB=0, CS=0, SCK=1, MOSI=2, MISO=3
+    ' PPB: optional CC2500 crystal offset correction
 
 VAR
 
@@ -86,7 +87,7 @@ PUB setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if cc2500.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if ( cc2500.start() )
         ser.strln(string("CC2500 driver started"))
     else
         ser.strln(string("CC2500 driver failed to start - halting"))
@@ -94,7 +95,7 @@ PUB setup{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

@@ -3,16 +3,39 @@
     Filename: wireless.transceiver.cc2500.spin
     Author: Jesse Burt
     Description: Driver for TI's CC2500 ISM-band (2.4GHz) transceiver
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Jul 7, 2019
-    Updated Dec 27, 2022
+    Updated Jul 16, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    F_XOSC                  = 26_000_000        ' CC2500 XTAL Oscillator freq
+' -- User-modifiable constants
+{
+    Do not adjust these here. Instead, override them using the constant override feature in the
+    parent object.
+    Example CC2500-App.spin:
+
+    OBJ
+
+        cc2500: "wireless.transceiver.cc2500" | PPB = 30_000
+            ' or
+        cc2500: "wireless.transceiver.cc2500" | F_XOSC = 25_999_220
+
+    NOTE:
+        If the actual resulting frequency synthesized by the chip is lower than the value
+        set/returned by e.g., carrier_freq(), PPB should be set to a positive number.
+        If it's higher, however, PPB should be a negative number.
+}
+    PPB                     = 0                 ' parts-per-billion (PPB/1000 = PPM)
+
+    { crystal freq: adjust from nominal 26MHz: calculate offset using PPB figure }
+    F_XOSC                  = round(26_000_000-(26_000_000 * (float(PPB) / float(1_000_000_000))))
+
+' --
+
     TWO13                   = 1 << 13           ' 2^13
     TWO14                   = 1 << 14           ' 2^14
     TWO16                   = 1 << 16           ' 2^16
@@ -90,6 +113,12 @@ CON
     AGC_FREEZE_A_AUTO_D     = %10
     AGC_OFF                 = %11
 
+    { default I/O configuration }
+    CS                      = 0
+    SCK                     = 1
+    MOSI                    = 2
+    MISO                    = 3
+
 VAR
 
     byte _CS
@@ -110,17 +139,21 @@ OBJ
 PUB null{}
 ' This is not a top-level object
 
+PUB start{}: status
+' Start using default I/O settings
+    return startx(CS, SCK, MOSI, MISO)
+
 PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 ' Start using custom I/O settings and 1MHz SPI bus speed
-    if (lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) {
-}   and lookdown(MISO_PIN: 0..31))
-        if (status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE))
+    if ( lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(MOSI_PIN: 0..31) and ...
+        lookdown(MISO_PIN: 0..31) )
+        if ( status := spi.init(SCK_PIN, MOSI_PIN, MISO_PIN, core#SPI_MODE) )
             time.usleep(core#T_POR)
             _CS := CS_PIN
 
             outa[_CS] := 1
             dira[_CS] := 1
-            if (dev_id{} == $03)
+            if ( dev_id{} == core.DEVID_RESP )
                 reset{}
                 return
     ' if this point is reached, something above failed
@@ -131,6 +164,7 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 PUB stop{}
 ' Stop the driver
     spi.deinit{}
+    dira[_CS] := 0
     _CS := _status := 0
 
 PUB defaults{}
@@ -1098,7 +1132,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff)
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
