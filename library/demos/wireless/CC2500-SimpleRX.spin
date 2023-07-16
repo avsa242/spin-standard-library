@@ -15,15 +15,7 @@ CON
     _xinfreq        = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED             = cfg#LED1
     SER_BAUD        = 115_200
-
-    { SPI configuration }
-    CS_PIN          = 0
-    SCK_PIN         = 1
-    MOSI_PIN        = 2
-    MISO_PIN        = 3
-
     NODE_ADDRESS    = $01                       ' this node's address (1..254)
 ' --
 
