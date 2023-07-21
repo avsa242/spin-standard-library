@@ -4,11 +4,17 @@
     Author: Jesse Burt
     Description: 2-channel DAC object using the duty mode of the counters as output
     Started Feb 16, 2020
-    Updated Oct 13, 2022
+    Updated Jul 21, 2023
     See end of file for terms of use.
     --------------------------------------------
     NOTE: This object is based on the Parallax Simple-Library functionality
 }
+CON
+
+    { default I/O configuration - can be overridden in parent object }
+    CH0             = 0
+    CH1             = 1
+    DAC_RES_BITS    = 16
 
 VAR
 
@@ -18,10 +24,14 @@ VAR
     byte _ch0, _ch1
     byte _cog
 
-PUB start(ch0_pin, ch1_pin, dac_res_bits)
+PUB start(): status
+' Start using default I/O settings
+    return startx(CH0, CH1, DAC_RES_BITS)
+
+PUB startx(ch0_pin, ch1_pin, bits): status
 ' ch0_pin: DAC channel 0 I/O pin
 ' ch1_pin: DAC channel 1 I/O pin (optional; pass invalid pin to ignore)
-' dac_res_bits: DAC resolution (bits)
+' bits: DAC resolution (bits)
     if (lookup(ch0_pin: 0..31))                 ' validate ch0 pin
         _ch0 := ch0_pin
         outa[ch0_pin] := 0
@@ -31,7 +41,7 @@ PUB start(ch0_pin, ch1_pin, dac_res_bits)
             outa[ch1_pin] := 0
             dira[ch1_pin] := 1
         if (_cog := cognew(cog_dac_loop{}, @_dac_stack) + 1)
-            dac_res(dac_res_bits)               ' set resolution (default to 8 if invalid)
+            dac_res(bits)                       ' set resolution (default to 8 if invalid)
             return _cog
     return FALSE                                ' if we got here, something went wrong
 
