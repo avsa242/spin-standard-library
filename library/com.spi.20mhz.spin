@@ -11,7 +11,7 @@
             Read speed: 10MHz:
                 9.99MHz actual (52% duty - 0.052uS H : 0.048uS L) 100ns
     Started Jun 30, 2021
-    Updated Jun 15, 2023
+    Updated Jul 21, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -272,6 +272,7 @@ wr16_x_msbf_ret ret
 wr_blk_lsbf
 ' Write a block of data, LSB-first (start at the beginning of the data, working forwards)
                 call    #setup_ptr
+                andn    outa, _sck_mask         ' clock off, SCK low
 :byteloop
                 rdbyte  data, ptr_hub           ' read the byte from hubram
                 call    #wr8_bits               ' write one byte
@@ -298,8 +299,6 @@ wr8_bits
 '   Shift out PHSB bit 31 to MOSI
 ' Counter A: SCK
 ' Counter B: MOSI
-                andn    outa, _sck_mask         ' clock off, SCK low
-                mov     phsb, #0
                 mov     phsb, data              ' load PHSB with data
 
                 shl     phsb, #24               ' left-justify it
