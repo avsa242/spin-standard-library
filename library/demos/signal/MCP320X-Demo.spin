@@ -6,7 +6,7 @@
         * Voltage data output
     Copyright (c) 2023
     Started Nov 26, 2019
-    Updated Jun 24, 2023
+    Updated Jul 23, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,22 +17,15 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
-
-    { SPI configuration }
-    CS_PIN      = 0                             ' CSn/SHDN
-    SCK_PIN     = 1                             ' CLK
-    MOSI_PIN    = 2                             ' DIN
-    MISO_PIN    = 3                             ' DOUT
 ' --
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
-    adc : "signal.adc.mcp320x"
-    time: "time"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi"
+    adc:    "signal.adc.mcp320x" | CS=0, SCK=1, MOSI=2, MISO=3
+    time:   "time"
 
 PUB main{}
 
@@ -40,7 +33,7 @@ PUB main{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-    if adc.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if ( adc.start() )
         ser.strln(string("MCP320X driver started"))
     else
         ser.strln(string("MCP320X driver failed to start - halting"))

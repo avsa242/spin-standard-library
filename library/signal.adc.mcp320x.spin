@@ -5,10 +5,16 @@
     Description: Driver for Microchip MCP320x and 300x Analog to Digital Converters
     Copyright (c) 2023
     Started Nov 26, 2019
-    Updated Jun 30, 2023
+    Updated Jul 23, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
+    { default I/O settings; these can be overridden in the parent object }
+    CS          = 0
+    SCK         = 1
+    MOSI        = 2
+    MISO        = 3
+
 #include "signal.adc.common.spinh"
 
 VAR
@@ -27,6 +33,10 @@ OBJ
 
 PUB null{}
 ' This is not a top-level object
+
+PUB start{}: status
+' Start the driver using default I/O settings
+    return startx(CS, SCK, MOSI, MISO)
 
 PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN): status
 ' Start the driver, using custom I/O settings
