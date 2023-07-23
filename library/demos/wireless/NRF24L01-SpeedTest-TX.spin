@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Speed test for nRF24L01+ modules
         TX Mode
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Apr 30, 2020
-    Updated Nov 13, 2022
+    Updated Jul 17, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,15 +17,7 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
-
-    CE_PIN      = 0
-    CS_PIN      = 1
-    SCK_PIN     = 2
-    MOSI_PIN    = 3
-    MISO_PIN    = 4
-
     PKTLEN      = 32                            ' 1..32 (bytes)
     CHANNEL     = 2                             ' 0..125 (2.400..2.525GHz)
 ' --
@@ -34,10 +26,10 @@ CON
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    nrf24   : "wireless.transceiver.nrf24l01"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
+    nrf24:  "wireless.transceiver.nrf24l01" | CE=0, CS=1, SCK=2, MOSI=3, MISO=4
 
 VAR
 
@@ -93,7 +85,7 @@ PUB setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if nrf24.startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+    if ( nrf24.start() )
         ser.strln(string("NRF24L01+ driver started"))
     else
         ser.strln(string("NRF24L01+ driver failed to start - halting"))
@@ -101,7 +93,7 @@ PUB setup{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
