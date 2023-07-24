@@ -5,13 +5,13 @@
     Author: Jesse Burt
     Copyright (c) 2023
     Started: Feb 17, 2022
-    Updated: Jan 16, 2023
+    Updated: Jul 24, 2023
     See end of file for terms of use.
     --------------------------------------------
 
     Build options available:
         -DST7789 - build for ST7789 displays; if not defined, ST7735 will be chosen)
-        -DGFX_DIRECT - don't use a framebuffer; draw directly to the display
+    NOTE: Due to memory constraints on the P1, buffered displays are not supported for this driver
 }
 CON
 
@@ -19,37 +19,13 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
-
-    WIDTH       = 128
-    HEIGHT      = 128
-
-{ SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    DC_PIN      = 3
-
-    RES_PIN     = -1                             ' optional; -1 to disable
 ' --
-
-    BPP         = disp#BYTESPERPX
-    BYTESPERLN  = WIDTH * BPP
-    BUFFSZ      = (WIDTH * HEIGHT)
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    disp    : "display.lcd.st7735"
-
-VAR
-
-#ifndef GFX_DIRECT
-    word _framebuff[BUFFSZ]                     ' display buffer
-#else
-    byte _framebuff                             ' dummy VAR for GFX_DIRECT
-#endif
+    cfg:    "boardcfg.flip"
+    disp:   "display.lcd.st7735" | WIDTH=128, HEIGHT=128, CS=0, DC=1, RST=2, MOSI=3, SCK=4
 
 PUB main{}
 
@@ -58,25 +34,25 @@ PUB main{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+    if ( disp.start() )
         ser.printf1(string("%s driver started"), @_drv_name)
-        disp.fontspacing(1, 0)
-        disp.fontscale(1)
-        disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
-        disp.fontaddress(fnt.ptr{})
+        disp.font_spacing(1, 0)
+        disp.font_scl(1, 1)
+        disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
+        disp.font_addr(fnt.ptr{})
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
 
 
     { Presets for ST7735R }
-    disp.preset_adafruit_1p44_128x128_land_up{}
+'    disp.preset_adafruit_1p44_128x128_land_up{}
 '    disp.preset_adafruit_1p44_128x128_land_down{}
 '    disp.preset_adafruit_1p44_128x128_port_up{}
 '    disp.preset_adafruit_1p44_128x128_port_down{}
 
     { Presets for ST7789VW }
-'    disp.preset_adafruit_1p3_240x240_land_up{}
+    disp.preset_adafruit_1p3_240x240_land_up{}
 '    disp.preset_adafruit_1p3_240x240_land_down{}
 '    disp.preset_adafruit_1p3_240x240_port_up{}
 '    disp.preset_adafruit_1p3_240x240_port_down{}
@@ -96,9 +72,14 @@ DAT
     _drv_name   byte    "ST7735 (SPI)", 0
 #endif
 
+CON
+
+    WIDTH   = disp.WIDTH
+    HEIGHT  = disp.HEIGHT
+
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
