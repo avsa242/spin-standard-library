@@ -3,9 +3,9 @@
     Filename: SSD130X-Demo.spin
     Description: SSD130X-specific setup for graphics demo
     Author: Jesse Burt
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started: Feb 16, 2022
-    Updated: Nov 1, 2022
+    Updated: Jul 24, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,60 +15,32 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
-
-    WIDTH       = 128
-    HEIGHT      = 64
-
-{ I2C configuration }
-    SCL_PIN     = 28
-    SDA_PIN     = 29
-    ADDR_BITS   = 0
-    SCL_FREQ    = 1_000_000
-
-{ SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    DC_PIN      = 3
-
-    RES_PIN     = 4                             ' optional; -1 to disable
 ' --
-
-    BPP         = disp#BYTESPERPX
-    BYTESPERLN  = WIDTH * BPP
-    BUFFSZ      = ((WIDTH * HEIGHT) * BPP) / 8
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    disp    : "display.oled.ssd130x"
-
-VAR
-
-    byte _framebuff[BUFFSZ]                     ' display buffer
+    cfg:    "boardcfg.flip"
+    disp:   "display.oled.ssd130x" | WIDTH=128, HEIGHT=64, ...
+                                    {SPI}   CS=0, DC=1, RST=2, MOSI=3, SCK=4, ...
+                                    {I2C}   SCL=28, SDA=29, I2C_FREQ=1_000_000, I2C_ADDR=%0
 
 PUB main{}
 
     ser.start(SER_BAUD)
     time.msleep(30)
     ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.strln(@"Serial terminal started")
 
-#ifdef SSD130X_SPI
-    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
-#else
-#define SSD130X_I2C
-    if disp.startx(SCL_PIN, SDA_PIN, RES_PIN, SCL_FREQ, ADDR_BITS, WIDTH, HEIGHT, @_framebuff)
-#endif
-        ser.printf1(string("%s driver started"), @_drv_name)
+    if ( disp.start() )
+        ser.printf1(@"%s driver started", @_drv_name)
+        disp.char_attrs(disp.TERMINAL)
         disp.font_spacing(1, 0)
-        disp.font_scl(1)
+        disp.font_scl(1, 1)
         disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
         disp.font_addr(fnt.ptr{})
     else
-        ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
+        ser.printf1(@"%s driver failed to start - halting", @_drv_name)
         repeat
 
     disp.preset_128x{}
@@ -82,14 +54,16 @@ PUB main{}
 #include "GFXDemo-common.spinh"
 
 DAT
-#ifdef SSD130X_I2C
-    _drv_name   byte    "SSD130X (I2C)", 0
-#elseifdef SSD130X_SPI
-    _drv_name   byte    "SSD130X (SPI)", 0
-#endif
+    _drv_name   byte    "SSD130X", 0
+
+CON
+
+    WIDTH   = disp.WIDTH
+    HEIGHT  = disp.HEIGHT
+
 
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
