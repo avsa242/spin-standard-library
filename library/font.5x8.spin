@@ -11,14 +11,6 @@
     --------------------------------------------
 }
 
-
-CON
-' Font definition: width, height in pixels, ASCII code of lowest and highest characters
-    WIDTH       = 5
-    HEIGHT      = 8
-    FIRSTCHAR   = 0
-    LASTCHAR    = 127
-
 PUB null()
 ' This is not a top-level object
 
@@ -26,7 +18,22 @@ PUB ptr(): p
 ' Return base address of font table
     return @table
 
+pub setup(): p
+' Return pointer to 7-byte setup info block
+    return @font_def
+
 DAT
+
+    { font definition }
+    font_def
+    width       byte 5
+    height      byte 8
+    rotation    byte 90
+    firstchar   byte 0
+    lastchar    byte 127
+    hspace      byte 1
+    vspace      byte 0
+
 
     table   byte %11111111   '$00
             byte %11111111   '$00
