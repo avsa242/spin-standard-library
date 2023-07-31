@@ -3,9 +3,9 @@
     Filename: display.oled.ssd1351.spin
     Author: Jesse Burt
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started: Mar 11, 2020
-    Updated: Nov 27, 2022
+    Updated: Jul 31, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -46,15 +46,30 @@ CON
     CFG_LOCK        = $B0
     CFG_UNLOCK      = $B1
 
+    { default I/O settings; these can be overridden in the parent object }
+    { display dimensions }
+    WIDTH           = 96
+    HEIGHT          = 64
+
+    { SPI }
+    CS              = 0
+    SCK             = 1
+    MOSI            = 2
+    DC              = 3
+    RST             = 4
+
 OBJ
 
     core    : "core.con.ssd1351"                ' HW-specific constants
     time    : "time"                            ' timekeeping methods
-    spi     : "com.spi.20mhz"               ' PASM SPI engine (20MHz)
+    spi     : "com.spi.20mhz"                   ' PASM SPI engine (20MHz)
 
 VAR
 
     long _CS, _DC, _RES
+
+    word _fb[(WIDTH*HEIGHT)]
+
     byte _offs_x, _offs_y
 
     ' shadow registers
@@ -63,11 +78,15 @@ VAR
 PUB null{}
 ' This is not a top-level object
 
-PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuff): status
+PUB start{}: status
+' Start the driver using default I/O settings
+    return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, @_fb)
+
+PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, DISP_W, DISP_H, ptr_dispbuff): status
 ' Start driver using custom I/O settings
-    if lookdown(CS_PIN: 0..31) and lookdown(DC_PIN: 0..31) {
-}   and lookdown(DIN_PIN: 0..31) and lookdown(CLK_PIN: 0..31)
-        if (status := spi.init(CLK_PIN, DIN_PIN, -1, core#SPI_MODE))
+    if ( lookdown(CS_PIN: 0..31) and lookdown(DC_PIN: 0..31) and lookdown(DIN_PIN: 0..31) and ...
+        lookdown(CLK_PIN: 0..31) )
+        if ( status := spi.init(CLK_PIN, DIN_PIN, -1, core#SPI_MODE) )
             _DC := DC_PIN
             _RES := RES_PIN
             _CS := CS_PIN
@@ -75,8 +94,8 @@ PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, ptr_dispbuf
             dira[_CS] := 1
             outa[_DC] := 1
             dira[_DC] := 1
-            _disp_width := WIDTH
-            _disp_height := HEIGHT
+            _disp_width := DISP_W
+            _disp_height := DISP_H
             _disp_xmax := _disp_width - 1
             _disp_ymax := _disp_height - 1
             _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
@@ -98,6 +117,8 @@ PUB stop{}
     visibility(ALL_OFF)
     powered(FALSE)
     spi.deinit{}
+    dira[_CS] := 0
+    dira[_DC] := 0
 
 PUB defaults{}
 ' Apply power-on-reset default settings
@@ -686,8 +707,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | tmp
             outa[_CS] := 1
             return
 
-        $15, $5C, $75, $96, $A0..$A2, $AB, $B1..$B6, $B8, $BB, $BE, $C1, {
-}       $C7, $CA, $FD:
+        $15, $5C, $75, $96, $A0..$A2, $AB, $B1..$B6, $B8, $BB, $BE, $C1, $C7, $CA, $FD:
         ' Multi-byte command
             outa[_DC] := core#CMD
             outa[_CS] := 0
@@ -702,7 +722,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | tmp
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

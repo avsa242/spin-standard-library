@@ -3,9 +3,9 @@
     Filename: SSD1351-Demo.spin
     Description: SSD1351-specific setup for graphics demo
     Author: Jesse Burt
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started: Feb 19, 2022
-    Updated: Oct 30, 2022
+    Updated: Jul 31, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,37 +15,13 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
-
-    WIDTH       = 128
-    HEIGHT      = 128
-
-{ SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    DC_PIN      = 3
-
-    RES_PIN     = -1                             ' optional; -1 to disable
 ' --
-
-    BPP         = disp#BYTESPERPX
-    BYTESPERLN  = WIDTH * BPP
-    BUFFSZ      = (WIDTH * HEIGHT)
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    disp    : "display.oled.ssd1351"
-
-VAR
-
-#ifndef GFX_DIRECT
-    word _framebuff[BUFFSZ]                     ' display buffer
-#else
-    byte _framebuff                             ' dummy VAR for GFX_DIRECT
-#endif
+    cfg:    "boardcfg.flip"
+    disp:   "display.oled.ssd1351" | WIDTH=96, HEIGHT=64, CS=0, SCK=1, MOSI=2, DC=3, RST=4
 
 PUB main{}
 
@@ -54,16 +30,13 @@ PUB main{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+    if ( disp.start() )
         ser.printf1(string("%s driver started"), @_drv_name)
-        disp.font_spacing(1, 0)
-        disp.font_scl(1)
-        disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
-        disp.font_addr(fnt.ptr{})
+        disp.set_font(fnt.ptr(), fnt.setup())
+        disp.char_attrs(disp.TERMINAL)
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
-
 
     disp.preset_128x{}
     disp.mirror_h(FALSE)
@@ -76,8 +49,13 @@ PUB main{}
 DAT
     _drv_name   byte    "SSD1351 (SPI)", 0
 
+CON
+
+    WIDTH   = disp.WIDTH
+    HEIGHT  = disp.HEIGHT
+
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
