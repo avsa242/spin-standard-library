@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2023
     Started: Feb 17, 2022
-    Updated: Jul 24, 2023
+    Updated: Aug 8, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -36,10 +36,7 @@ PUB main{}
 
     if ( disp.start() )
         ser.printf1(string("%s driver started"), @_drv_name)
-        disp.font_spacing(1, 0)
-        disp.font_scl(1, 1)
-        disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
-        disp.font_addr(fnt.ptr{})
+        disp.set_font(fnt.ptr(), fnt.setup())
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat

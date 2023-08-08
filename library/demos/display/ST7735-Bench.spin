@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2023
     Started: Feb 19, 2022
-    Updated: Jan 16, 2023
+    Updated: Aug 8, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,37 +15,13 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
-
-    WIDTH       = 128
-    HEIGHT      = 128
-
-{ SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    DC_PIN      = 3
-
-    RES_PIN     = -1                             ' optional; -1 to disable
 ' --
-
-    BPP         = disp#BYTESPERPX
-    BYTESPERLN  = WIDTH * BPP
-    BUFFSZ      = (WIDTH * HEIGHT)
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    disp    : "display.lcd.st7735"
-
-VAR
-
-#ifndef GFX_DIRECT
-    word _framebuff[BUFFSZ]                     ' display buffer
-#else
-    byte _framebuff                             ' dummy VAR for GFX_DIRECT
-#endif
+    cfg:    "boardcfg.flip"
+    disp:   "display.lcd.st7735" | WIDTH=240, HEIGHT=240, CS=0, SCK=1, MOSI=2, DC=3, RST=4
 
 PUB main{}
 
@@ -54,12 +30,9 @@ PUB main{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
+    if ( disp.start() )
         ser.printf1(string("%s driver started"), @_drv_name)
-        disp.font_spacing(1, 0)
-        disp.font_scl(1)
-        disp.font_sz(fnt#WIDTH, fnt#HEIGHT)
-        disp.font_addr(fnt.ptr{})
+        disp.set_font(fnt.ptr(), fnt.setup())
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
@@ -87,6 +60,11 @@ DAT
 #else
     _drv_name   byte    "ST7735 (SPI)", 0
 #endif
+
+CON
+
+    WIDTH   = disp.WIDTH
+    HEIGHT  = disp.HEIGHT
 
 DAT
 {
