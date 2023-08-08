@@ -3,9 +3,9 @@
     Filename: Il3820-Demo.spin
     Description: IL3820-specific setup for E-Ink/E-Paper graphics demo
     Author: Jesse Burt
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started: Jul 2, 2022
-    Updated: Oct 30, 2022
+    Updated: Aug 8, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,29 +15,13 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
-
-    WIDTH       = 128
-    HEIGHT      = 296
-
-{ SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    DC_PIN      = 3
-    BUSY_PIN    = 4
-    RES_PIN     = 5
-' --
-
-    BPP         = epaper#BYTESPERPX
-    BYTESPERLN  = WIDTH * BPP
-    BUFF_SZ     = ((WIDTH * HEIGHT) * BPP) / 8
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    epaper  : "display.epaper.il3820"
+    cfg:    "boardcfg.flip"
+    epaper: "display.epaper.il3820" | WIDTH=128, HEIGHT=296, ...
+                                        CS=21, SCK=20, MOSI=19, DC=18, RST=17, BUSY=16
 
 PUB main{}
 
@@ -46,13 +30,9 @@ PUB main{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if epaper.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, BUSY_PIN, WIDTH, HEIGHT, {
-}   @_disp_buff)
+    if ( epaper.start() )
         ser.printf1(string("%s driver started"), @_drv_name)
-        epaper.font_spacing(1, 0)
-        epaper.font_sz(fnt#WIDTH, fnt#HEIGHT)
-        epaper.font_scl(1)
-        epaper.font_addr(fnt.ptr{})
+        epaper.set_font(fnt.ptr(), fnt.setup())
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
@@ -68,7 +48,7 @@ DAT
     _drv_name   byte    "IL3820 (SPI)", 0
 
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
