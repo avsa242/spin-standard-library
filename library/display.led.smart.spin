@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated Oct 6, 2022
+    Updated Aug 8, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -19,6 +19,15 @@ CON
     MAX_PIXELS  = 1024                                          ' max pixels per strip
     MAX_COLOR   = 16_777_215
     BYTESPERPX  = 4
+
+    { -- default I/O configuration - can be overridden in the parent object }
+    LED_PIN     = 0
+    WIDTH       = 1
+    HEIGHT      = 1
+    MODEL       = WS2812B
+    { -- }
+
+    BUFF_SZ     = (WIDTH * HEIGHT) * BYTESPERPX
 
   ' borrowed from Gavin Garner's TM1804 LED driver
   ' -- additional colors by Lachlan   
@@ -72,96 +81,100 @@ VAR
     long _cycleticks                            ' ticks in 1.25us
     long _updateframe
 
+    long _fb[BUFF_SZ]
+
 PUB null{}
 ' This is not a top-level object
 ' -- this code should only be called from another object
   
-PUB start(NEOPIX_PIN, WIDTH, HEIGHT, device, addr) | ustix, holdoff, rgswap, bits, ns0h, ns1h, nsperiod, count
-' Start smart pixel driver driver
-' -- addr is pointer to [long] array holding pixel data
-' -- pin is serial output to pixels
-' -- holdoff is the delay between data bursts
-'    * units are 100us (0.1ms) 10 units = 1ms
-'    * long pixel strings tend to require long hold-off delays (e.g. 10 for 1ms)
-' -- rgswap is red/green swap flag
-' -- ns0h is 0-bit high timing (ns)
-' -- ns1h is 1-bit high timing (ns)
-' -- nsperiod is period in ns increments (1250 = 1.25us for 800kHz)
+PUB start(): status
+' Start the driver using default I/O settings
+    return startx(LED_PIN, WIDTH, HEIGHT, MODEL, @_fb)
+
+PUB startx(SMLED_PIN, DISP_W, DISP_H, led_model, ptr_fb) | ustix, holdoff, rgswap, bits, ns0h, ns1h, nsperiod, count
+' Start smart-LED engine
+'   SMLED_PIN: I/O pin connected to smart-LED strip/array (0..31)
+'   WIDTH: strip/array width, in pixels (1..1024)
+'   HEIGHT: strip/array height, in pixels (1..1024)
+'       NOTE: (WIDTH * HEIGHT) must be <= 1024
+'   led_model: Specific model of LEDs
+'   ptr_fb: pointer to display buffer
+'   NOTE: Minimum Fsys = 80MHz
     holdoff := 1
-    case device
-        $2811:                                                  ' WS2811
+    case led_model
+        $2811:                                  ' WS2811
             rgswap := FALSE
-            bits := 24                                          ' 24bpp
+            bits := 24                          ' 24bpp
             ns0h := 250
             ns1h := 600
             nsperiod := 1250
-        $2812:                                                  ' WS2812
+        $2812:                                  ' WS2812
             rgswap := TRUE
-            bits := 24                                          ' 24bpp
+            bits := 24                          ' 24bpp
             ns0h := 350
             ns1h := 700
             nsperiod := 1250
-        $2812B:                                                 ' WS2812B
+        $2812B:                                 ' WS2812B
             rgswap := TRUE
-            bits := 24                                          ' 24bpp
+            bits := 24                          ' 24bpp
             ns0h := 400
             ns1h := 800
             nsperiod := 1250
-        $2813:                                                  ' WS2813
+        $2813:                                  ' WS2813
             rgswap := TRUE
-            bits := 24                                          ' 24bpp
+            bits := 24                          ' 24bpp
             ns0h := 375
             ns1h := 875
             nsperiod := 1250
-        $6812_24:                                               ' SK6812 (RGB)
+        $6812_24:                               ' SK6812 (RGB)
             rgswap := TRUE
-            bits := 24                                          ' 24bpp
+            bits := 24                          ' 24bpp
             ns0h := 300
             ns1h := 600
             nsperiod := 1250
-        $6812_32:                                               ' SK6812 (RGBW)
+        $6812_32:                               ' SK6812 (RGBW)
             rgswap := TRUE
-            bits := 32                                          ' 32bpp
+            bits := 32                          ' 32bpp
             ns0h := 300
             ns1h := 600
             nsperiod := 1250
-        $1803:                                                  ' TM1803
+        $1803:                                  ' TM1803
             rgswap := FALSE
-            bits := 24                                          ' 24bpp
+            bits := 24                          ' 24bpp
             ns0h := 780
             ns1h := 1550
             nsperiod := 2330
         OTHER:
             return FALSE
 
-    stop{}                                                      ' stop if running
-    dira[NEOPIX_PIN] := 0                                       ' clear tx pin in this cog
+    stop{}                                      ' stop if running
+    dira[SMLED_PIN] := 0                        ' clear tx pin in this cog
 
-    if (clkfreq < 80_000_000)                                   ' requires 80MHz clock
+    if (clkfreq < 80_000_000)                   ' requires 80MHz clock
         return FALSE
 
-    count := width * height
-    if (count < 1 or count > 1024)                              ' Must be between 1 and 1024 pixels, inclusive
+    count := (DISP_W * DISP_H)
+    if (count < 1 or count > 1024)              ' Must be between 1 and 1024 pixels, inclusive
         return FALSE
 
-    ustix := clkfreq / 1_000_000                                ' ticks in 1us
+    ustix := clkfreq / 1_000_000                ' ticks in 1us
 
-    address(addr, count, NEOPIX_PIN, bits)                      ' set connection details
+    address(ptr_fb, count, SMLED_PIN, bits)     ' set connection details
   
     _resetticks := ustix * 100 * (1 #> holdoff <# 50)           ' note: 80us min reset timing
-    _rgfix      := rgswap <> 0                                  ' promote non-zero to true
-    _t0h        := ustix * ns0h / 1000 - 9                      ' pulse widths in ticks (adjusted)
+    _rgfix      := rgswap <> 0                  ' promote non-zero to true
+    _t0h        := ustix * ns0h / 1000 - 9      ' pulse widths in ticks (adjusted)
     _t1h        := ustix * ns1h / 1000 - 9
     _cycleticks := ustix * nsperiod / 1000
    
-    _cog := cognew(@pixdriver, @_connection) + 1                ' start the cog
-    if (_cog)                                                   ' if it started
-        repeat until (_connection == 0)                         '  wait until ready
+    _cog := cognew(@pixdriver, @_connection) + 1' start the cog
+    if (_cog)                                   ' if it started
+        repeat until (_connection == 0)         '  wait until ready
     else
-        return FALSE                                            ' cog didn't start
+        return FALSE                            ' cog didn't start
 
-    _disp_width := width
-    _disp_height := height
+    _disp_width := DISP_W
+    _disp_height := DISP_H
     _disp_xmax := _disp_width - 1
     _disp_ymax := _disp_height - 1
     _buff_sz := (_disp_width * _disp_height) * (bits >> 3) + 1
@@ -398,7 +411,7 @@ t3                      res     1
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
