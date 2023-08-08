@@ -76,6 +76,23 @@ CON
     DL              = 74
     GT              = 75
 
+    { -- default I/O settings; these can be overridden in the parent object }
+    { display dimensions }
+    WIDTH           = 128
+    HEIGHT          = 296
+
+    { SPI }
+    CS              = 0
+    SCK             = 1
+    MOSI            = 2
+    DC              = 3
+    RST             = 4
+    BUSY            = 5
+    ' --
+
+    BYTESPERLN  = WIDTH * BYTESPERPX
+    BUFF_SZ     = ((WIDTH + 6) * HEIGHT) / 8
+
 VAR
 
     long _CS, _RST, _DC, _BUSY
@@ -83,6 +100,7 @@ VAR
     ' shadow registers
     byte _brd_wvf_ctrl, _data_entr_mode, _drv_out_ctrl[3], _src_drv_volt[3]
     byte _gate_drv_volt
+    byte _fb[BUFF_SZ]
 
 OBJ
 
@@ -93,11 +111,15 @@ OBJ
 PUB null{}
 ' This is not a top-level object
 
-PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, PTR_DISPBUFF): status
+PUB start(): status
+' Start the driver using default I/O settings
+    return startx(CS, SCK, MOSI, RST, DC, BUSY, WIDTH, HEIGHT, @_fb)
+
+PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, DISP_W, DISP_H, ptr_fb): status
 ' Start using custom IO pins
-    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
-}   lookdown(MOSI_PIN: 0..31) and lookdown(RST_PIN: 0..31) and {
-}   lookdown(DC_PIN: 0..31) and lookdown(BUSY_PIN: 0..31)
+    if ( lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and ...
+        lookdown(MOSI_PIN: 0..31) and lookdown(RST_PIN: 0..31) and ...
+        lookdown(DC_PIN: 0..31) and lookdown(BUSY_PIN: 0..31) )
         if (status := spi.init(SCK_PIN, MOSI_PIN, -1, core#SPI_MODE))
             time.usleep(core#T_POR)             ' wait for device startup
             dira[DC_PIN] := 1
@@ -107,17 +129,13 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, 
 
             _CS := CS_PIN
             longmove(@_RST, @RST_PIN, 3)
-            address(PTR_DISPBUFF)
-            _bytesperln := (BYTESPERPX * WIDTH)
-            _disp_width := WIDTH
-            if (_disp_width // 8)               ' round up width to next
+            address(ptr_fb)
+            if (DISP_W // 8)               ' round up width to next
                 repeat                          ' multiple of 8 so alignment
-                    _disp_width++               ' is correct
-                until (_disp_width // 8) == 0
-            _disp_height := HEIGHT
-            _disp_xmax := _disp_width-1
-            _disp_ymax := _disp_height-1
-            _buff_sz := ((_disp_width/8) * HEIGHT)
+                    DISP_W++               ' is correct
+                until (DISP_W // 8) == 0
+            set_dims(DISP_W, DISP_H)
+            _buff_sz := BUFF_SZ
 
             return
     ' if this point is reached, something above failed
@@ -128,6 +146,7 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, 
 PUB stop{}
 ' Stop SPI engine, float I/O pins, and clear variable space
     spi.deinit{}
+    dira[_CS] := 0
     dira[_DC] := 0
     dira[_RST] := 0
     dira[_BUSY] := 0
@@ -627,9 +646,9 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
             outa[_CS] := 1
             return
-        $01, $03, $04, $0C, $0F, $10, $11, $14, $15, $1A, $1C, {
-}       $26, $28, $29, $2C, $31, $32, $3A..$3C, $41, $44..$47, $4E, $4F, $74, {
-}       $7E, $7F:
+        $01, $03, $04, $0C, $0F, $10, $11, $14, $15, $1A, $1C, ...
+        $26, $28, $29, $2C, $31, $32, $3A..$3C, $41, $44..$47, $4E, $4F, $74, ...
+        $7E, $7F:
             outa[_DC] := CMD
             outa[_CS] := 0
             spi.wr_byte(reg_nr)
@@ -683,7 +702,7 @@ DAT
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

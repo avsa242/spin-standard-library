@@ -5,7 +5,7 @@
     Description: IL3897-specific setup for E-Ink/E-Paper graphics demo
     Copyright (c) 2022
     Started: Feb 21, 2021
-    Updated: Dec 3, 2022
+    Updated: Aug 8, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,29 +15,15 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
-
-    WIDTH       = 122
-    HEIGHT      = 250
-
-    { SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    DC_PIN      = 3
-    BUSY_PIN    = 4
-    RES_PIN     = 5
 ' --
-
-    BPP         = epaper#BYTESPERPX
-    BYTESPERLN  = WIDTH * BPP
-    BUFF_SZ     = ((WIDTH + 6) * HEIGHT) / 8
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    epaper  : "display.epaper.il3897"
+    cfg:    "boardcfg.flip"
+    epaper: "display.epaper.il3897" | WIDTH=122, HEIGHT=250, ...
+                                        CS=16, SCK=17, MOSI=18, DC=19, RST=20, BUSY=21
+
 
 PUB main{}
 
@@ -46,13 +32,9 @@ PUB main{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if epaper.startx(CS_PIN, SCK_PIN, MOSI_PIN, RES_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, {
-}                    @_disp_buff)
+    if ( epaper.start() )
         ser.printf1(string("%s driver started"), @_drv_name)
-        epaper.font_spacing(1, 0)
-        epaper.font_sz(fnt#WIDTH, fnt#HEIGHT)
-        epaper.font_scl(1)
-        epaper.font_addr(fnt.ptr{})
+        epaper.set_font(fnt.ptr(), fnt.setup())
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
@@ -69,7 +51,7 @@ DAT
     _drv_name   byte    "IL3897 (SPI)", 0
 
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
