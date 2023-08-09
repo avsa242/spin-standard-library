@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
     Copyright (c) 2023
     Started: Mar 11, 2020
-    Updated: Jul 31, 2023
+    Updated: Aug 9, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -94,13 +94,7 @@ PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, DISP_W, DISP_H, ptr_dispbu
             dira[_CS] := 1
             outa[_DC] := 1
             dira[_DC] := 1
-            _disp_width := DISP_W
-            _disp_height := DISP_H
-            _disp_xmax := _disp_width - 1
-            _disp_ymax := _disp_height - 1
-            _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
-            _bytesperln := _disp_width * BYTESPERPX
-
+            set_dims(DISP_W, DISP_H)
             address(ptr_dispbuff)
             reset{}
             time.usleep(core#T_POR)
@@ -608,43 +602,6 @@ PUB prechg_level(level)
     level := (((200 #> level <# 600) - 200) / 13)
     writereg(core#PRECHGLEVEL, 1, @level)
 
-#ifdef GFX_DIRECT
-PUB tx = putchar
-PUB char = putchar
-PUB putchar(ch) | gl_c, gl_r, lastgl_c, lastgl_r
-' Draw character from currently loaded font
-    lastgl_c := _font_width-1
-    lastgl_r := _font_height-1
-    case ch
-        CR:
-            _charpx_x := 0
-        LF:
-            _charpx_y += _charcell_h
-            if (_charpx_y > _charpx_xmax)
-                _charpx_y := 0
-        0..127:                                 ' validate ASCII code
-            ' walk through font glyph data
-            repeat gl_c from 0 to lastgl_c      ' column
-                repeat gl_r from 0 to lastgl_r  ' row
-                    ' if the current offset in the glyph is a set bit, draw it
-                    if (byte[_font_addr][(ch << 3) + gl_c] & (|< gl_r))
-                        plot((_charpx_x + gl_c), (_charpx_y + gl_r), _fgcolor)
-                    else
-                    ' otherwise, draw the background color, if enabled
-                        if _char_attrs & DRAWBG
-                            plot((_charpx_x + gl_c), (_charpx_y + gl_r), _bgcolor)
-            ' move the cursor to the next column, wrapping around to the left,
-            ' and wrap around to the top of the display if the bottom is reached
-            _charpx_x += _charcell_w
-            if (_charpx_x > _charpx_xmax)
-                _charpx_x := 0
-                _charpx_y += _charcell_h
-            if (_charpx_y > _charpx_ymax)
-                _charpx_y := 0
-        other:
-            return
-#endif
-
 PUB subpix_order(order)
 ' Set subpixel color order
 '   Valid values:
@@ -662,6 +619,11 @@ PUB reset{}
         outa[_RES] := 0
         time.usleep(2)
         outa[_RES] := 1
+
+#ifdef GFX_DIRECT
+PUB scroll_up_fs(px)
+' dummy method
+#endif
 
 PUB show{}
 ' Send the draw buffer to the display
