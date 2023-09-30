@@ -34,7 +34,7 @@ var
 
 
 pub available(): b
-' Get the number of bytes available in the socket buffer
+' Get the number of bytes available in the ring buffer
     return RBUFF_MASK - ( (_ptr_head - _ptr_tail) & RBUFF_MASK )
 
 
