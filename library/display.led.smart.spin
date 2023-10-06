@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Driver for various smart LED arrays
     Started Jan 4, 2020
-    Updated Aug 8, 2023
+    Updated Oct 6, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -81,7 +81,7 @@ VAR
     long _cycleticks                            ' ticks in 1.25us
     long _updateframe
 
-    long _fb[BUFF_SZ]
+    long _framebuffer[BUFF_SZ]
 
 PUB null{}
 ' This is not a top-level object
@@ -89,7 +89,7 @@ PUB null{}
   
 PUB start(): status
 ' Start the driver using default I/O settings
-    return startx(LED_PIN, WIDTH, HEIGHT, MODEL, @_fb)
+    return startx(LED_PIN, WIDTH, HEIGHT, MODEL, @_framebuffer)
 
 PUB startx(SMLED_PIN, DISP_W, DISP_H, led_model, ptr_fb) | ustix, holdoff, rgswap, bits, ns0h, ns1h, nsperiod, count
 ' Start smart-LED engine
@@ -159,7 +159,9 @@ PUB startx(SMLED_PIN, DISP_W, DISP_H, led_model, ptr_fb) | ustix, holdoff, rgswa
 
     ustix := clkfreq / 1_000_000                ' ticks in 1us
 
-    address(ptr_fb, count, SMLED_PIN, bits)     ' set connection details
+    set_address(ptr_fb)
+    _ptr_framebuffer := _ptr_drawbuffer
+    setup_led_array(count, SMLED_PIN, bits)     ' set connection details
   
     _resetticks := ustix * 100 * (1 #> holdoff <# 50)           ' note: 80us min reset timing
     _rgfix      := rgswap <> 0                  ' promote non-zero to true
@@ -187,23 +189,21 @@ PUB stop{}
         cogstop(_cog - 1)
         _cog := 0
 
-PUB address(addr, count, pin, bits) : c
-' Assigns buffer at addr to pixel driver
-' -- addr is pointer to long array
-' -- count is # of elements in the array 
-' -- pin is serial output to pixels
-' -- bits is bit count for pixel type (24 or 32)
-    _ptr_framebuffer := addr
-    _ptr_drawbuffer := addr
+PUB setup_led_array(count, pin, bits): c
+' Set attributes of the connected LED array
+'   count: total number of LEDs
+'   pin: I/O pin the array is connected to
+'   bits: bits per color of the LEDs (32 for 32bpp; all other values will effectively set 24)
+'   NOTE: this depends on the framebuffer address being set, so must be called _after_
+'       calling set_address()
     _npixels := count
 
     c := _ptr_framebuffer | ((_npixels-1) << 16) | (pin << 26)  ' compress for driver cog
 
     if (bits == 32)
-        c |= |<31                                               ' set bit 31 for 32-bit pixels
+        c |= |< 31                                              ' set bit 31 for 32-bit pixels
 
     _connection := c                                            ' set new connection
-    return _ptr_framebuffer
 
 PUB clear{}
 ' Clear the display buffer

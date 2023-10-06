@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Oct 30, 2022
+    Updated: Oct 6, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -39,6 +39,10 @@
 
 CON
 
+    { default I/O configuration - this can be overridden in the parent object }
+    PIN_GRP     = 0                             ' 0..3 for each group of 8 consecutive pins
+
+    { driver limits }
     MAX_COLOR   = 63
     DISP_WIDTH  = 160
     DISP_HEIGHT = 120
@@ -47,9 +51,14 @@ CON
 
 VAR
 
+    byte _framebuffer[DISP_WIDTH * DISP_HEIGHT]
     byte _cog
 
-PUB startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): okay
+PUB start(): status
+' Start VGA engine using default I/O settings
+    return startx(PIN_GRP, DISP_WIDTH, DISP_HEIGHT, @_framebuffer)
+
+PUB startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): status
 ' Start VGA engine
 '   PINGRP: 8-pin group number (0, 1, 2, 3 for start pin as 0, 8, 16, 24, resp)
 '   pins must be connected contiguously in the following (ascending) order:
@@ -64,7 +73,7 @@ PUB startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): okay
     _disp_ymax := _disp_height - 1
     _buff_sz := _disp_width * _disp_height
     _bytesperln := DISP_WIDTH * BYTESPERPX
-    address(ptr_dispbuff)
+    set_address(ptr_dispbuff)
 
     PINGRP := ((PINGRP <# 3) #> 0)
     directionState := ($FF << (8 * PINGRP))
@@ -81,19 +90,13 @@ PUB startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): okay
 
     displayIndicatorAddress := @displayIndicator
     syncIndicatorAddress := @syncIndicator
-    okay := _cog := cognew(@initialization, _ptr_drawbuffer)+1
+    status := _cog := cognew(@initialization, _ptr_drawbuffer)+1
 
 PUB stop
 
     if(_cog)
         cogstop(_cog-1)
         _cog := 0
-
-PUB address(addr)
-' Set address of display buffer
-'   Example:
-'       display.Address(@_framebuffer)
-    _ptr_drawbuffer := addr
 
 PUB clear{}
 ' Clear the display

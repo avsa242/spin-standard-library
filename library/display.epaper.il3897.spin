@@ -3,9 +3,9 @@
     Filename: display.epaper.il3897.spin
     Author: Jesse Burt
     Description: Driver for IL3897/SSD1675 AM E-Paper display controller
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Feb 21, 2021
-    Updated Dec 3, 2022
+    Updated Oct 6, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -100,7 +100,7 @@ VAR
     ' shadow registers
     byte _brd_wvf_ctrl, _data_entr_mode, _drv_out_ctrl[3], _src_drv_volt[3]
     byte _gate_drv_volt
-    byte _fb[BUFF_SZ]
+    byte _framebuffer[BUFF_SZ]
 
 OBJ
 
@@ -113,7 +113,7 @@ PUB null{}
 
 PUB start(): status
 ' Start the driver using default I/O settings
-    return startx(CS, SCK, MOSI, RST, DC, BUSY, WIDTH, HEIGHT, @_fb)
+    return startx(CS, SCK, MOSI, RST, DC, BUSY, WIDTH, HEIGHT, @_framebuffer)
 
 PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, DISP_W, DISP_H, ptr_fb): status
 ' Start using custom IO pins
@@ -129,7 +129,7 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, DISP_W, DISP_H,
 
             _CS := CS_PIN
             longmove(@_RST, @RST_PIN, 3)
-            address(ptr_fb)
+            set_address(ptr_fb)
             if (DISP_W // 8)               ' round up width to next
                 repeat                          ' multiple of 8 so alignment
                     DISP_W++               ' is correct
@@ -192,14 +192,6 @@ PUB preset_2_13_bw{}
     wr_lut(@_lut_2p13_bw_full)
     disp_pos(0, 0)
     repeat until disp_rdy{}
-
-PUB address(ptr_drawbuff)
-' Set pointer to display/frame buffer
-    case ptr_drawbuff
-        4..$7fff-_buff_sz:
-            _ptr_drawbuffer := ptr_drawbuff
-        other:
-            return _ptr_drawbuffer
 
 PUB addr_ctr_mode(mode): curr_mode
 ' Set address increment/decrement mode

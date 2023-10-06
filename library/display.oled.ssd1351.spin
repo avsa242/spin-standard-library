@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
     Copyright (c) 2023
     Started: Mar 11, 2020
-    Updated: Aug 9, 2023
+    Updated: Oct 6, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -68,7 +68,7 @@ VAR
 
     long _CS, _DC, _RES
 
-    word _fb[(WIDTH*HEIGHT)]
+    word _framebuffer[(WIDTH*HEIGHT)]
 
     byte _offs_x, _offs_y
 
@@ -80,7 +80,7 @@ PUB null{}
 
 PUB start{}: status
 ' Start the driver using default I/O settings
-    return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, @_fb)
+    return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, @_framebuffer)
 
 PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, DISP_W, DISP_H, ptr_dispbuff): status
 ' Start driver using custom I/O settings
@@ -95,7 +95,7 @@ PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, DISP_W, DISP_H, ptr_dispbu
             outa[_DC] := 1
             dira[_DC] := 1
             set_dims(DISP_W, DISP_H)
-            address(ptr_dispbuff)
+            set_address(ptr_dispbuff)
             reset{}
             time.usleep(core#T_POR)
             disp_lock(ALL_UNLOCK)
@@ -224,14 +224,6 @@ PUB preset_128xhiperf{}
 
     powered(TRUE)
     visibility(NORMAL)
-
-PUB address(addr): curr_addr
-' Set framebuffer/display buffer address
-    case addr
-        $0004..$7FFF-_buff_sz:
-            _ptr_drawbuffer := addr
-        other:
-            return _ptr_drawbuffer
 
 PUB addr_mode(mode)
 ' Set display internal addressing mode

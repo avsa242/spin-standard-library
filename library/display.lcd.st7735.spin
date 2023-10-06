@@ -5,7 +5,7 @@
     Description: Driver for Sitronix ST77xx-based displays
     Copyright (c) 2023
     Started Mar 7, 2020
-    Updated Aug 8, 2023
+    Updated Oct 6, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -95,6 +95,7 @@ PUB start{}: status
 PUB startx(CS_PIN, SCK_PIN, SDA_PIN, DC_PIN, RESET_PIN, DISP_W, DISP_H, ptr_drawbuff): status
 ' Start using custom I/O settings
 '   NOTE: RES_PIN is optional, but recommended (pin # only validated in reset())
+'   ptr_drawbuff is ignored (exists only for API compatibility with other drivers)
     if ( lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and ...
         lookdown(DC_PIN: 0..31) )
         if ( status := spi.init(SCK_PIN, SDA_PIN, -1, core#SPI_MODE) )
@@ -305,14 +306,6 @@ PUB preset_adafruit_1p44_128x128_port_down{}
     mirror_v(false)
     disp_offset(1, 2)
     draw_area(0, 0, _disp_xmax, _disp_ymax)
-
-PUB address(addr): curr_addr
-' Set framebuffer/display buffer address
-    case addr
-        $0000..$7fff-_buff_sz:
-            _ptr_drawbuffer := addr
-        other:
-            return _ptr_drawbuffer
 
 #ifdef GFX_DIRECT
 PUB bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
@@ -923,7 +916,7 @@ DAT
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

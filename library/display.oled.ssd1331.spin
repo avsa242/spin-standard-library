@@ -5,7 +5,7 @@
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
     Copyright (c) 2023
     Started: Apr 28, 2019
-    Updated: Jul 31, 2023
+    Updated: Oct 6, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -68,7 +68,7 @@ VAR
     { I/O pins }
     long _CS, _DC, _RES
 
-    word _fb[ (WIDTH * HEIGHT) ]
+    word _framebuffer[ (WIDTH * HEIGHT) ]
 
     { shadow registers }
     byte _sh_SETCOLUMN, _sh_SETROW, _sh_SETCONTRAST_A, _sh_SETCONTRAST_B, _sh_SETCONTRAST_C
@@ -82,7 +82,7 @@ PUB null{}
 
 PUB start{}: status
 ' Start the driver using default I/O settings
-    return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, @_fb)
+    return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, @_framebuffer)
 
 PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, DISP_W, DISP_H, ptr_drawbuff): status
 ' Start using custom I/O settings
@@ -104,7 +104,7 @@ PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, DISP_W, DISP_H, ptr_drawbu
             _disp_ymax := _disp_height-1
             _buff_sz := (_disp_width * _disp_height) * BYTESPERPX
             _bytesperln := (_disp_width * BYTESPERPX)
-            address(ptr_drawbuff)
+            set_address(ptr_drawbuff)
             return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
@@ -206,14 +206,6 @@ PUB addr_mode(mode): curr_mode
 
     _sh_REMAPCOLOR := ((_sh_REMAPCOLOR & core#SEGREMAP_MASK) | mode)
     writereg(core#SETREMAP, 1, @_sh_REMAPCOLOR)
-
-PUB address(addr): curr_addr
-' Set framebuffer/display buffer address
-    case addr
-        $0004..$7FFF-addr:
-            _ptr_drawbuffer := addr
-        other:
-            return _ptr_drawbuffer
 
 #ifdef GFX_DIRECT
 PUB bitmap(ptr_bmap, xs, ys, bm_wid, bm_lns) | offs, nr_pix
@@ -603,43 +595,6 @@ PUB precharge_speed(seg_a, seg_b, seg_c) | tmp[2]
     tmp.byte[3] := core#PRECHGC
     tmp.byte[4] := seg_c
     writereg(core#PRECHGA, 5, @tmp)
-
-#ifdef GFX_DIRECT
-PUB tx = putchar
-PUB char = putchar
-PUB putchar(ch) | gl_c, gl_r, lastgl_c, lastgl_r
-' Draw character from currently loaded font
-    lastgl_c := _font_width-1
-    lastgl_r := _font_height-1
-    case ch
-        CR:
-            _charpx_x := 0
-        LF:
-            _charpx_y += _charcell_h
-            if _charpx_y > _charpx_xmax
-                _charpx_y := 0
-        0..127:                                 ' validate ASCII code
-            ' walk through font glyph data
-            repeat gl_c from 0 to lastgl_c      ' column
-                repeat gl_r from 0 to lastgl_r  ' row
-                    ' if the current offset in the glyph is a set bit, draw it
-                    if byte[_font_addr][(ch << 3) + gl_c] & (|< gl_r)
-                        plot((_charpx_x + gl_c), (_charpx_y + gl_r), _fgcolor)
-                    else
-                    ' otherwise, draw the background color, if enabled
-                        if _char_attrs & DRAWBG
-                            plot((_charpx_x + gl_c), (_charpx_y + gl_r), _bgcolor)
-            ' move the cursor to the next column, wrapping around to the left,
-            ' and wrap around to the top of the display if the bottom is reached
-            _charpx_x += _charcell_w
-            if _charpx_x > _charpx_xmax
-                _charpx_x := 0
-                _charpx_y += _charcell_h
-            if _charpx_y > _charpx_ymax
-                _charpx_y := 0
-        other:
-            return
-#endif
 
 PUB reset{}
 ' Reset the display controller
