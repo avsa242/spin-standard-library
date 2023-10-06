@@ -7,21 +7,35 @@
         driver, 1..16
     Copyright (c) 2005
     Started 2005
-    Updated Oct 18, 2022
+    Updated Sep 30, 2023
     See end of file for terms of use.
     --------------------------------------------
 
     NOTE: This is based on Quadrature Encoder.spin,
         originally by Jeff Martin.
 }
+CON
+
+    { default I/O configuration - these can be overridden by the parent object }
+    BASEPIN     = 0
+    NUM_ENC     = 1
+    NUM_DELTA   = 1
+
+    ENC_BUFFSZ  = (NUM_ENC + NUM_DELTA)
+
 
 VAR
 
+    long _enc_posbuff[ENC_BUFFSZ]
     long _ptr_posbuff                           ' pointer to pos buffer
     byte _cog                                   ' cog ID of encoder engine
     byte _nr_delta                              ' # enc. requiring delta vals
 
-PUB start = startx
+PUB start(): status
+' Start the driver using default I/O settings
+    return startx(BASEPIN, NUM_ENC, NUM_DELTA, @_enc_posbuff)
+
+
 PUB startx(ENC_BASEPIN, nr_enc, nr_delta, ptr_posbuff): status
 ' Start using custom I/O basepin and parameters
 '   ENC_BASEPIN: 0..31
