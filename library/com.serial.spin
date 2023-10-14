@@ -3,27 +3,48 @@
     Filename: com.serial.spin
     Author: Jesse Burt
     Description: UART engine
-        (@80MHz Fsys: 250kbps TX/RX, or 1Mbps TX-only)
     Started 2009
-    Updated Jul 15, 2023
+    Updated Oct 14, 2023
     See end of file for terms of use.
     --------------------------------------------
 
     NOTE: This is based on Parallax Serial Terminal.spin,
     originally by Jeff Martin, Andy Lindsay, Chip Gracey
+
+    Specs/Limits:
+        @80MHz Fsys:
+            TX/RX: 250kbps
+            TX-only: 1Mbps
 }
 
 CON
 
-    ' default I/O configuration
-    DEF_RX          = 31
-    DEF_TX          = 30
-    DEF_MODE        = %0000
+    { I/O configuration - these can be overridden by the parent object }
+    RX_PIN          = DEF_RX_PIN
+    TX_PIN          = DEF_TX_PIN
+    SIG_MODE        = DEF_SIG_MODE
+    SER_BAUD        = DEF_BAUD
+    UART_BUFF_SZ    = DEF_UART_BUFF_SZ
+
+
+    { defaults }
+    DEF_RX_PIN      = 31
+    DEF_TX_PIN      = 30
+    DEF_SIG_MODE    = %0000
     DEF_BAUD        = 115_200
 
+
     { set size of RX and TX buffers: 2, 4, 8, 16, 32, 64, 128, 256 (64 or higher recommended) }
-    UART_BUFF_SZ    = 64
+    DEF_UART_BUFF_SZ= 64
     BUFFER_MASK     = UART_BUFF_SZ - 1
+
+
+    { signalling modes - bitwise-OR together as desired }
+    INV_RX          = %0001                     ' invert RX
+    INV_TX          = %0010                     ' invert TX
+    OD_SRC_TX       = %0100                     ' open-drain/source TX
+    IGNORE_TXECHO   = %1000                     ' ignore TX echo on RX
+
 
 VAR
 
@@ -43,10 +64,10 @@ VAR
     byte _tx_buff[UART_BUFF_SZ]
 
 PUB start = init_def
-PUB init_def(baudrate): status
+PUB init_def(baudrate=DEF_BAUD): status
 ' Start UART engine with default parameters (RX: P31, TX: P30, mode: %0000)
 '   Returns: (cogid+1) of cog running PASM engine, or 0 if unsuccessful
-    return init(DEF_RX, DEF_TX, DEF_MODE, baudrate)
+    return init(RX_PIN, TX_PIN, SIG_MODE, baudrate)
 
 PUB startrxtx = init
 PUB init(rxpin, txpin, mode, baudrate): status
@@ -54,10 +75,10 @@ PUB init(rxpin, txpin, mode, baudrate): status
 '   rxpin: input pin; receives signals from external device's TX pin.
 '   txpin: output pin; sends signals to  external device's RX pin.
 '   mode: signaling mode (4-bit pattern).
-'       bit 0 - invert rx
-'       bit 1 - invert tx
-'       bit 2 - open drain/source tx
-'       bit 3 - ignore tx echo on rx
+'       INV_RX (%0000): invert rx
+'       INV_TX (%0010): invert tx
+'       OD_SRC_TX (%0100): open drain/source tx
+'       IGNORE_TXECHO (%1000): ignore tx echo on rx
 '   baudrate - bits per second
 '   Returns: (cogid+1) of cog running PASM engine, or 0 if unsuccessful
     deinit{}
@@ -84,18 +105,18 @@ PUB fifo_rx_bytes{}: nr_chars
 PUB flush = flush_rx
 PUB flush_rx{}
 ' Flush receive buffer
-    repeat while rxcheck => 0
+    repeat while ( getchar_noblock() => 0 )
 
 PUB tx = putchar
 PUB char = putchar
 PUB putchar(ch)
 ' Send single-byte character (blocking)
 '   ch: character (ASCII byte value) to send
-    repeat until (_tx_tail <> ((_tx_head + 1) & BUFFER_MASK))
+    repeat until ( _tx_tail <> ((_tx_head + 1) & BUFFER_MASK) )
     _tx_buff[_tx_head] := ch
     _tx_head := (_tx_head + 1) & BUFFER_MASK
 
-    if (_rxtx_mode & %1000)
+    if (_rxtx_mode & IGNORE_TXECHO)
         getchar{}
 
 PUB rx = getchar
@@ -108,13 +129,14 @@ PUB getchar: ch
     while (ch == -1)
 
 PUB rxcheck = rx_check
-PUB rx_check: ch_rx
+PUB rx_check = getchar_noblock
+PUB getchar_noblock(): ch_rx
 ' Check if character received (non-blocking)
 '   Returns:
 '       -1: no byte received
 '       $00..$FF if character received
     ch_rx := -1
-    if (_rx_tail <> _rx_head)
+    if ( _rx_tail <> _rx_head )
         ch_rx := _rx_buff[_rx_tail]
         _rx_tail := (_rx_tail + 1) & BUFFER_MASK
 
