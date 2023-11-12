@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: AHT20 driver demo
         * Temp/RH data output
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Jun 16, 2021
-    Updated Oct 30, 2022
+    Updated Nov 12, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -14,49 +14,45 @@
         -DAHT20_I2C (default if none specified)
         -DAHT20_I2C_BC
 }
+' Uncomment to use the bytecode-based I2C engine
+#define AHT20_I2C_BC
+#pragma exportdef(AHT20_I2C_BC)
+
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-
-    { I2C configuration }
-    SCL_PIN     = 28
-    SDA_PIN     = 29
-    I2C_FREQ    = 400_000                       ' max is 400_000
-' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensor:  "sensor.temp_rh.aht20"
-    ser:    "com.serial.terminal.ansi"
+    sensor: "sensor.temp_rh.aht20" | SCL=28, SDA=29, I2C_FREQ=400_000
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     time:   "time"
 
 PUB setup{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.strln(@"Serial terminal started")
 
-    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
-        ser.strln(string("AHT20 driver started"))
+    if ( sensor.start() )
+        ser.strln(@"AHT20 driver started")
     else
-        ser.strln(string("AHT20 driver failed to start - halting"))
+        ser.strln(@"AHT20 driver failed to start - halting")
         repeat
 
     sensor.reset{}
-    sensor.temp_scale(sensor#C)
+    sensor.temp_scale(C)
     demo{}
 
 #include "temp_rhdemo.common.spinh"             ' code common to all temp/RH demos
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
