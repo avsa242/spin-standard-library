@@ -5,7 +5,7 @@
     Description: Driver for 24xxxx series I2C EEPROM
     Copyright (c) 2023
     Started Oct 26, 2019
-    Updated Jul 13, 2023
+    Updated Nov 18, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -38,7 +38,11 @@ VAR
 
 OBJ
 
+#ifdef EE24XXXX_I2C_BC
+    i2c:    "com.i2c.nocog"
+#else
     i2c:    "com.i2c"                           ' PASM bit-banged I2C engine
+#endif
     core:   "core.con.24xxxx"                   ' HW-specific constants
     time:   "time"                              ' timekeeping methods
 
