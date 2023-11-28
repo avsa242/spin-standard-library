@@ -22,11 +22,13 @@ con
     { error codes }
     EBUFF_FULL  = -32768                        ' no space left in buffer
     EBUFF_EMPTY = -32769                        ' buffer is empty
+    EBUFF_UNDER = -32770                        ' buffer underflow
 
 
 var
 
     long rdblk_lsbf                             ' pointer to rdblk_lsbf function
+    long wrblk_lsbf                             ' pointer to wrblk_lsbf function
 
 
     { pointers within the buffer }
@@ -41,6 +43,11 @@ pub set_rdblk_lsbf(fptr)
 '   NOTE: For use with xreceive()
     rdblk_lsbf := fptr
 
+
+pub set_wrblk_lsbf(fptr)
+' Set pointer to external rdblk_lsbf function
+'   NOTE: For use with xreceive()
+    wrblk_lsbf := fptr
 
 pub available(): b
 ' Get the number of bytes available in the ring buffer
@@ -145,6 +152,31 @@ pub xreceive(len): n    'xxx API not finalized
         { all of the data fits - simply write it }
         rdblk_lsbf( (@_ring_buff + _ptr_head), len)
         _ptr_head := ( _ptr_head + len) & RBUFF_MASK
+
+    return len
+
+pub xsend(len): n   'xxx API not finalized
+' Write data from the ring buffer (use external function to copy data)
+'   len: number of bytes to send
+'   Returns: number of bytes written, or EBUFF_UNDER if the buffer contains less than 'len'
+'   NOTE: set_wrblk_lsbf() MUST be called before using this method (behavior will be otherwise
+'       unpredictable)
+    if ( len > unread_bytes() )
+        { don't bother doing anything if there isn't enough data in the buffer }
+        return EBUFF_UNDER
+
+    if ( (len + _ptr_tail) > RBUFF_SZ )
+        { current read pointer + length requested goes past the 'end' of the buffer:
+            write what we can... }
+        wrblk_lsbf( (@_ring_buff+_ptr_tail), (RBUFF_SZ-_ptr_tail) )
+
+        { ...now wrap around to the beginning and write the rest }
+        wrblk_lsbf( @_ring_buff, (len-(RBUFF_SZ-_ptr_tail)) )
+        _ptr_tail := ( _ptr_tail + len) & RBUFF_MASK
+    else
+        { all of the data is writeable in one shot }
+        wrblk_lsbf( (@_ring_buff + _ptr_tail), len)
+        _ptr_tail := ( _ptr_tail + len ) & RBUFF_MASK
 
     return len
 
