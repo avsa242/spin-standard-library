@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Generic ring buffer
     Started Sep 30, 2023
-    Updated Sep 30, 2023
+    Updated Nov 28, 2023
     Copyright 2023
     See end of file for terms of use.
     --------------------------------------------
@@ -26,11 +26,20 @@ con
 
 var
 
+    long rdblk_lsbf                             ' pointer to rdblk_lsbf function
+
+
     { pointers within the buffer }
     word _ptr_head, _ptr_tail
 
     { the ring buffer }
     byte _ring_buff[RBUFF_SZ]
+
+
+pub set_rdblk_lsbf(fptr)
+' Set pointer to external rdblk_lsbf function
+'   NOTE: For use with xreceive()
+    rdblk_lsbf := fptr
 
 
 pub available(): b
@@ -112,6 +121,33 @@ pub unread_bytes(): q
 '       negative numbers: count of unread bytes (head < tail)
 '       0: empty
     return ( _ptr_head - _ptr_tail )
+
+
+pub xreceive(len): n    'xxx API not finalized
+' Copy data into the ring buffer (use external function to copy data)
+'   len: number of bytes to receive
+'   Returns: number of bytes received, or ENOSPACE if there isn't enough space in the buffer
+'   NOTE: set_rdblk_lsbf() MUST be called before using this method (behavior will be otherwise
+        unpredictable)
+    if ( len > available() )
+        { don't bother doing anything if there isn't enough space in the buffer }
+        return EBUFF_FULL
+
+    if ( (len + _ptr_head) > RBUFF_SZ )
+        { current write pointer + length requested doesn't fit in the 'end' of the buffer:
+            fit what we can... }
+        rdblk_lsbf( (@_ring_buff + _ptr_head), (RBUFF_SZ-_ptr_head) )
+        src_buff += (RBUFF_SZ-_ptr_head)        ' advance source data pointer
+
+        { ...now wrap around to the beginning and write the rest }
+        rdblk_lsbf(@_ring_buff, (len-(RBUFF_SZ-_ptr_head)) )
+        _ptr_head := ( _ptr_head + len) & RBUFF_MASK
+    else
+        { all of the data fits - simply write it }
+        rdblk_lsbf( (@_ring_buff + _ptr_head), len)
+        _ptr_head := ( _ptr_head + len) & RBUFF_MASK
+
+    return len
 
 
 DAT
