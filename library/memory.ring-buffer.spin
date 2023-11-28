@@ -137,7 +137,6 @@ pub xreceive(len): n    'xxx API not finalized
         { current write pointer + length requested doesn't fit in the 'end' of the buffer:
             fit what we can... }
         rdblk_lsbf( (@_ring_buff + _ptr_head), (RBUFF_SZ-_ptr_head) )
-        src_buff += (RBUFF_SZ-_ptr_head)        ' advance source data pointer
 
         { ...now wrap around to the beginning and write the rest }
         rdblk_lsbf(@_ring_buff, (len-(RBUFF_SZ-_ptr_head)) )
