@@ -128,7 +128,7 @@ pub xreceive(len): n    'xxx API not finalized
 '   len: number of bytes to receive
 '   Returns: number of bytes received, or ENOSPACE if there isn't enough space in the buffer
 '   NOTE: set_rdblk_lsbf() MUST be called before using this method (behavior will be otherwise
-        unpredictable)
+'       unpredictable)
     if ( len > available() )
         { don't bother doing anything if there isn't enough space in the buffer }
         return EBUFF_FULL
