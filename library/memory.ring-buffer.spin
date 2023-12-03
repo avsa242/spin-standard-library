@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Generic ring buffer
     Started Sep 30, 2023
-    Updated Nov 28, 2023
+    Updated Dec 3, 2023
     Copyright 2023
     See end of file for terms of use.
     --------------------------------------------
@@ -38,13 +38,13 @@ var
     byte _ring_buff[RBUFF_SZ]
 
 
-pub set_rdblk_lsbf(fptr)
+pub set_rdblk_lsbf(fptr)    'xxx API not finalized
 ' Set pointer to external rdblk_lsbf function
 '   NOTE: For use with xreceive()
     rdblk_lsbf := fptr
 
 
-pub set_wrblk_lsbf(fptr)
+pub set_wrblk_lsbf(fptr)    'xxx API not finalized
 ' Set pointer to external rdblk_lsbf function
 '   NOTE: For use with xreceive()
     wrblk_lsbf := fptr
@@ -60,6 +60,32 @@ pub flush(): b
     b := unread_bytes()
     bytefill(@_ring_buff, 0, RBUFF_SZ)
     _ptr_head := _ptr_tail := 0
+
+
+pub get(ptr_buff, len): l
+' Get some data from the ring buffer
+'   ptr_buff: buffer to copy data into
+'   len: number of bytes to copy
+'   Returns: number of bytes actually copied
+'   NOTE: length of data copied will be limited by what is actually available in the buffer
+    len := ( len <# unread_bytes() )            ' limit request to what's actually available
+
+    if ( len )                                  ' don't do anything if the buffer's empty
+        if ( (len + _ptr_tail) > RBUFF_SZ )
+            { case 1: current read pointer + length requested goes past the 'end' of the buffer:
+                read what we can... }
+            bytemove(ptr_buff, (@_ring_buff+_ptr_tail), (RBUFF_SZ-_ptr_tail) )
+
+            { ...now wrap around to the beginning and get the rest }
+            ptr_buff += (RBUFF_SZ-_ptr_tail)
+            bytemove(ptr_buff, @_ring_buff, (len-(RBUFF_SZ-_ptr_tail)) )
+            _ptr_tail := ( _ptr_tail + len) & RBUFF_MASK
+        else
+            { case 2: all of the data lies between the current pointer and the end }
+            bytemove(ptr_buff, (@_ring_buff + _ptr_tail), len)
+            _ptr_tail := ( _ptr_tail + len ) & RBUFF_MASK
+
+    return len
 
 
 pub getchar(): ch
@@ -85,16 +111,22 @@ pub is_empty(): f
     return ( _ptr_head == _ptr_tail )
 
 
+pub is_full(): f
+' Flag indicating the ring buffer is full
+'   Returns: TRUE (-1) or FALSE (0)
+    return ( available() == 0 )
+
+
 pub ptr_ringbuff(): p
 ' Get a pointer to the ring buffer
     return @_ring_buff
 
 
-pub receive(src_buff, len): n
+pub put(src_buff, len): n
 ' Copy data into the ring buffer
 '   src_buff: pointer to buffer to receive data from
 '   len: number of bytes to receive
-'   Returns: number of bytes received, or ENOSPACE if there isn't enough space in the buffer
+'   Returns: number of bytes received, or EBUFF_FULL if there isn't enough space in the buffer
     if ( len > available() )
         { don't bother doing anything if there isn't enough space in the buffer }
         return EBUFF_FULL
@@ -130,12 +162,43 @@ pub unread_bytes(): q
     return ( _ptr_head - _ptr_tail )
 
 
-pub xreceive(len): n    'xxx API not finalized
-' Copy data into the ring buffer (use external function to copy data)
+pub xget(len): n   'xxx API not finalized
+' Get data from the ring buffer into external buffer or device
+'   (like get(), but from the other device's point of view)
+'   len: number of bytes to send
+'   Returns: number of bytes written, or EBUFF_UNDER if the buffer contains less than 'len'
+'   NOTE: set_wrblk_lsbf() MUST be called before using this method (behavior will be otherwise
+'       unpredictable)
+'   NOTE: The external data buffer's write pointer is _NOT_ incremented here, so it _MUST_ be
+'       handled by the buffer itself.
+    len := ( len <# unread_bytes() )            ' limit request to what's actually available
+
+    if ( len )                                  ' don't do anything if the buffer's empty
+        if ( (len + _ptr_tail) > RBUFF_SZ )
+            { current read pointer + length requested goes past the 'end' of the buffer:
+                write what we can... }
+            wrblk_lsbf( (@_ring_buff+_ptr_tail), (RBUFF_SZ-_ptr_tail) )
+
+            { ...now wrap around to the beginning and write the rest }
+            wrblk_lsbf( @_ring_buff, (len-(RBUFF_SZ-_ptr_tail)) )
+            _ptr_tail := ( _ptr_tail + len) & RBUFF_MASK
+        else
+            { all of the data is writeable in one shot }
+            wrblk_lsbf( (@_ring_buff + _ptr_tail), len)
+            _ptr_tail := ( _ptr_tail + len ) & RBUFF_MASK
+
+    return len
+
+
+pub xput(len): n    'xxx API not finalized
+' Put data into the ring buffer from an external buffer or device
+'   (like put(), but from the external device's point of view)
 '   len: number of bytes to receive
 '   Returns: number of bytes received, or ENOSPACE if there isn't enough space in the buffer
 '   NOTE: set_rdblk_lsbf() MUST be called before using this method (behavior will be otherwise
 '       unpredictable)
+'   NOTE: The external data source's read pointer is _NOT_ incremented here, so it _MUST_ be
+'       handled by the source itself.
     if ( len > available() )
         { don't bother doing anything if there isn't enough space in the buffer }
         return EBUFF_FULL
@@ -154,32 +217,6 @@ pub xreceive(len): n    'xxx API not finalized
         _ptr_head := ( _ptr_head + len) & RBUFF_MASK
 
     return len
-
-pub xsend(len): n   'xxx API not finalized
-' Write data from the ring buffer (use external function to copy data)
-'   len: number of bytes to send
-'   Returns: number of bytes written, or EBUFF_UNDER if the buffer contains less than 'len'
-'   NOTE: set_wrblk_lsbf() MUST be called before using this method (behavior will be otherwise
-'       unpredictable)
-    if ( len > unread_bytes() )
-        { don't bother doing anything if there isn't enough data in the buffer }
-        return EBUFF_UNDER
-
-    if ( (len + _ptr_tail) > RBUFF_SZ )
-        { current read pointer + length requested goes past the 'end' of the buffer:
-            write what we can... }
-        wrblk_lsbf( (@_ring_buff+_ptr_tail), (RBUFF_SZ-_ptr_tail) )
-
-        { ...now wrap around to the beginning and write the rest }
-        wrblk_lsbf( @_ring_buff, (len-(RBUFF_SZ-_ptr_tail)) )
-        _ptr_tail := ( _ptr_tail + len) & RBUFF_MASK
-    else
-        { all of the data is writeable in one shot }
-        wrblk_lsbf( (@_ring_buff + _ptr_tail), len)
-        _ptr_tail := ( _ptr_tail + len ) & RBUFF_MASK
-
-    return len
-
 
 DAT
 {
