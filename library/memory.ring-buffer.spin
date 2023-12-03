@@ -90,14 +90,9 @@ pub get(ptr_buff, len): l
 
 pub getchar(): ch
 ' Get a character from the buffer
-    if ( unread_bytes() )
-        { copy a byte from the ring buffer if there is one }
-        ch := byte[@_ring_buff][_ptr_tail]
-        byte[@_ring_buff][_ptr_tail++] := 0
-        if ( _ptr_tail => RBUFF_SZ )
-            _ptr_tail := 0                       ' wrap around to the buffer beginning
-    else
-        return EBUFF_EMPTY
+'   Returns: character, or -1 if none available
+    ch := -1
+    get(@ch, 1)
 
 
 pub head(): p
@@ -146,6 +141,13 @@ pub put(src_buff, len): n
         _ptr_head := ( _ptr_head + len) & RBUFF_MASK
 
     return len
+
+
+pub putchar(ch): s
+' Put one character into the ring buffer
+'   ch: character to put
+'   Returns: 1 on success, 0 on failure
+    return put(@ch, 1)
 
 
 pub tail(): p
@@ -217,6 +219,11 @@ pub xput(len): n    'xxx API not finalized
         _ptr_head := ( _ptr_head + len) & RBUFF_MASK
 
     return len
+
+{ Add common terminal code so methods like str(), dec(), printf() etc can be used to
+    manipulate buffer data }
+#include "terminal.common.spinh"
+
 
 DAT
 {
