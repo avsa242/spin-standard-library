@@ -3,9 +3,9 @@
     Filename: sensor.power.ina260.spin
     Author: Jesse Burt
     Description: Driver for the TI INA260 Precision Current and Power Monitor IC
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Nov 13, 2019
-    Updated Sep 29, 2022
+    Updated Dec 17, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -63,33 +63,43 @@ CON
     INTLVL_LO       = 0
     INTLVL_HI       = 1
 
+    { default I/O settings; these can be overridden in the parent object }
+    SCL             = DEF_SCL
+    SDA             = DEF_SDA
+    I2C_FREQ        = DEF_HZ
+    I2C_ADDR        = DEF_ADDR
+
 VAR
 
     long _addr_bits
 
 OBJ
 
-    i2c : "com.i2c"
-    core: "core.con.ina260"
-    time: "time"
+#ifdef INA260_I2C_BC
+    i2c:    "com.i2c.nocog"
+#else
+    i2c:    "com.i2c"
+#endif
+    core:   "core.con.ina260"
+    time:   "time"
+
 
 PUB null{}
 ' This is not a top-level object
 
 PUB start{}: status
-' Start using "standard" Propeller I2C pins and 100kHz
-'   Default slave address
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
+' Start using default I/O settings
+    return startx(SCL, SDA, I2C_FREQ, I2C_ADDR)
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom settings
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ and lookdown(ADDR_BITS: %0000..%1111)
-        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+    if (    lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and ...
+            lookdown(ADDR_BITS: %0000..%1111) )
+        if ( status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ) )
             time.usleep(core#T_POR)
             _addr_bits := (ADDR_BITS << 1)
             reset{}
-            if (dev_id{} == core#DEVID_RESP)
+            if ( dev_id{} == core#DEVID_RESP )
             return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
@@ -130,8 +140,7 @@ PUB current_conv_time(ctime): curr_set
     readreg(core#CONFIG, 2, @curr_set)
     case ctime
         140, 204, 332, 588, 1100, 2116, 4156, 8244:
-            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156, {
-}           8244) << core#ISHCT
+            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156, 8244) << core#ISHCT
         other:
             curr_set := (curr_set >> core#ISHCT) & core#ISHCT_BITS
             return lookupz(curr_set: 140, 204, 332, 588, 1100, 2116, 4156, 8244)
@@ -245,11 +254,10 @@ PUB opmode(mode): curr_mode
     curr_mode := 0
     readreg(core#CONFIG, 2, @curr_mode)
     case mode
-        POWERDN, CURR_TRIGD, VOLT_TRIGD, CURR_VOLT_TRIGD, POWERDN2,{
-}       CURR_CONT, VOLT_CONT, CURR_VOLT_CONT:
-            mode := lookdownz(mode: POWERDN, CURR_TRIGD, VOLT_TRIGD,{
-}                                CURR_VOLT_TRIGD, POWERDN2, CURR_CONT,{
-}                                VOLT_CONT, CURR_VOLT_CONT)
+        POWERDN, CURR_TRIGD, VOLT_TRIGD, CURR_VOLT_TRIGD, POWERDN2, CURR_CONT, VOLT_CONT, ...
+        CURR_VOLT_CONT:
+            mode := lookdownz(mode: POWERDN, CURR_TRIGD, VOLT_TRIGD, CURR_VOLT_TRIGD, POWERDN2, ...
+                                    CURR_CONT, VOLT_CONT, CURR_VOLT_CONT)
         other:
             curr_mode &= core#MODE_BITS
             return curr_mode
@@ -291,8 +299,7 @@ PUB samples_avg(samples=-2): curr_smp
     readreg(core#CONFIG, 2, @curr_smp)
     case samples
         1, 4, 16, 64, 128, 256, 512, 1024:
-            samples := lookdownz(samples: 1, 4, 16, 64, 128, 256, 512, {
-}           1024) << core#AVG
+            samples := lookdownz(samples: 1, 4, 16, 64, 128, 256, 512, 1024) << core#AVG
         other:
             curr_smp := (curr_smp >> core#AVG) & core#AVG_BITS
             return lookupz(curr_smp: 1, 4, 16, 64, 128, 256, 512, 1024)
@@ -315,12 +322,10 @@ PUB voltage_conv_time(ctime): curr_time
     readreg(core#CONFIG, 2, @curr_time)
     case ctime
         140, 204, 332, 588, 1100, 2116, 4156, 8244:
-            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156, {
-}           8244) << core#VBUSCT
+            ctime := lookdownz(ctime: 140, 204, 332, 588, 1100, 2116, 4156, 8244) << core#VBUSCT
         other:
             curr_time := (curr_time >> core#VBUSCT) & core#VBUSCT_BITS
-            return lookupz(curr_time: 140, 204, 332, 588, 1100, 2116, 4156, {
-}           8244)
+            return lookupz(curr_time: 140, 204, 332, 588, 1100, 2116, 4156, 8244)
 
     ctime := ((curr_time & core#VBUSCT_MASK) | ctime) & core#CONFIG_MASK
     writereg(core#CONFIG, 2, @ctime)
@@ -359,7 +364,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-Copyright (c) 2022 Jesse Burt
+Copyright (c) 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
