@@ -38,26 +38,33 @@ var
     byte _ring_buff[RBUFF_SZ]
 
 
-pub set_rdblk_lsbf(fptr)    'xxx API not finalized
+pub set_func_rdblk_lsbf(fptr)    'xxx API not finalized
 ' Set pointer to external rdblk_lsbf function
 '   NOTE: For use with xreceive()
     rdblk_lsbf := fptr
 
 
-pub set_wrblk_lsbf(fptr)    'xxx API not finalized
+pub set_func_wrblk_lsbf(fptr)    'xxx API not finalized
 ' Set pointer to external rdblk_lsbf function
 '   NOTE: For use with xreceive()
     wrblk_lsbf := fptr
 
-pub available(): b
-' Get the number of bytes available in the ring buffer
+
+pub bytes_queued = available
+pub available(): q
+' Get the number of unread bytes available in the buffer
+    return ||( _ptr_head - _ptr_tail )
+
+
+pub bytes_free(): b
+' Get the number of bytes free in the ring buffer
     return RBUFF_MASK - ( (_ptr_head - _ptr_tail) & RBUFF_MASK )
 
 
 pub flush(): b
 ' Flush the ring buffer and reset the pointers
 '   Returns: the number of bytes in the buffer before being flushed
-    b := unread_bytes()
+    b := available()
     bytefill(@_ring_buff, 0, RBUFF_SZ)
     _ptr_head := _ptr_tail := 0
 
@@ -68,7 +75,7 @@ pub get(ptr_buff, len): l
 '   len: number of bytes to copy
 '   Returns: number of bytes actually copied
 '   NOTE: length of data copied will be limited by what is actually available in the buffer
-    len := ( len <# unread_bytes() )            ' limit request to what's actually available
+    len := ( len <# available() )            ' limit request to what's actually available
 
     if ( len )                                  ' don't do anything if the buffer's empty
         if ( (len + _ptr_tail) > RBUFF_SZ )
@@ -109,7 +116,7 @@ pub is_empty(): f
 pub is_full(): f
 ' Flag indicating the ring buffer is full
 '   Returns: TRUE (-1) or FALSE (0)
-    return ( available() == 0 )
+    return ( bytes_free() == 0 )
 
 
 pub ptr_ringbuff(): p
@@ -122,7 +129,7 @@ pub put(src_buff, len): n
 '   src_buff: pointer to buffer to receive data from
 '   len: number of bytes to receive
 '   Returns: number of bytes received, or EBUFF_FULL if there isn't enough space in the buffer
-    if ( len > available() )
+    if ( len > bytes_free() )
         { don't bother doing anything if there isn't enough space in the buffer }
         return EBUFF_FULL
 
@@ -155,11 +162,6 @@ pub tail(): p
     return _ptr_tail
 
 
-pub unread_bytes(): q
-' Get the number of unread bytes in the buffer
-    return ||( _ptr_head - _ptr_tail )
-
-
 pub xget(len): n   'xxx API not finalized
 ' Get data from the ring buffer into external buffer or device
 '   (like get(), but from the other device's point of view)
@@ -169,7 +171,7 @@ pub xget(len): n   'xxx API not finalized
 '       unpredictable)
 '   NOTE: The external data buffer's write pointer is _NOT_ incremented here, so it _MUST_ be
 '       handled by the buffer itself.
-    len := ( len <# unread_bytes() )            ' limit request to what's actually available
+    len := ( len <# available() )            ' limit request to what's actually available
 
     if ( len )                                  ' don't do anything if the buffer's empty
         if ( (len + _ptr_tail) > RBUFF_SZ )
@@ -197,7 +199,7 @@ pub xput(len): n    'xxx API not finalized
 '       unpredictable)
 '   NOTE: The external data source's read pointer is _NOT_ incremented here, so it _MUST_ be
 '       handled by the source itself.
-    if ( len > available() )
+    if ( len > bytes_free() )
         { don't bother doing anything if there isn't enough space in the buffer }
         return EBUFF_FULL
 
