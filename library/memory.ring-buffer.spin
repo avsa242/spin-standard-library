@@ -4,7 +4,7 @@
     Author: Jesse Burt
     Description: Generic ring buffer
     Started Sep 30, 2023
-    Updated Dec 3, 2023
+    Updated Dec 22, 2023
     Copyright 2023
     See end of file for terms of use.
     --------------------------------------------
@@ -157,11 +157,7 @@ pub tail(): p
 
 pub unread_bytes(): q
 ' Get the number of unread bytes in the buffer
-'   Returns:
-'       positive numbers: count of unread bytes (head > tail)
-'       negative numbers: count of unread bytes (head < tail)
-'       0: empty
-    return ( _ptr_head - _ptr_tail )
+    return ||( _ptr_head - _ptr_tail )
 
 
 pub xget(len): n   'xxx API not finalized
