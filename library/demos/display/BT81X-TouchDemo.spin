@@ -3,11 +3,14 @@
     Filename: BT81X-TouchDemo.spin
     Author: Jesse Burt
     Description: Demo of the BT81x driver touchscreen functionality
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Sep 30, 2019
-    Updated Oct 16, 2022
+    Updated Jul 14, 2023
     See end of file for terms of use.
     --------------------------------------------
+
+    NOTE: This demo will write touchscreen calibration data to the Propeller's EEPROM
+        (high 32k area)
 }
 
 CON
@@ -16,16 +19,17 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    MISO_PIN    = 3
-    RST_PIN     = 4                             ' optional; pull high if unused
     BRIGHTNESS  = 100                           ' Initial brightness (0..128)
 
+    { touchscreen calibration storage }
+    ERASE_TS_CAL= false                         ' set non-zero to delete TS cal from Propeller EE
+    EE_MAGICADDR= $8000                         ' EE address of 'magic' number (cal. identifier)
+    EE_CALBASE  = EE_MAGICADDR+4                ' EE base address of calibration data (24 bytes)
+                                                ' NOTE: These need to be above the lower 32kbytes
+                                                '   of the EEPROM to avoid being overwritten by
+                                                '   writing a Propeller binary image
 ' --
 
     BUTTON_W    = 100
@@ -41,10 +45,16 @@ CON
 
 OBJ
 
-    cfg         : "boardcfg.flip"
-    ser         : "com.serial.terminal.ansi"
-    time        : "time"
-    eve         : "display.lcd.bt81x"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
+    ee:     "memory.eeprom.24xxxx"
+    eve:    "display.lcd.bt81x" | CS=0, SCK=1, MOSI=2, MISO=3, RST=4
+'   NOTE: Pull RST high (tip: tie to Propeller reset) and define as -1 if unused
+
+VAR
+
+    long _ts[6]
 
 PUB main{} | count, idle, state, x, y, t1, t2, t3, t4
 
@@ -190,8 +200,9 @@ PRI ts_cal{}
     eve.ts_cal{}
     eve.dl_end{}
     eve.wait_rdy{}
-    ser.str(string("Press any key to continue, once touchscreen calibration is complete"))
-    ser.charin{}
+    _ts[0] := eve#TCAL
+    eve.ts_rd_cal_matrix(@_ts+4)                ' read in the touch calibration results
+    ee.wr_block_lsbf(EE_MAGICADDR, @_ts, 28)    '   to high EEPROM (req's >= 64kbyte EE)
 
 PUB setup{}
 
@@ -200,18 +211,41 @@ PUB setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if eve.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, RST_PIN, @_disp_setup)
+    if ( eve.start(@_disp_setup) )
         ser.strln(string("BT81x driver started"))
     else
         ser.str(string("BT81x driver failed to start - halting"))
         repeat
 
-    if (eve.model_id{} == eve#BT816)            ' resistive TS?
-        ts_cal{}
+    if ( ee.start{} )
+        ser.strln(string("EEPROM driver started"))
+        if ( ERASE_TS_CAL )
+            erase_tscal{}
+    else
+        ser.strln(@"EEPROM driver failed to start - halting")
+        repeat
+
+    if ( eve.model_id{} == eve#BT816 )          ' resistive TS?
+        if ( ee.rd_long_lsbf(EE_MAGICADDR) == eve#TCAL )
+            { look for magic number in EEPROM }
+            ser.strln(string("calibration found - restoring"))
+            ee.rd_block_lsbf(@_ts, EE_CALBASE, 24)   ' read the calibration matrix
+            eve.ts_wr_cal_matrix(@_ts)          ' write it to EVE
+        else
+            { no calibration stored in EE - perform calibration }
+            ser.strln(string("no calibration found"))
+            ts_cal{}
+
+PUB erase_tscal{} | i
+' Erase calibration data and magic number from EEPROM
+    ser.str(string("erasing touchscreen calibration from EEPROM..."))
+    repeat i from 0 to 27
+        ee.wr_byte(EE_MAGICADDR + i, $00)
+    ser.strln(string("done"))
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

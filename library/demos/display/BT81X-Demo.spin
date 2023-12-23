@@ -3,9 +3,9 @@
     Filename: BT81X-Demo.spin
     Author: Jesse Burt
     Description: Demo of the BT81x driver
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Sep 30, 2019
-    Updated Oct 16, 2022
+    Updated Jul 14, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,16 +16,9 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    LED         = cfg#LED1
     SER_BAUD    = 115_200
 
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    MISO_PIN    = 3
-    RST_PIN     = 4                             ' optional; pull high if unused
     BRIGHTNESS  = 100                           ' Initial brightness (0..128)
-
 ' --
 
     INTER_DELAY = 2_000                         ' wait ms between demos
@@ -33,17 +26,18 @@ CON
 ' Uncomment one of the following, depending on your display size/resolution
 '   NOTE: WIDTH, HEIGHT, XMAX, YMAX, CENTERX, CENTERY symbols are defined
 '   in the display timings file.
-#include "eve3-lcdtimings.800x480.spinh"
-'#include "eve3-lcdtimings.480x272.spinh"
+'#include "eve3-lcdtimings.800x480.spinh"
+#include "eve3-lcdtimings.480x272.spinh"
 '#include "eve3-lcdtimings.320x240.spinh"
 '#include "eve3-lcdtimings.320x102.spinh"
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    eve     : "display.lcd.bt81x"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi"
+    time:   "time"
+    eve:    "display.lcd.bt81x" | CS=0, SCK=1, MOSI=2, MISO=3, RST=4
+'   NOTE: Pull RST high (tip: tie to Propeller reset) and define as -1 if unused
 
 PUB main{}
 
@@ -565,7 +559,7 @@ PUB setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if eve.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN, RST_PIN, @_disp_setup)
+    if ( eve.start(@_disp_setup) )
         ser.strln(string("BT81x driver started"))
     else
         ser.strln(string("BT81x driver failed to start - halting"))
@@ -573,7 +567,7 @@ PUB setup{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
