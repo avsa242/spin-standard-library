@@ -35,8 +35,8 @@
 }
 DAT
 
-    font_data       file "Envy Code R_18_L2.raw"         ' Generate with EVE Asset Builder
-    font_file_sz    long 6196                 ' size of the above file, in bytes
+    font_data       file "FontFile.raw"         ' Generate with EVE Asset Builder
+    font_file_sz    long 10_000                 ' size of the above file, in bytes
     ' NOTE: This font file must be small enough to fit in Propeller RAM alongside the application
 
 CON
@@ -63,7 +63,7 @@ OBJ
     cfg:    "boardcfg.flip"
     ser:    "com.serial.terminal.ansi"
     time:   "time"
-    lcd:    "display.lcd.bt81x" | CS=0, SCK=1, MOSI=2, MISO=3, RST=4
+    lcd:    "display.lcd.bt81x" | CS=0, SCK=1, MOSI=2, MISO=3, RST=-1
 '   NOTE: Pull RST high (or tie to Propeller reset) and define as -1 if unused
 
 VAR

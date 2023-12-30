@@ -26,8 +26,8 @@ CON
 ' Uncomment one of the following, depending on your display size/resolution
 '   NOTE: WIDTH, HEIGHT, XMAX, YMAX, CENTERX, CENTERY symbols are defined
 '   in the display timings file.
-'#include "eve3-lcdtimings.800x480.spinh"
-#include "eve3-lcdtimings.480x272.spinh"
+#include "eve3-lcdtimings.800x480.spinh"
+'#include "eve3-lcdtimings.480x272.spinh"
 '#include "eve3-lcdtimings.320x240.spinh"
 '#include "eve3-lcdtimings.320x102.spinh"
 

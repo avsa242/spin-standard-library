@@ -5,7 +5,7 @@
     Description: Demo of the BT81x driver touchscreen functionality
     Copyright (c) 2023
     Started Sep 30, 2019
-    Updated Jul 14, 2023
+    Updated Dec 30, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -15,12 +15,10 @@
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkmode    = cfg._clkmode
+    _xinfreq    = cfg._xinfreq
 
 ' -- User-modifiable constants
-    SER_BAUD    = 115_200
-
     BRIGHTNESS  = 100                           ' Initial brightness (0..128)
 
     { touchscreen calibration storage }
@@ -46,7 +44,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    ser:    "com.serial.terminal.ansi"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     time:   "time"
     ee:     "memory.eeprom.24xxxx"
     eve:    "display.lcd.bt81x" | CS=0, SCK=1, MOSI=2, MISO=3, RST=4
@@ -56,19 +54,21 @@ VAR
 
     long _ts[6]
 
-PUB main{} | count, idle, state, x, y, t1, t2, t3, t4
+PUB main() | count, idle, state, x, y, t1, t2, t3, t4
 
-    setup{}
+    setup()
     eve.set_brightness(BRIGHTNESS)
     eve.clear_color(0, 0, 0)                    ' clear screen black
-    eve.clear{}
+    eve.clear()
+    eve.ts_oversample_factor(15)                ' 0..15 (higher numbers give smoother response
+                                                '   but with more current draw)
 
     update_btn(0)                               ' set initial button state
     idle := TRUE
     count := 0
 
     repeat
-        state := eve.tag_active{}               ' get state of button
+        state := eve.tag_active()               ' get state of button
         if state == 1                           ' pushed
             if idle == TRUE                     ' mark not idle so only one
                 idle := FALSE                   '   push is registered if held
@@ -84,9 +84,9 @@ PUB main{} | count, idle, state, x, y, t1, t2, t3, t4
 
     update_scrlbar(0)                           ' set initial scrollbar state
     repeat
-        state := eve.tag_active{}
+        state := eve.tag_active()
         if state == 1                           ' only update the scrollbar pos
-            x := eve.ts_xy{} >> 16              '   if it's being touched
+            x := eve.ts_xy() >> 16              '   if it's being touched
             update_scrlbar(x)
             if x > WIDTH-20                     ' if pulled near the right edge
                 quit                            '   of the screen, exit loop
@@ -95,7 +95,7 @@ PUB main{} | count, idle, state, x, y, t1, t2, t3, t4
     idle := TRUE
     update_tog(0, 0, 0, 0)                      ' set toggles' initial state
     repeat
-        case state := eve.tag_active{}          ' which toggle was touched?
+        case state := eve.tag_active()          ' which toggle was touched?
             1:                                  ' toggle #1
                 if idle == TRUE
                     idle := FALSE
@@ -133,10 +133,10 @@ PUB update_btn(state) | btn_cx, btn_cy
     btn_cx := CENTERX - (BUTTON_W / 2)
     btn_cy := CENTERY - (BUTTON_H / 2)
 
-    eve.wait_rdy{}                              ' wait for EVE to be ready
-    eve.dl_start{}                              ' begin list of graphics cmds
+    eve.wait_rdy()                              ' wait for EVE to be ready
+    eve.dl_start()                              ' begin list of graphics cmds
     eve.clear_color(0, 0, 0)
-    eve.clear{}
+    eve.clear()
     eve.widget_bgcolor($ff_ff_ff)               ' button colors (r_g_b)
     eve.widget_fgcolor($55_55_55)               '
     if state                                    ' button pressed
@@ -147,7 +147,7 @@ PUB update_btn(state) | btn_cx, btn_cy
         eve.color_rgb(0, 0, 192)                ' button text color (up)
         eve.tag_attach(1)
         eve.button(btn_cx, btn_cy, 100, 50, 30, 0, string("TEST"))
-    eve.dl_end{}                                ' end list; display everything
+    eve.dl_end()                                ' end list; display everything
 
 PUB update_scrlbar(val) | w, h, x, y, sz
 
@@ -157,15 +157,15 @@ PUB update_scrlbar(val) | w, h, x, y, sz
     x := 0+sz
     y := HEIGHT-h-1
 
-    eve.wait_rdy{}
-    eve.dl_start{}
+    eve.wait_rdy()
+    eve.dl_start()
     eve.clear_color(0, 0, 0)
-    eve.clear{}
+    eve.clear()
     eve.widget_bgcolor($55_55_55)
     eve.widget_fgcolor($00_00_C0)
     eve.tag_attach(1)
     eve.scrollbar(x, y, w, h, 0, x #> val <# w, sz, w)
-    eve.dl_end{}
+    eve.dl_end()
 
 PUB update_tog(t1, t2, t3, t4) | tag, tmp, x, y, w, sw, h
 
@@ -174,10 +174,10 @@ PUB update_tog(t1, t2, t3, t4) | tag, tmp, x, y, w, sw, h
     x := CENTERX-(w/2)                          ' x and y
     y := CENTERY-(h*4)                          '   coords
 
-    eve.wait_rdy{}
-    eve.dl_start{}
+    eve.wait_rdy()
+    eve.dl_start()
     eve.clear_color(0, 0, 0)
-    eve.clear{}
+    eve.clear()
     eve.widget_bgcolor($55_55_55)
     eve.widget_fgcolor($00_00_C0)
     eve.tag_attach(1)                           ' different
@@ -188,27 +188,27 @@ PUB update_tog(t1, t2, t3, t4) | tag, tmp, x, y, w, sw, h
     eve.toggle(x, y + (3 * (h*2)), w, h, 0, t3, string("OFF", $FF, "ON"))
     eve.tag_attach(4)                           ' button
     eve.toggle(x, y + (4 * (h*2)), w, h, 0, t4, string("OFF", $FF, "ON"))
-    eve.dl_end{}
+    eve.dl_end()
 
-PRI ts_cal{}
+PRI ts_cal()
 ' Calibrate the touchscreen (resistive only)
     eve.ts_set_sens(1200)                       ' typical value, per BRT_AN_033
-    eve.wait_rdy{}
-    eve.dl_start{}
-    eve.clear{}
-    eve.str(80, 30, 27, eve#OPT_CENTER, string("Please tap on the dot"))
-    eve.ts_cal{}
-    eve.dl_end{}
-    eve.wait_rdy{}
-    _ts[0] := eve#TCAL
+    eve.wait_rdy()
+    eve.dl_start()
+    eve.clear()
+    eve.str(80, 30, 27, eve.OPT_CENTER, string("Please tap on the dot"))
+    eve.ts_cal()
+    eve.dl_end()
+    eve.wait_rdy()
+    _ts[0] := eve.TCAL
     eve.ts_rd_cal_matrix(@_ts+4)                ' read in the touch calibration results
     ee.wr_block_lsbf(EE_MAGICADDR, @_ts, 28)    '   to high EEPROM (req's >= 64kbyte EE)
 
-PUB setup{}
+PUB setup()
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
-    ser.clear{}
+    ser.clear()
     ser.strln(string("Serial terminal started"))
 
     if ( eve.start(@_disp_setup) )
@@ -217,16 +217,16 @@ PUB setup{}
         ser.str(string("BT81x driver failed to start - halting"))
         repeat
 
-    if ( ee.start{} )
+    if ( ee.start() )
         ser.strln(string("EEPROM driver started"))
         if ( ERASE_TS_CAL )
-            erase_tscal{}
+            erase_tscal()
     else
         ser.strln(@"EEPROM driver failed to start - halting")
         repeat
 
-    if ( eve.model_id{} == eve#BT816 )          ' resistive TS?
-        if ( ee.rd_long_lsbf(EE_MAGICADDR) == eve#TCAL )
+    if ( eve.model_id() == eve.BT816 )          ' resistive TS?
+        if ( ee.rd_long_lsbf(EE_MAGICADDR) == eve.TCAL )
             { look for magic number in EEPROM }
             ser.strln(string("calibration found - restoring"))
             ee.rd_block_lsbf(@_ts, EE_CALBASE, 24)   ' read the calibration matrix
@@ -234,9 +234,9 @@ PUB setup{}
         else
             { no calibration stored in EE - perform calibration }
             ser.strln(string("no calibration found"))
-            ts_cal{}
+            ts_cal()
 
-PUB erase_tscal{} | i
+PUB erase_tscal() | i
 ' Erase calibration data and magic number from EEPROM
     ser.str(string("erasing touchscreen calibration from EEPROM..."))
     repeat i from 0 to 27
