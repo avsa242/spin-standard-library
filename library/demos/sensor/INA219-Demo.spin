@@ -5,57 +5,51 @@
     Description: Demo of the INA219 driver
         * Power data output
     Started Sep 18, 2019
-    Updated Oct 16, 2022
+    Updated Dec 31, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
+' Uncomment the below lines to use the bytecode-based I2C engine
+'#define INA219_I2C_BC
+'#pragma exportdef(INA219_I2C_BC)
 
 CON
 
     _clkmode        = cfg#_clkmode
     _xinfreq        = cfg#_xinfreq
 
-' -- User-modifiable constants
-    LED             = cfg#LED1
-    SER_BAUD        = 115_200
-
-    { I2C configuration }
-    SCL_PIN         = 28
-    SDA_PIN         = 29
-    I2C_FREQ        = 400_000                   ' max is 400_000
-    ADDR_BITS       = %0000                     ' %0000..%1111 (see driver)
-' --
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
-    sensor : "sensor.power.ina219"
-    time: "time"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    sensor: "sensor.power.ina219" | SCL=28, SDA=29, I2C_FREQ=1_000_000, I2C_ADDR=%0000
+    time:   "time"
 
-PUB main{}
+PUB main()
 
-    ser.start(SER_BAUD)
-    time.msleep(10)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
-    if sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
-        ser.strln(string("INA219 driver started"))
+    ser.start()
+    time.msleep(30)
+    ser.clear()
+    ser.strln(@"Serial terminal started")
+
+    if ( sensor.start() )
+        ser.strln(@"INA219 driver started")
     else
-        ser.strln(string("INA219 driver failed to start - halting"))
+        ser.strln(@"INA219 driver failed to start - halting")
         repeat
 
-    sensor.preset_320s_2a_100mohm{}
+    sensor.preset_320s_2a_100mohm()
 
     sensor.current_set_scale(4096)              ' 0..65535
                                                 ' (must be >0 for current/power readings)
-    demo{}
+    demo()
 
-#include "powerdemo.common.spinh"
+#include "powerdemo.common.spinh"               ' pull in code common to all power sensor demos
 
 DAT
 {
-Copyright (c) 2022 Jesse Burt
+Copyright (c) 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

@@ -5,7 +5,7 @@
     Description: Driver of the TI INA219 current/power monitor IC
     Copyright (c) 2022
     Started Sep 18, 2019
-    Updated Nov 13, 2022
+    Updated Dec 31, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -51,11 +51,21 @@ CON
     BUSV_CONT       = 6
     BOTH_CONT       = 7
 
+    { default I/O settings; these can be overridden in the parent object }
+    SCL             = DEF_SCL
+    SDA             = DEF_SDA
+    I2C_FREQ        = DEF_HZ
+    I2C_ADDR        = DEF_ADDR
+
 OBJ
 
-    i2c : "com.i2c"
-    core: "core.con.ina219"
-    time: "time"
+#ifdef INA219_I2C_BC
+    i2c:    "com.i2c.nocog"
+#else
+    i2c:    "com.i2c"
+#endif
+    core:   "core.con.ina219"
+    time:   "time"
 
 VAR
 
@@ -68,22 +78,21 @@ VAR
 PUB null{}
 ' This is not a top-level object
 
-PUB start{}: status
-' Start using "standard" Propeller I2C pins and 100kHz
-'   Default slave address
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ, DEF_ADDR)
+PUB start(): status
+' Start using default I/O settings
+    return startx(SCL, SDA, I2C_FREQ, I2C_ADDR)
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, ADDR_BITS): status
 ' Start using custom settings
     ' validate I/O pins, bus speed and I2C address option bits
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and I2C_HZ =< core#I2C_MAX_FREQ and {
-}   lookdown(ADDR_BITS: %0000..%1111)
-        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+    if (    lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and ...
+            lookdown(ADDR_BITS: %0000..%1111) )
+        if ( status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ) )
             time.msleep(1)
             _addr_bits := ADDR_BITS << 1
             ' test device bus presence
-            if (i2c.present(SLAVE_WR | _addr_bits))
-                if (dev_id{} == core#DEVID_RESP)
+            if ( i2c.present(SLAVE_WR | _addr_bits) )
+                if ( dev_id{} == core#DEVID_RESP )
                     return
     ' if this point is reached, something above failed
     ' Double check I/O pin assignments, connections, power
@@ -153,7 +162,7 @@ PUB bus_adc_res(adcres): curr_res
             curr_res := (curr_res >> core#BADC) & core#BADC_BITS
             return (curr_res + 9)
 
-    adcres := ((curr_res & core#BADC_MASK) | adcres) & core#CONFIG_MASK
+    adcres := ((curr_res & core#BADC_MASK) | adcres)
     writereg(core#CONFIG, 2, @adcres)
 
 PUB bus_voltage_rng(range): curr_rng
@@ -169,7 +178,7 @@ PUB bus_voltage_rng(range): curr_rng
             curr_rng := (curr_rng >> core#BRNG) & 1
             return lookupz(curr_rng: 16, 32)
 
-    range := ((curr_rng & core#BRNG_MASK) | range) & core#CONFIG_MASK
+    range := ((curr_rng & core#BRNG_MASK) | range)
     writereg(core#CONFIG, 2, @range)
 
 PUB current_data{}: a
@@ -216,8 +225,7 @@ PUB opmode(mode): curr_mode
     curr_mode := 0
     readreg(core#CONFIG, 1, @curr_mode)
     case mode
-        SLEEP, SHUNTV_SNGL, BUSV_SNGL, BOTH_SNGL, STANDBY, SHUNTV_CONT, {
-}       BUSV_CONT, BOTH_CONT:
+        SLEEP, SHUNTV_SNGL, BUSV_SNGL, BOTH_SNGL, STANDBY, SHUNTV_CONT, BUSV_CONT, BOTH_CONT:
         other:
             return curr_mode & core#MODE_BITS
 
@@ -250,7 +258,7 @@ PUB shunt_adc_res(adc_res): curr_res
             curr_res := (curr_res >> core#SADC) & core#SADC_BITS
             return (curr_res + 9)
 
-    adc_res := ((curr_res & core#SADC_MASK) | adc_res) & core#CONFIG_MASK
+    adc_res := ((curr_res & core#SADC_MASK) | adc_res)
     writereg(core#CONFIG, 2, @adc_res)
 
 PUB shunt_resistance(r_shunt): curr_res
@@ -284,7 +292,7 @@ PUB shunt_samples(samples): curr_smp
             else
                 return 0
 
-    samples := ((curr_smp & core#SADC_MASK) | samples) & core#CONFIG_MASK
+    samples := ((curr_smp & core#SADC_MASK) | samples)
     writereg(core#CONFIG, 2, @samples)
 
 PUB shunt_voltage_data{}: adc_word
@@ -311,7 +319,7 @@ PUB shunt_voltage_rng(range): curr_rng
             curr_rng := (curr_rng >> core#PG) & core#PG_BITS
             return lookupz(curr_rng: 40, 80, 160, 320)
 
-    range := ((curr_rng & core#PG_MASK) | range) & core#CONFIG_MASK
+    range := ((curr_rng & core#PG_MASK) | range)
     writereg(core#CONFIG, 2, @range)
 
 PUB voltage_data{}: v
@@ -349,10 +357,9 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
         other:
             return
 
-
 DAT
 {
-Copyright (c) 2022 Jesse Burt
+Copyright (c) 2023 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
