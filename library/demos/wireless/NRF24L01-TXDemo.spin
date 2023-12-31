@@ -5,7 +5,7 @@
     Description: nRF24L01+ Transmit demo
     Copyright (c) 2023
     Started Nov 23, 2019
-    Updated Jul 17, 2023
+    Updated Dec 31, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,14 +16,13 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    SER_BAUD    = 115_200
     CHANNEL     = 2                             ' 0..125
 ' --
 
 OBJ
 
-    ser:    "com.serial.terminal.ansi"
     cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     nrf24:  "wireless.transceiver.nrf24l01" | CE=0, CS=1, SCK=2, MOSI=3, MISO=4
     str:    "string"
     time:   "time"
@@ -100,7 +99,7 @@ PUB main{} | payld_cnt, max_retrans, pkts_retrans, lost_pkts
 
 PUB setup{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear()
 

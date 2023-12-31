@@ -6,7 +6,7 @@
         RX Mode
     Copyright (c) 2023
     Started Apr 30, 2020
-    Updated Jul 17, 2023
+    Updated Dec 31, 2023
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -16,7 +16,6 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-modifiable constants
-    SER_BAUD    = 115_200
     PKTLEN      = 32                            ' 1..32 (bytes)
     CHANNEL     = 2                             ' 0..125 (2.400..2.525GHz)
 ' --
@@ -26,7 +25,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    ser:    "com.serial.terminal.ansi"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     time:   "time"
     nrf24:  "wireless.transceiver.nrf24l01" | CE=0, CS=1, SCK=2, MOSI=3, MISO=4
 
@@ -107,7 +106,7 @@ PRI report(testtime, iterations) | rate_iterations, rate_bytes, rate_kbits
 
 PUB setup
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear()
     ser.strln(string("Serial terminal started"))
