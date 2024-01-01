@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Demo of the BT81X driver custom font functionality
         * upload font to EVE RAM, display test text
-    Copyright (c) 2023
+    Copyright (c) 2024
     Started Jul 15, 2023
-    Updated Jul 15, 2023
+    Updated Jan 1, 2024
     See end of file for terms of use.
     --------------------------------------------
 
@@ -41,12 +41,10 @@ DAT
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkmode    = cfg._clkmode
+    _xinfreq    = cfg._xinfreq
 
 ' -- User-defined constants
-    SER_BAUD    = 115_200
-
     BRIGHTNESS  = 50                            ' Initial brightness (0..128)
 
 ' Uncomment one of the following, depending on your display size/resolution
@@ -61,7 +59,7 @@ CON
 OBJ
 
     cfg:    "boardcfg.flip"
-    ser:    "com.serial.terminal.ansi"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     time:   "time"
     lcd:    "display.lcd.bt81x" | CS=0, SCK=1, MOSI=2, MISO=3, RST=-1
 '   NOTE: Pull RST high (or tie to Propeller reset) and define as -1 if unused
@@ -94,14 +92,14 @@ PUB main() | font_nr, font_first_ch
 
 PUB setup()
 
-    ser.init_def(115_200)
+    ser.start()
     time.msleep(30)
     ser.clear()
     ser.strln(@"Serial terminal started")
 
     if ( lcd.start(@_disp_setup) )
         ser.strln(@"BT81x driver started")
-        lcd.preset_high_perf{}                       ' defaults, but max clock
+        lcd.preset_high_perf()                       ' defaults, but max clock
         lcd.set_brightness(BRIGHTNESS)
     else
         ser.strln(@"BT81x driver failed to start - halting")
@@ -109,7 +107,7 @@ PUB setup()
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

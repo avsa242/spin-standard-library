@@ -3,9 +3,9 @@
     Filename: BT81X-TouchDemo.spin
     Author: Jesse Burt
     Description: Demo of the BT81x driver touchscreen functionality
-    Copyright (c) 2023
+    Copyright (c) 2024
     Started Sep 30, 2019
-    Updated Dec 30, 2023
+    Updated Jan 1, 2024
     See end of file for terms of use.
     --------------------------------------------
 
@@ -142,11 +142,11 @@ PUB update_btn(state) | btn_cx, btn_cy
     if state                                    ' button pressed
         eve.color_rgb(255, 255, 255)            ' button text color (pressed)
         eve.tag_attach(1)                       ' tag or id# for this button
-        eve.button(btn_cx, btn_cy, 100, 50, 30, 0, string("TEST"))
+        eve.button(btn_cx, btn_cy, 100, 50, 30, 0, @"TEST")
     else
         eve.color_rgb(0, 0, 192)                ' button text color (up)
         eve.tag_attach(1)
-        eve.button(btn_cx, btn_cy, 100, 50, 30, 0, string("TEST"))
+        eve.button(btn_cx, btn_cy, 100, 50, 30, 0, @"TEST")
     eve.dl_end()                                ' end list; display everything
 
 PUB update_scrlbar(val) | w, h, x, y, sz
@@ -196,7 +196,7 @@ PRI ts_cal()
     eve.wait_rdy()
     eve.dl_start()
     eve.clear()
-    eve.str(80, 30, 27, eve.OPT_CENTER, string("Please tap on the dot"))
+    eve.str(80, 30, 27, eve.OPT_CENTER, @"Please tap on the dot")
     eve.ts_cal()
     eve.dl_end()
     eve.wait_rdy()
@@ -209,16 +209,16 @@ PUB setup()
     ser.start()
     time.msleep(30)
     ser.clear()
-    ser.strln(string("Serial terminal started"))
+    ser.strln(@"Serial terminal started")
 
     if ( eve.start(@_disp_setup) )
-        ser.strln(string("BT81x driver started"))
+        ser.strln(@"BT81x driver started")
     else
-        ser.str(string("BT81x driver failed to start - halting"))
+        ser.str(@"BT81x driver failed to start - halting")
         repeat
 
     if ( ee.start() )
-        ser.strln(string("EEPROM driver started"))
+        ser.strln(@"EEPROM driver started")
         if ( ERASE_TS_CAL )
             erase_tscal()
     else
@@ -228,24 +228,24 @@ PUB setup()
     if ( eve.model_id() == eve.BT816 )          ' resistive TS?
         if ( ee.rd_long_lsbf(EE_MAGICADDR) == eve.TCAL )
             { look for magic number in EEPROM }
-            ser.strln(string("calibration found - restoring"))
+            ser.strln(@"calibration found - restoring")
             ee.rd_block_lsbf(@_ts, EE_CALBASE, 24)   ' read the calibration matrix
             eve.ts_wr_cal_matrix(@_ts)          ' write it to EVE
         else
             { no calibration stored in EE - perform calibration }
-            ser.strln(string("no calibration found"))
+            ser.strln(@"no calibration found")
             ts_cal()
 
 PUB erase_tscal() | i
 ' Erase calibration data and magic number from EEPROM
-    ser.str(string("erasing touchscreen calibration from EEPROM..."))
+    ser.str(@"erasing touchscreen calibration from EEPROM...")
     repeat i from 0 to 27
         ee.wr_byte(EE_MAGICADDR + i, $00)
-    ser.strln(string("done"))
+    ser.strln(@"done")
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
