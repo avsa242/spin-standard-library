@@ -3,9 +3,9 @@
     Filename: display.lcd.st7735.spin
     Author: Jesse Burt
     Description: Driver for Sitronix ST77xx-based displays
-    Copyright (c) 2023
+    Copyright (c) 2024
     Started Mar 7, 2020
-    Updated Oct 6, 2023
+    Updated Jan 3, 2024
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -62,6 +62,10 @@ CON
     { display dimensions }
     WIDTH           = 128
     HEIGHT          = 128
+    XMAX            = WIDTH-1
+    YMAX            = HEIGHT-1
+    CENTERX         = WIDTH/2
+    CENTERY         = HEIGHT/2
 
     { SPI }
     CS              = 0
@@ -81,9 +85,9 @@ VAR
 
 OBJ
 
-    spi : "com.spi.20mhz"                       ' SPI engine
-    core: "core.con.st7735"                     ' HW-specific constants
-    time: "time"                                ' basic timekeeping methods
+    spi:    "com.spi.20mhz"                       ' SPI engine
+    core:   "core.con.st7735"                     ' HW-specific constants
+    time:   "time"                                ' basic timekeeping methods
 
 PUB null{}
 ' This is not a top-level object
@@ -916,7 +920,7 @@ DAT
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

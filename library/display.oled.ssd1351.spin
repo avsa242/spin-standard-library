@@ -3,9 +3,9 @@
     Filename: display.oled.ssd1351.spin
     Author: Jesse Burt
     Description: Driver for Solomon Systech SSD1351 RGB OLED displays
-    Copyright (c) 2023
+    Copyright (c) 2024
     Started: Mar 11, 2020
-    Updated: Oct 6, 2023
+    Updated: Jan 3, 2024
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -50,6 +50,10 @@ CON
     { display dimensions }
     WIDTH           = 96
     HEIGHT          = 64
+    XMAX            = WIDTH-1
+    YMAX            = HEIGHT-1
+    CENTERX         = WIDTH/2
+    CENTERY         = HEIGHT/2
 
     { SPI }
     CS              = 0
@@ -60,15 +64,17 @@ CON
 
 OBJ
 
-    core    : "core.con.ssd1351"                ' HW-specific constants
-    time    : "time"                            ' timekeeping methods
-    spi     : "com.spi.20mhz"                   ' PASM SPI engine (20MHz)
+    core:   "core.con.ssd1351"                  ' HW-specific constants
+    time:   "time"                              ' timekeeping methods
+    spi:    "com.spi.20mhz"                     ' PASM SPI engine (20MHz)
 
 VAR
 
     long _CS, _DC, _RES
 
+#ifndef GFX_DIRECT
     word _framebuffer[(WIDTH*HEIGHT)]
+#endif
 
     byte _offs_x, _offs_y
 
@@ -80,7 +86,11 @@ PUB null{}
 
 PUB start{}: status
 ' Start the driver using default I/O settings
+#ifdef GFX_DIRECT
+    return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, 0)
+#else
     return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, @_framebuffer)
+#endif
 
 PUB startx(CS_PIN, CLK_PIN, DIN_PIN, DC_PIN, RES_PIN, DISP_W, DISP_H, ptr_dispbuff): status
 ' Start driver using custom I/O settings
@@ -594,15 +604,6 @@ PUB prechg_level(level)
     level := (((200 #> level <# 600) - 200) / 13)
     writereg(core#PRECHGLEVEL, 1, @level)
 
-PUB subpix_order(order)
-' Set subpixel color order
-'   Valid values:
-'      *RGB (0): Red-Green-Blue order
-'       BGR (1): Blue-Green-Red order
-    order := ((RGB #> order <# BGR) << core#SUBPIX_ORDER)
-    _rmapcolor := ((_rmapcolor & core#SUBPIX_ORDER_MASK) | order)
-    writereg(core#SETREMAP, 1, @_rmapcolor)
-
 PUB reset{}
 ' Reset the display controller
     if (lookdown(_RES: 0..31))
@@ -628,6 +629,15 @@ PUB show{}
     spi.wrblock_lsbf(_ptr_drawbuffer, _buff_sz)
     outa[_CS] := 1
 #endif
+
+PUB subpix_order(order)
+' Set subpixel color order
+'   Valid values:
+'      *RGB (0): Red-Green-Blue order
+'       BGR (1): Blue-Green-Red order
+    order := ((RGB #> order <# BGR) << core#SUBPIX_ORDER)
+    _rmapcolor := ((_rmapcolor & core#SUBPIX_ORDER_MASK) | order)
+    writereg(core#SETREMAP, 1, @_rmapcolor)
 
 PUB visibility(mode)
 ' Set display visibility
@@ -676,7 +686,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | tmp
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

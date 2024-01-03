@@ -3,9 +3,9 @@
     Filename: display.oled.ssd1331.spin
     Author: Jesse Burt
     Description: Driver for Solomon Systech SSD1331 RGB OLED displays
-    Copyright (c) 2023
+    Copyright (c) 2024
     Started: Apr 28, 2019
-    Updated: Oct 6, 2023
+    Updated: Jan 3, 2024
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -49,6 +49,10 @@ CON
     { display dimensions }
     WIDTH       = 96
     HEIGHT      = 64
+    XMAX        = WIDTH-1
+    YMAX        = HEIGHT-1
+    CENTERX     = WIDTH/2
+    CENTERY     = HEIGHT/2
 
     { SPI }
     CS          = 0
@@ -59,9 +63,9 @@ CON
 
 OBJ
 
-    core    : "core.con.ssd1331"                ' HW-specific constants
-    time    : "time"                            ' timekeeping methods
-    spi     : "com.spi.20mhz"                   ' SPI engine
+    core:   "core.con.ssd1331"                  ' HW-specific constants
+    time:   "time"                              ' timekeeping methods
+    spi:    "com.spi.20mhz"                     ' SPI engine
 
 VAR
 

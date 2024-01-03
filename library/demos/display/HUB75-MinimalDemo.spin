@@ -1,65 +1,55 @@
 {
     --------------------------------------------
-    Filename: ST7735-MinimalDemo.spin
-    Description: Graphics demo using minimal code
+    Filename: HUB75-MinimalDemo.spin
+    Description: Demo of the HUB75 driver
+        * Minimal code example
     Author: Jesse Burt
     Copyright (c) 2024
-    Started: May 28, 2022
-    Updated: Jan 3, 2024
+    Started: Jan 2, 2024
+    Updated: Jan 2, 2024
     See end of file for terms of use.
     --------------------------------------------
+
+    NOTE: It is strongly advised to build this demo using FlexSpin's PASM backend,
+        as opposed to the bytecode backend. With the latter, the display is prone to flicker.
 }
 CON
 
-    _clkmode    = xtal1 + pll16x
+    _clkmode    = xtal1+pll16x
     _xinfreq    = 5_000_000
+
 
 OBJ
 
     fnt:    "font.5x8"
-    disp:   "display.lcd.st7735" | WIDTH=240, HEIGHT=240, CS=0, SCK=1, MOSI=2, DC=3, RST=4
-    ' NOTE: Ensure the WIDTH, HEIGHT settings here match the display preset chosen below
+    disp:   "display.led.hub75" | WIDTH=64, HEIGHT=32, RGB_BASE=0, ADDR_BASE=6, ...
+                                    CLK=10, LAT=11, BL=12
+
 
 PUB main()
 
-    { start the driver
-    NOTE: The Propeller 1 doesn't have enough RAM to buffer a typically sized
-    ST7735 panel (e.g., 128x128), so drawing directly to display is the only supported
-    mode of operation. }
     disp.start()
 
-    { configure the display with the minimum required setup }
-    { Presets for ST7735R }
-'    disp.preset_adafruit_1p44_128x128_land_up()
-'    disp.preset_adafruit_1p44_128x128_land_down()
-'    disp.preset_adafruit_1p44_128x128_port_up()
-'    disp.preset_adafruit_1p44_128x128_port_down()
+    disp.bgcolor(0)                             ' set background color to black and
+    disp.clear()                                '   clear the screen
 
-    { Presets for ST7789VW (make sure the #define and #pragma lines below are uncommented) }
-'#define ST7789
-'#pragma exportdef(ST7789)
-    disp.preset_adafruit_1p3_240x240_land_up()
-'    disp.preset_adafruit_1p3_240x240_land_down()
-'    disp.preset_adafruit_1p3_240x240_port_up()
-'    disp.preset_adafruit_1p3_240x240_port_down()
-
-    disp.set_font(fnt.ptr(), fnt.setup())
-    disp.clear()
+    disp.set_font(fnt.ptr(), fnt.setup())       ' point the driver to the font
 
     { draw some text }
     disp.pos_xy(0, 0)
-    disp.fgcolor($ffff)
+    disp.fgcolor(1)                             ' set foreground color for drawing
     disp.strln(@"Testing 12345")
-
-    { draw one pixel at the center of the screen }
-    {   disp.plot(x, y, color) }
-    disp.plot(disp.CENTERX, disp.CENTERY, $ffff)
 
     { draw a box at the screen edges }
     {   disp.box(x_start, y_start, x_end, y_end, color, filled) }
-    disp.box(0, 0, disp.XMAX, disp.YMAX, $ffff, false)
+    disp.box(0, 0, disp.XMAX, disp.YMAX, 3, false)
+
+    { draw one pixel at the center of the screen }
+    {   disp.plot(x, y, color) }
+    disp.plot(disp.CENTERX, disp.CENTERY, 7)
 
     repeat
+
 
 DAT
 {

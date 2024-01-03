@@ -5,7 +5,7 @@
     Modified By: Jesse Burt
     Description: Bitmap VGA display engine (6bpp color, 160x120)
     Started: Nov 17, 2009
-    Updated: Oct 6, 2023
+    Updated: Jan 2, 2024
     See end of file for terms of use.
     --------------------------------------------
 
@@ -44,21 +44,25 @@ CON
 
     { driver limits }
     MAX_COLOR   = 63
-    DISP_WIDTH  = 160
-    DISP_HEIGHT = 120
+    WIDTH       = 160
+    HEIGHT      = 120
+    XMAX        = WIDTH-1
+    YMAX        = HEIGHT-1
+    CENTERX     = WIDTH/2
+    CENTERY     = HEIGHT/2
     BYTESPERPX  = 1
     PIX_CLK     = 25_175_000
 
 VAR
 
-    byte _framebuffer[DISP_WIDTH * DISP_HEIGHT]
+    byte _framebuffer[WIDTH * HEIGHT]
     byte _cog
 
 PUB start(): status
 ' Start VGA engine using default I/O settings
-    return startx(PIN_GRP, DISP_WIDTH, DISP_HEIGHT, @_framebuffer)
+    return startx(PIN_GRP, WIDTH, HEIGHT, @_framebuffer)
 
-PUB startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): status
+PUB startx(PINGRP, DISP_WIDTH, DISP_HEIGHT, ptr_dispbuff): status
 ' Start VGA engine
 '   PINGRP: 8-pin group number (0, 1, 2, 3 for start pin as 0, 8, 16, 24, resp)
 '   pins must be connected contiguously in the following (ascending) order:
@@ -67,12 +71,12 @@ PUB startx(PINGRP, WIDTH, HEIGHT, ptr_dispbuff): status
 '   ptr_dispbuff: pointer to 19,200 byte (160*120) display/frame buffer
     stop
 
-    _disp_width := DISP_WIDTH                   ' use builtin symbols; params
-    _disp_height := DISP_HEIGHT                 '   are only for API compat
+    _disp_width := WIDTH                        ' use builtin symbols; params
+    _disp_height := HEIGHT                      '   are only for API compat
     _disp_xmax := _disp_width - 1               '   with other drivers
     _disp_ymax := _disp_height - 1
     _buff_sz := _disp_width * _disp_height
-    _bytesperln := DISP_WIDTH * BYTESPERPX
+    _bytesperln := WIDTH * BYTESPERPX
     set_address(ptr_dispbuff)
 
     PINGRP := ((PINGRP <# 3) #> 0)
@@ -100,7 +104,7 @@ PUB stop
 
 PUB clear{}
 ' Clear the display
-    longfill(_ptr_drawbuffer, _bgcolor, constant((DISP_WIDTH * DISP_HEIGHT) / 4))
+    longfill(_ptr_drawbuffer, _bgcolor, constant((WIDTH * HEIGHT) / 4))
 
 PUB disp_state(state)
 ' Enable video output
@@ -275,8 +279,6 @@ syncIndicator           byte    0                                          ' Vid
 
 DAT
 {
-Copyright 2022 Jesse Burt
-
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
 including without limitation the rights to use, copy, modify, merge, publish, distribute,

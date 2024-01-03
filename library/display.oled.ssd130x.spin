@@ -3,9 +3,9 @@
     Filename: display.oled.ssd130x.spin
     Description: Driver for Solomon Systech SSD130x OLED displays
     Author: Jesse Burt
-    Copyright (c) 2023
+    Copyright (c) 2024
     Created: Apr 26, 2018
-    Updated: Oct 6, 2023
+    Updated: Jan 2, 2024
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -49,6 +49,10 @@ CON
     { display dimensions }
     WIDTH       = 128
     HEIGHT      = 64
+    XMAX        = WIDTH-1
+    YMAX        = HEIGHT-1
+    CENTERX     = WIDTH/2
+    CENTERY     = HEIGHT/2
 
     { I2C }
     SCL         = DEF_SCL
@@ -127,7 +131,7 @@ PUB startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BITS, DISP_WID, DISP_HT, ptr_
 #elseifdef SSD130X_SPI
 PUB start{}: status
 ' Start the driver using default I/O settings
-    return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, @_fb)
+    return startx(CS, SCK, MOSI, DC, RST, WIDTH, HEIGHT, @_framebuffer)
 
 PUB startx(CS_PIN, SCK_PIN, SDIN_PIN, DC_PIN, RES_PIN, DISP_WID, DISP_HT, ptr_dispbuff): status
 ' Start the driver with custom I/O settings
@@ -678,7 +682,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt[2]
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

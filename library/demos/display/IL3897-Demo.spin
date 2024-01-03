@@ -3,9 +3,9 @@
     Filename: IL3897-Demo.spin
     Author: Jesse Burt
     Description: IL3897-specific setup for E-Ink/E-Paper graphics demo
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started: Feb 21, 2021
-    Updated: Aug 8, 2023
+    Updated: Jan 2, 2024
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -39,7 +39,7 @@ PUB main{}
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
 
-    epaper.preset_2_13_bw{}
+    epaper.preset_2p13_bw{}
 
     demo{}                                      ' start demo
     repeat
