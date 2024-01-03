@@ -3,12 +3,14 @@
     Filename: input.keyboard.bbq20kbd.spin
     Author: Jesse Burt
     Description: Driver for the BBQ20KBD I2C keyboard
-    Copyright (c) 2022
+    Copyright (c) 2024
     Started Dec 30, 2022
-    Updated Dec 31, 2022
+    Updated Jan 3, 2024
     See end of file for terms of use.
     --------------------------------------------
 }
+
+#include "input.pointer.common.spinh"           ' pull in code common to all pointing drivers
 
 CON
 
@@ -18,6 +20,7 @@ CON
     DEF_SCL         = 28
     DEF_SDA         = 29
     DEF_HZ          = 100_000
+    DEF_ADDR        = 0
     I2C_MAX_FREQ    = core#I2C_MAX_FREQ
 
     { interrupts - set }
@@ -34,6 +37,12 @@ CON
     INT_SRC_CAPSLOCK= (1 << core#INT_CAPSLOCK)
     INT_SRC_OVERFLOW= (1 << core#INT_OVERFLOW)
 
+    { default I/O settings; these can be overridden in the parent object }
+    SCL             = DEF_SCL
+    SDA             = DEF_SDA
+    I2C_FREQ        = DEF_HZ
+    I2C_ADDR        = DEF_ADDR
+
 OBJ
 
 { decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
@@ -47,17 +56,14 @@ OBJ
 
 VAR
 
-    long _trackpad_x, _trackpad_y
-    long _trackpad_x_max, _trackpad_y_max, _trackpad_x_min, _trackpad_y_min
-    long _trackpad_x_sens, _trackpad_y_sens
     byte _i2c_addr, _i2c_addr_rd
 
 PUB null{}
 ' This is not a top-level object
 
 PUB start{}: status
-' Start using "standard" Propeller I2C pins and 100kHz
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ)
+' Start using default I/O pins and 100kHz
+    return startx(SCL, SDA, I2C_FREQ)
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ): status
 ' Start using custom IO pins and I2C bus frequency
@@ -93,6 +99,12 @@ PUB brightness(val)
     val := 0 #> val <# 255
     writereg(core#REG_BKL, 1, @val)
 
+PUB get_i2c_addr{}: addr
+' Get currently set I2C address
+'   Returns: I2C address (7-bit)
+    addr := 0
+    readreg(core#REG_ADR, 1, @addr)
+
 CON #0, KEY_STATE, KEY_CODE
 PUB rx = getchar
 PUB charin = getchar
@@ -103,26 +115,6 @@ PUB getchar{}: ch | tmp
     readreg(core#REG_FIF, 2, @tmp)              ' LSB holds key state
     if (tmp.byte[KEY_STATE] == core#PRESSED)
         return tmp.byte[KEY_CODE]
-
-PUB i2c_addr{}: addr
-' Get currently set I2C address
-'   Returns: I2C address (7-bit)
-    addr := 0
-    readreg(core#REG_ADR, 1, @addr)
-
-PUB i2c_set_addr(addr)
-' Set I2C address
-'   Valid values: $08..$77 (default: $1f)
-'   Any other value is ignored
-'   NOTE: The new address is effective immediately
-'   NOTE: The address is not saved after reset or power loss
-    addr := $08 #> addr <# $77
-    writereg(core#REG_ADR, 1, @addr)
-
-    { update the address set in Propeller RAM, so it knows where to find the keyboard
-        the next transaction }
-    _i2c_addr := (addr << 1)
-    _i2c_addr_rd := (_i2c_addr | 1)
 
 PUB int_clear(mask)
 ' Clear interrupts
@@ -218,65 +210,41 @@ PUB reset{}
 ' Reset the device
     writereg(core#REG_RST, 1, 0)                ' _any_ write (or read) triggers a reset
 
-PUB set_trackpad_abs_x_max(x)
-' Set trackpad absolute position X-axis maximum
-'   Valid values: negx to posx
-    _trackpad_x_max := x
-
-PUB set_trackpad_abs_y_max(y)
-' Set trackpad absolute position Y-axis maximum
-'   Valid values: negx to posx
-    _trackpad_y_max := y
-
-PUB set_trackpad_abs_x_min(x)
-' Set trackpad absolute position X-axis maximum
-'   Valid values: negx to posx
-    _trackpad_x_min := x
-
-PUB set_trackpad_abs_y_min(y)
-' Set trackpad absolute position Y-axis maximum
-'   Valid values: negx to posx
-    _trackpad_y_min := y
-
-PUB set_trackpad_sens_x(sx)
-' Set trackpad sensitivity, X-axis
-'   Valid values: 1 (least sensitive) .. 8 (most sensitive)
-    _trackpad_x_sens := 9-(1 #> sx <# 8)
-
-PUB set_trackpad_sens_y(sy)
-' Set trackpad sensitivity, y-axis
-'   Valid values: 1 (least sensitive) .. 8 (most sensitive)
-    _trackpad_y_sens := 9-(1 #> sy <# 8)
-
-PUB trackpad_abs_x{}: x
-' Get the trackpad absolute position, X-axis
-'   Returns: absolute X position (signed 32-bit)
-    return _trackpad_x
-
-PUB trackpad_abs_y{}: y
-' Get the trackpad absolute position, Y-axis
-'   Returns: absolute Y position (signed 32-bit)
-    return _trackpad_y
-
-PUB trackpad_rel_x{}: x
+PUB read_x = pointer_rel_x
+PUB pointer_rel_x{}: x
 ' Get the trackpad relative position (delta), X-axis
 '   Returns: position relative to the last reading (signed 8-bit)
     x := 0
     readreg(core#REG_TOX, 1, @x)
-    x := ~x / _trackpad_x_sens                  ' extend sign, scale to sensitivity
+    x := ~x / _pointer_x_sens                   ' extend sign, scale to sensitivity
 
     { update the trackpad absolute position and clamp to set limits }
-    _trackpad_x := _trackpad_x_min #> (_trackpad_x + x) <# _trackpad_x_max
+    _pointer_x := _pointer_x_min #> (_pointer_x + x) <# _pointer_x_max
 
-PUB trackpad_rel_y{}: y
+PUB read_y = pointer_rel_y
+PUB pointer_rel_y{}: y
 ' Get the trackpad relative position (delta), Y-axis
 '   Returns: position relative to the last reading (signed 8-bit)
     y := 0
     readreg(core#REG_TOY, 1, @y)
-    y := ~y / _trackpad_y_sens                  ' extend sign, scale to sensitivity
+    y := ~y / _pointer_y_sens                   ' extend sign, scale to sensitivity
 
     { update the trackpad absolute position and clamp to set limits }
-    _trackpad_y := _trackpad_y_min #> (_trackpad_y + y) <# _trackpad_y_max
+    _pointer_y := _pointer_y_min #> (_pointer_y + y) <# _pointer_y_max
+
+PUB set_i2c_addr(addr)
+' Set I2C address
+'   Valid values: $08..$77 (default: $1f)
+'   Any other value is ignored
+'   NOTE: The new address is effective immediately
+'   NOTE: The address is not saved after reset or power loss
+    addr := $08 #> addr <# $77
+    writereg(core#REG_ADR, 1, @addr)
+
+    { update the address set in Propeller RAM, so it knows where to find the keyboard
+        the next transaction }
+    _i2c_addr := (addr << 1)
+    _i2c_addr_rd := (_i2c_addr | 1)
 
 PUB version{}: v
 ' Get the firmware version
@@ -286,6 +254,12 @@ PUB version{}: v
 '   Known values: $11
     v := 0
     readreg(core#REG_VER, 1, @v)
+
+{ pointer method aliases }
+PUB trackpad_rel_x = pointer_rel_x
+PUB trackpad_rel_y = pointer_rel_y
+PUB trackpad_abs_x = abs_x
+PUB trackpad_abs_y = abs_y
 
 PRI readreg(reg_nr, nr_bytes, ptr_buff)
 ' Read nr_bytes from the device into ptr_buff
@@ -316,7 +290,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff)
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
