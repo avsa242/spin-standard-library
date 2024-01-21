@@ -1,41 +1,45 @@
 {
-    --------------------------------------------
-    Filename: PrintF-Demo.spin
-    Description: Demonstrate the functionality of
-        the (s)printf() method variants
-    Author: Jesse Burt
-    Copyright (c) 2022
-    Started Nov 9, 2020
-    Updated Oct 29, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       PrintF-Demo.spin
+    Description:    Demo of the (s)printf() method variants
+    Author:         Jesse Burt
+    Started:        Nov 9, 2020
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
-
-' -- User-modifiable constants
-    LED         = cfg#LED1
-    SER_BAUD    = 115_200
+    _clkmode    = xtal1+pll16x
+    _xinfreq    = 5_000_000
 
     BUFFSZ      = 200                           ' maximum buffer size, in bytes
-' --
+
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
-    time: "time"
-    str : "string"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    str:    "string"
+    time:   "time"
+
 
 VAR
 
     byte _buff[BUFFSZ]
 
-PUB main{} | sz, format, str1, str2
 
-    setup{}
+PUB main() | sz, format, str1, str2
+
+    setup()
+
+'   (s)printf() are convenient methods for displaying formatted strings/text to a
+'       buffer (sprintf) or a display of some sort (printf)
+'   A string is passed to define the basic format or layout of the final output
+'   It can be as simple as one character or a string (e.g.,: printf(@"A"), printf(@"some text") )
+'       or it can include placeholders for values stored in variables
+'       (e.g.,: printf(@"Contents of varible a = %d", a) would replace '%d' with the value
+'           currently stored in the variable 'a')
 
 '   printf() is embedded in a string library, used by most display/terminal output device drivers,
 '       (serial, vga, oled, lcd, etc), so can be used directly through the respective drivers,
@@ -63,38 +67,27 @@ PUB main{} | sz, format, str1, str2
 '
 '   Optionally precede formatting spec letter with the following:
 '       0: pad numbers with zeroes (e.g., %0d for zero-padded decimal)
-'           (default padding character is space, when padding is necessary)
+'           (default padding character is space, when padding is neces~>y)
 '       #.#: minimum field width.maximum field width (e.g. %2.5d for decimal with 2..5 digits)
 '       -: left-justify (e.g. %-4.8x for left-justified hex with 4..8 digits)
 
-'   Any unused parameters must still be specified (SPIN1 limitation), but will
-'       be ignored
-'       e.g.: printf(string("Number %d"), 1234, 0, 0, 0, 0, 0)
-'           The last five params (0, 0, 0, 0, 0) will be ignored, because only
-'           one format specifier was defined in the string (%d)
-'           The output will be: Number 1234
-'
-'   Alternatively, n-parameter variants of printf can be used:
-'       e.g.:   printf1(string("Number %d"), 1234)
-'               printf2(string("Numbers %d %d"), 1234, 5678)
-
 '   a simple example:
-    format := string("A decimal: %d\n\r")
+    format := @"A decimal: %d\n\r"
 
 '   a more complex example
-'    format := string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\n\rnext line\n\r\n\r\n\r")
+'    format := @"Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\nnext line\n\r"
 
-    str1 := string("a string")
-    str2 := string("another")
+    str1 := @"a string"
+    str2 := @"another"
 
     ser.pos_xy(0, 0)
 
     ' You can specify the format inline:
-    ser.printf5(string("Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\n\r"), {
-}   "A", -1000, $DEADBEEF, str1, str2)
+    ser.printf5(@"Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\n\r", ...
+                "A", -1000, $DEADBEEF, str1, str2)
 
     '   or use a pre-defined format:
-    ser.printf6(format, "A", -1000, $DEADBEEF, str1, str2, 0)
+    ser.printf5(format, "A", -1000, $DEADBEEF, str1, str2)
 
     ' Print to a buffer (for use in e.g., a file written to SD, or
     '   other external memory, etc)
@@ -105,32 +98,24 @@ PUB main{} | sz, format, str1, str2
 
     ' An example showing comma-separated values, which could, for example,
     '   be written to a file on an SD-card
-    format := string("%d,%d,%d,%d,%d,%d\n\r\n\r")
+    format := @"%d,%d,%d,%d,%d,%d\n\r"
     str.sprintf6(@_buff, format, 7, 10, 3, 84, 16, 51)
     ser.puts(@_buff)
 
-    ' n-parameter alternate variants of printf that can be used (up to 10)
-    ser.printf1(string("printf1() prints format with 1 param: %d\n\r"), 1234)
-    ser.printf2(string("printf2() prints format with 2 params: %d %d\n\r"), 1234, 5678)
-    ser.printf3(string("printf3() prints format with 3 params: %d %d %d\n\r"), 1234, 5678, 9012)
-    ser.printf4(string("printf4() prints format with 4 params: %d %d %d %d\n\r"), 1234, 5678, {
-}   9012, 3456)
-
-    ser.printf5(string("printf5() prints format with 5 params: %d %d %d %d %d\n\r"), 1234, 5678, {
-}   9012, 3456, 7890)
-
     repeat
 
-PUB setup{}
 
-    ser.start(SER_BAUD)
+PUB setup()
+
+    ser.start()
     time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.clear()
+    ser.strln(@"Serial terminal started")
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -147,4 +132,3 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
-

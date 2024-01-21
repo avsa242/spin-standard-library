@@ -1,126 +1,126 @@
 {
-    --------------------------------------------
-    Filename: ANSITerminal-Demo.spin
-    Description: Demo of the ANSI serial terminal driver
-    Author: Jesse Burt
-    Copyright (c) 2022
-    Created: Jun 18, 2019
-    Updated: Oct 29, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       ANSITerminal-Demo.spin
+    Description:    Demo of the ANSI serial terminal driver
+    Author:         Jesse Burt
+    Started:        Jun 18, 2019
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
 
 CON
 
-    _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
+    _clkmode    = cfg#_clkmode
 
-' -- User-modifiable constants
-    LED         = cfg#LED1
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
-    ser         : "com.serial.terminal.ansi"
-    cfg         : "boardcfg.demoboard"
-    time        : "time"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    time:   "time"
 
-PUB main{} | fg, bg
 
-    setup{}
+PUB main() | fg, bg
 
-    ser.strln(string("ANSI serial terminal demo"))
-    ser.strln(string("NOTE: Not all attributes supported by all terminals."))
+    setup()
 
-    ser.bold{}
-    demo_text(string("BOLD"))
+    ser.strln(@"ANSI serial terminal demo")
+    ser.strln(@"NOTE: Not all attributes supported by all terminals.")
 
-    ser.faint{}
-    demo_text(string("FAINT"))
+    ser.bold()
+    demo_text(@"BOLD")
 
-    ser.italic{}
-    demo_text(string("ITALIC (or INVERSE)"))
+    ser.faint()
+    demo_text(@"FAINT")
 
-    ser.underline{}
-    demo_text(string("UNDERLINED"))
+    ser.italic()
+    demo_text(@"ITALIC (or INVERSE)")
+
+    ser.underline()
+    demo_text(@"UNDERLINED")
  
-    ser.underline_dbl{}
-    demo_text(string("DOUBLE UNDERLINED"))
+    ser.underline_dbl()
+    demo_text(@"DOUBLE UNDERLINED")
 
-    ser.blink{}
-    demo_text(string("SLOW BLINKING"))
+    ser.blink()
+    demo_text(@"SLOW BLINKING")
 
-    ser.blink_fast{}
-    demo_text(string("FAST BLINKING"))
+    ser.blink_fast()
+    demo_text(@"FAST BLINKING")
 
-    ser.inverse{}
-    demo_text(string("INVERSE"))
+    ser.inverse()
+    demo_text(@"INVERSE")
 
-    ser.conceal{}
-    demo_text(string("CONCEALED"))
+    ser.conceal()
+    demo_text(@"CONCEALED")
 
-    ser.strikethru{}
-    demo_text(string("STRIKETHROUGH"))
+    ser.strikethru()
+    demo_text(@"STRIKETHROUGH")
 
-    ser.framed{}
-    demo_text(string("FRAMED"))
+    ser.framed()
+    demo_text(@"FRAMED")
 
-    ser.encircle{}
-    demo_text(string("ENCIRCLED"))
+    ser.encircle()
+    demo_text(@"ENCIRCLED")
 
-    ser.overline{}
-    demo_text(string("OVERLINED"))
+    ser.overline()
+    demo_text(@"OVERLINED")
 
     repeat bg from 0 to 7
         repeat fg from 0 to 7
             ser.color(fg, bg)
-            ser.str(string(" COLORED "))
-        ser.newline
-    ser.color(ser#GREY, ser#BLACK)
+            ser.str(@" COLORED ")
+        ser.newline()
+    ser.color(ser.GREY, ser.BLACK)
 
     repeat 5
-        ser.move_up{}
-        time.sleep(1)
+        ser.move_up()
+        time.msleep(1000)
     repeat 5
-        ser.move_down{}
-        time.sleep(1)
+        ser.move_down()
+        time.msleep(1000)
 
     ser.strln(@"Hide Cursor")
-    ser.hide_cursor{}
+    ser.hide_cursor()
     time.msleep(3000)
 
     ser.strln(@"Show cursor")
-    ser.show_cursor{}
+    ser.show_cursor()
     time.msleep(3000)
 
     repeat 5
-        ser.scroll_up{}
+        ser.scroll_up()
         time.msleep(500)
 
     repeat 5
-        ser.scroll_down{}
+        ser.scroll_down()
         time.msleep(500)
 
-    ser.newline{}
+    ser.newline()
+    ser.reset()
     repeat
+
 
 PUB demo_text(inp_text)
 
-    ser.printf1(string("This is %s text\n\r"), inp_text)
+    ser.printf1(@"This is %s text\n\r", inp_text)
     ser.reset()
 
-PUB setup
 
-    ser.start(SER_BAUD)
-    time.msleep(100)
-    ser.reset{}
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
+PUB setup()
+
+    ser.start()
+    time.msleep(30)
+    ser.reset()
+    ser.clear()
+    ser.strln(@"Serial terminal started")
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -138,3 +138,4 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 }
+

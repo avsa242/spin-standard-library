@@ -1,44 +1,43 @@
 {
-    --------------------------------------------
-    Filename: UpperLower.spin
-    Author: Brett Weir
-    Modified by: Jesse Burt
-    Description: Demo of the Upper() and Lower() functions
-        in the string object
-    Started Jan 5, 2016
-    Updated Sep 5, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       UpperLower.spin
+    Description:    Demo of the string object toupper() and tolower() functions
+    Author:         Jesse Burt
+    Started:        Jan 6, 2016
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
+
+    NOTE: This is based on UpperLower.spin,
+        originally written by Brett Weir.
 }
 
 CON
 
-    _clkmode    = xtal1 + pll16x
+    _clkmode    = xtal1+pll16x
     _xinfreq    = 5_000_000
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-
-' --
 
 OBJ
 
-    term : "com.serial.terminal.ansi"
-    str  : "string"
-    time : "time"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    str:    "string"
+    time:   "time"
 
-PUB main{} | i
 
-    term.start(SER_BAUD)
+PUB main()
+
+    ser.start()
     time.msleep(30)
-    term.clear{}
+    ser.clear()
 
-    term.strln(str.tolower(string("BACON!!!")))
-    term.strln(str.toupper(string("bacon...")))
+    ser.strln(str.tolower(@"BACON!!!"))         ' convert string to lower-case
+    ser.strln(str.toupper(@"bacon..."))         ' convert string to upper-case
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

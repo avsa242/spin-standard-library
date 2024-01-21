@@ -1,58 +1,60 @@
 {
-    --------------------------------------------
-    Filename: Basics.spin
-    Author: Brett Weir
-    Description: String basics (declaration, display)
-    Started Jan 5, 2016
-    Updated Oct 22, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       Basics.spin
+    Description:    Basic string display demo
+    Author:         Jesse Burt
+    Started:        Jan 6, 2016
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
+
+    NOTE: This is based on Basics.spin,
+        originally written by Brett Weir.
 }
 
 CON
 
-    _clkmode    = xtal1 + pll16x
+    _clkmode    = xtal1+pll16x
     _xinfreq    = 5_000_000
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
-    term : "com.serial.terminal.ansi"
-    str  : "string"
-    time : "time"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    str:    "string"
+    time:   "time"
 
-VAR
 
-    byte _str1[32]                              ' declare 32-byte array
+PUB main()
 
-PUB main{}
-
-    term.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
-    term.clear{}
+    ser.clear()
 
-    ' Create a string with the string() command
-    term.strln(string("String!"))
+    ser.str(@"String!")                         ' show a string with the strln() method
+    ser.strln(@"String!")                       ' same, but move to the next line after
 
-    ' Create a string in a DAT block and use the address.
+    ' same as above, but using the string() keyword is neces~>y when embedding
+    '   single character constants within the string
+    ser.strln(@"String with inline constants: ", "A", "B")
 
-    term.strln(@_magicstring)
+    ser.strln(@_string2)                        ' show a string stored in a DAT block
 
-    ' Get the size of a string with strsize()
+    ser.dec(strsize(@_string2))                 ' show the size of a string, in bytes
+    ser.newline()
 
-    term.putdec(strsize(@_magicstring))
-    term.newline{}
+    repeat
+
 
 DAT
 
-'   symbol name     align/size    "string", 0-string terminator (mandatory)
-    _magicstring    byte    "another string!", 0
+    _string2     byte    "another string!", 0
+
 
 DAT
 {
+Copyright 2024 Jesse Burt
+
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
 including without limitation the rights to use, copy, modify, merge, publish, distribute,
@@ -67,4 +69,6 @@ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPO
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 }
+

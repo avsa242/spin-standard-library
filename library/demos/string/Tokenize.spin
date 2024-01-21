@@ -1,55 +1,52 @@
 {
-    --------------------------------------------
-    Filename: Tokenize.spin
-    Author: Brett Weir
-    Modified by: Jesse Burt
-    Description: Demo of the Tokenize() method from
-        the string object
-    Started Jan 5, 2016
-    Updated Oct 22, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       Tokenize.spin2
+    Description:    Demo of the string object tokenize() function
+    Author:         Jesse Burt
+    Started:        Jan 5, 2016
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
+
+    NOTE: This is based on Tokenize.spin,
+        originally written by Brett Weir.
 }
 
 CON
 
-    _clkmode    = xtal1 + pll16x
+    _clkmode    = xtal1+pll16x
     _xinfreq    = 5_000_000
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-
-' --
 
 OBJ
 
-    term : "com.serial.terminal.ansi"
-    str  : "string"
-    time : "time"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    str:    "string"
+    time:   "time"
 
-VAR
 
-    word _ptr_token
+PUB main() | tokenptr
 
-PUB main{}
-
-    term.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
-    term.clear{}
+    ser.clear()
 
-    _ptr_token := str.tokenize(@_magicstring)
+    tokenptr := str.tokenize(@_test_str)        ' init tokenize() with a pointer to a string
 
-    repeat while _ptr_token
-        term.strln(_ptr_token)
-        _ptr_token := str.tokenize(0)
+    repeat while tokenptr                       ' loop while there is still a token (non-zero)
+        ser.strln(tokenptr)
+        tokenptr := str.tokenize(0)             ' get pointer to next token ('0' continues using
+                                                '   the string it was initialized with)
+
 
 DAT
 
-_magicstring     byte    "this string needs to be tokenized!", 0
+    _test_str     byte    "this string needs to be tokenized!", 0
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

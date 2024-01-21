@@ -1,41 +1,40 @@
 {
-    --------------------------------------------
-    Filename: Serial-Loopback.spin
-    Description: Serial loopback demo:
-        echo back every character received on the serial terminal
-    Author: Brett Weir
-    Modified by: Jesse Burt
-    Copyright (c) 2022
-    Started Dec 31, 2015
-    Updated Oct 23, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       Serial-Loopback.spin
+    Description:    Serial loopback demo: echo back every character received on the serial terminal
+    Author:         Jesse Burt
+    Started:        Dec 31, 2015
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
+
+    NOTE: This is based on LoopBack.spin,
+        originally written by Brett Weir
 }
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _xinfreq   = cfg#_xinfreq
+    _clkmode   = cfg#_clkmode
 
-' -- User-modifiable constants
-    SER_BAUD    = 115200
-' --
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
 
-PUB main{}
 
-    ser.start(SER_BAUD)
+PUB main()
+
+    ser.start()
 
     repeat
-        ser.putchar(ser.getchar{})              ' echo back every char received
+        ser.putchar(ser.getchar())              ' echo back every char received
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

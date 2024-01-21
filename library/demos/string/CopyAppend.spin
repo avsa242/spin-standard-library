@@ -1,59 +1,67 @@
 {
-    --------------------------------------------
-    Filename: CopyAppend.spin
-    Description: Demo of the Copy() and Append()
-        functions from the string object
-    Author: Brett Weir
-    Modified by: Jesse Burt
-    Started Jan 5, 2016
-    Updated Oct 22, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       CopyAppend.spin
+    Description:    Demo of the string object copy() and append() functions
+    Author:         Jesse Burt
+    Started:        Jan 6, 2016
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
+
+    NOTE: This is based on CopyAppend.spin,
+        originally written by Brett Weir.
 }
 
 CON
 
-    _clkmode    = xtal1 + pll16x
+    _clkmode    = xtal1+pll16x
     _xinfreq    = 5_000_000
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-
-' --
 
 OBJ
 
-    term : "com.serial.terminal.ansi"
-    str  : "string"
-    time : "time"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    str:    "string"
+    time:   "time"
+
 
 VAR
 
-    byte _str1[32]
+    byte _str[32]                               ' buffer to hold the string
 
-PUB main{}
 
-    term.start(SER_BAUD)
+PUB main()
+
+    ser.start()
     time.msleep(30)
-    term.clear{}
+    ser.clear()
 
-    str.copy(@_str1, string("BACON"))
-    term.strln(@_str1)
+    str.copy(@_str, @"BACON")
+    ser.str(@_str)
+    ser.newline()
 
-    str.append(@_str1, string(" AND"))
-    term.strln(@_str1)
+    str.append(@_str, @" AND")
+    ser.str(@_str)
+    ser.newline()
 
-    str.append(@_str1, string(" CHICKEN"))
-    term.strln(@_str1)
+    str.append(@_str, @" CHICKEN")
+    ser.str(@_str)
+    ser.newline()
 
-    str.append(@_str1, string(" IS"))
-    term.strln(@_str1)
+    str.append(@_str, @" IS")
+    ser.str(@_str)
+    ser.newline()
 
-    str.append(@_str1, string(" GOOD"))
-    term.puts(@_str1)
+    str.append(@_str, @" GOOD")
+    ser.str(@_str)
+
+    repeat
+
 
 DAT
 {
+Copyright 2024 Jesse Burt
+
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
 including without limitation the rights to use, copy, modify, merge, publish, distribute,
@@ -68,5 +76,6 @@ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPO
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 }
 

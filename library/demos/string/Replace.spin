@@ -1,53 +1,55 @@
 {
-    --------------------------------------------
-    Filename: Replace.spin
-    Author: Brett Weir
-    Modified by: Jesse Burt
-    Description: Demo of the Replace() function from
-        the string object
-    Started Jan 5, 2016
-    Updated Oct 22, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       Replace.spin
+    Description:    Demo of the string object replace() method
+    Author:         Jesse Burt
+    Started:        Jan 5, 2016
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
+
+    NOTE: This is based on Replace.spin,
+        originally written by Brett Weir.
 }
 
 CON
 
-    _clkmode    = xtal1 + pll16x
+    _clkmode    = xtal1+pll16x
     _xinfreq    = 5_000_000
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-
-' --
 
 OBJ
 
-    term : "com.serial.terminal.ansi"
-    str  : "string"
-    time : "time"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    str:    "string"
+    time:   "time"
+
 
 VAR
 
-    byte _str1[64]
+    byte _str[64]
 
-PUB main{}
 
-    term.start(SER_BAUD)
+PUB main()
+
+    ser.start()
     time.msleep(30)
-    term.clear{}
+    ser.clear()
 
-    str.copy(@_str1, @_magicstring)
-    str.replaceall(@_str1, string("______"), string("donkey"))
-    term.puts(@_str1)
+    str.copy(@_str, @_str2)                     ' copy(destination, source)
+    str.replaceall(@_str, @"______", @"donkey") ' replaceall(ptr_str, replace_this, with_this)
+    ser.strln(@_str)
+    repeat
+
 
 DAT
 
-    _magicstring     byte    "Mary had a little ______, little ______, little ______", 0
+    _str2     byte    "Mary had a little ______, little ______, little ______",0
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

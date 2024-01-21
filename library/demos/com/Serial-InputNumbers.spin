@@ -1,13 +1,15 @@
 {
-    --------------------------------------------
-    Filename: Serial-InputNumbers.spin
-    Description: Demonstrate reading decimal numbers from the serial terminal
-    Author: Brett Weir
-    Modified by: Jesse Burt
-    Started Jan 3, 2016
-    Updated Oct 23, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       Serial-InputNumbers.spin
+    Description:    Demonstrate reading decimal numbers from the serial terminal
+    Author:         Jesse Burt
+    Started:        Jan 3, 2016
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
+
+    NOTE: This is based on InputNumbers.spin,
+        originally written by Brett Weir
 }
 
 CON
@@ -15,48 +17,47 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
-    cfg  : "boardcfg.flip"
-    ser  : "com.serial.terminal.ansi"
-    time : "time"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    time:   "time"
 
-PUB main{} | a, b
 
-    ser.start(SER_BAUD)
-    time.msleep(20)
+PUB main() | a, b
 
-    ser.puts(string("Input a value: "))
-    a := ser.getdec{}                           ' read a decimal number from the terminal
-    ser.newline{}
+    ser.start()
+    time.msleep(30)
+    ser.clear()
 
-    ser.puts(string("Input another value: "))
-    b := ser.getdec{}                           '   and a second one
-    ser.newline{}
+    ser.puts(@"Input a value: ")
+    ser.set_attrs(ser.ECHO)                     ' show what the user is typing
 
-    ser.str(string("a + b: "))
+    a := ser.getdec()                           ' read a decimal number from the terminal
+    ser.newline()
+
+    ser.puts(@"Input another value: ")
+    b := ser.getdec()                           '   and a second one
+    ser.newline()
+
+    ser.str(@"a + b: ")
     ser.putdec(a + b)                           ' add them
-    ser.newline{}
+    ser.newline()
 
-    ser.str(string("a - b: "))
+    ser.str(@"a - b: ")
     ser.putdec(a - b)                           ' subtract them
-    ser.newline{}
+    ser.newline()
 
-    ser.str(string("a * b: "))
+    ser.str(@"a * b: ")
     ser.putdec(a * b)                           ' multiply them
-    ser.newline{}
+    ser.newline()
 
-    ser.str(string("a / b: "))
+    ser.str(@"a / b: ")
     ser.putdec(a / b)                           ' divide them
 
 DAT
 {
-Copyright 2022 Jesse Burt
-
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
 including without limitation the rights to use, copy, modify, merge, publish, distribute,

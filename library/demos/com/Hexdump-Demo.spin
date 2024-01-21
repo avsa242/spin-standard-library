@@ -1,62 +1,56 @@
 {
-    --------------------------------------------
-    Filename: Hexdump-Demo.spin
-    Author: Jesse Burt
-    Description: Demo of the hexdump() method
-    Copyright (c) 2022
-    Started May 15, 2021
-    Updated Oct 26, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       Hexdump-Demo.spin
+    Description:    Demo of the hexdump() method
+    Author:         Jesse Burt
+    Started:        May 15, 2021
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    LED         = cfg#LED1
-    SER_BAUD    = 115_200
-
-' --
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    time:   "time"
 
-VAR
 
-PUB main{} | ptr_buff, base_addr, adr_digits, nr_bytes, columns, start, end
+PUB main() | ptr_buff, base_addr, adr_digits, nr_bytes, columns, hd_s, hd_e
 
-    setup{}
+    setup()
 
-    nr_bytes := 128                             ' # bytes to show per 'page'
-    start := $0000
-    end := $ffff-nr_bytes                       ' last address to dump
-    columns := 16                               ' # columns output per line
-    base_addr := 0                              ' offset used in address disp.
-                                                '   (useful for EE/Flash, etc)
-    adr_digits := 4                             ' # digits used in addr. disp.
+    nr_bytes := 128                             ' number of bytes to show per 'page'
+    hd_s := $0000                               ' hexdump start
+    hd_e := $ffff-nr_bytes                      '   and end addresses
+    columns := 16                               ' number of columns to display per line
+    adr_digits := 5                             ' number of digits used to display addresses
 
-    repeat ptr_buff from start to end step nr_bytes
-        base_addr := ptr_buff
+    repeat ptr_buff from hd_s to hd_e step nr_bytes
+        base_addr := ptr_buff                   ' can be anything; used for display purposes only
         ser.pos_xy(0, 3)
         ser.hexdump(ptr_buff, base_addr, adr_digits, nr_bytes, columns)
 
     repeat
 
-PUB setup{}
 
-    ser.start(SER_BAUD)
+PUB setup()
+
+    ser.start()
     time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.clear()
+    ser.strln(@"Serial terminal started")
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

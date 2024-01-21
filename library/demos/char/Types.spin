@@ -1,65 +1,69 @@
 {
-    --------------------------------------------
-    Filename: Types.spin
-    Author: Jesse Burt
-    Description: Demonstrate string types functionality
-    Started Jan 5, 2016
-    Updated Aug 14, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       Types.spin
+    Description:    Demo of the string object types functions
+    Author:         Jesse Burt
+    Started:        Jan 5, 2016
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 
-    NOTE: This is based on code from an unknown author
+    NOTE: This is based on Types.spin,
+        originally written by Brett Weir.
 }
+
 CON
 
-    _clkmode = cfg#_clkmode
-    _xinfreq = cfg#_xinfreq
+    _clkmode    = xtal1+pll16x
+    _xinfreq    = 5_000_000
+
 
 OBJ
 
-    cfg : "boardcfg.flip"
-    term: "com.serial.terminal.ansi"
-    ss  : "string"
-    time: "time"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    str:    "string"
+    time:   "time"
 
-PUB main{}
 
-    term.start(115200)
+PUB main()
+
+    ser.start()
     time.msleep(30)
-    term.clear{}
+    ser.clear()
 
-    test_string(string("BACON"))
-    test_string(string("bacon"))
-    test_string(string("34545"))
-    test_string(string("345aaaa"))
-    test_string(string("       "))
+    test_string(@"BACON")
+    test_string(@"bacon")
+    test_string(@"34545")
+    test_string(@"345aaaa")
+    test_string(@"       ")
+
 
 PUB test_string(ptr_str)
 ' Test a string for various types
-    term.str(string("String: "))
-    term.str(ptr_str)
-    term.newline{}
+    ser.printf1(@"String: %s\n\r", ptr_str)
 
-    term.strln(string("----------------------"))
-    term.printf1(string("  Alphanumeric: %s\n\r"), outcome(ss.isalphanum(ptr_str)))
-    term.printf1(string("         Alpha: %s\n\r"), outcome(ss.isalpha(ptr_str)))
-    term.printf1(string("         Digit: %s\n\r"), outcome(ss.isdigit(ptr_str)))
-    term.printf1(string("         Lower: %s\n\r"), outcome(ss.islower(ptr_str)))
-    term.printf1(string("         Upper: %s\n\r"), outcome(ss.isupper(ptr_str)))
-    term.printf1(string("         Space: %s\n\r"), outcome(ss.isspace(ptr_str)))
-    term.strln(string("----------------------"))
-    term.newline{}
+    ser.strln(@"----------------------")
+    ser.printf1(@"  Alphanumeric: %s\n\r", outcome(str.isalphanum(ptr_str)))
+    ser.printf1(@"         Alpha: %s\n\r", outcome(str.isalpha(ptr_str)))
+    ser.printf1(@"         Digit: %s\n\r", outcome(str.isdigit(ptr_str)))
+    ser.printf1(@"         Lower: %s\n\r", outcome(str.islower(ptr_str)))
+    ser.printf1(@"         Upper: %s\n\r", outcome(str.isupper(ptr_str)))
+    ser.printf1(@"         Space: %s\n\r", outcome(str.isspace(ptr_str)))
+    ser.strln(@"----------------------")
+    ser.newline()
 
-PUB outcome(val)
+
+PUB outcome(val): p
 ' Return pointer to string based on input value
-    if (val)
-        return string("true")                   ' non-zero? true
+    if ( val )
+        return @"true"                          ' non-zero? true
     else
-        return string("false")                  ' zero? false
+        return @"false"                         ' zero? false
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
