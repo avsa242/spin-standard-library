@@ -12,50 +12,59 @@
 
 CON
 
-    SLAVE_WR        = core#SLAVE_ADDR
-    SLAVE_RD        = core#SLAVE_ADDR|1
+    { default I/O configuration - these can be overridden by the parent object }
+    SCL             = DEF_SCL
+    SDA             = DEF_SDA
+    I2C_FREQ        = DEF_HZ
+    I2C_ADDR        = DEF_ADDR
+    SHDN            = 24
+
 
     DEF_SCL         = 28
     DEF_SDA         = 29
     DEF_HZ          = 100_000
-    I2C_MAX_FREQ    = core#I2C_MAX_FREQ
+    DEF_ADDR        = 0
+    I2C_MAX_FREQ    = core.I2C_MAX_FREQ
 
-' Filter setting
-    NONE            = 0
-    PWM             = 1
+
+    SLAVE_WR        = core.SLAVE_ADDR
+    SLAVE_RD        = core.SLAVE_ADDR|1
+
 
 VAR
 
     long _shdn
     byte _vol_level, _mod_mode
 
+
 OBJ
 
 { decide: Bytecode I2C engine, or PASM? Default is PASM if BC isn't specified }
 #ifdef MAX9744_I2C_BC
-    i2c : "com.i2c.nocog"                       ' BC I2C engine
+    i2c:    "com.i2c.nocog"                     ' BC I2C engine
 #else
-    i2c : "com.i2c"                             ' PASM I2C engine
+    i2c:    "com.i2c"                           ' PASM I2C engine
 #endif
-    core    : "core.con.max9744"                ' HW-specific constants
-    time    : "time"                            ' timekeeping methods
+    core:   "core.con.max9744"                  ' HW-specific constants
+    time:   "time"                              ' timekeeping methods
 
-PUB null{}
+
+PUB null()
 ' This is not a top-level object
 
-PUB Start(SHDN_PIN): status
-' Start using "standard" Propeller I2C pins and 100kHz
-'   Still requires SHDN_PIN
-    return startx(DEF_SCL, DEF_SDA, DEF_HZ, SHDN_PIN)
+
+PUB start(): status
+' Start using default I/O settings
+    return startx(SCL, SDA, I2C_FREQ, SHDN)
+
 
 PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, SHDN_PIN): status
 ' Start using custom I/O settings
 '   Returns: Core/cog number+1 of I2C engine, FALSE if no cogs available
-    if lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) and {
-}   I2C_HZ =< core#I2C_MAX_FREQ
-        if (status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ))
+    if ( lookdown(SCL_PIN: 0..31) and lookdown(SDA_PIN: 0..31) )
+        if ( status := i2c.init(SCL_PIN, SDA_PIN, I2C_HZ) )
             time.msleep(1)
-            if (i2c.present(SLAVE_WR))          ' test device bus presence
+            if ( i2c.present(SLAVE_WR) )        ' test device bus presence
                 _shdn := SHDN_PIN
                 powered(TRUE)                   ' SHDN pin high
                 return status
@@ -64,30 +73,35 @@ PUB startx(SCL_PIN, SDA_PIN, I2C_HZ, SHDN_PIN): status
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB stop{}
-' Stop the driver
-    mute{}
-    powered(FALSE)
-    i2c.deinit{}
 
-PUB modulation_mode{}: curr_mode
+PUB stop()
+' Stop the driver
+    mute()
+    powered(FALSE)
+    i2c.deinit()
+
+
+PUB modulation_mode(): curr_mode
 ' Get current output filter mode (cached)
     return _mod_mode
 
-PUB mute{}
+
+PUB mute()
 ' Set 0 Volume
     set_volume(0)
 
-PUB is_powered{}: curr_state
+
+PUB is_powered(): curr_state
 ' Get current powered state
     return outa[_shdn]
+
 
 PUB powered(state)
 ' Power on or off
 '   Valid values:
 '       FALSE (0): Power off
 '       TRUE (non-zero): Power on
-    if (state)
+    if ( state )
         outa[_shdn] := 1
         dira[_shdn] := 1
         set_volume(_vol_level)
@@ -95,19 +109,27 @@ PUB powered(state)
         outa[_shdn] := 0
         dira[_shdn] := 1
 
+
+CON
+
+    { set_modulation() filter settings }
+    NONE            = 0
+    PWM             = 1
+
 PUB set_modulation(mode)
 ' Set modulation/output filter mode
 '   NONE (0): Filterless
 '   PWM (1): Classic PWM
-    if (mode == NONE)
-        _mod_mode := core#MOD_FILTERLESS        ' filterless modulation
-    elseif (mode == PWM)
-        _mod_mode := core#MOD_CLASSICPWM        ' classic PWM
+    if ( mode == NONE )
+        _mod_mode := core.MOD_FILTERLESS        ' filterless modulation
+    elseif ( mode == PWM )
+        _mod_mode := core.MOD_CLASSICPWM        ' classic PWM
 
     powered(FALSE)                              ' cycle power to effect changes
     powered(TRUE)
 
     writereg(_mod_mode)
+
 
 PUB set_volume(level)
 ' Set Volume to a specific level
@@ -115,28 +137,33 @@ PUB set_volume(level)
     _vol_level := 0 #> level <# 63
     writereg(_vol_level)
 
-PUB vol_down{}
+
+PUB vol_down()
 ' Decrease volume level
-    writereg(core#CMD_VOL_DN)
+    writereg(core.CMD_VOL_DN)
     _vol_level := 0 #> (_vol_level - 1)
 
-PUB vol_up{}
+
+PUB vol_up()
 ' Increase volume level
-    writereg(core#CMD_VOL_UP)
+    writereg(core.CMD_VOL_UP)
     _vol_level := (_vol_level + 1) <# 63
 
-PUB volume{}: curr_lvl
+
+PUB volume(): curr_lvl
 ' Get current volume level (cached)
     return _vol_level
+
 
 PRI writereg(reg_nr) | cmd_pkt
 ' Write register/command to device
     cmd_pkt.byte[0] := SLAVE_WR
     cmd_pkt.byte[1] := reg_nr
 
-    i2c.start{}
+    i2c.start()
     i2c.wrblock_lsbf(@cmd_pkt, 2)
-    i2c.stop{}
+    i2c.stop()
+
 
 DAT
 {

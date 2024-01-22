@@ -1,14 +1,12 @@
 {
-    --------------------------------------------
-    Filename: MAX9744-Demo.spin
-    Author: Jesse Burt
-    Description: Simple serial terminal-based demo of the MAX9744
-        audio amp driver.
-    Copyright (c) 2022
-    Started Jul 7, 2018
-    Updated Nov 21, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       MAX9744-Demo.spin
+    Description:    Simple serial terminal-based demo of the MAX9744 audio amp driver.
+    Author:         Jesse Burt
+    Started:        Jul 7, 2018
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
 
 CON
@@ -16,77 +14,70 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    LED         = cfg#LED1
-    SER_BAUD    = 115_200
-
-    SCL_PIN     = 28
-    SDA_PIN     = 29
-    I2C_FREQ    = 400_000                       ' max 400_000 (PASM I2C only)
-    SHDN_PIN    = 24
-' --
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    amp     : "audio.amp.max9744"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    amp:    "audio.amp.max9744" | SCL=28, SDA=29, I2C_FREQ=400_000, SHDN=24
+    time:   "time"
 
-PUB main{} | i, level
 
-    setup{}
+PUB main() | i, level
+
+    setup()
     level := 31
     amp.set_volume(level)                       ' set starting volume
-    ser.clear{}
+    ser.clear()
 
     repeat
         ser.pos_xy(0, 0)
-        ser.strln(string("Help:"))
-        ser.strln(string("[: Volume down"))
-        ser.strln(string("]: Volume up"))
-        ser.strln(string("f: Filterless modulation"))
-        ser.strln(string("m: Mute"))
-        ser.strln(string("p: Classic PWM modulation"))
-        ser.newline{}
-        ser.newline{}
-        ser.printf1(string("Volume: %d \n"), level)
+        ser.strln(@"Help:")
+        ser.strln(@"[: Volume down")
+        ser.strln(@"]: Volume up")
+        ser.strln(@"f: Filterless modulation")
+        ser.strln(@"m: Mute")
+        ser.strln(@"p: Classic PWM modulation")
+        ser.newline()
+        ser.newline()
+        ser.printf1(@"Volume: %d \n", level)
 
-        i := ser.getchar{}
+        i := ser.getchar()
             case i
                 "[":
                     level := 0 #> (level - 1)
-                    amp.vol_down{}
+                    amp.vol_down()
                 "]":
                     level := (level + 1) <# 63
-                    amp.vol_up{}
+                    amp.vol_up()
                 "f":
-                    ser.strln(string("Modulation mode: Filterless "))
+                    ser.strln(@"Modulation mode: Filterless ")
                     amp.set_modulation(amp#NONE)
                     amp.set_volume(level)
                 "m":
-                    amp.mute{}
+                    amp.mute()
                     level := 0
                 "p":
-                    ser.strln(string("Modulation mode: Classic PWM"))
+                    ser.strln(@"Modulation mode: Classic PWM")
                     amp.set_modulation(amp#PWM)
                     amp.set_volume(level)
 
-PUB setup{}
+PUB setup()
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
-    if amp.startx(SCL_PIN, SDA_PIN, I2C_FREQ, SHDN_PIN)
-        ser.strln(string("MAX9744 driver started (I2C)"))
+    ser.clear()
+    ser.strln(@"Serial terminal started")
+    if ( amp.start() )
+        ser.strln(@"MAX9744 driver started (I2C)")
     else
-        ser.strln(string("MAX9744 driver failed to start - halting"))
+        ser.strln(@"MAX9744 driver failed to start - halting")
         repeat
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
