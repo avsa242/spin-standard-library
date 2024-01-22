@@ -18,14 +18,11 @@ CON
     _clkmode    = cfg#_CLKMODE
     _xinfreq    = cfg#_XINFREQ
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
-    ser:    "com.serial.terminal.ansi"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     time:   "time"
     matrix: "display.led.ht16k33" | SCL=28, SDA=29, I2C_FREQ=400_000, I2C_ADDR=%000, ...
                                     WIDTH=8, HEIGHT=8
@@ -85,7 +82,7 @@ PUB main{} | i
 
 PUB setup{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))

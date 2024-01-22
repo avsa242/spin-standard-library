@@ -1,29 +1,24 @@
 {
-    --------------------------------------------
-    Filename: HT16K33-14SegDemo.spin
-    Description: Demo of the HT16K33 14-segment driver
-    Author: Jesse Burt
-    Copyright (c) 2023
-    Created: Jun 22, 2021
-    Updated: Jul 16, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       HT16K33-14SegDemo.spin
+    Description:    Demo of the HT16K33 14-segment driver
+    Author:         Jesse Burt
+    Started:        Jun 22, 2021
+    Updated:        Jan 22, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
-
 
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants:
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
-    ser:    "com.serial.terminal.ansi"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     time:   "time"
     fs:     "string.float"
     disp:   "display.led-seg.ht16k33" | SCL=28, SDA=29, I2C_FREQ=400_000, I2C_ADDR=%000, ...
@@ -116,7 +111,7 @@ PRI demo_msg(ptr_str)
 
 PUB setup{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
@@ -129,7 +124,7 @@ PUB setup{}
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
