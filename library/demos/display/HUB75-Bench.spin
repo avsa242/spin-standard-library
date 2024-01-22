@@ -1,32 +1,32 @@
 {
-    --------------------------------------------
-    Filename: HUB75-Bench.spin
-    Description: HUB75-specific setup for graphics benchmark
-    Author: Jesse Burt
-    Copyright (c) 2023
-    Started: Feb 19, 2022
-    Updated: Aug 2, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       HUB75-Bench.spin
+    Description:    HUB75-specific setup for graphics benchmark
+    Author:         Jesse Burt
+    Started:        Feb 19, 2022
+    Updated:        Jan 22, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    time:   "time"
+    fnt:    "font.5x8"
     disp:   "display.led.hub75" | WIDTH=64, HEIGHT=32, RGB_BASE=0, ADDR_BASE=6, ...
                                     CLK=10, LAT=11, BL=12
 
 PUB main{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
@@ -53,8 +53,10 @@ CON
     WIDTH   = disp.WIDTH
     HEIGHT  = disp.HEIGHT
 
+
+DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
