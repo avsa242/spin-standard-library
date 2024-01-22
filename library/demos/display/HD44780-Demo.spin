@@ -1,13 +1,12 @@
 {
-    --------------------------------------------
-    Filename: HD44780-Demo.spin
-    Author: Jesse Burt
-    Description: Demo of the HD44780 LCD driver
-    Copyright (c) 2022
-    Started Sep 08, 2021
-    Updated Jan 1, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       HD44780-Demo.spin
+    Description:    Demo of the HD44780 LCD driver
+    Author:         Jesse Burt
+    Started:        Sep 8, 2021
+    Updated:        Jan 22, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
 
 CON
@@ -16,9 +15,6 @@ CON
     _xinfreq    = cfg#_xinfreq
 
 ' -- User-defined constants
-    SER_BAUD    = 115_200
-    LED         = cfg#LED1
-
     SCL_PIN     = 28
     SDA_PIN     = 29
     I2C_FREQ    = 100_000                       ' max is 100_000
@@ -28,11 +24,12 @@ CON
 OBJ
 
     cfg :   "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     disp:   "display.lcd-alpha.hd44780"
 
 PUB main{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
@@ -52,7 +49,7 @@ PUB main{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
