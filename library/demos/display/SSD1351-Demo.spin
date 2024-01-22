@@ -1,31 +1,31 @@
 {
-    --------------------------------------------
-    Filename: SSD1351-Demo.spin
-    Description: SSD1351-specific setup for graphics demo
-    Author: Jesse Burt
-    Copyright (c) 2023
-    Started: Feb 17, 2022
-    Updated: Jul 31, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       SSD1351-Demo.spin
+    Description:    SSD1351-specific setup for graphics demo
+    Author:         Jesse Burt
+    Started:        Feb 17, 2022
+    Updated:        Jan 22, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    fnt:    "font.5x8"
+    time:   "time"
     disp:   "display.oled.ssd1351" | WIDTH=96, HEIGHT=64, CS=0, SCK=1, MOSI=2, DC=3, RST=4
 
 PUB main{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
@@ -40,6 +40,8 @@ PUB main{}
 
 
     disp.preset_128x{}
+    disp.mirror_h(TRUE)
+    disp.mirror_v(FALSE)
     _time := 5_000                              ' time each demo runs (ms)
 
     demo{}                                      ' start demo
@@ -50,14 +52,10 @@ PUB main{}
 DAT
     _drv_name   byte    "SSD1351 (SPI)", 0
 
-CON
-
-    WIDTH   = disp.WIDTH
-    HEIGHT  = disp.HEIGHT
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

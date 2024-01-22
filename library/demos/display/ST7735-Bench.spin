@@ -1,31 +1,31 @@
 {
-    --------------------------------------------
-    Filename: ST7735-Bench.spin
-    Description: ST7735-specific setup for graphics benchmark
-    Author: Jesse Burt
-    Copyright (c) 2023
-    Started: Feb 19, 2022
-    Updated: Aug 8, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       ST7735-Bench.spin
+    Description:    ST7735-specific setup for graphics benchmark
+    Author:         Jesse Burt
+    Started:        Feb 19, 2022
+    Updated:        Jan 22, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    fnt:    "font.5x8"
+    time:   "time"
     disp:   "display.lcd.st7735" | WIDTH=240, HEIGHT=240, CS=0, SCK=1, MOSI=2, DC=3, RST=4
 
 PUB main{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
@@ -61,14 +61,10 @@ DAT
     _drv_name   byte    "ST7735 (SPI)", 0
 #endif
 
-CON
-
-    WIDTH   = disp.WIDTH
-    HEIGHT  = disp.HEIGHT
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -85,3 +81,4 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FO
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
+

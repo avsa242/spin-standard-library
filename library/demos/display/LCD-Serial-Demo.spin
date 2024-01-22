@@ -1,23 +1,20 @@
 {
-    --------------------------------------------
-    Filename: LCD-Serial-Demo.spin
-    Description: Demo of the serial LCD driver
+---------------------------------------------------------------------------------------------------
+    Filename:       LCD-Serial-Demo.spin
+    Description:    Demo of the HD44780 serial LCD driver
         Works with e.g.:
             Parallax #27977 (2x16), #27979 (4x20)
-    Author: Jesse Burt
-    Started Apr 29, 2006
-    Updated Jan 1, 2023
-    See end of file for terms of use.
-    --------------------------------------------
-
+    Author:         Jesse Burt
+    Started:        Apr 29, 2006
+    Updated:        Jan 22, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
 
     _clkmode    = xtal1 + pll16x
     _xinfreq    = 5_000_000
 
 ' -- User-defined constants
-    SER_BAUD    = 115_200
-
     LCD_PIN     = 16
     LCD_BAUD    = 19_200                        ' 2400, 9600, 19200 (must match DIP switches)
     LCD_LINES   = 4
@@ -25,12 +22,13 @@
 
 OBJ
 
-    cfg :   "boardcfg.flip"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     disp:   "display.lcd.serial"
 
 PUB main{}
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
@@ -48,7 +46,7 @@ PUB main{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

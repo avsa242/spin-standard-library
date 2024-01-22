@@ -1,19 +1,19 @@
 {
-    --------------------------------------------
-    Filename: SSD130X-Bench.spin
-    Description: SSD130X-specific setup for benchmark
-    Author: Jesse Burt
-    Copyright (c) 2022
-    Started: Feb 19, 2022
-    Updated: Nov 1, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       SSD130X-Bench.spin
+    Description:    SSD130X-specific setup for benchmark
+    Author:         Jesse Burt
+    Started:        Feb 19, 2022
+    Updated:        Jan 21, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 { if a specific display controller isn't defined, default to SSD1306 }
 #ifndef SSD1306
-#ifndef SSD1309
-#define SSD1306
-#endif
+#   ifndef SSD1309
+#       define SSD1306
+#   endif
 #endif
 
 CON
@@ -21,58 +21,28 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    LED         = cfg#LED1
-    SER_BAUD    = 115_200
-
-    WIDTH       = 128
-    HEIGHT      = 64
-
-{ I2C configuration }
-    SCL_PIN     = 28
-    SDA_PIN     = 29
-    ADDR_BITS   = 0
-    SCL_FREQ    = 1_000_000
-
-{ SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    DC_PIN      = 3
-
-    RES_PIN     = -1                             ' optional; -1 to disable
-' --
-
-    BPP         = disp#BYTESPERPX
-    BYTESPERLN  = WIDTH * BPP
-    BUFFSZ      = ((WIDTH * HEIGHT) * BPP) / 8
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    disp    : "display.oled.ssd130x"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    time:   "time"
+    fnt:    "font.5x8"
+    disp:   "display.oled.ssd130x" | WIDTH=128, HEIGHT=64, ...
+                                    {I2C} SCL=28, SDA=29, I2C_FREQ=1_000_000, I2C_ADDR=0, ...
+                                    {SPI} CS=0, SCK=1, MOSI=2, DC=3, RST=4
 
-VAR
 
-    byte _framebuff[BUFFSZ]                     ' display buffer
+PUB main{}
 
-PUB Main{}
-
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-#ifdef SSD130X_SPI
-    if disp.startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RES_PIN, WIDTH, HEIGHT, @_framebuff)
-#else
-    if disp.startx(SCL_PIN, SDA_PIN, RES_PIN, SCL_FREQ, ADDR_BITS, WIDTH, HEIGHT, @_framebuff)
-#endif
+    if ( disp.start() )
         ser.printf1(string("%s driver started"), @_drv_name)
-        disp.fontspacing(1, 0)
-        disp.fontscale(1)
-        disp.fontsize(fnt#WIDTH, fnt#HEIGHT)
-        disp.fontaddress(fnt.ptr{})
+        disp.set_font(fnt.ptr(), fnt.setup())
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
         repeat
@@ -88,24 +58,25 @@ PUB Main{}
 DAT
     _drv_name   byte    "SSD130X", 0
 
-{
-TERMS OF USE: MIT License
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+DAT
+{
+Copyright 2024 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 }
+
