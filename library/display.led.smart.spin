@@ -1,15 +1,17 @@
 {
-    --------------------------------------------
-    Filename: display.led.smart.spin
-    Author: Jesse Burt
-    Description: Driver for various smart LED arrays
-    Started Jan 4, 2020
-    Updated Oct 6, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       display.led.smart.spin
+    Description:    Driver for various smart LED arrays
+    Author:         Jesse Burt
+    Started:        Jan 4, 2020
+    Updated:        Jan 25, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 
-    NOTE: This is a modified version of jm_rgbx_pixel.spin,
-        originally written by Jon McPhalen
+    NOTE: This is based on jm_rgbx_pixel.spin,
+        originally written by Jon McPhalen.
+
+    NOTE: This driver requires a system clock of at least 80MHz
 }
 #define MEMMV_NATIVE longmove
 #include "graphics.common.spinh"
@@ -26,6 +28,16 @@ CON
     HEIGHT      = 1
     MODEL       = WS2812B
     { -- }
+
+    { specific smart LED models }
+    WS2811      = $2811
+    WS2812      = $2812
+    WS2812B     = $2812B
+    WS2813      = $2813
+    SK6812_24   = $6812_24
+    SK6812_32   = $6812_32
+    TM1803      = $1803
+
 
     BUFF_SZ     = (WIDTH * HEIGHT) * BYTESPERPX
 
@@ -57,14 +69,6 @@ CON
     CRIMSON     = $DC_28_3C_00
     PURPLE      = $8C_00_FF_00
 
-    WS2811      = $2811
-    WS2812      = $2812
-    WS2812B     = $2812B
-    WS2813      = $2813
-    SK6812_24   = $6812_24
-    SK6812_32   = $6812_32
-    TM1803      = $1803
-
 VAR
 
     long _cog
@@ -91,15 +95,14 @@ PUB start(): status
 ' Start the driver using default I/O settings
     return startx(LED_PIN, WIDTH, HEIGHT, MODEL, @_framebuffer)
 
-PUB startx(SMLED_PIN, DISP_W, DISP_H, led_model, ptr_fb) | ustix, holdoff, rgswap, bits, ns0h, ns1h, nsperiod, count
+PUB startx(SMLED_PIN, DISP_W, DISP_H, led_model, ptr_fb): status | ustix, holdoff, rgswap, bits, ns0h, ns1h, nsperiod, count
 ' Start smart-LED engine
-'   SMLED_PIN: I/O pin connected to smart-LED strip/array (0..31)
-'   WIDTH: strip/array width, in pixels (1..1024)
-'   HEIGHT: strip/array height, in pixels (1..1024)
-'       NOTE: (WIDTH * HEIGHT) must be <= 1024
-'   led_model: Specific model of LEDs
-'   ptr_fb: pointer to display buffer
-'   NOTE: Minimum Fsys = 80MHz
+'   SMLED_PIN:  I/O pin connected to smart-LED strip/array (0..31)
+'   WIDTH:      strip/array width, in pixels (1..1024)
+'   HEIGHT:     strip/array height, in pixels (1..1024) (NOTE: (WIDTH * HEIGHT) must be <= 1024)
+'   led_model:  Specific model of LEDs
+'   ptr_fb:     pointer to display buffer
+'   Returns: cogid+1 of PASM engine
     holdoff := 1
     case led_model
         $2811:                                  ' WS2811
@@ -411,7 +414,7 @@ t3                      res     1
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
