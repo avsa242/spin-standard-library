@@ -1,50 +1,35 @@
 {
-    --------------------------------------------
-    Filename: MLX90621-VGA-Demo.spin
-    Author: Jesse Burt
-    Description: Demo of the MLX90621 driver using a
-        VGA display
-    Copyright (c) 2022
-    Started: Jun 27, 2020
-    Updated: Dec 27, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       MLX90621-VGA-Demo.spin
+    Description:    Demo of the MLX90621 driver using a VGA display
+    Author:         Jesse Burt
+    Started:        Jun 27, 2020
+    Updated:        Jan 25, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
 CON
 
-    _clkmode        = cfg#_clkmode
-    _xinfreq        = cfg#_xinfreq
+    _clkmode        = cfg._clkmode
+    _xinfreq        = cfg._xinfreq
 
 ' -- User-modifiable constants
-    LED             = cfg#LED1
-    SER_BAUD        = 115_200
-
 ' MLX90621
     SCL_PIN         = 16
     SDA_PIN         = 17
     I2C_FREQ        = 1_000_000
-
-    VGA_PINGROUP    = 1                         ' 0, 1, 2, 3
 ' --
 
-    WIDTH           = 160
-    HEIGHT          = 120
-    XMAX            = WIDTH-1
-    YMAX            = HEIGHT-1
-    CENTERX         = XMAX/2
-    CENTERY         = YMAX/2
-    BUFFSZ          = WIDTH * HEIGHT
-    BPP             = 1
-    BPL             = WIDTH * BPP
 
 OBJ
 
-    cfg     : "boardcfg.quickstart-hib"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    mlx     : "sensor.thermal-array.mlx90621"
-    vga     : "display.vga.bitmap.160x120"
-    fnt     : "font.5x8"
+    cfg:    "boardcfg.quickstart-hib"
+    fnt:    "font.5x8"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    mlx:    "sensor.thermal-array.mlx90621"
+    vga:    "display.vga.bitmap.160x120" | PIN_GRP=0    { 0 .. 3 }
+    time:   "time"
+
 
 VAR
 
@@ -57,31 +42,31 @@ VAR
 
     word _fx, _fy, _fw, _fh
 
-    byte _framebuffer[BUFFSZ]
     byte _palette[64]
     byte _mlx_adc_res, _mlx_adcref
     byte _invert_x, _col_scl
     byte _hotspot_mark
 
-PUB main{}
 
-    setup{}
-    draw_vscale(XMAX-5, 0, YMAX)
+PUB main()
+
+    setup()
+    draw_vscale(vga.XMAX-5, 0, vga.YMAX)
 
     repeat
         if (_settings_changed)
-            update_settings{}
+            update_settings()
         mlx.get_frame(@_ir_frame)
         draw_frame(_fx, _fy, _fw, _fh)
 
-PUB draw_frame(fx, fy, pixw, pixh) | x, y, color_c, ir_offset, pixsx, pixsy, pixex, pixey, maxx, {
-}                                   maxy, maxp
+
+PUB draw_frame(fx, fy, pixw, pixh) | x, y, color_c, ir_offset, pixsx, pixsy, pixex, pixey, maxx, maxy, maxp
 ' Draw the thermal image
-    vga.wait_vsync{}                             ' wait for vertical sync
-    repeat y from 0 to mlx#YMAX
-        repeat x from 0 to mlx#XMAX
+    vga.wait_vsync()                             ' wait for vertical sync
+    repeat y from 0 to mlx.YMAX
+        repeat x from 0 to mlx.XMAX
             if (_invert_x)                      ' Invert X display if set
-                ir_offset := ((mlx#XMAX-x) * 4) + y
+                ir_offset := ((mlx.XMAX-x) * 4) + y
             else
                 ir_offset := (x * 4) + y
             ' compute color
@@ -99,11 +84,12 @@ PUB draw_frame(fx, fy, pixw, pixh) | x, y, color_c, ir_offset, pixsx, pixsy, pix
 
     if (_hotspot_mark)                          ' Mark hotspot
         ' white box
-'        vga.box(maxx, maxy, maxx+pixw, maxy+pixh, vga#MAX_COLOR, false)
+'        vga.box(maxx, maxy, maxx+pixw, maxy+pixh, vga.MAX_COLOR, false)
 
         ' white cross-hair
-        vga.line(maxx, maxy+(pixh/2), maxx+pixw, maxy+(pixh/2), vga#MAX_COLOR)
-        vga.line(maxx+(pixw/2), maxy, maxx+(pixw/2), maxy+pixh, vga#MAX_COLOR)
+        vga.line(maxx, maxy+(pixh/2), maxx+pixw, maxy+(pixh/2), vga.MAX_COLOR)
+        vga.line(maxx+(pixw/2), maxy, maxx+(pixw/2), maxy+pixh, vga.MAX_COLOR)
+
 
 PUB draw_vscale(x, y, ht) | idx, color, scl_width, bottom, top, range
 ' Draw the color scale setup at program start
@@ -111,11 +97,12 @@ PUB draw_vscale(x, y, ht) | idx, color, scl_width, bottom, top, range
     top := 0
     scl_width := 5
 
-    repeat idx from bottom to top+(YMAX-vga#MAX_COLOR)
+    repeat idx from bottom to top+(vga.YMAX-vga.MAX_COLOR)
         color := _palette[(range-idx)]
         vga.line(x, idx, x+scl_width, idx, color)
 
-PUB update_settings{} | col, row, reftmp
+
+PUB update_settings() | col, row, reftmp
 ' Settings have been changed by the user - update the sensor and the
 '   displayed settings
     mlx.temp_adc_res(_mlx_adc_res)              ' Update sensor with current
@@ -124,25 +111,26 @@ PUB update_settings{} | col, row, reftmp
 
     reftmp := mlx.adc_ref(-2)                   ' read from sensor for display
     col := 0
-    row := (vga.textrows{}-1) - 5               ' Position at screen bottom
-    vga.fgcolor(vga#MAX_COLOR)
+    row := (vga.textrows()-1) - 5               ' Position at screen bottom
+    vga.fgcolor(vga.MAX_COLOR)
     vga.pos_xy(col, row)
 
-    vga.printf1(string("X-axis invert: %s\n\r"), lookupz(_invert_x: string("No "), string("Yes")))
-    vga.printf1(string("FPS: %dHz   \n\r"), mlx.refresh_rate(-2))
-    vga.printf1(string("ADC: %dbits\n\r"), mlx.temp_adc_res(-2))
-    vga.printf1(string("ADC reference: %s\n\r"), lookupz(reftmp: string("High"), string("Low  ")))
+    vga.printf1(@"X-axis invert: %s\n\r", lookupz(_invert_x: @"No ", @"Yes"))
+    vga.printf1(@"FPS: %dHz   \n\r", mlx.refresh_rate(-2))
+    vga.printf1(@"ADC: %dbits\n\r", mlx.temp_adc_res(-2))
+    vga.printf1(@"ADC reference: %s\n\r", lookupz(reftmp: @"High", @"Low  "))
 
-    _fx := CENTERX - ((_fw * 16) / 2)           ' Approx center of screen
+    _fx := vga.CENTERX - ((_fw * 16) / 2)       ' Approx center of screen
     _fy := 10
-    vga.box(0, 0, XMAX-10, CENTERY, 0, TRUE)    ' Clear out last thermal image
+    vga.box(0, 0, vga.XMAX-10, vga.CENTERY, 0, TRUE)    ' Clear out last thermal image
                                                 ' (in case resizing smaller)
     _settings_changed := FALSE
 
-PUB cog_key_input{} | cmd
+
+PUB cog_key_input() | cmd
 
     repeat
-        repeat until cmd := ser.getchar{}
+        repeat until cmd := ser.getchar()
         case cmd
             "A":                                ' ADC resolution (bits)
                 _mlx_adc_res := (_mlx_adc_res + 1) <# 18
@@ -169,52 +157,52 @@ PUB cog_key_input{} | cmd
             "-":                                ' thermal image reference level
                 _offset := 0 #> (_offset - 1)   '   or color offset
             "=":
-                _offset := (_offset + 1) <# vga#MAX_COLOR
+                _offset := (_offset + 1) <# vga.MAX_COLOR
             "x":                                ' invert thermal image X-axis
                 _invert_x ^= 1
             other:
                 next
         _settings_changed := TRUE               ' trigger for main loop to call update_settings()
 
-PUB setup{}
 
-    ser.start(SER_BAUD)
+PUB setup()
+
+    ser.start()
     time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.clear()
+    ser.strln(@"Serial terminal started")
 
-    setup_palette{}
-    vga.startx(VGA_PINGROUP, WIDTH, HEIGHT, @_framebuffer)
-        ser.strln(string("VGA 8bpp driver started"))
-        vga.font_addr(fnt.ptr{})
-        vga.font_scl(1)
-        vga.font_sz(6, 8)
-        vga.clear{}
-        vga.char_attrs(vga#DRAWBG)
+    setup_palette()
+    vga.start()
+    ser.strln(@"VGA 8bpp driver started")
+    vga.set_font(fnt.ptr(), fnt.setup())
+    vga.clear()
+    vga.char_attrs(vga.DRAWBG)
 
-    if mlx.startx(SCL_PIN, SDA_PIN, I2C_FREQ)
-        ser.strln(string("MLX90621 driver started"))
-        mlx.defaults{}
-        mlx.opmode(mlx#CONT)
+    if ( mlx.startx(SCL_PIN, SDA_PIN, I2C_FREQ) )
+        ser.strln(@"MLX90621 driver started")
+        mlx.defaults()
+        mlx.opmode(mlx.CONT)
         _mlx_adc_res := 18                       ' Initial sensor settings
         _mlx_refrate := 32
         _mlx_adcref := 1
     else
-        ser.strln(string("MLX90621 driver failed to start - halting"))
+        ser.strln(@"MLX90621 driver failed to start - halting")
         repeat
 
     _col_scl := 16
     _fw := 6
     _fh := 6
     _invert_x := 0
-    cognew(cog_key_input{}, @_keyinput_stack)
+    cognew(cog_key_input(), @_keyinput_stack)
     _settings_changed := TRUE
 
-PUB setup_palette{} | i, r, g, b, c, d
+
+PUB setup_palette() | i, r, g, b, c, d
 ' Set up palette
     d := 4
     r := g := b := c := 0
-    repeat i from 0 to vga#MAX_COLOR
+    repeat i from 0 to vga.MAX_COLOR
         case i
             0..7:                                           ' violet
                 ifnot i // d                                ' Step color only every (d-1)
