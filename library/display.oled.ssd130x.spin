@@ -15,37 +15,13 @@
 
 { if a specific display controller isn't defined, default to SSD1306 }
 #ifndef SSD1306
-#ifndef SSD1309
-#define SSD1306
-#endif
+#   ifndef SSD1309
+#       define SSD1306
+#   endif
 #endif
 CON
 
-    SLAVE_WR    = core#SLAVE_ADDR
-    SLAVE_RD    = core#SLAVE_ADDR|1
-
-    DEF_SCL     = 28
-    DEF_SDA     = 29
-    DEF_HZ      = 100_000
-    DEF_ADDR    = 0
-    MAX_COLOR   = 1
-    BYTESPERPX  = 1
-
-' States for D/C pin
-    DATA        = 1
-    CMD         = 0
-
-' Display visibility modes
-    NORMAL      = 0
-    ALL_ON      = 1
-    INVERTED    = 2
-
-' Addressing modes
-    HORIZ       = 0
-    VERT        = 1
-    PAGE        = 2
-
-    { default I/O settings; these can be overridden in the parent object }
+    { /// default I/O settings; these can be overridden in the parent object }
     { display dimensions }
     WIDTH       = 128
     HEIGHT      = 64
@@ -68,19 +44,50 @@ CON
     DC          = 3
     RST         = 0
 
+    { /// }
+
+    BPP         = 1                             ' bits per pixel/color depth of the display
+    BYTESPERPX  = 1 #> (BPP/8)                  ' limit to minimum of 1
+    BPPDIV      = BYTESPERPX #> (8 / BPP)       ' limit to range BYTESPERPX .. (8/BPP)
+    BUFF_SZ     = (WIDTH * HEIGHT) / BPPDIV
+    MAX_COLOR   = (1 << BPP)-1
+
+
+    SLAVE_WR    = core#SLAVE_ADDR
+    SLAVE_RD    = core#SLAVE_ADDR|1
+
+    DEF_SCL     = 28
+    DEF_SDA     = 29
+    DEF_HZ      = 100_000
+    DEF_ADDR    = 0
+
+' States for D/C pin
+    DATA        = 1
+    CMD         = 0
+
+' Display visibility modes
+    NORMAL      = 0
+    ALL_ON      = 1
+    INVERTED    = 2
+
+' Addressing modes
+    HORIZ       = 0
+    VERT        = 1
+    PAGE        = 2
+
 OBJ
 
-    core: "core.con.ssd130x"
-    time: "time"
+    core:   "core.con.ssd130x"
+    time:   "time"
 
 #ifdef SSD130X_SPI
-    spi : "com.spi.4mhz"                        ' PASM SPI engine (~4MHz)
+    spi:    "com.spi.4mhz"                      ' SPI engine
 
 #else
 
 { default to I2C }
 #define SSD130X_I2C
-    i2c : "com.i2c"                             ' PASM I2C engine (~1MHz)
+    i2c:    "com.i2c"                           ' I2C engine
 
 #endif
 
@@ -88,7 +95,7 @@ VAR
 
     long _CS, _DC, _RES
     byte _addr_bits
-    byte _framebuffer[ (WIDTH*HEIGHT) / 8 ]
+    byte _framebuffer[BUFF_SZ]
 
 PUB null{}
 ' This is not a top-level object
@@ -618,21 +625,21 @@ PUB vcomh_voltage(level)
 
     writereg(core#SETVCOMDESEL, 1, @level)
 
-PUB wr_buffer(ptr_buff, buff_sz) | tmp
+PUB wr_buffer(ptr_buff, len)
 ' Write alternate buffer to display
-'   buff_sz: bytes to write
 '   ptr_buff: address of buffer to write to display
+'   len: bytes to write
 '   NOTE: Does not set position on display
 #ifdef SSD130X_I2C
     i2c.start{}
     i2c.wr_byte(SLAVE_WR | _addr_bits)
     i2c.wr_byte(core#CTRLBYTE_DATA)
-    i2c.wrblock_lsbf(ptr_buff, buff_sz)
+    i2c.wrblock_lsbf(ptr_buff, len)
     i2c.stop{}
 #elseifdef SSD130X_SPI
     outa[_DC] := DATA
     outa[_CS] := 0
-    spi.wrblock_lsbf(ptr_buff, buff_sz)
+    spi.wrblock_lsbf(ptr_buff, len)
     outa[_CS] := 1
 #endif
 
