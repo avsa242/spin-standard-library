@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: LSM6DSL driver demo
         * 6DoF data output
-    Copyright (c) 2022
+    Copyright (c) 2023
     Started Aug 12, 2017
-    Updated Nov 21, 2022
+    Updated Jan 7, 2023
     See end of file for terms of use.
     --------------------------------------------
 
@@ -47,7 +47,7 @@ OBJ
 PUB setup{}
 
     ser.start(SER_BAUD)
-    time.msleep(10)
+    time.msleep(20)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 

@@ -1,14 +1,12 @@
 {
-    --------------------------------------------
-    Filename: LSM6DSL-FreeFall-Demo.spin
-    Author: Jesse Burt
-    Description: Demo of the LSM6DSL driver
-        Free-fall detection functionality
-    Copyright (c) 2022
-    Started Sep 6, 2021
-    Updated Nov 21, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       LSM6DSL-FreeFall-Demo.spin
+    Description:    Demo of the LSM6DSL driver: Free-fall detection functionality
+    Author:         Jesse Burt
+    Started:        Sep 6, 2021
+    Updated:        Jan 26, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
 
 CON
@@ -67,7 +65,7 @@ PUB main{}
             ser.clear_line{}
             ser.pos_xy(0, 3)
             ser.str(string("Sensor stable       "))
-        if (ser.rxcheck{} == "c")               ' press the 'c' key in the demo
+        if (ser.getchar_noblock{} == "c")       ' press the 'c' key in the demo
             calibrate{}                         ' to calibrate sensor offsets
 
 PUB calibrate{}
@@ -97,7 +95,7 @@ PUB setup{}
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
