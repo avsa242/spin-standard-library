@@ -1,14 +1,14 @@
 {
-    --------------------------------------------
-    Filename: sensor.accel.3dof.lis3dh.spin
-    Author: Jesse Burt
-    Description: Driver for the ST LIS3DH 3DoF accelerometer
-    Copyright (c) 2022
-    Started Mar 15, 2020
-    Updated Nov 5, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       sensor.accel.3dof.lis3dh.spin
+    Description:    Driver for the ST LIS3DH 3DoF accelerometer
+    Author:         Jesse Burt
+    Started:        Mar 15, 2020
+    Updated:        Jan 26, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 #include "sensor.accel.common.spinh"
 
 CON
@@ -749,7 +749,7 @@ PRI readreg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
             reg_nr |= core#MS_I2C               ' multi-byte read mode (I2C)
 #endif
         other:
-            return FALSE
+            return
 
 #ifdef LIS3DH_SPI
     reg_nr |= core#R
@@ -782,7 +782,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
     case reg_nr
         $1E..$26, $2E, $30, $32..$34, $36..$38, $3A..$3F:
         other:
-            return FALSE
+            return
 #ifdef LIS3DH_SPI
     outa[_CS] := 0
     spi.wr_byte(reg_nr)
@@ -799,7 +799,7 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 #endif
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
