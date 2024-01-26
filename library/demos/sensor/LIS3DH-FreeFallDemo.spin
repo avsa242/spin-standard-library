@@ -1,14 +1,12 @@
 {
-    --------------------------------------------
-    Filename: LIS3DH-FreeFallDemo.spin
-    Author: Jesse Burt
-    Description: Demo of the LIS3DH driver
-        Free-fall detection functionality
-    Copyright (c) 2022
-    Started Dec 22, 2021
-    Updated Nov 5, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       LIS3DH-FreeFallDemo.spin
+    Description:    Demo of the LIS3DH driver: Free-fall detection functionality
+    Author:         Jesse Burt
+    Started:        Dec 22, 2021
+    Updated:        Jan 26, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 
     Build-time symbols supported by driver:
         -DLIS3DH_SPI
@@ -92,7 +90,7 @@ PUB main{} | intsource
                 ser.pos_xy(0, 4)
                 ser.puts(string("Sensor stable"))
                 ser.clear_line{}
-        if (ser.rxcheck{} == "c")               ' press the 'c' key in the demo
+        if (ser.getchar_noblock{} == "c")       ' press the 'c' key in the demo
             calibrate{}                         ' to calibrate sensor offsets
 
 PUB calibrate{}
@@ -136,9 +134,10 @@ PUB setup{}
 
     cognew(cog_isr{}, @_isr_stack)                  ' start ISR in another core
 
+
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
