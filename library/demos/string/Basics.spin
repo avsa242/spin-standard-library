@@ -4,7 +4,7 @@
     Description:    Basic string display demo
     Author:         Jesse Burt
     Started:        Jan 6, 2016
-    Updated:        Jan 21, 2024
+    Updated:        Jan 26, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
@@ -34,9 +34,9 @@ PUB main()
     ser.str(@"String!")                         ' show a string with the strln() method
     ser.strln(@"String!")                       ' same, but move to the next line after
 
-    ' same as above, but using the string() keyword is neces~>y when embedding
+    ' same as above, but using the string() keyword is necessary when embedding
     '   single character constants within the string
-    ser.strln(@"String with inline constants: ", "A", "B")
+    ser.strln(string("String with inline constants: ", "A", "B"))
 
     ser.strln(@_string2)                        ' show a string stored in a DAT block
 
