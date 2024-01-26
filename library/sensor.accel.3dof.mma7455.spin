@@ -1,13 +1,12 @@
 {
-    --------------------------------------------
-    Filename: sensor.accel.3dof.mma7455.spin
-    Author: Jesse Burt
-    Description: Driver for the NXP/Freescale MMA7455 3-axis accelerometer
-    Copyright (c) 2022
-    Started Nov 27, 2019
-    Updated Nov 13, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       sensor.accel.3dof.mma7455.spin
+    Description:    Driver for the NXP/Freescale MMA7455 3-axis accelerometer
+    Author:         Jesse Burt
+    Started:        Nov 27, 2019
+    Updated:        Jan 26, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
 #include "sensor.accel.common.spinh"
 
@@ -282,7 +281,7 @@ PUB accel_int_thresh{}: thresh
     readreg(core#LDTH, 1, @thresh)
     return (~thresh * 62_500)         ' convert to micro-g's
 
-PUB accel_opmode(mode) | curr_mode
+PUB accel_opmode(mode): curr_mode
 ' Set operating mode
 '   Valid values:
 '       STANDBY (%00): Standby
@@ -320,7 +319,7 @@ PUB accel_scale(scale): curr_scl
     scale := ((curr_scl & core#GLVL_MASK) | scale)
     writereg(core#MCTL, 1, @scale)
 
-PUB accel_self_test(state) | curr_state
+PUB accel_self_test(state): curr_state
 ' Enable self-test
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value polls the chip and returns the current setting
@@ -388,7 +387,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | cmd_pkt
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
