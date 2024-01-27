@@ -1,37 +1,24 @@
 {
-    --------------------------------------------
-    Filename: NRF24L01-RX-LED.spin
-    Author: Jesse Burt
-    Description: Wireless control of a Smart LED (receiver)
-        Uses:
-        * nRF24L01+
-        * 1x Smart LED (NeoPixel)
-    Copyright (c) 2022
-    Started Aug 29, 2022
-    Updated Nov 13, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       NRF24L01-RX-LED.spin
+    Description:    Example application showing wireless control of a Smart LED (receiver)
+    Author:         Jesse Burt
+    Started:        Aug 29, 2022
+    Updated:        Jan 27, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
+
+    Additional devices required:
+    * nRF24L01+
+    * 1x Smart LED (aka NeoPixel; can be any model supported by display.led.smart.spin)
 }
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkmode    = cfg._clkmode
+    _xinfreq    = cfg._xinfreq
 
 ' -- User-modifiable constants
-    LED1        = cfg#LED1
-    SER_BAUD    = 115_200
-
-    { SPI configuration - nRF24L01+ }
-    CE_PIN      = 8
-    CS_PIN      = 9
-    SCK_PIN     = 10
-    MOSI_PIN    = 11                             ' MOSI and MISO must be within
-    MISO_PIN    = 12                             '   3 pins +/- of SCK
-
-    { Smart LED configuration }
-    LED_PIN     = 5
-    LED_MODEL   = led.WS2812
     COLOR       = RED                           ' choose from below
 ' --
 
@@ -40,20 +27,23 @@ CON
     BLUE        = 8
     WHITE       = 0                             ' not all models have this
 
+
 OBJ
 
-    ser  : "com.serial.terminal.ansi"
-    cfg  : "boardcfg.flip"
-    nrf24: "wireless.transceiver.nrf24l01"
-    led  : "display.led.smart"
+    cfg:    "boardcfg.flip"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    nrf24:  "wireless.transceiver.nrf24l01" | CE=0, CS=1, SCK=2, MOSI=3, MISO=4
+    led:    "display.led.smart" | LED_PIN=5, MODEL=$2812
+
 
 VAR
 
     long _led
 
-PUB main{} | bright, last, payload
 
-    setup{}
+PUB main() | bright, last, payload
+
+    setup()
 
     bright := 0
     last := 0
@@ -65,14 +55,14 @@ PUB main{} | bright, last, payload
     nrf24.set_syncwd(string($e7, $e7, $e7, $e7, $e7))
 ' --
 
-    ser.clear{}
+    ser.clear()
     ser.pos_xy(0, 0)
     ser.printf1(@"Receive mode (channel %d)\n\r", nrf24.channel(-2))
 
     repeat
         { clear local buffer and wait until a payload is received }
         payload := 0
-        repeat until nrf24.payld_rdy{}
+        repeat until nrf24.payld_rdy()
         nrf24.rx_payld(4, @payload)
 
         { Only allow changes of up to +/- 5 from the last encoder reading received, so
@@ -83,19 +73,20 @@ PUB main{} | bright, last, payload
             last := payload
             bright := 0 #> (bright + payload) <# 255
             led.plot(0, 0, bright << COLOR)
-            led.show{}
+            led.show()
 
         { clear interrupt and receive buffer for next loop }
-        nrf24.int_clear(nrf24.PAYLD_RDY)
-        nrf24.flush_rx{}
+        nrf24.int_clear(nrf24.INT_PAYLD_RDY)
+        nrf24.flush_rx()
 
-PUB setup{}
 
-    ser.start(SER_BAUD)
-    ser.clear{}
-    if nrf24.startx(CE_PIN, CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
+PUB setup()
+
+    ser.start()
+    ser.clear()
+    if ( nrf24.start() )
         ser.strln(@"nRF24L01+ driver started")
-        nrf24.preset_rx2m_noaa{}                ' 2Mbps, No Auto-Ack
+        nrf24.preset_rx2m_noaa()                ' 2Mbps, No Auto-Ack
         nrf24.crc_check_ena(true)
         nrf24.crc_len(2)
         nrf24.payld_len(4)
@@ -103,13 +94,14 @@ PUB setup{}
         ser.strln(@"nRF24L01+ driver failed to start - halting")
         repeat
 
-    led.start(LED_PIN, 1, 1, LED_MODEL, @_led)
-    led.clear{}
-    led.show{}
+    led.start()
+    led.clear()
+    led.show()
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
