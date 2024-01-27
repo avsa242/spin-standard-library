@@ -1,14 +1,14 @@
 {
-    --------------------------------------------
-    Filename: display.oled.ssd130x.spin
-    Description: Driver for Solomon Systech SSD130x OLED displays
-    Author: Jesse Burt
-    Copyright (c) 2024
-    Created: Apr 26, 2018
-    Updated: Jan 2, 2024
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       display.oled.ssd130x.spin
+    Description:    Driver for Solomon Systech SSD130x OLED displays
+    Author:         Jesse Burt
+    Started:        Apr 26, 2018
+    Updated:        Jan 27, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 #define 1BPP
 #define MEMMV_NATIVE bytemove
 #include "graphics.common.spinh"
@@ -128,8 +128,10 @@ PUB startx(SCL_PIN, SDA_PIN, RES_PIN, I2C_HZ, ADDR_BITS, DISP_WID, DISP_HT, ptr_
                 ' calc display memory usage from dimensions and 1bpp depth
                 _buff_sz := (_disp_width * _disp_height) / 8
                 _bytesperln := _disp_width * BYTESPERPX
-
                 set_address(ptr_dispbuff)       ' set display buffer address
+#ifdef GFX_DIRECT
+                set_putchar(@putchar_90deg_1bpp)
+#endif
                 return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
@@ -169,8 +171,10 @@ PUB startx(CS_PIN, SCK_PIN, SDIN_PIN, DC_PIN, RES_PIN, DISP_WID, DISP_HT, ptr_di
             ' calc display memory usage from dimensions and 1bpp depth
             _buff_sz := (_disp_width * _disp_height) / 8
             _bytesperln := _disp_width * BYTESPERPX
-
             set_address(ptr_dispbuff)           ' set display buffer address
+#ifdef GFX_DIRECT
+            set_putchar(@putchar_90deg_1bpp)
+#endif
             return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
@@ -268,14 +272,31 @@ PUB bitmap(ptr_bmap, sx, sy, ex, ey) | bm_sz
 #endif
 
 #ifdef GFX_DIRECT
-PUB tx = putchar
-PUB char = putchar
-PUB putchar(ch) | ch_offs
-' Draw a character from the loaded font
-    ch_offs := _font_addr + (ch << 3)
-    draw_area(_charpx_x, _charpx_y, _charpx_x+_charcell_w, _charpx_y+_charcell_h)
+PUB box(sx, sy, ex, ey, c, f)
+#endif
 
-    wr_buffer(ch_offs, _charcell_w)
+#ifdef GFX_DIRECT
+
+PUB tx = putchar                                ' these two are aliases to the function pointer
+PUB char = putchar                              ' `putchar`, which points to a low-level routine
+
+PUB putchar_90deg_1bpp(ch) | ch_offs
+' Low-level character rendering routine
+'   For font file definitions with these characteristics:
+'   * 90 degrees rotation (landscape)
+'   * each glyph word is a column of the glyph, e.g. for 5x8 'A':
+'       %01111100
+'       %00010010
+'       %00010001
+'       %00010010
+'       %01111100
+    if ( (ch < _fnt_cmin) or (ch > _fnt_cmax) ) ' don't waste any time if the char is invalid
+        return
+
+    ch_offs := _font_addr + (ch * _fnt_width)
+    draw_area(_charpx_x, _charpx_y, _charpx_x+_fnt_width, _charpx_y+_charcell_h)
+
+    wr_buffer(ch_offs, _charcell_w-1)             ' write the glyph directly to the display
 
     _charpx_x += _charcell_w                    ' go to next column
     if (_charpx_x > _charpx_xmax)               ' last col?
