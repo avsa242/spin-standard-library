@@ -1,35 +1,17 @@
- {
-    --------------------------------------------
-    Filename: thermal-imager-common.spinh
-    Author: Jesse Burt
-    Description: Basic thermal imager - common code
-    Copyright (c) 2022
-    Started: Jul 6, 2022
-    Updated: Nov 13, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+{
+---------------------------------------------------------------------------------------------------
+    Filename:       thermal-imager-common.spinh
+    Description:    Basic thermal imager - common code
+    Author:         Jesse Burt
+    Started:        Jul 6, 2022
+    Updated:        Jan 27, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
-
-CON
-
-    { pre-calc some screen-locations and dims }
-    BUFFSZ      = (WIDTH * HEIGHT) * disp.BYTESPERPX
-    BPL         = (WIDTH * disp#BYTESPERPX)
-    XMAX        = (WIDTH - 1)
-    YMAX        = (HEIGHT - 1)
-    CENTERX     = (WIDTH / 2)
-    CENTERY     = (HEIGHT / 2)
-
-OBJ
-
-    ser : "com.serial.terminal.ansi"
-    time: "time"
-    fnt : "font.5x8"
 
 VAR
 
-    long _key_stak[100]
-    long _ir_frame[66]
+    long _ir_frame[66]                          'xxx device-specific
     long _coffs
     long _set_chgd
 
@@ -41,23 +23,25 @@ VAR
     byte _inv_x
     byte _show_hot, _show_sets, _show_scl
 
-PUB imager{}
+
+PUB imager()
 ' Thermal imager main loop
     repeat
-        if (_set_chgd)
-            update_settings{}
+        if ( _set_chgd )
+            update_settings()
         sensor.get_frame(@_ir_frame)
         draw_frame(_fx, _fy, _fw, _fh)
+
 
 PUB draw_frame(fx, fy, pixw, pixh) | x, y, c, offs, pixsx, pixsy, pixex, pixey, maxx, maxy, hottest
 ' Draw the thermal image
     hottest := 0
-    repeat y from 0 to sensor#YMAX
-        repeat x from 0 to sensor#XMAX
-            if (_inv_x)                      ' invert X display if set
-                offs := (((sensor#XMAX-x) * sensor#HEIGHT) + y)
+    repeat y from 0 to sensor.YMAX
+        repeat x from 0 to sensor.XMAX
+            if ( _inv_x )                       ' invert X display if set
+                offs := (((sensor.XMAX-x) * sensor.HEIGHT) + y)
             else
-                offs := ((x * sensor#HEIGHT) + y)
+                offs := ((x * sensor.HEIGHT) + y)
 
             { calc color and scale up pixels from sensor }
             c := get_color((_ir_frame[offs] * _cscl) / _cdiv +_coffs)
@@ -67,57 +51,64 @@ PUB draw_frame(fx, fy, pixw, pixh) | x, y, c, offs, pixsx, pixsy, pixex, pixey, 
             pixey := (pixsy + pixh)
 
             { update the hottest spot in the image }
-            if ((_ir_frame[offs] > hottest) and (_show_hot))
+            if ( (_ir_frame[offs] > hottest) and _show_hot )
                 hottest := _ir_frame[offs]
                 maxx := pixsx
                 maxy := pixsy
 
             disp.box(pixsx, pixsy, pixex, pixey, c, true)
 
-    if (_show_hot)
+    if ( _show_hot )
         { white box }
         disp.box(maxx, maxy, maxx+pixw, maxy+pixh, disp.MAX_COLOR, false)
 
         { white cross-hair - span entire thermal image }
-'        disp.line(_fx, maxy+(pixh / 2), _fx+(_fw * sensor#WIDTH), maxy+(pixh / 2), disp.MAX_COLOR)
+'        disp.line(_fx, maxy+(pixh / 2), _fx+(_fw * sensor.WIDTH), maxy+(pixh / 2), disp.MAX_COLOR)
 '        disp.line(maxx + (pixw / 2), _fy, maxx+(pixw / 2), _fy+(_fh * 4), disp.MAX_COLOR)
 
+
+CON COLOR_WID_R = disp.MAX_COLOR / disp.WIDTH   ' calc maximum color value:display width ratio
 PUB draw_scale_h(y, h) | x, reflvl
 ' Draw horizontal color scale horizontal
     { scale 16-bit color range to display width }
-    repeat x from 0 to XMAX
-        disp.line(x, y, x, (y + h), get_color(x * constant(disp#MAX_COLOR/WIDTH)))
+    repeat x from 0 to disp.XMAX
+        disp.line(x, y, x, (y + h), get_color(x * COLOR_WID_R))
 
     { overlay the current reference level as a white line on the scale }
-    reflvl := (_coffs / constant(disp#MAX_COLOR/WIDTH))
-    disp.line(reflvl, y, reflvl, (y+h), disp#MAX_COLOR)
+    reflvl := (_coffs / COLOR_WID_R)
+    disp.line(reflvl, y, reflvl, (y+h), disp.MAX_COLOR)
 
-PUB update_settings{} | reftmp, cscl
+
+PUB update_settings() | reftmp, cscl
 ' Settings have been changed by the user - update the sensor and the displayed settings
     sensor.temp_adc_res(_sens_adcres)           ' Update sensor with current
     sensor.refresh_rate(_sens_rate)             '   settings
     sensor.adc_ref(_sens_adcref)
 
     reftmp := sensor.adc_ref(-2)                ' read from sensor for display
-    disp.fgcolor(disp#MAX_COLOR)
-    disp.pos_xy(0, disp.textrows{}/2)
-    disp.box(0, CENTERY, XMAX, YMAX, 0, true)   ' erase prev text
-    if (_show_scl)
-        cscl := (5*HEIGHT)/100                  ' scale is 5% of display height
-        draw_scale_h(YMAX-cscl, cscl)
-    if (_show_sets)
-        disp.printf1(string("X %s  "), lookupz(_inv_x: string("Norm"), string("Inv ")))
-        disp.printf1(string("%dHz   \n\r"), sensor.refresh_rate(-2))
-        disp.printf2(string("%dbit (%s)\n\r"), sensor.temp_adc_res(-2), {
-}       lookupz(reftmp: string("High ref"), string("Low ref")))
-    _fx := CENTERX - ((_fw * sensor#WIDTH) / 2)   ' center justify thermal image
+    disp.fgcolor(disp.MAX_COLOR)
+    disp.pos_xy(0, disp.textrows() / 2)
+    disp.box(0, disp.CENTERY, disp.XMAX, disp.YMAX, 0, true)   ' erase prev text
+
+    if ( _show_scl )
+        cscl := (5 * disp.HEIGHT) / 100         ' scale is 5% of display height
+        draw_scale_h(disp.YMAX-cscl, cscl)
+
+    if ( _show_sets )
+        disp.printf1(@"X %s  ", lookupz(_inv_x: @"Norm", @"Inv "))
+        disp.printf1(@"%dHz   \n\r", sensor.refresh_rate(-2))
+        disp.printf2(@"%dbit (%s)\n\r",    sensor.temp_adc_res(-2), ...
+                                            lookupz(reftmp: @"High ref", @"Low ref"))
+
+    _fx := disp.CENTERX - ((_fw * sensor.WIDTH) / 2)    ' center justify thermal image
     _fy := 0                                    ' top
     _set_chgd := false
 
-PUB cog_keyinput{} | cmd
+VAR long _key_stack[100]
+PUB cog_keyinput() | cmd
 ' Handle keypresses from serial terminal
     repeat
-        repeat until (cmd := ser.charin{})
+        repeat until (cmd := ser.getchar())
         case cmd
             "A":                                ' ADC resolution (bits)
                 _sens_adcres := (_sens_adcres + 1) <# 18
@@ -157,9 +148,10 @@ PUB cog_keyinput{} | cmd
             "1":
                 _show_scl ^= 1
             other:
-                show_help{}                      ' show key input legend on serial terminal
+                show_help()                     ' show key input legend on serial terminal
                 next
         _set_chgd := true                       ' trigger for main loop to update settings
+
 
 PUB dump_frame(x, y) | line, col, offs
 ' Dump frame to the serial terminal
@@ -171,22 +163,24 @@ PUB dump_frame(x, y) | line, col, offs
             ser.hexs(_ir_frame[offs], 4)
             ser.putchar(" ")
 
-PUB show_help{}
+
+PUB show_help()
 
     ser.pos_xy(0, 5)
-    ser.strln(string("A/a: Increase/decrease thermal sensor ADC resolution"))
-    ser.strln(string("C/c: Increase/decrease color scaler (* or / 2)"))
-    ser.strln(string("D/d: Increase/decrease color scale divider (* or / 2)"))
-    ser.strln(string("F/f: Increase/decrease thermal sensor capture rate (* or / 2)"))
-    ser.strln(string("h: Show/hide hot spot"))
-    ser.strln(string("r: Toggle thermal sensor ADC reference high/low"))
-    ser.strln(string("t: Dump thermal image frame to serial terminal (words)"))
-    ser.strln(string("+/-: Increase/decrease color scale reference level (+ or - 1000)"))
-    ser.strln(string("x: Toggle invert X-axis thermal image display"))
-    ser.strln(string("0: Toggle show settings on display"))
-    ser.strln(string("1: Toggle show color scale on display"))
+    ser.strln(@"A/a: Increase/decrease thermal sensor ADC resolution")
+    ser.strln(@"C/c: Increase/decrease color scaler (* or / 2)")
+    ser.strln(@"D/d: Increase/decrease color scale divider (* or / 2)")
+    ser.strln(@"F/f: Increase/decrease thermal sensor capture rate (* or / 2)")
+    ser.strln(@"h: Show/hide hot spot")
+    ser.strln(@"r: Toggle thermal sensor ADC reference high/low")
+    ser.strln(@"t: Dump thermal image frame to serial terminal (words)")
+    ser.strln(@"+/-: Increase/decrease color scale reference level (+ or - 1000)")
+    ser.strln(@"x: Toggle invert X-axis thermal image display")
+    ser.strln(@"0: Toggle show settings on display")
+    ser.strln(@"1: Toggle show color scale on display")
 
-PRI get_color(val): rgb565 | r, g, b
+
+PUB get_color(val): rgb565 | r, g, b
 ' Map given input 'index' to color
 '   'Jet'-like palette: vio-blu-grn-yel-org-red-whi
     longfill(@r, 0, 3)
@@ -222,26 +216,24 @@ PRI get_color(val): rgb565 | r, g, b
 
     return ((r << 11) | (g << 5) | b)           ' pack components into RGB565
 
+
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2024 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
