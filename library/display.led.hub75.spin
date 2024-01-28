@@ -1,17 +1,19 @@
 {
-    --------------------------------------------
-    Filename: display.led.hub75.spin
-    Author: Jesse Burt
-    Description: Driver for HUB75 RGB LED matrix displays
-    Copyright (c) 2023
-    Started: Oct 24, 2021
-    Updated: Oct 6, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       display.led.hub75.spin
+    Description:    Driver for HUB75 RGB LED matrix displays
+    Author:         Jesse Burt
+    Started:        Oct 24, 2021
+    Updated:        Jan 28, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
 
 #define MEMMV_NATIVE bytemove
 #include "graphics.common.spinh"
+#ifdef GFX_DIRECT
+#   error "GFX_DIRECT not supported by this driver"
+#endif
 
 CON
 
@@ -92,7 +94,6 @@ PUB stop{}
         wordfill(@_disp_width, 0, 6)
         bytefill(@_rgbio, 0, 4)
 
-
 #ifndef GFX_DIRECT
 PUB clear{}
 ' Clear the display buffer
@@ -171,7 +172,7 @@ PRI memfill(xs, ys, val, count)
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
