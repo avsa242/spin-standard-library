@@ -1,15 +1,19 @@
 {
-    --------------------------------------------
-    Filename: SSD1331-MinimalDemo.spin
-    Description: Demo of the SSD1331 driver
-        * minimal code example
-    Author: Jesse Burt
-    Copyright (c) 2024
-    Started: May 28, 2022
-    Updated: Jan 3, 2024
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       SSD1331-MinimalDemo.spin
+    Description:    Demo of the SSD1331 driver using minimal code
+    Author:         Jesse Burt
+    Started:        May 28, 2022
+    Updated:        Feb 2, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
+' Uncomment the below two lines to disable the use of a framebuffer in RAM,
+'   and draw directly to the display instead.
+'#define GFX_DIRECT
+'#pragma exportdef(GFX_DIRECT)
+
 CON
 
     _clkmode    = xtal1 + pll16x
@@ -19,6 +23,9 @@ OBJ
 
     fnt:    "font.5x8"
     disp:   "display.oled.ssd1331" | WIDTH=96, HEIGHT=64, CS=0, SCK=1, MOSI=2, DC=3, RST=4
+    { NOTE: RST is optional; to ignore, define it as -1 and keep it tied to the supply voltage,
+        or connect it to the Propeller's RESET pin }
+
 
 PUB main()
 
@@ -36,7 +43,8 @@ PUB main()
     disp.pos_xy(0, 0)
     disp.fgcolor($ffff)
     disp.strln(@"Testing 12345")
-    disp.show()                               ' send the buffer to the display
+    disp.show()                                 ' send the buffer to the display (ignored when
+                                                ' GFX_DIRECT is defined)
 
     { draw one pixel at the center of the screen }
     { disp.plot(x, y, color) }

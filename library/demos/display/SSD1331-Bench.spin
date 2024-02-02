@@ -4,10 +4,13 @@
     Description:    SSD1331-specific setup for graphics benchmark
     Author:         Jesse Burt
     Started:        Feb 19, 2022
-    Updated:        Jan 22, 2024
+    Updated:        Feb 2, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 }
+#define GFX_DIRECT
+#pragma exportdef(GFX_DIRECT)
+
 CON
 
     _clkmode    = cfg#_clkmode
@@ -22,25 +25,25 @@ OBJ
     time:   "time"
     disp:   "display.oled.ssd1331" | WIDTH=96, HEIGHT=64, CS=0, SCK=1, MOSI=2, DC=3, RST=4
 
-PUB main{}
+PUB main()
 
     ser.start()
     time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.clear()
+    ser.strln(@"Serial terminal started")
 
     if ( disp.start() )
-        ser.printf1(string("%s driver started"), @_drv_name)
+        ser.strln(@"SSD1331 driver started")
         disp.set_font(fnt.ptr(), fnt.setup())
         disp.char_attrs(disp.TERMINAL)
     else
-        ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
+        ser.strln(@"SSD1331 driver failed to start - halting")
         repeat
 
 
-    disp.preset_96x64_hi_perf{}
+    disp.preset_96x64_hi_perf()
 
-    benchmark{}                                 ' start demo
+    benchmark()                                 ' start demo
 
 { demo routines (common to all display types) included here }
 #include "GFXBench-common.spinh"
