@@ -4,7 +4,7 @@
     Description:    Driver for various smart LED arrays
     Author:         Jesse Burt
     Started:        Jan 4, 2020
-    Updated:        Jan 25, 2024
+    Updated:        Jan 31, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
@@ -40,6 +40,8 @@ CON
 
 
     BUFF_SZ     = (WIDTH * HEIGHT) * BYTESPERPX
+    NR_PIXELS   = WIDTH*HEIGHT
+
 
   ' borrowed from Gavin Garner's TM1804 LED driver
   ' -- additional colors by Lachlan   

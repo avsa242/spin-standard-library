@@ -4,22 +4,23 @@
     Description:    SSD130X-specific setup for benchmark
     Author:         Jesse Burt
     Started:        Feb 19, 2022
-    Updated:        Jan 21, 2024
+    Updated:        Feb 2, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 }
 
-{ if a specific display controller isn't defined, default to SSD1306 }
-#ifndef SSD1306
-#   ifndef SSD1309
-#       define SSD1306
-#   endif
-#endif
+' Uncomment the below to build for an SSD1309 (if unspecified, the build will target SSD1306)
+'#define SSD1309
+'#pragma exportdef(SSD1309)
+
+' Uncomment the below to build for an SPI-connected display (SSD1306 or SSD1309; default is I2C)
+'#define SSD130X_SPI
+'#pragma exportdef(SSD130X_SPI)
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkmode    = cfg._clkmode
+    _xinfreq    = cfg._xinfreq
 
 
 OBJ
@@ -33,24 +34,24 @@ OBJ
                                     {SPI} CS=0, SCK=1, MOSI=2, DC=3, RST=4
 
 
-PUB main{}
+PUB main()
 
     ser.start()
     time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.clear()
+    ser.strln(@"Serial terminal started")
 
     if ( disp.start() )
-        ser.printf1(string("%s driver started"), @_drv_name)
+        ser.strln(@"SSD130X driver started")
         disp.set_font(fnt.ptr(), fnt.setup())
     else
-        ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
+        ser.strln(@"SSD130X driver failed to start - halting")
         repeat
 
-    disp.preset_128x{}
+    disp.preset_128x()
     disp.mirror_h(FALSE)
     disp.mirror_v(FALSE)
-    benchmark{}                                 ' start demo
+    benchmark()                                 ' start demo
 
 { benchmark routines (common to all display types) included here }
 #include "GFXBench-common.spinh"
