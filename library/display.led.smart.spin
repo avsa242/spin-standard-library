@@ -4,7 +4,7 @@
     Description:    Driver for various smart LED arrays
     Author:         Jesse Burt
     Started:        Jan 4, 2020
-    Updated:        Jan 31, 2024
+    Updated:        Feb 4, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
@@ -15,6 +15,10 @@
 }
 #define MEMMV_NATIVE longmove
 #include "graphics.common.spinh"
+
+#ifdef GFX_DIRECT
+#   error "GFX_DIRECT/direct-to-display drawing not supported by this driver"
+#endif
 
 CON
 
@@ -233,36 +237,29 @@ PUB plot(x, y, color)
 ' Plot pixel at (x, y) in color
     if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
         return                                  ' coords out of bounds, ignore
-#ifdef GFX_DIRECT
-' direct to display
-'   (not implemented)
-#else
-' buffered display
     long[_ptr_drawbuffer][x + (y * _disp_width)] := color
-#endif
 
-#ifndef GFX_DIRECT
 PUB point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
 
     return long[_ptr_drawbuffer][x + (y * _disp_width)]
-#endif
 
 PUB show{}
 ' Write the draw buffer to the display
 '   NOTE: This is only required when using double-buffering
     longmove(_ptr_framebuffer, _ptr_drawbuffer, _buff_sz/4)
 
-#ifndef GFX_DIRECT
 PRI memfill(xs, ys, val, count)
 ' Fill region of display buffer memory
 '   xs, ys: Start of region
 '   val: Color
 '   count: Number of consecutive memory locations to write
-    longfill(_ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ((val >> 8) & $FF) | ((val << 8) & $FF00), count)
-#endif
+    longfill(   _ptr_drawbuffer + ((xs << 1) + (ys * _bytesperln)), ...
+                ((val >> 8) & $FF) | ((val << 8) & $FF00), ...
+                count )
+
 
 DAT
 ' Gamma table
