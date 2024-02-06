@@ -1,77 +1,70 @@
 {
-    --------------------------------------------
-    Filename: LPS25-Demo.spin
-    Author: Jesse Burt
-    Description: LPS25 driver demo
-        * Pressure data output
-    Copyright (c) 2022
-    Started Jun 22, 2021
-    Updated Oct 16, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       LPS25-Demo.spin
+    Description:    LPS25 driver demo (pressure, temperature data output)
+    Author:         Jesse Burt
+    Started:        Jun 22, 2021
+    Updated:        Feb 6, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 
-    Build-time symbols supported by driver:
-        -DLPS25_SPI
-        -DLPS25_SPI_BC
-        -DLPS25_I2C (default if none specified)
-        -DLPS25_I2C_BC
+    NOTE: The driver defaults to an I2C connection (PASM-based), if nothing is explicitly specified
+        when building.
 }
+
+' Uncomment the two lines below to use an SPI-connected device
+'#define LPS25_SPI
+'#pragma exportdef(LPS25_SPI)
+
+' Uncomment the two lines below to use an SPI-connected device (bytecode/cogless SPI engine)
+'   NOTE: LPS25_SPI above must also be uncommented to enable this.
+'#define LPS25_SPI_BC
+'#pragma exportdef(LPS25_SPI_BC)
+
+' Uncomment the two lines below to use an I2C-connected device (bytecode/cogless I2C engine)
+'#define LPS25_I2C_BC
+'#pragma exportdef(LPS25_I2C_BC)
+
 CON
 
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-
-    { I2C configuration }
-    SCL_PIN     = 28
-    SDA_PIN     = 29
-    I2C_FREQ    = 400_000                       ' max is 400_000
-    ADDR_BITS   = 0                             ' %000..%111 (0..7)
-
-    { SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1                             ' SPC
-    MOSI_PIN    = 2                             ' SDI
-    MISO_PIN    = 3                             ' SDO
-'   NOTE: If LPS25_SPI is #defined, and MOSI_PIN and MISO_PIN are the same,
-'   the driver will attempt to start in 3-wire SPI mode.
-' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
-    sensor:  "sensor.pressure.lps25"
-    ser:    "com.serial.terminal.ansi"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    sensor: "sensor.pressure.lps25" | {I2C} SCL=28, SDA=29, I2C_FREQ=100_000, I2C_ADDR=0, ...
+                                        {SPI} CS=16, SCK=17, MOSI=18, MISO=18
     time:   "time"
+'   NOTE: If LPS25_SPI is #defined, and MOSI_PIN and MISO_PIN are the same,
+'   the driver will attempt to start in 3-wire SPI mode.
+'   SCK=SPC, MOSI=SDI, MISO=SDO
 
-PUB setup{}
+PUB setup()
 
-    ser.start(SER_BAUD)
-    time.msleep(10)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.start()
+    time.msleep(30)
+    ser.clear()
+    ser.strln(@"Serial terminal started")
 
-#ifdef LPS25_SPI
-    if (sensor.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN))
-#else
-    if (sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ))
-#endif
-        ser.strln(string("LPS25 driver started"))
+    if ( sensor.start() )
+        ser.strln(@"LPS25 driver started")
     else
-        ser.strln(string("LPS25 driver failed to start - halting"))
+        ser.strln(@"LPS25 driver failed to start - halting")
         repeat
 
-    sensor.preset_active{}                       ' set defaults, but enable
+    sensor.preset_active()                       ' set defaults, but enable
                                                 '   sensor power
-    demo{}
+    demo()
 
 #include "pressdemo.common.spinh"               ' code common to all pressure demos
 
+
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
