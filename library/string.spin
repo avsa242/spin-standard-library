@@ -1,13 +1,12 @@
 {
-    --------------------------------------------
-    Filename: string.spin
-    Author: Jesse Burt
-    Description: String processing and formatting
-    Copyright (c) 2023
-    Started May 29, 2022
-    Updated Nov 16, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       string.spin
+    Description:    String processing and formatting
+    Author:         Jesse Burt
+    Started:        May 29, 2022
+    Updated:        Feb 10, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 
     NOTE: This is based on code originally written by the following sources:
         Parallax, inc.
@@ -18,7 +17,7 @@
 
 { if a maximum buffer size isn't defined at build-time, default to 100 bytes }
 #ifndef FIELDSZ_MAX
-#define FIELDSZ_MAX 100
+#   define FIELDSZ_MAX 100
 #endif
 
 #include "termcodes.spinh"
@@ -32,7 +31,7 @@ CON
 
 OBJ
 
-    ctype  : "char.type"
+    ctype:  "char.type"
 
 VAR
 
@@ -458,6 +457,7 @@ PUB mactostr(ptr_mac): ptr | tmp, i
 ' Convert 6-byte array to colon-delimited (":") string representation of a MAC address
 '   ptr_mac: pointer to 6-byte array containing integer representation of MAC address
 '   Returns: pointer to string
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
     repeat i from 0 to 5
         itoabp( byte[ptr_mac][i], ...           ' copy each byte to
                 @_tmp_buff+strsize(@_tmp_buff), ...   '   the end of the string
@@ -856,7 +856,7 @@ PRI ignorespace(ptr_str): ptr_new
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
