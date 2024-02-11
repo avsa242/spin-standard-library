@@ -57,10 +57,10 @@ PUB getdec{}: d
 PUB hexin = gethex
 PUB rx_hex = gethex
 PUB get_hex = gethex
-PUB gethex{}: h
+PUB gethex(digits=SER_STR_BUFF_SZ): h
 ' Receive CR-terminated string representing a hexadecimal value
 '   Returns: the corresponding hexadecimal value
-    gets_max(@_str_buff, SER_STR_BUFF_SZ)
+    gets_max(@_str_buff, digits)
     return stl.atoib(@_str_buff, stl#IHEX)
 
 PUB strin = gets
