@@ -1,26 +1,28 @@
 {
-    --------------------------------------------
-    Filename: com.serial.terminal.ansi.spin
-    Description: ANSI-compatible serial terminal
-    Author: Jesse Burt
-    Started Nov 9, 2020
-    Updated May 13, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       com.serial.terminal.ansi.spin
+    Description:    ANSI-compatible serial terminal
+    Author:         Jesse Burt
+    Started:        Nov 9, 2020
+    Updated:        Feb 10, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 
-    Fsys        RX max br   TX max br
-    80MHz       250kbps     250kbps
-    80MHz       ---         1Mbps
+    Fsys        RX max bitrate  TX max bitrate
+    80MHz       250kbps         250kbps
+    80MHz       ---             1Mbps
+
     NOTE: This is based on code originally written by the following sources:
         Parallax, inc. (Jeff Martin, Andy Lindsay, Chip Gracey)
 }
+
 #ifndef TERMCODES_H
-#include "termcodes.spinh"
+#   include "termcodes.spinh"
 #endif
 
 { max len of received numerical string (not including zero terminator) }
 #ifndef SER_STR_BUFF_SZ
-#define SER_STR_BUFF_SZ 49
+#   define SER_STR_BUFF_SZ 49
 #endif
 
 VAR
@@ -72,40 +74,32 @@ PUB gets(ptr_buff)
 
 PUB strinmax = gets_max
 PUB rx_str_max = gets_max
-PUB gets_max(ptr_buff, max_len)
-' Receive a CR-terminated string (or max_len size; whichever is first)
-'   into ptr_buff
-'   ptr_str: pointer to buffer in which to store received string
-'   max_len: maximum length of string to receive, or -1 for unlimited
-
-    { get up to max_len chars, or until CR received }
-    repeat while (max_len--)
-        if ((byte[ptr_buff++] := getchar{}) == CR)
-            quit
-        if ( _termio_attrs & ECHO )
-            putchar(byte[ptr_buff-1])
-
-    { zero terminate string; overwrite CR or append 0 char }
-    byte[ptr_buff+(byte[ptr_buff-1] == CR)] := NUL
-
-PUB readline = read_line
-PUB read_line(ptr_str, max_len): size | c
-' Read a CR-terminated string up to max_len chars into ptr_str
+PUB readline = gets_max
+PUB read_line = gets_max
+PUB gets_max(ptr_str, max_len): len | ch
+' Read a newline-terminated string up to max_len chars into ptr_str
+'   ptr_str: destination buffer to read string into
+'   max_len: maximum length of string to read from the input
 '   Returns: number of characters received
-    size := 0
-    repeat
-        case (c := getchar{})
+    len := 0
+    repeat while ( len < max_len )
+        ch := getchar()
+        case ch                                 ' get another character
             BS:
-                if (size)
-                    size--
-            CR, LF:
-                byte[ptr_str][size] := NUL
-                quit
+                if ( len )                      ' backspace? Don't count it
+                    len--
+            CR:                                 ' carriage return
+                ch := getchar()                 '   get another char
+                if ( ch == LF )                 '   linefeed also?
+                    quit                        '       that's the end of the string; stop
             other:
-                if (size < max_len)
-                    byte[ptr_str][size++] := c
+                if ( len < max_len )            ' add char to buffer as long as we haven't
+                    byte[ptr_str][len++] := ch  '   reached the length limit
                 else
                     quit
+
+    byte[ptr_str][len] := NUL                   ' null/zero-terminate the destination string
+
 
 #include "terminal.common.spinh"
 #include "ansiterminal.common.spinh"
@@ -113,7 +107,7 @@ PUB read_line(ptr_str, max_len): size | c
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
