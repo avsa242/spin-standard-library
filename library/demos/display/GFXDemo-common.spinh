@@ -4,7 +4,7 @@
     Description:    Graphics demo for all supported display types (common code)
     Author:         Jesse Burt
     Started:        Feb 16, 2022
-    Updated:        Jan 21, 2024
+    Updated:        Feb 12, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
@@ -22,32 +22,32 @@ VAR
     long _stack_timer[50]
     long _timer_set, _time
 
-PUB demo{}
+PUB demo()
 
-    cognew(cog_timer{}, @_stack_timer)
-    disp.clear{}
+    cognew(cog_timer(), @_stack_timer)
+    disp.clear()
 
-    demo_greet{}
-    demo_bounce{}
-    demo_box{}
-    demo_boxfilled{}
-    demo_circle{}
-    demo_circlefilled{}
-    demo_line{}
-    demo_plot{}
-    demo_sinewave{}
-    demo_text{}
-    demo_wander{}
+    demo_greet()
+    demo_bounce()
+    demo_box()
+    demo_boxfilled()
+    demo_circle()
+    demo_circlefilled()
+    demo_line()
+    demo_plot()
+    demo_sinewave()
+    demo_text()
+    demo_wander()
 
-    disp.stop{}
+    disp.stop()
     repeat
 
-PUB demo_bounce{} | bx, by, dx, dy, radius
+PUB demo_bounce() | bx, by, dx, dy, radius
 ' Draw a circle bouncing off screen edges
 ' Pick a random screen location to start from, and a random direction
     radius := 5
-    bx := (math.rndi(disp.XMAX) // (disp.WIDTH - (radius * 4))) + (radius * 2)
-    by := (math.rndi(disp.YMAX) // (disp.HEIGHT - (radius * 4))) + (radius * 2)
+    bx := (math.rndi(disp._disp_xmax) // (disp._disp_width - (radius * 4))) + (radius * 2)
+    by := (math.rndi(disp._disp_ymax) // (disp._disp_height - (radius * 4))) + (radius * 2)
     dx := math.rndi(4) // 2 * 2 - 1
     dy := math.rndi(4) // 2 * 2 - 1
 
@@ -57,86 +57,93 @@ PUB demo_bounce{} | bx, by, dx, dy, radius
         by += dy
 
         ' if any edge of the screen is reached, change direction
-        if (by =< radius) or (by => (disp.HEIGHT - radius))
+        if (by =< radius) or (by => (disp._disp_height - radius))
             dy *= -1                            ' top/bottom edges
-        if (bx =< radius) OR (bx => (disp.WIDTH - radius))
+        if (bx =< radius) OR (bx => (disp._disp_width - radius))
             dx *= -1                            ' left/right edges
 
         disp.circle(bx, by, radius, disp#MAX_COLOR, FALSE)
-        disp.show{}
-        disp.clear{}
-    waitclear{}
+        disp.show()
+        disp.clear()
+    waitclear()
 
-PUB demo_box{} | c
+PUB demo_box() | c
 ' Draw random boxes
     _timer_set := _time
     repeat while _timer_set
         c := math.rndi(disp#MAX_COLOR)
-        disp.box(math.rndi(disp.XMAX), math.rndi(disp.YMAX), math.rndi(disp.XMAX), math.rndi(disp.YMAX), c, FALSE)
-        disp.show{}
-    waitclear{}
+        disp.box(   math.rndi(disp._disp_xmax), math.rndi(disp._disp_ymax), ...
+                    math.rndi(disp._disp_xmax), math.rndi(disp._disp_ymax), ...
+                    c, FALSE )
+        disp.show()
+    waitclear()
 
-PUB demo_boxfilled{} | c
+PUB demo_boxfilled() | c
 ' Draw random filled boxes
     _timer_set := _time
     repeat while _timer_set
         c := math.rndi(disp#MAX_COLOR)
-        disp.box(math.rndi(disp.XMAX), math.rndi(disp.YMAX), math.rndi(disp.XMAX), math.rndi(disp.YMAX), c, TRUE)
-        disp.show{}
-    waitclear{}
+        disp.box(   math.rndi(disp._disp_xmax), math.rndi(disp._disp_ymax), ...
+                    math.rndi(disp._disp_xmax), math.rndi(disp._disp_ymax), ...
+                    c, TRUE )
+        disp.show()
+    waitclear()
 
-PUB demo_circle{} | x, y, r
+PUB demo_circle() | x, y, r
 ' Draw circles at random locations
     _timer_set := _time
     repeat while _timer_set
-        x := math.rndi(disp.XMAX)
-        y := math.rndi(disp.YMAX)
-        r := math.rndi(disp.YMAX / 2)
+        x := math.rndi(disp._disp_xmax)
+        y := math.rndi(disp._disp_ymax)
+        r := math.rndi(disp._disp_ymax / 2)
         disp.circle(x, y, r, math.rndi(disp#MAX_COLOR), FALSE)
-        disp.show{}
-    waitclear{}
+        disp.show()
+    waitclear()
 
-PUB demo_circlefilled{} | x, y, r
+PUB demo_circlefilled() | x, y, r
 ' Draw circles at random locations
     _timer_set := _time
     repeat while _timer_set
-        x := math.rndi(disp.XMAX)
-        y := math.rndi(disp.YMAX)
-        r := math.rndi(disp.YMAX / 2)
+        x := math.rndi(disp._disp_xmax)
+        y := math.rndi(disp._disp_ymax)
+        r := math.rndi(disp._disp_ymax / 2)
         disp.circle(x, y, r, math.rndi(disp#MAX_COLOR), TRUE)
-        disp.show{}
-    waitclear{}
+        disp.show()
+    waitclear()
 
-PUB demo_greet{}
+PUB demo_greet()
 ' Display the banner/greeting
     disp.fgcolor(disp#MAX_COLOR)
     disp.bgcolor(0)
     disp.pos_xy(0, 0)
-    disp.printf1(string("%s\n\r"), @_drv_name)
-    disp.printf1(string("Parallax P8X32A\n\r%dMHz\n\r"), clkfreq / 1_000_000)
-    disp.printf2(string("%dx%d"), disp.WIDTH, disp.HEIGHT)
-    disp.show{}
-    waitclear{}
+    disp.printf1(@"%s\n\r", @_drv_name)
+    disp.printf1(@"Parallax P8X32A\n\r%dMHz\n\r", clkfreq / 1_000_000)
+    disp.printf2(@"%dx%d", disp._disp_width, disp._disp_height)
+    disp.show()
+    waitclear()
 
-PUB demo_line{}
+PUB demo_line()
 ' Draw random lines
     _timer_set := _time
     repeat while _timer_set
-        disp.line(math.rndi(disp.XMAX), math.rndi(disp.YMAX), math.rndi(disp.XMAX), math.rndi(disp.YMAX), math.rndi(disp#MAX_COLOR))
-        disp.show{}
-    waitclear{}
+        disp.line(  math.rndi(disp._disp_xmax), math.rndi(disp._disp_ymax), ...
+                    math.rndi(disp._disp_xmax), math.rndi(disp._disp_ymax), ...
+                    math.rndi(disp#MAX_COLOR) )
+        disp.show()
+    waitclear()
 
-PUB demo_plot{} | x, y
+PUB demo_plot() | x, y
 ' Draw random pixels
     _timer_set := _time
     repeat while _timer_set
-        disp.plot(math.rndi(disp.XMAX), math.rndi(disp.YMAX), math.rndi(disp#MAX_COLOR))
-        disp.show{}
-    waitclear{}
+        disp.plot(  math.rndi(disp._disp_xmax), math.rndi(disp._disp_ymax), ...
+                    math.rndi(disp#MAX_COLOR) )
+        disp.show()
+    waitclear()
 
-PUB demo_sinewave{} | x, y, modifier, offset, div
+PUB demo_sinewave() | x, y, modifier, offset, div
 ' Draw a sine wave the length of the screen, influenced by the system counter
-    case disp.HEIGHT
+    case disp._disp_height
         32:
             div := 4096
         64:
@@ -144,19 +151,19 @@ PUB demo_sinewave{} | x, y, modifier, offset, div
         other:
             div := 4096
 
-    offset := disp.CENTERY                           ' Offset for Y axis
+    offset := disp._disp_height/2               ' Offset for Y axis
 
     _timer_set := _time
     repeat while _timer_set
-        repeat x from 0 to disp.XMAX
+        repeat x from 0 to disp._disp_xmax
             modifier := (||(cnt) / 1_000_000)   ' system counter as modifier
             y := offset + (math.sin(x * modifier) / div)
             disp.plot(x, y, disp#MAX_COLOR)
-        disp.show{}
-        disp.clear{}
-    waitclear{}
+        disp.show()
+        disp.clear()
+    waitclear()
 
-PUB demo_text{} | ch
+PUB demo_text() | ch
 ' Sequentially draw the whole font table
     disp.fgcolor(disp#MAX_COLOR)
     disp.bgcolor(0)
@@ -168,43 +175,43 @@ PUB demo_text{} | ch
         disp.char(ch)
         if (ch++ > 127)
             ch := 32
-        disp.show{}
-    waitclear{}
+        disp.show()
+    waitclear()
 
-PUB demo_wander{} | x, y
+PUB demo_wander() | x, y
 ' Draw randomly wandering pixels
-    x := (disp.XMAX / 2)                             ' start at screen center
-    y := (disp.YMAX / 2)
+    x := (disp._disp_xmax / 2)                             ' start at screen center
+    y := (disp._disp_ymax / 2)
 
     _timer_set := _time
     repeat while _timer_set
         case math.rndi(4)                       ' which way to move?
             1:                                  ' wander right
                 x += 2
-                if (x > disp.XMAX)                   ' wrap around at the edge
+                if (x > disp._disp_xmax)                   ' wrap around at the edge
                     x := 0
             2:                                  ' wander left
                 x -= 2
                 if (x < 0)
-                    x := disp.XMAX
+                    x := disp._disp_xmax
             3:                                  ' wander down
                 y += 2
-                if (y > disp.YMAX)
+                if (y > disp._disp_ymax)
                     y := 0
             4:                                  ' wander up
                 y -= 2
                 if (y < 0)
-                    y := disp.YMAX
+                    y := disp._disp_ymax
         disp.plot(x, y, math.rndi(disp#MAX_COLOR))
-        disp.show{}
-    waitclear{}
+        disp.show()
+    waitclear()
 
-PRI waitclear{}
+PRI waitclear()
 ' Wait, then clear the display
     time.msleep(_time)
-    disp.clear{}
+    disp.clear()
 
-PRI cog_timer{} | time_left
+PRI cog_timer() | time_left
 ' Timer loop
     repeat
         repeat until _timer_set                 ' wait here until a timer has
@@ -216,8 +223,10 @@ PRI cog_timer{} | time_left
         while (time_left > 0)
         _timer_set := 0                         ' signal the timer's been reset
 
+
+DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

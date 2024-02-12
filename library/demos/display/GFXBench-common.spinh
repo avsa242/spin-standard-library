@@ -4,7 +4,7 @@
     Description:    Graphics benchmark for all supported display types (common code)
     Author:         Jesse Burt
     Started:        Feb 20, 2022
-    Updated:        Jan 21, 2024
+    Updated:        Feb 12, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
@@ -30,26 +30,26 @@ VAR
     long _stack_timer[50]
     long _timer_set
 
-PUB benchmark{} | time_ms, sz, maxsz, iteration, bench, ch, color
+PUB benchmark() | time_ms, sz, maxsz, iteration, bench, ch, color
 
-    cognew(cog_timer{}, @_stack_timer)
-    disp.clear{}
+    cognew(cog_timer(), @_stack_timer)
+    disp.clear()
 
-    disp.fgcolor(disp#MAX_COLOR)
+    disp.fgcolor(disp.MAX_COLOR)
     disp.bgcolor(0)
     disp.pos_xy(0, 0)
-    disp.printf1(string("%s\n\r"), @_drv_name)
-    disp.printf1(string("P8X32A\n\r @%dMHz\n\r"), clkfreq/1_000_000)
-    disp.printf2(string("%dx%d"), disp.WIDTH, disp.HEIGHT)
-    disp.show{}
+    disp.printf1(@"%s\n\r", @_drv_name)
+    disp.printf1(@"P8X32A\n\r @%dMHz\n\r", clkfreq/1_000_000)
+    disp.printf2(@"%dx%d", disp._disp_width, disp._disp_height)
+    disp.show()
     time.sleep(5)
-    disp.clear{}
+    disp.clear()
 
-    maxsz := disp.WIDTH <# disp.HEIGHT                    ' find smallest disp. dimension
+    maxsz := disp._disp_width <# disp._disp_height                    ' find smallest disp. dimension
 
-    color := disp#MAX_COLOR
+    color := disp.MAX_COLOR
     time_ms := 2_000                            ' time to run each test
-    if ( disp#MAX_COLOR > 1 )
+    if ( disp.MAX_COLOR > 1 )
         bench := BITMAP                         ' starting benchmark
     else
         bench := BOX                            ' skip BITMAP on 1BPP for now
@@ -58,7 +58,7 @@ PUB benchmark{} | time_ms, sz, maxsz, iteration, bench, ch, color
     sz := 1
     ser.pos_xy(0, 3)
     repeat
-        ser.printf2(string("Bench %s (%dpx): "), @_bench_name[bench*14], sz)
+        ser.printf2(@"Bench %s (%dpx): ", @_bench_name[bench*14], sz)
 
         _timer_set := time_ms
         iteration := 0
@@ -66,42 +66,42 @@ PUB benchmark{} | time_ms, sz, maxsz, iteration, bench, ch, color
             BITMAP:
                 repeat while _timer_set
                     disp.bitmap(0, 0, 0, sz-1, sz-1)
-                    disp.show{}
+                    disp.show()
                     iteration++
             BOX:
                 repeat while _timer_set
                     disp.box(0, 0, sz-1, sz-1, color, false)
-                    disp.show{}
+                    disp.show()
                     iteration++
             BOX_F:
                 repeat while _timer_set
                     disp.box(0, 0, sz-1, sz-1, color, true)
-                    disp.show{}
+                    disp.show()
                     iteration++
             CIRCLE:
                 repeat while _timer_set
-                    disp.circle(disp.CENTERX, disp.CENTERY, sz-1, color, false)
-                    disp.show{}
+                    disp.circle(disp._disp_width/2, disp._disp_height/2, sz-1, color, false)
+                    disp.show()
                     iteration++
             CIRCLE_F:
                 repeat while _timer_set
-                    disp.circle(disp.CENTERX, disp.CENTERY, sz-1, color, true)
-                    disp.show{}
+                    disp.circle(disp._disp_width/2, disp._disp_height/2, sz-1, color, true)
+                    disp.show()
                     iteration++
             DLINE:
                 repeat while _timer_set
                     disp.line(0, 0, sz-1, sz-1, color)
-                    disp.show{}
+                    disp.show()
                     iteration++
             HLINE:
                 repeat while _timer_set
                     disp.line(0, 0, sz-1, 0, color)
-                    disp.show{}
+                    disp.show()
                     iteration++
             PLOT:
                 repeat while _timer_set
                     disp.plot(0, 0, color)
-                    disp.show{}
+                    disp.show()
                     iteration++
             TEXT:
                 { convert powers of 2 to 1..7 }
@@ -113,17 +113,17 @@ PUB benchmark{} | time_ms, sz, maxsz, iteration, bench, ch, color
                     ch++
                     if ( ch > $7F )
                         ch := $20
-                    disp.show{}
+                    disp.show()
                     iteration++
             VLINE:
                 repeat while _timer_set
                     disp.line(0, 0, 0, sz-1, color)
-                    disp.show{}
+                    disp.show()
                     iteration++
             other:
                 quit
         report(time_ms, iteration)              ' show the results
-        disp.clear{}
+        disp.clear()
 
         sz *= 2
 
@@ -134,18 +134,18 @@ PUB benchmark{} | time_ms, sz, maxsz, iteration, bench, ch, color
         if ( bench > VLINE )
             quit
 
-    ser.strln(string("COMPLETE"))
-    disp.stop{}
+    ser.strln(@"COMPLETE")
+    disp.stop()
     repeat
 
 PRI report(testtime, iterations) | rate_iterations, frame_time
 ' Display benchmark test results
     rate_iterations := iterations / (testtime/1000)         ' # frames/sec
     frame_time := (testtime * 1_000) / iterations           ' frame time (usec)
-    ser.printf3(string("Total iterations: %d, iterations/sec: %d, frame time: %dus\n\r"), ...
+    ser.printf3(@"Total iterations: %d, iterations/sec: %d, frame time: %dus\n\r", ...
                 iterations, rate_iterations, frame_time)
 
-PRI cog_timer{} | time_left
+PRI cog_timer() | time_left
 ' Benchmark timer loop
     repeat
         repeat until _timer_set                 ' wait here until a timer has
