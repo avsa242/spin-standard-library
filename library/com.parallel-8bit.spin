@@ -1,14 +1,14 @@
 {
-    --------------------------------------------
-    Filename: com.parallel-8bit.spin
-    Author: Jesse Burt
-    Description: 8-bit parallel I/O engine for LCDs
-    Copyright (c) 2022
-    Started Oct 13, 2021
-    Updated Oct 11, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       com.parallel-8bit.spin
+    Description:    8-bit parallel I/O engine for LCDs
+    Author:         Jesse Burt
+    Started:        Oct 13, 2021
+    Updated:        Feb 13, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
 CON
 
 ' 8-bit Parallel engine commands
@@ -29,19 +29,18 @@ VAR
 PUB null{}
 ' This is not a top-level object
 
-PUB init(D_BASEPIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN): status
+PUB init(D_BASEPIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN=-1): status
 ' Initialize engine
 '   D_BASEPIN: first of 8 I/O pin block
 '   CS_PIN: CS / CSX (chip select)
 '   DC_PIN: DC / DCX / RS (data/command or register select)
 '   WR_PIN: WR / WRX (write clock)
-'   RD_PIN: RD / RDX (read clock)
+'   RD_PIN: RD / RDX (read clock; not currently used - keep this pin high)
     deinit{}                                    ' stop engine, if started
     _DATA := D_BASEPIN                          ' 8 pins starting at D_BASEPIN
     _CS := |< CS_PIN                            ' create masks for control pins
     _DC := |< DC_PIN
     _WR := |< WR_PIN
-    _RD := |< RD_PIN
     _cog := cognew(@entry, @_io_cmd)+1          ' start engine
 
     return _cog
@@ -115,8 +114,6 @@ initio
             rdlong  DC, tmp0
             add     tmp0, #4
             rdlong  WRC, tmp0
-            add     tmp0, #4
-            rdlong  RD, tmp0
 
             or      outa, CS                    ' CS high
             or      dira, CS
@@ -124,8 +121,6 @@ initio
             or      dira, WRC
             or      dira, DATMASK               ' D7..0 output
             or      dira, DC                    ' DC output
-            or      outa, RD                    ' RD high
-            or      dira, RD
             andn    outa, CS                    ' CS low
 
 
@@ -282,7 +277,7 @@ byte0       long    0
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
