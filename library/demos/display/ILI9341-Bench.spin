@@ -4,7 +4,7 @@
     Description:    ILI9341-specific setup for benchmark
     Author:         Jesse Burt
     Started:        Feb 17, 2022
-    Updated:        Jan 22, 2024
+    Updated:        Feb 13, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 }
@@ -22,18 +22,20 @@ OBJ
     time:   "time"
     fnt:    "font.5x8"
     disp:   "display.lcd.ili9341" | WIDTH=320, HEIGHT=240, ...
-                                    DBASEPIN=0, RST=8, CS=9, DC=10, WRX=11, RDX=12
+                                    DBASEPIN=0, RST=8, CS=9, DC=10, WRX=11
+    { NOTE: RDX isn't currently used. Ensure it is pulled high }
+    { DBASEPIN defines the pin connected to the LCD's D0; D1..D7 _must_ be connected to the next
+        sequential pins }
 
-PUB main{}
+PUB main()
 
     ser.start()
     time.msleep(30)
-    ser.clear{}
+    ser.clear()
     ser.strln(string("Serial terminal started"))
 
     if ( disp.start() )
         ser.printf1(string("%s driver started"), @_drv_name)
-        disp.set_font(fnt.ptr(), fnt.setup())
         disp.char_attrs(disp.TERMINAL)
     else
         ser.printf1(string("%s driver failed to start - halting"), @_drv_name)
@@ -51,7 +53,8 @@ PUB main{}
 '    disp.mirror_h(false)
 '    disp.mirror_v(false)
 
-    benchmark{}                                      ' start demo
+    disp.set_font(fnt.ptr(), fnt.setup())       ' do this _after_ setting orientation 
+    benchmark()                                 ' start demo
 
 { demo routines (common to all display types) included here }
 #include "GFXBench-common.spinh"
@@ -59,10 +62,6 @@ PUB main{}
 DAT
     _drv_name   byte    "ILI9341 (8bit Par.)", 0
 
-CON
-
-    WIDTH   = disp.WIDTH
-    HEIGHT  = disp.HEIGHT
 
 DAT
 {

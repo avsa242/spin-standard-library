@@ -4,7 +4,7 @@
     Description:    Driver for ILI9341 LCD controllers
     Author:         Jesse Burt
     Started:        Oct 14, 2021
-    Updated:        Jan 22, 2024
+    Updated:        Feb 13, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 }
@@ -80,20 +80,19 @@ VAR
 
 PUB start(): status
 ' Start the driver using default I/O settings
-    return startx(DBASEPIN, RST, CS, DC, WRX, RDX, WIDTH, HEIGHT)
+    return startx(DBASEPIN, RST, CS, DC, WRX, WIDTH, HEIGHT)
 
-PUB startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, DISP_W, DISP_H): status
+PUB startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, DISP_W, DISP_H): status
 ' Start driver using custom I/O settings
 '   DATA_BASEPIN: first (lowest) pin of 8 data pin block (must be contiguous)
 '   RES_PIN: display's hardware reset pin (optional, -1 to ignore)
 '   CS_PIN: Chip Select
 '   DC_PIN: Data/Command (sometimes labeled RS, or Register Select)
 '   WR_PIN: Write clock
-'   RD_PIN: Read clock (not currently used, but needs to be pulled high)
 '   WIDTH, HEIGHT: display dimensions, in pixels
     if (    lookdown(DATA_BASEPIN: 0..24) and lookdown(CS_PIN: 0..31) and ...
             lookdown(DC_PIN: 0..31) and lookdown(WR_PIN: 0..31) )
-        if ( status := com.init(DATA_BASEPIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN) )
+        if ( status := com.init(DATA_BASEPIN, CS_PIN, DC_PIN, WR_PIN) )
             _RESET := RES_PIN
             set_dims(DISP_W, DISP_H)
             return
@@ -102,9 +101,9 @@ PUB startx(DATA_BASEPIN, RES_PIN, CS_PIN, DC_PIN, WR_PIN, RD_PIN, DISP_W, DISP_H
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB defaults{}
+PUB defaults()
 ' Preset settings: defaults
-    reset{}
+    reset()
     time.msleep(5)
 
     visibility(OFF)
@@ -139,7 +138,7 @@ PUB defaults{}
     'com.wrbyte_cmd($35) ' tearing effect on
     'com.wrbyte_cmd($b4) ' display inversion
     'com.wrbyte_dat($00)
-    com.wrbyte_cmd(core#DFUNCTR) ' display function control
+    com.wrbyte_cmd(core.DFUNCTR) ' display function control
     com.wrbyte_dat($0a)
     com.wrbyte_dat($82)
     com.wrbyte_dat($27)
@@ -149,10 +148,10 @@ PUB defaults{}
     powered(true)
     visibility(NORMAL)
 
-PUB preset_hiletgo_2p4_320x240_land_up{}
+PUB preset_hiletgo_2p4_320x240_land_up()
 ' HiLetGo 2.4"
 '   Landscape (320x * 240y), up (K1 button to left)
-    defaults{}
+    defaults()
     set_dims(320, 240)
     draw_area(0, 0, _disp_xmax, _disp_ymax)
     subpix_order(BGR)
@@ -160,10 +159,10 @@ PUB preset_hiletgo_2p4_320x240_land_up{}
     mirror_v(false)
     rotation(1)
 
-PUB preset_hiletgo_2p4_320x240_land_down{}
+PUB preset_hiletgo_2p4_320x240_land_down()
 ' HiLetGo 2.4"
 '   Landscape (320x * 240y), down (K1 button to right)
-    defaults{}
+    defaults()
     set_dims(320, 240)
     draw_area(0, 0, _disp_xmax, _disp_ymax)
     subpix_order(BGR)
@@ -171,10 +170,10 @@ PUB preset_hiletgo_2p4_320x240_land_down{}
     mirror_v(true)
     rotation(1)
 
-PUB preset_hiletgo_2p4_240x320_port_up{}
+PUB preset_hiletgo_2p4_240x320_port_up()
 ' HiLetGo 2.4"
 '   Portrait (240x * 320y), up (K1 button to top)
-    defaults{}
+    defaults()
     set_dims(240, 320)
     draw_area(0, 0, _disp_xmax, _disp_ymax)
     subpix_order(BGR)
@@ -182,10 +181,10 @@ PUB preset_hiletgo_2p4_240x320_port_up{}
     mirror_v(false)
     rotation(0)
 
-PUB preset_hiletgo_2p4_240x320_port_down{}
+PUB preset_hiletgo_2p4_240x320_port_down()
 ' HiLetGo 2.4"
 '   Portrait (240x * 320y), up (K1 button to bottom)
-    defaults{}
+    defaults()
     set_dims(240, 320)
     draw_area(0, 0, _disp_xmax, _disp_ymax)
     subpix_order(BGR)
@@ -193,10 +192,10 @@ PUB preset_hiletgo_2p4_240x320_port_down{}
     mirror_v(true)
     rotation(0)
 
-PUB stop{}
+PUB stop()
 ' Power off the display, and stop the engine
     powered(false)
-    com.deinit{}
+    com.deinit()
 
 PUB bitmap(ptr_bmap, sx, sy, ex, ey) | nr_words
 ' Draw bitmap
@@ -206,7 +205,7 @@ PUB bitmap(ptr_bmap, sx, sy, ex, ey) | nr_words
 '   nr_words: number of 16-bit words to read/draw from bitmap
     draw_area(sx, sy, ex, ey)
     nr_words := 1 #> ( (ex-sx) * (ey-sy) ) / BYTESPERPX
-    com.wrbyte_cmd(core#RAMWR)
+    com.wrbyte_cmd(core.RAMWR)
     com.wrblkword_msbf(ptr_bmap, nr_words)
 
 PUB box(x1, y1, x2, y2, color, filled) | xt, yt
@@ -215,36 +214,36 @@ PUB box(x1, y1, x2, y2, color, filled) | xt, yt
     yt := ||(y2-y1)+1
     if (filled)
         draw_area(x1, y1, x2, y2)
-        com.wrbyte_cmd(core#RAMWR)
+        com.wrbyte_cmd(core.RAMWR)
         com.wrwordx_dat(color, (yt * xt))
     else
         draw_area(x1, y1, x2, y1)               ' top
-        com.wrbyte_cmd(core#RAMWR)
+        com.wrbyte_cmd(core.RAMWR)
         com.wrwordx_dat(color, xt)
 
         draw_area(x1, y2, x2, y2)               ' bottom
-        com.wrbyte_cmd(core#RAMWR)
+        com.wrbyte_cmd(core.RAMWR)
         com.wrwordx_dat(color, xt)
 
         draw_area(x1, y1, x1, y2)               ' left
-        com.wrbyte_cmd(core#RAMWR)
+        com.wrbyte_cmd(core.RAMWR)
         com.wrwordx_dat(color, yt)
 
         draw_area(x2, y1, x2, y2)               ' right
-        com.wrbyte_cmd(core#RAMWR)
+        com.wrbyte_cmd(core.RAMWR)
         com.wrwordx_dat(color, yt)
 
-PUB clear{}
+PUB clear()
 ' Clear display
     draw_area(0, 0, _disp_xmax, _disp_ymax)
-    com.wrbyte_cmd(core#RAMWR)
+    com.wrbyte_cmd(core.RAMWR)
     com.wrwordx_dat(_bgcolor, _buff_sz)
 
 PUB clk_div(cdiv)
 ' Set LCD clock divisor
 '   Valid values: 1, 2, 4, 8
     _frmctr1[FCLK_DIV] := (>|(1 #> cdiv <# 8)-1)
-    com.wrbyte_cmd(core#FRMCTR1)
+    com.wrbyte_cmd(core.FRMCTR1)
     com.wrbyte_dat(_frmctr1[FCLK_DIV])
     com.wrbyte_dat(_frmctr1[FRM_RT])
 
@@ -256,7 +255,7 @@ PUB color_depth(cbpp)
     else
         _colmod := $66                          ' 18bpp
 
-    com.wrbyte_cmd(core#COLMOD)
+    com.wrbyte_cmd(core.COLMOD)
     com.wrbyte_dat(_colmod)
 
 PUB draw_area(x1, y1, x2, y2) | x, y, cmd_pkt[2]
@@ -279,10 +278,10 @@ PUB draw_area(x1, y1, x2, y2) | x, y, cmd_pkt[2]
     cmd_pkt.byte[6] := y2.byte[1]
     cmd_pkt.byte[7] := y2.byte[0]
 
-    com.wrbyte_cmd(core#CASET)
+    com.wrbyte_cmd(core.CASET)
     com.wrblock_dat(@cmd_pkt.byte[0], 4)
 
-    com.wrbyte_cmd(core#PASET)
+    com.wrbyte_cmd(core.PASET)
     com.wrblock_dat(@cmd_pkt.byte[4], 4)
 
 PUB frame_rate(frate): curr_frate
@@ -291,7 +290,7 @@ PUB frame_rate(frate): curr_frate
 '       (clamped to range; values are calculated to the nearest match)
 '   NOTE: This setting only affects the display when operating in NORMAL mode
     _frmctr1[FRM_RT] := (16 - ((( (61 #> frate <# 119) * 1_000) / 3_800) - 16))
-    com.wrbyte_cmd(core#FRMCTR1)
+    com.wrbyte_cmd(core.FRMCTR1)
     com.wrbyte_dat(_frmctr1[FCLK_DIV])
     com.wrbyte_dat(_frmctr1[FRM_RT])
 
@@ -299,23 +298,23 @@ PUB gamma_ctrl_ena(state)
 ' Enable 3-gamma control
 '   Valid values: TRUE (non-zero), FALSE (0)
     _g3ctrl := (%10 | ((state <> 0) & 1))
-    com.wrbyte_cmd(core#GM3CTRL)
+    com.wrbyte_cmd(core.GM3CTRL)
     com.wrbyte_dat(_g3ctrl)
 
 PUB gamma_fixed_curve(preset)
 ' Set gamma curve preset
 '   NOTE: Parameter is ignored; for API compatibility with other drivers
-    com.wrbyte_cmd(core#GAMMASET)
+    com.wrbyte_cmd(core.GAMMASET)
     com.wrbyte_dat($01)
 
 PUB gamma_tbl_neg(ptr_buff)
 ' Modify gamma table (negative polarity)
-    com.wrbyte_cmd(core#GMCTRN1)
+    com.wrbyte_cmd(core.GMCTRN1)
     com.wrblock_dat(ptr_buff, 15)
 
 PUB gamma_tbl_pos(ptr_buff)
 ' Modify gamma table (positive polarity)
-    com.wrbyte_cmd(core#GMCTRP1)
+    com.wrbyte_cmd(core.GMCTRP1)
     com.wrblock_dat(ptr_buff, 15)
 
 PUB gvdd_voltage(v)
@@ -323,7 +322,7 @@ PUB gvdd_voltage(v)
 '   (reference level for VCOM and grayscale voltage level)
 '   Valid values: 3_000..6_000 (rounded to nearest 50mV)
     v := (( (3_000 #> v <# 6_000) / 50) - 57)
-    com.wrbyte_cmd(core#PWCTR1)
+    com.wrbyte_cmd(core.PWCTR1)
     com.wrbyte_cmd(v)
 
 PUB horiz_refresh_dir(mode)
@@ -331,28 +330,28 @@ PUB horiz_refresh_dir(mode)
 '   (refresh direction relative to panel's top-left (0, 0) location)
 '   NORM (0): normal
 '   INV (1): inverted
-    mode := ((NORM #> mode <# INV) << core#MH)
+    mode := ((NORM #> mode <# INV) << core.MH)
 
-    _madctl := ((_madctl & core#MH_MASK) | mode)
-    com.wrbyte_cmd(core#MADCTL)
+    _madctl := ((_madctl & core.MH_MASK) | mode)
+    com.wrbyte_cmd(core.MADCTL)
     com.wrbyte_dat(_madctl)
 
 PUB invert_colors(state)
 ' Invert display colors
 '   Valid values:
 '       TRUE (non-zero), FALSE (0)
-    com.wrbyte_cmd(core#INVOFF + ((state <> 0 ) & 1))
+    com.wrbyte_cmd(core.INVOFF + ((state <> 0 ) & 1))
 
 PUB line(x1, y1, x2, y2, color) | sx, sy, ddx, ddy, err, e2
 ' Draw line from (x1, y1) to (x2, y2), in color
     if (x1 == x2)
         draw_area(x1, y1, x1, y2)           ' vertical
-        com.wrbyte_cmd(core#RAMWR)
+        com.wrbyte_cmd(core.RAMWR)
         com.wrwordx_dat(color, (||(y2-y1))+1)
         return
     if (y1 == y2)
         draw_area(x1, y1, x2, y1)           ' horizontal
-        com.wrbyte_cmd(core#RAMWR)
+        com.wrbyte_cmd(core.RAMWR)
         com.wrwordx_dat(color, (||(x2-x1))+1)
         return
 
@@ -385,20 +384,20 @@ PUB mirror_h(state)
 ' Mirror display, horizontally
 '   Valid values:
 '       TRUE (non-zero), FALSE (0)
-    state := (((state <> 0) & 1) << core#MX)
+    state := (((state <> 0) & 1) << core.MX)
 
-    _madctl := ((_madctl & core#MX_MASK) | state)
-    com.wrbyte_cmd(core#MADCTL)
+    _madctl := ((_madctl & core.MX_MASK) | state)
+    com.wrbyte_cmd(core.MADCTL)
     com.wrbyte_dat(_madctl)
 
 PUB mirror_v(state)
 ' Mirror display, vertically
 '   Valid values:
 '       TRUE (-1 or 1), FALSE (0)
-    state := (((state <> 0) & 1) << core#MY)
+    state := (((state <> 0) & 1) << core.MY)
 
-    _madctl := ((_madctl & core#MY_MASK) | state)
-    com.wrbyte_cmd(core#MADCTL)
+    _madctl := ((_madctl & core.MY_MASK) | state)
+    com.wrbyte_cmd(core.MADCTL)
     com.wrbyte_dat(_madctl)
 
 PUB plot(x, y, color) | cmd_pkt
@@ -408,12 +407,12 @@ PUB plot(x, y, color) | cmd_pkt
     cmd_pkt.byte[0] := color.byte[1]
     cmd_pkt.byte[1] := color.byte[0]
 
-    com.wrbyte_cmd(core#CASET)
+    com.wrbyte_cmd(core.CASET)
     com.wrwordx_dat(x, 2)
-    com.wrbyte_cmd(core#PASET)
+    com.wrbyte_cmd(core.PASET)
     com.wrwordx_dat(y, 2)
 
-    com.wrbyte_cmd(core#RAMWR)
+    com.wrbyte_cmd(core.RAMWR)
     com.wrblock_dat(@cmd_pkt, 2)
 
 PUB powered(state)
@@ -421,14 +420,14 @@ PUB powered(state)
 '   Valid values:
 '       TRUE (non-zero), FALSE (0)
     if (state)
-        com.wrbyte_cmd(core#SLPOUT)
+        com.wrbyte_cmd(core.SLPOUT)
         time.msleep(60)
-        com.wrbyte_cmd(core#DISPON)
+        com.wrbyte_cmd(core.DISPON)
     else
-        com.wrbyte_cmd(core#DISPOFF)
-        com.wrbyte_cmd(core#SLPIN)
+        com.wrbyte_cmd(core.DISPOFF)
+        com.wrbyte_cmd(core.SLPIN)
 
-PUB reset{}
+PUB reset()
 ' Reset the display controller
     if (lookdown(_RESET: 0..31))                ' perform hard reset, if
         dira[_RESET] := 1                       '   I/O pin is defined
@@ -439,16 +438,16 @@ PUB reset{}
         outa[_RESET] := 1
         time.msleep(120)
     else                                        ' if not, just soft-reset
-        com.wrbyte_cmd(core#SWRESET)
+        com.wrbyte_cmd(core.SWRESET)
         time.msleep(5)
 
 PUB rotation(state)
 ' Rotate display
 '   Valid values: TRUE (non-zero), FALSE (0)
-    state := (((state <> 0) & 1) << core#MV)
+    state := (((state <> 0) & 1) << core.MV)
 
-    _madctl := ((_madctl & core#MV_MASK) | state)
-    com.wrbyte_cmd(core#MADCTL)
+    _madctl := ((_madctl & core.MV_MASK) | state)
+    com.wrbyte_cmd(core.MADCTL)
     com.wrbyte_dat(_madctl)
 
 #ifdef GFX_DIRECT
@@ -456,7 +455,7 @@ PUB scroll_up_fs(px)
 ' dummy method
 #endif
 
-PUB show{}
+PUB show()
 ' dummy method for compatibility with other drivers
 
 PUB subpix_order(order)
@@ -464,17 +463,17 @@ PUB subpix_order(order)
 '   Valid values:
 '       RGB (0): Red-Green-Blue order
 '       BGR (1): Blue-Green-Red order
-    order := ((RGB #> order <# BGR) << core#BGR)
+    order := ((RGB #> order <# BGR) << core.BGR)
 
-    _madctl := ((_madctl & core#BGR_MASK) | order)
-    com.wrbyte_cmd(core#MADCTL)
+    _madctl := ((_madctl & core.BGR_MASK) | order)
+    com.wrbyte_cmd(core.MADCTL)
     com.wrbyte_dat(_madctl)
 
 PUB vcomh_voltage(v)
 ' Set VCOMH voltage, in millivolts
 '   Valid values: 2_700..5_875 (rounded to nearest 25mV; default: 3_925)
     _vmctrl1[VMH] := (( (2_700 #> v <# 5_875) - 2700) / 25)
-    com.wrbyte_cmd(core#VMCTR1)
+    com.wrbyte_cmd(core.VMCTR1)
     com.wrbyte_dat(_vmctrl1[VMH])
     com.wrbyte_dat(_vmctrl1[VML])
 
@@ -482,7 +481,7 @@ PUB vcoml_voltage(v)
 ' Set VCOML voltage, in millivolts
 '   Valid values: -2_500..0 (rounded to nearest 25mV; POR: -1_000)
     _vmctrl1[VML] := (((-2_500 #> v <# 0) + 2_500) / 25)
-    com.wrbyte_cmd(core#VMCTR1)
+    com.wrbyte_cmd(core.VMCTR1)
     com.wrbyte_dat(_vmctrl1[VMH])
     com.wrbyte_dat(_vmctrl1[VML])
 
@@ -490,18 +489,18 @@ PUB vcom_offset(v)
 ' Set VCOMH/VCOML offset, in millivolts
 '   Valid values: -63..63 (clamped to range; POR: 0)
     _vcomoffs := ((-63 #> v <# 63) + 64)
-    com.wrbyte_cmd(core#VMCTR2)
-    com.wrbyte_dat(_vcomoffs | core#SETNVM)
+    com.wrbyte_cmd(core.VMCTR2)
+    com.wrbyte_dat(_vcomoffs | core.SETNVM)
 
 PUB vert_refresh_dir(mode)
 ' Set panel vertical refresh direction
 '   (refresh direction relative to panel's top-left (0, 0) location)
 '   NORM (0): normal
 '   INV (1): inverted
-    mode := ((NORM #> mode <# INV) << core#ML)
+    mode := ((NORM #> mode <# INV) << core.ML)
 
-    _madctl := ((_madctl & core#ML_MASK) | mode)
-    com.wrbyte_cmd(core#MADCTL)
+    _madctl := ((_madctl & core.ML_MASK) | mode)
+    com.wrbyte_cmd(core.MADCTL)
     com.wrbyte_dat(_madctl)
 
 PUB vgh_step_factor(fact)
@@ -509,8 +508,8 @@ PUB vgh_step_factor(fact)
 '   Valid values: 6, 7 (clamped to range)
     fact := (lookdownz( (6 #> fact <# 7): 7, 6) << 1)
 
-    _pwr_ctrl2 := ((_pwr_ctrl2 & core#VGH_MASK) | fact)
-    com.wrbyte_cmd(core#PWCTR2)
+    _pwr_ctrl2 := ((_pwr_ctrl2 & core.VGH_MASK) | fact)
+    com.wrbyte_cmd(core.PWCTR2)
     com.wrbyte_dat(_pwr_ctrl2)
 
 PUB vgl_step_factor(fact)
@@ -518,8 +517,8 @@ PUB vgl_step_factor(fact)
 '   Valid values: 3, 4 (clamped to range)
     fact := lookdownz( (3 #> fact <# 4): 4, 3)
 
-    _pwr_ctrl2 := ((_pwr_ctrl2 & core#VGH_MASK) | fact)
-    com.wrbyte_cmd(core#PWCTR2)
+    _pwr_ctrl2 := ((_pwr_ctrl2 & core.VGH_MASK) | fact)
+    com.wrbyte_cmd(core.PWCTR2)
     com.wrbyte_dat(_pwr_ctrl2)
 
 PUB visibility(mode)
@@ -528,16 +527,16 @@ PUB visibility(mode)
 '       ALL_OFF/OFF (0), NORMAL/ON (1), ALL_ON (3)
 '   Any other value is ignored
 '   NOTE: Does not affect the display RAM contents
-    case mode
+    case ||(mode)
         OFF:
-            com.wrbyte_cmd(core#DISPOFF)
+            com.wrbyte_cmd(core.DISPOFF)
         ON:
-            com.wrbyte_cmd(core#ETMOD)
-            com.wrbyte_dat(core#GDR_NORM)
-            com.wrbyte_cmd(core#DISPON)
+            com.wrbyte_cmd(core.ETMOD)
+            com.wrbyte_dat(core.GDR_NORM)
+            com.wrbyte_cmd(core.DISPON)
         ALL_ON:
-            com.wrbyte_cmd(core#ETMOD)
-            com.wrbyte_dat(core#GDR_VGH)
+            com.wrbyte_cmd(core.ETMOD)
+            com.wrbyte_dat(core.GDR_VGH)
 
 DAT
 
