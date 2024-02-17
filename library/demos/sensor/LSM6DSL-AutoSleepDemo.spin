@@ -1,61 +1,53 @@
 {
-    --------------------------------------------
-    Filename: LSM6DSL-AutoSleepDemo.spin
-    Author: Jesse Burt
-    Description: Demo of the LSM6DSL driver
-        Auto-sleep functionality
-    Copyright (c) 2022
-    Started Dec 27, 2021
-    Updated Oct 16, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       LSM6DSL-AutoSleepDemo.spin
+    Description:    LSM6DSL driver demo (Auto-sleep functionality)
+    Author:         Jesse Burt
+    Started:        Dec 27, 2021
+    Updated:        Feb 17, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
+
+' Uncomment these lines to use an SPI-connected sensor (default is I2C)
+'#define LSM6DSL_SPI
+'#pragma exportdef(LSM6DSL_SPI)
+
+' Uncomment these lines (and the two above) to use an SPI-connected sensor
+'   (uses the cogless bytecode SPI engine)
+'#define LSM6DSL_SPI_BC
+'#pragma exportdef(LSM6DSL_SPI_BC)
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkmode    = cfg._clkmode
+    _xinfreq    = cfg._xinfreq
+
 
 ' -- User-modifiable constants
-    LED1        = cfg#LED1
-    SER_BAUD    = 115_200
-
-    { I2C configuration }
-    SCL_PIN     = 28
-    SDA_PIN     = 29
-    I2C_FREQ    = 400_000                       ' max is 400_000
-    ADDR_BITS   = 0                             ' 0, 1
-
-    { SPI configuration }
-    CS_PIN      = 0
-    SCK_PIN     = 1
-    MOSI_PIN    = 2
-    MISO_PIN    = 3
-
     INT_PIN     = 24                            ' LSM6DSL INT_PIN pin
+    LED1        = cfg.LED1                      ' LED used to indicate awake/sleep
 ' --
 
-    DAT_X_COL   = 20
-    DAT_Y_COL   = DAT_X_COL + 15
-    DAT_Z_COL   = DAT_Y_COL + 15
 
 OBJ
 
-    cfg     : "boardcfg.flip"
-    ser     : "com.serial.terminal.ansi"
-    time    : "time"
-    sensor  : "sensor.imu.6dof.lsm6dsl"
-    core    : "core.con.lsm6dsl"
+    cfg:    "boardcfg.flip"
+    time:   "time"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    sensor: "sensor.imu.6dof.lsm6dsl" | {I2C} SCL=28, SDA=29, I2C_FREQ=400_000, I2C_ADDR=0, ...
+                                        {SPI} CS=0, SCK=1, MOSI=2, MISO=3
+
 
 VAR
 
     long _isr_stack[50]                         ' stack for ISR core
     long _intflag                               ' interrupt flag
 
-PUB main{} | intsource, temp, sysmod
+PUB main() | intsource, temp, sysmod
 
-    setup{}
-    sensor.preset_active{}                      ' default settings, but enable
+    setup()
+    sensor.preset_active()                      ' default settings, but enable
                                                 ' sensor power, and set
                                                 ' scale factors
 
@@ -66,8 +58,8 @@ PUB main{} | intsource, temp, sysmod
 
     sensor.inact_time(5_000)                    ' inactivity timeout ~5sec
     sensor.inact_thresh(0_250000)
-    sensor.accel_slp_pwr_mode(sensor#LOPWR_GSLEEP)
-    sensor.int1_mask(sensor#INACTIVE)
+    sensor.accel_slp_pwr_mode(sensor.LOPWR_GSLEEP)
+    sensor.int1_mask(sensor.INACTIVE)
 
     dira[LED1] := 1
 
@@ -80,19 +72,19 @@ PUB main{} | intsource, temp, sysmod
     ' When the sensor goes to sleep, it should turn off.
     repeat
         ser.pos_xy(0, 3)
-        show_accel_data{}                       ' show accel data
-        intsource := sensor.int_inactivity{}
-        if (_intflag)                           ' interrupt triggered
-            intsource := sensor.int_inactivity{}
-            if (intsource)                      ' (in)activity event
+        show_accel_data()                       ' show accel data
+        intsource := sensor.int_inactivity()
+        if ( _intflag )                         ' interrupt triggered
+            intsource := sensor.int_inactivity()
+            if ( intsource )                    ' (in)activity event
                 outa[LED1] := 0
             else
                 outa[LED1] := 1
-        else
-        if (ser.rx_check{} == "c")              ' press the 'c' key in the demo
-            cal_accel{}                         ' to calibrate sensor offsets
+        if ( ser.getchar_noblock() == "c")      ' press the 'c' key in the demo
+            cal_accel()                         ' to calibrate sensor offsets
 
-PRI cog_isr{}
+
+PUB cog_isr() | pin
 ' Interrupt service routine
     dira[INT_PIN] := 0                          ' INT_PIN as input
     repeat
@@ -101,30 +93,29 @@ PRI cog_isr{}
         waitpeq(|< INT_PIN, |< INT_PIN, 0)      ' now wait for it to clear
         _intflag := 0                           '   clear flag
 
-PUB setup{}
 
-    ser.start(SER_BAUD)
+PUB setup()
+
+    ser.start()
     time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
-#ifdef LSM6DSL_SPI
-    if sensor.startx(CS_PIN, SCK_PIN, MOSI_PIN, MISO_PIN)
-        ser.strln(string("LSM6DSL driver started (SPI)"))
-#else
-    if sensor.startx(SCL_PIN, SDA_PIN, I2C_FREQ, ADDR_BITS)
-        ser.strln(string("LSM6DSL driver started (I2C)"))
-#endif
+    ser.clear()
+    ser.strln(@"Serial terminal started")
+
+    if ( sensor.start() )
+        ser.strln(@"LSM6DSL driver started")
     else
-        ser.strln(string("LSM6DSL driver failed to start - halting"))
+        ser.strln(@"LSM6DSL driver failed to start - halting")
         repeat
 
-    cognew(cog_isr{}, @_isr_stack)                    ' start ISR in another core
+    cognew(cog_isr(), @_isr_stack)              ' start ISR in another core
 
-#include "acceldemo.common.spinh"
+
+#include "acceldemo.common.spinh"               ' pull in code common to all accelerometer demos
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
