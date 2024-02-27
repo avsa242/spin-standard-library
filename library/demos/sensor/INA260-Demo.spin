@@ -24,7 +24,7 @@ OBJ
 
     cfg:    "boardcfg.flip"
     ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
-    sensor: "sensor.power.ina260" | SCL=28, SDA=29, I2C_FREQ=400_000, I2C_ADDR=%0000
+    sensor: "sensor.power.ina260" | SCL=28, SDA=29, I2C_FREQ=400_000, I2C_ADDR=%0001
     time:   "time"
 
 PUB main{}
