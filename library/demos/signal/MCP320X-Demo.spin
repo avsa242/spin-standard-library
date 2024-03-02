@@ -1,14 +1,12 @@
 {
-    --------------------------------------------
-    Filename: MCP320X-Demo.spin
-    Author: Jesse Burt
-    Description: Demo of the MCP320X driver
-        * Voltage data output
-    Copyright (c) 2023
-    Started Nov 26, 2019
-    Updated Jul 23, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+----------------------------------------------------------------------------------------------------
+    Filename:       MCP320X-Demo.spin
+    Description:    Demo of the MCP320X driver (voltage data output)
+    Author:         Jesse Burt
+    Started:        Nov 26, 2019
+    Updated:        Mar 2, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 }
 
 CON
@@ -16,40 +14,49 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
     cfg:    "boardcfg.flip"
-    ser:    "com.serial.terminal.ansi"
-    adc:    "signal.adc.mcp320x" | CS=0, SCK=1, MOSI=2, MISO=3
     time:   "time"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
+    adc:    "signal.adc.mcp320x" | MODEL=3002, CS=0, SCK=1, MOSI=2, MISO=3
+    ' MODEL can be:
+    '   3001, 3002, 3004, 3008 (10-bit models)
+    '   3201, 3202, 3204, 3208 (12-bit models)
+    '   NOTE: MOSI is ignored on single-channel models
 
-PUB main{}
+PUB main() | ch, v
 
-    ser.start(SER_BAUD)
+    ser.start()
     time.msleep(30)
-    ser.clear{}
-    ser.strln(string("Serial terminal started"))
+    ser.clear()
+    ser.strln(@"Serial terminal started")
+
     if ( adc.start() )
-        ser.strln(string("MCP320X driver started"))
+        ser.strln(@"MCP320X driver started")
     else
-        ser.strln(string("MCP320X driver failed to start - halting"))
+        ser.strln(@"MCP320X driver failed to start - halting")
         repeat
 
-    adc.defaults{}
-    adc.set_model(3002)                         ' 10bit: 3001, 2, 4, 8; 12bit: 3201, 2, 4, 8
-    adc.set_adc_channel(0)                      ' select channel (# available is model-dependent)
-    adc.set_ref_voltage(3_300_000)              ' set voltage ADC is supplied by (= ref. voltage)
-    show_adc_data{}
+'    adc.set_model(3002)                         ' alternative way to set the model
+    adc.set_ref_voltage(3_300_000)              ' set reference voltage (Vref pin)
 
-#include "adcdemo.common.spinh"
+    { show voltage reading from each channel on a separate line }
+    repeat
+        repeat ch from 0 to (adc._max_channels-1)
+            adc.set_adc_channel(ch)             ' select channel (# available is model-dependent)
+            v := adc.voltage()
+            ser.pos_xy(0, 3+ch)
+            ser.printf3(@"CH%d Voltage: %d.%06.6dv", ch, (v / VF), ||(v // VF))
+
+
+CON VF  = 1_000_000                             ' voltage scaling factor
+
 
 DAT
 {
-Copyright (c) 2023 Jesse Burt
+Copyright (c) 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
