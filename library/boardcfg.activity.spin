@@ -1,18 +1,14 @@
 {
-    --------------------------------------------
-    Filename: boardcfg.activity.spin
-    Author: Jesse Burt
-    Description: Board configuration file for Activity board
-        Activity Board
-        Parallax WX #32912 and non-WX #32910
-    Started Oct 15, 2022
-    Updated Oct 15, 2022
-    Copyright 2022
-    See end of file for terms of use.
-    --------------------------------------------
+---------------------------------------------------------------------------------------------------
+    Filename:       boardcfg.activity.spin
+    Description:    Board configuration file for the Propeller Activity (WX) board
+                    (Parallax PN's 32910, 32912)
+    Author:         Jesse Burt
+    Started:        Oct 15, 2022
+    Updated:        Mar 11, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+---------------------------------------------------------------------------------------------------
 }
-
-#include "p8x32a.common.spinh"
 
 CON
     { --- clock settings --- }
@@ -28,11 +24,13 @@ CON
     SERVO5      = 16
     SERVO6      = 17
 
-    { ADC }
+
+    { ADC - ADC124S021 }
     ADC_DI      = 18
     ADC_DO      = 19
     ADC_SCL     = 20
     ADC_CS      = 21
+
 
     { microSD socket - SPI }
     SD_BASEPIN  = 22
@@ -41,28 +39,52 @@ CON
     SD_DI       = 24
     SD_CS       = 25
 
+    { microSD pin aliases }
+    SD_SCK      = SD_CLK
+    SD_MISO     = SD_DO
+    SD_MOSI     = SD_DI
+    SD_CD       = SD_CS
+    SD_DAT3     = SD_CS
+    SD_CMD      = SD_DI
+    SD_DAT0     = SD_DO
+
+
     { sound }
     AUDIO       = 26
     AUDIO_L     = 26
     AUDIO_R     = 27
-    SOUND       = 26
-    SOUND_L     = 26
-    SOUND_R     = 27
+    SOUND       = AUDIO
+    SOUND_L     = AUDIO_L
+    SOUND_R     = AUDIO_R
+
 
     { two amber LEDs }
     LED1        = 26
     LED2        = 27
 
+
     { two DAC outputs }
     DA0         = 26
     DA1         = 27
 
-PUB null
+
+    { I2C }
+    SCL         = 28                            ' 10.5k pull-up
+    SDA         = 29                            ' 10.5k pull-up
+
+
+    { async serial }
+    SER_RX      = 31
+    SER_TX      = 30
+    SER_BAUD    = 115_200
+
+
+PUB null()
 ' This is not a top-level object
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
