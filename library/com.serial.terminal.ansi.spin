@@ -4,7 +4,7 @@
     Description:    ANSI-compatible serial terminal
     Author:         Jesse Burt
     Started:        Nov 9, 2020
-    Updated:        Feb 10, 2024
+    Updated:        Mar 17, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
@@ -88,10 +88,8 @@ PUB gets_max(ptr_str, max_len): len | ch
             BS:
                 if ( len )                      ' backspace? Don't count it
                     len--
-            CR:                                 ' carriage return
-                ch := getchar()                 '   get another char
-                if ( ch == LF )                 '   linefeed also?
-                    quit                        '       that's the end of the string; stop
+            CR, LF:                             ' carriage return/line-feed
+                quit                            '       that's the end of the string; stop
             other:
                 if ( len < max_len )            ' add char to buffer as long as we haven't
                     byte[ptr_str][len++] := ch  '   reached the length limit
