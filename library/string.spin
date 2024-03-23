@@ -4,7 +4,7 @@
     Description:    String processing and formatting
     Author:         Jesse Burt
     Started:        May 29, 2022
-    Updated:        Feb 10, 2024
+    Updated:        Mar 23, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
@@ -34,6 +34,8 @@ OBJ
     ctype:  "char.type"
 
 VAR
+
+    long _ptr                                   ' scratch buffer current pointer
 
     word _tokenstr
 
@@ -101,12 +103,19 @@ PUB clear(ptr_str)
 ' Clear string (fill with 0/NUL)
     fill(ptr_str, NUL)
 
-PUB compare(ptr_str1, ptr_str2, case_s): cmpres
+
+PUB clear_scratch_buff()
+' Clear the scratch/working buffer, and reset the pointer
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
+    _ptr := 0
+
+
+PUB compare(ptr_str1, ptr_str2, case_s=0): cmpres
 ' Compare two strings
 '   ptr_str1, ptr_str2: strings to compare
-'   case_s: case-sensitive comparison
+'   case_s: (optional) case-sensitive comparison
 '       non-zero: case-sensitive
-'       zero: not case-sensitive
+'       zero: not case-sensitive (default, if not specified)
 '   Returns:
 '       0 if the two strings are equal
 '       1 if ptr_str1 comes after ptr_str2
@@ -446,12 +455,14 @@ PUB itoap(num, ptr_dest, digits, pad_ch): ptr | numlen, byte tmp[33]
             bytemove(ptr_dest, @tmp, numlen)
     return @tmp
 
-PUB left(ptr_str, count): ptr_new
+PUB left(ptr_str, count, clr_a=true): ptr_new
 ' Copy left-most characters
 '   ptr_str: source string
 '   count: left-most number of chars from source to copy
+'   clr_a: (optional) flag indicating the scratch/working buffer should be cleared after
+'       (default is true if unspecified)
 '   Returns: pointer to substring
-    return mid(ptr_str, 0, count)
+    return mid(ptr_str, 0, count, clr_a)
 
 PUB mactostr(ptr_mac): ptr | tmp, i
 ' Convert 6-byte array to colon-delimited (":") string representation of a MAC address
@@ -475,16 +486,26 @@ PUB match(ptr_str1, ptr_str2): ismatch
 '       TRUE (-1) if string match, FALSE (0) otherwise
     return (compare(ptr_str1, ptr_str2, true) == 0)
 
-PUB mid(ptr_str, start, count): ptr_new
+
+PUB mid(ptr_str, start, len, clr_a=true): p_new
 ' Copy substring of characters
 '   ptr_str: source string
 '   start: offset within source string to start copying
-'   count: number of chars from (ptr_str+start) to copy
-'   Returns: pointer to substring
-    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)        ' clear working buffer
-    bytemove(@_tmp_buff, (ptr_str + start), count)
-    _tmp_buff[count] := 0
-    return @_tmp_buff
+'   len: number of chars from (ptr_str+start) to copy
+'   clr_a: (optional) flag indicating the scratch/working buffer should be cleared after
+'       (default is true if unspecified)
+'   Returns: pointer to substring, or -1 if the string is too large to fit in the scratch buffer
+    if ( (_ptr + len) => FIELDSZ_MAX )
+        return -1                               ' error: not enough space in working buffer
+
+    p_new := @_tmp_buff+_ptr                    ' adjust for current working buffer pointer
+    bytemove(p_new, (ptr_str + start), len)     ' copy the substring into it
+    byte[p_new][len] := NUL                     ' null-terminate it
+    _ptr += len+1                               ' advance pointer by substr length + null
+
+    if ( clr_a )
+        clear_scratch_buff()                    ' clear the scratch buffer if asked (default: yes)
+
 
 PUB replace(ptr_str, ptr_substr, ptr_newsubstr): ptr_next | size
 ' Replace the first occurrence of a string
@@ -539,12 +560,14 @@ PUB reverse(ptr_str) | c, k
         byte[ptr_str++] := byte[k]
         byte[k--] := c
 
-PUB right(ptr_str, count): ptr_new
+PUB right(ptr_str, count, clr_a=true): ptr_new
 ' Copy rightmost characters
 '   ptr_str: source string
 '   count: right-most number of chars from source to copy
+'   clr_a: (optional) flag indicating the scratch/working buffer should be cleared after
+'       (default is true if unspecified)
 '   Returns: pointer to substring
-    return mid(ptr_str, strsize(ptr_str) - count, count)
+    return mid(ptr_str, strsize(ptr_str) - count, count, clr_a)
 
 PUB sprintf(ptr_str, fmt, ptr_args): index | pad, len, maxlen, minlen, bi, leftj, strtype, sorg, arg
 ' Print string to buffer, with specified formatting
