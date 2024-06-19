@@ -1,25 +1,26 @@
 {
-    --------------------------------------------
-    Filename: sensor.magnetometer.common.spinh
-    Author: Jesse Burt
-    Description: Routines common to all sensor.magnetometer device drivers
-    Copyright (c) 2022
-    Started Aug 31, 2022
-    Updated Oct 2, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+----------------------------------------------------------------------------------------------------
+    Filename:       sensor.magnetometer.common.spinh
+    Description:    Routines common to all sensor.magnetometer device drivers
+    Author:         Jesse Burt
+    Started:        Aug 31, 2022
+    Updated:        Jun 19, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 
     NOTE: This file must be included by the compiler using the
         #include preprocessor directive, _outside_ of any existing
         block designators (CON, VAR, OBJ, PUB, PRI, DAT)
 }
 
+
 VAR
 
     long _mres[MAG_DOF]
     long _mbias[MAG_DOF]
 
-PUB calibrate_mag{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[MAG_DOF], samples
+
+PUB calibrate_mag() | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[MAG_DOF], samples
 ' Calibrate the magnetometer
     longfill(@axis, 0, 10)                      ' initialize vars to 0
 
@@ -36,7 +37,7 @@ PUB calibrate_mag{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[MAG_DOF], s
 
     { accumulate and average approx. 1sec worth of samples }
     repeat samples
-        repeat until mag_data_rdy{}
+        repeat until mag_data_rdy()
         mag_data(@tmpx, @tmpy, @tmpz)
         tmp[X_AXIS] += tmpx
         tmp[Y_AXIS] += tmpy
@@ -53,12 +54,14 @@ PUB calibrate_mag{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[MAG_DOF], s
     mag_scale(orig_scl)
     mag_data_rate(orig_dr)
 
+
 PUB mag_gauss(mx, my, mz) | tmp[MAG_DOF]
 ' magnetometer data scaled to micro-gauss
     mag_data(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
     long[mx] := magx_word2gauss(tmp[X_AXIS])
     long[my] := magy_word2gauss(tmp[Y_AXIS])
     long[mz] := magz_word2gauss(tmp[Z_AXIS])
+
 
 PUB mag_tesla(ptr_x, ptr_y, ptr_z) | tmp[MAG_DOF]
 ' magnetometer data scaled to micro-Teslas
@@ -67,31 +70,88 @@ PUB mag_tesla(ptr_x, ptr_y, ptr_z) | tmp[MAG_DOF]
     long[ptr_y] := magy_word2tesla(tmp[Y_AXIS])
     long[ptr_z] := magz_word2tesla(tmp[Z_AXIS])
 
+
 PUB magx_word2gauss(mag_word): mag_gauss
 ' Convert magnetometer X-axis ADC word to Gauss
     return (mag_word * _mres[X_AXIS])
+
 
 PUB magy_word2gauss(mag_word): mag_gauss
 ' Convert magnetometer Y-axis ADC word to Gauss
     return (mag_word * _mres[Y_AXIS])
 
+
 PUB magz_word2gauss(mag_word): mag_gauss
 ' Convert magnetometer Z-axis ADC word to Gauss
     return (mag_word * _mres[Z_AXIS])
+
 
 PUB magx_word2tesla(mag_word): mag_tesla
 ' Convert magnetometer X-axis ADC word to Teslas
     return (mag_word * _mres[X_AXIS]) / 10_000
 
+
 PUB magy_word2tesla(mag_word): mag_tesla
 ' Convert magnetometer Y-axis ADC word to Teslas
     return (mag_word * _mres[Y_AXIS]) / 10_000
+
 
 PUB magz_word2tesla(mag_word): mag_tesla
 ' Convert magnetometer Z-axis ADC word to Teslas
     return (mag_word * _mres[Z_AXIS]) / 10_000
 
-PUB yaw{}
-' Get yaw/heading angle of magnetometer, in degrees
-'   XXX TBD
+
+OBJ
+
+    fltmath:   "math.float.nocog"
+
+CON
+
+    DPR = 180.0 / PI                            ' convert radians to degrees
+
+PUB heading = yaw
+PUB yaw(): a | x, y, z, xy, rads
+' Get yaw/heading of magnetometer
+'   Returns: angle in degrees
+    mag_data(@x, @y, @z)
+    x := fltmath.ffloat(x)
+    y := fltmath.ffloat(y)
+
+    if ( fltmath.fcmp(x, 0.0) == 0 )
+        if ( fltmath.fcmp(y, 0.0) == -1 )
+            xy := 90.0
+        elseif ( (fltmath.fcmp(y, 0.0) == 0) or (fltmath.fcmp(y, 0.0) == 1) )
+            xy := 0.0
+    else
+        rads := fltmath.atan2(y, x)
+        xy := fltmath.fmul(rads, DPR)
+
+        if ( fltmath.fcmp(xy, 360.0) == 1 ) '> 360?
+            xy := fltmath.fsub(xy, 360.0)
+        if ( fltmath.fcmp(xy, 0.0) == -1 )
+            xy := fltmath.fadd(xy, 360.0)
+
+    xy := fltmath.fmul(xy, 10_000.0)
+    return fltmath.ftrunc(xy)
+
+
+DAT
+{
+Copyright 2024 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
