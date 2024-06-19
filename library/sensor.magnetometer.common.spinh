@@ -112,7 +112,7 @@ CON
 PUB heading = yaw
 PUB yaw(): a | x, y, z, xy, rads
 ' Get yaw/heading of magnetometer
-'   Returns: angle in degrees
+'   Returns: angle in 1/10_000's degrees (e.g,, 359_1234 = 359.1234deg)
     mag_data(@x, @y, @z)
     x := fltmath.ffloat(x)
     y := fltmath.ffloat(y)
