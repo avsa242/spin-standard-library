@@ -1,12 +1,12 @@
 {
-    --------------------------------------------
-    Filename: com.serial.spin
-    Author: Jesse Burt
-    Description: UART engine
-    Started 2009
-    Updated Oct 14, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+----------------------------------------------------------------------------------------------------
+    Filename:       com.serial.spin
+    Description:    UART/async serial engine
+    Author:         Jesse Burt
+    Started:        2009
+    Updated:        Jun 28, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 
     NOTE: This is based on Parallax Serial Terminal.spin,
     originally by Jeff Martin, Andy Lindsay, Chip Gracey
@@ -63,11 +63,13 @@ VAR
     byte _rx_buff[UART_BUFF_SZ]                ' Receive and transmit buffers
     byte _tx_buff[UART_BUFF_SZ]
 
+
 PUB start = init_def
-PUB init_def(baudrate=DEF_BAUD): status
+PUB init_def(baudrate=SER_BAUD): status
 ' Start UART engine with default parameters (RX: P31, TX: P30, mode: %0000)
 '   Returns: (cogid+1) of cog running PASM engine, or 0 if unsuccessful
     return init(RX_PIN, TX_PIN, SIG_MODE, baudrate)
+
 
 PUB startrxtx = init
 PUB init(rxpin, txpin, mode, baudrate): status
@@ -81,43 +83,48 @@ PUB init(rxpin, txpin, mode, baudrate): status
 '       IGNORE_TXECHO (%1000): ignore tx echo on rx
 '   baudrate - bits per second
 '   Returns: (cogid+1) of cog running PASM engine, or 0 if unsuccessful
-    deinit{}
+    deinit()
     longfill(@_rx_head, 0, 4)                   ' initialize vars to 0
     longmove(@_rx_pin, @rxpin, 3)               ' copy pins to vars
     _bit_ticks := (clkfreq / baudrate)          ' calc bit time for baud rate
     _ptr_buff := @_rx_buff
     return (_cog := cognew(@entry, @_rx_head) + 1)
 
+
 PUB stop = deinit
-PUB deinit{}
+PUB deinit()
 ' Stop UART engine cog
     if (_cog)                                   ' check for a running cog first
         cogstop(_cog - 1)
     longfill(@_cog, 0, 10)                      ' clear hub vars
 
+
 PUB count = fifo_rx_bytes
-PUB fifo_rx_bytes{}: nr_chars
+PUB fifo_rx_bytes(): nr_chars
 ' Get count of characters in receive buffer
 '   Returns: number of characters waiting in receive buffer
     nr_chars := (_rx_head - _rx_tail)
-    nr_chars -= (UART_BUFF_SZ * (nr_chars < 0))
+    nr_chars -= ( UART_BUFF_SZ * (nr_chars < 0) )
+
 
 PUB flush = flush_rx
-PUB flush_rx{}
+PUB flush_rx()
 ' Flush receive buffer
     repeat while ( getchar_noblock() => 0 )
+
 
 PUB tx = putchar
 PUB char = putchar
 PUB putchar(ch)
 ' Send single-byte character (blocking)
 '   ch: character (ASCII byte value) to send
-    repeat until ( _tx_tail <> ((_tx_head + 1) & BUFFER_MASK) )
+    repeat until ( _tx_tail <> ( (_tx_head + 1) & BUFFER_MASK) )
     _tx_buff[_tx_head] := ch
     _tx_head := (_tx_head + 1) & BUFFER_MASK
 
-    if (_rxtx_mode & IGNORE_TXECHO)
-        getchar{}
+    if ( _rxtx_mode & IGNORE_TXECHO )
+        getchar()
+
 
 PUB rx = getchar
 PUB charin = getchar
@@ -125,8 +132,9 @@ PUB getchar: ch
 ' Receive a single byte (blocking)
 '   Returns: $00..$FF
     repeat
-        ch := rx_check
+        ch := getchar_noblock()
     while (ch == -1)
+
 
 PUB rxcheck = rx_check
 PUB rx_check = getchar_noblock
@@ -139,6 +147,7 @@ PUB getchar_noblock(): ch_rx
     if ( _rx_tail <> _rx_head )
         ch_rx := _rx_buff[_rx_tail]
         _rx_tail := (_rx_tail + 1) & BUFFER_MASK
+
 
 DAT
                 org
@@ -284,7 +293,7 @@ txcode          res     1
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
