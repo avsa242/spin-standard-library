@@ -4,7 +4,7 @@
     Description:    UART/async serial engine
     Author:         Jesse Burt
     Started:        2009
-    Updated:        Jun 28, 2024
+    Updated:        Oct 8, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 
@@ -149,78 +149,92 @@ PUB getchar_noblock(): ch_rx
         _rx_tail := (_rx_tail + 1) & BUFFER_MASK
 
 
+PUB getchar_timeout(tmout=10): ch | t
+' Receive a single byte (blocking, with timeout)
+'   tmout:  maximum time to wait for a valid character, in milliseconds (default: 10)
+'   Returns:
+'       0..255 on success
+'       -1 on timeout
+    t := cnt                                    ' snapshot of current system counter
+    repeat
+        ch := getchar_noblock()                 ' check for a valid character
+        if ( ch => 0 )                          ' got one
+            return ch
+    until ( (cnt-t) > ( (clkfreq/1000) * tmout) )
+
+
 DAT
                 org
 
 
-entry           mov     t1,par                  ' get structure address
-                add     t1,#4 << 2              ' skip past heads and tails
+entry           mov     t1, par                 ' get structure address
+                add     t1, #4 << 2             ' skip past heads and tails
 
-                rdlong  t2,t1                   ' get _rx_pin
-                mov     rxmask,#1
-                shl     rxmask,t2
+                rdlong  t2, t1                  ' get _rx_pin
+                mov     rxmask, #1
+                shl     rxmask, t2
 
-                add     t1,#4                   ' get _tx_pin
-                rdlong  t2,t1
-                mov     txmask,#1
-                shl     txmask,t2
+                add     t1, #4                  ' get _tx_pin
+                rdlong  t2, t1
+                mov     txmask, #1
+                shl     txmask, t2
 
-                add     t1,#4                   ' get _rxtx_mode
-                rdlong  rxtxmode,t1
+                add     t1, #4                  ' get _rxtx_mode
+                rdlong  rxtxmode, t1
 
-                add     t1,#4                   ' get _bit_ticks
-                rdlong  bitticks,t1
+                add     t1, #4                  ' get _bit_ticks
+                rdlong  bitticks, t1
 
-                add     t1,#4                   ' get _ptr_buff
-                rdlong  rxbuff,t1
-                mov     txbuff,rxbuff
-                add     txbuff,#UART_BUFF_SZ
+                add     t1, #4                  ' get _ptr_buff
+                rdlong  rxbuff, t1
+                mov     txbuff, rxbuff
+                add     txbuff, #UART_BUFF_SZ
 
-                test    rxtxmode,#%100 wz       ' init tx pin according to mode
-                test    rxtxmode,#%010 wc
-    if_z_ne_c   or      outa,txmask
-    if_z        or      dira,txmask
+                test    rxtxmode, #%100 wz      ' init tx pin according to mode
+                test    rxtxmode, #%010 wc
+    if_z_ne_c   or      outa, txmask
+    if_z        or      dira, txmask
 
-                mov     txcode,#transmit        ' initialize ping-pong multitasking
+                mov     txcode, #transmit       ' initialize ping-pong multitasking
 
 
 
-receive         jmpret  rxcode,txcode           ' run chunk of tx code, then return
+receive         jmpret  rxcode, txcode          ' run chunk of tx code, then return
 
-                test    rxtxmode,#%001 wz       ' wait for start bit on rx pin
-                test    rxmask,ina     wc
+                test    rxtxmode, #%001 wz      ' wait for start bit on rx pin
+                test    rxmask, ina     wc
     if_z_eq_c   jmp     #receive
 
-                mov     rxbits,#9               ' ready to receive byte
-                mov     rxcnt,bitticks
-                shr     rxcnt,#1
-                add     rxcnt,cnt
+                mov     rxbits, #9              ' ready to receive byte
+                mov     rxcnt, bitticks
+                shr     rxcnt, #1
+                add     rxcnt, cnt
 
-:bit            add     rxcnt,bitticks          ' ready next bit period
+:bit            add     rxcnt, bitticks         ' ready next bit period
 
-:wait           jmpret  rxcode,txcode           ' run chunk of tx code, then return
+:wait           jmpret  rxcode, txcode          ' run chunk of tx code, then return
 
-                mov     t1,rxcnt                ' check if bit receive period done
-                sub     t1,cnt
-                cmps    t1,#0           wc
+                mov     t1, rxcnt               ' check if bit receive period done
+                sub     t1, cnt
+                cmps    t1, #0           wc
     if_nc       jmp     #:wait
 
-                test    rxmask,ina      wc      ' receive bit on rx pin
-                rcr     rxdata,#1
-                djnz    rxbits,#:bit
+                test    rxmask, ina      wc     ' receive bit on rx pin
+                rcr     rxdata, #1
+                djnz    rxbits, #:bit
 
-                shr     rxdata,#32-9            ' justify and trim received byte
-                and     rxdata,#$FF
-                test    rxtxmode,#%001  wz      ' if rx inverted, invert byte
-    if_nz       xor     rxdata,#$FF
+                shr     rxdata, #32-9           ' justify and trim received byte
+                and     rxdata, #$FF
+                test    rxtxmode, #%001  wz     ' if rx inverted, invert byte
+    if_nz       xor     rxdata, #$FF
 
-                rdlong  t2,par                  ' save received byte and inc head
-                add     t2,rxbuff
-                wrbyte  rxdata,t2
-                sub     t2,rxbuff
-                add     t2,#1
-                and     t2,#BUFFER_MASK
-                wrlong  t2,par
+                rdlong  t2, par                 ' save received byte and inc head
+                add     t2, rxbuff
+                wrbyte  rxdata, t2
+                sub     t2, rxbuff
+                add     t2, #1
+                and     t2, #BUFFER_MASK
+                wrlong  t2, par
 
                 jmp     #receive                ' byte done, receive next byte
 
@@ -228,43 +242,43 @@ receive         jmpret  rxcode,txcode           ' run chunk of tx code, then ret
 
 transmit        jmpret  txcode,rxcode           ' run chunk of rx code, then return
 
-                mov     t1,par                  ' check for head <> tail
-                add     t1,#2 << 2
-                rdlong  t2,t1
-                add     t1,#1 << 2
-                rdlong  t3,t1
-                cmp     t2,t3           wz
+                mov     t1, par                 ' check for head <> tail
+                add     t1, #2 << 2
+                rdlong  t2, t1
+                add     t1, #1 << 2
+                rdlong  t3, t1
+                cmp     t2, t3           wz
     if_z        jmp     #transmit
 
-                add     t3,txbuff               ' get byte and inc tail
-                rdbyte  txdata,t3
-                sub     t3,txbuff
-                add     t3,#1
-                and     t3,#BUFFER_MASK
-                wrlong  t3,t1
+                add     t3, txbuff              ' get byte and inc tail
+                rdbyte  txdata, t3
+                sub     t3, txbuff
+                add     t3, #1
+                and     t3, #BUFFER_MASK
+                wrlong  t3, t1
 
-                or      txdata,#$100            ' ready byte to transmit
-                shl     txdata,#2
-                or      txdata,#1
-                mov     txbits,#11
-                mov     txcnt,cnt
+                or      txdata, #$100           ' ready byte to transmit
+                shl     txdata, #2
+                or      txdata, #1
+                mov     txbits, #11
+                mov     txcnt, cnt
 
-:bit            test    rxtxmode,#%100  wz      ' output bit on tx pin
-                test    rxtxmode,#%010  wc      ' according to mode
-    if_z_and_c  xor     txdata,#1
-                shr     txdata,#1       wc
-    if_z        muxc    outa,txmask
-    if_nz       muxnc   dira,txmask
-                add     txcnt,bitticks          ' ready next cnt
+:bit            test    rxtxmode, #%100  wz     ' output bit on tx pin
+                test    rxtxmode, #%010  wc     ' according to mode
+    if_z_and_c  xor     txdata, #1
+                shr     txdata, #1       wc
+    if_z        muxc    outa, txmask
+    if_nz       muxnc   dira, txmask
+                add     txcnt, bitticks         ' ready next cnt
 
-:wait           jmpret  txcode,rxcode           ' run chunk of rx code, then return
+:wait           jmpret  txcode, rxcode          ' run chunk of rx code, then return
 
-                mov     t1,txcnt                ' check if bit transmit period done
-                sub     t1,cnt
-                cmps    t1,#0           wc
+                mov     t1, txcnt               ' check if bit transmit period done
+                sub     t1, cnt
+                cmps    t1, #0           wc
     if_nc       jmp     #:wait
 
-                djnz    txbits,#:bit            ' another bit to transmit?
+                djnz    txbits, #:bit           ' another bit to transmit?
 
                 jmp     #transmit               ' byte done, transmit next byte
 
