@@ -4,7 +4,7 @@
     Description:    Demo of the (s)printf() method variants
     Author:         Jesse Burt
     Started:        Nov 9, 2020
-    Updated:        Jan 21, 2024
+    Updated:        Oct 19, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 }
@@ -67,7 +67,7 @@ PUB main() | sz, format, str1, str2
 '
 '   Optionally precede formatting spec letter with the following:
 '       0: pad numbers with zeroes (e.g., %0d for zero-padded decimal)
-'           (default padding character is space, when padding is neces~>y)
+'           (default padding character is space, when padding is necessary)
 '       #.#: minimum field width.maximum field width (e.g. %2.5d for decimal with 2..5 digits)
 '       -: left-justify (e.g. %-4.8x for left-justified hex with 4..8 digits)
 
@@ -83,11 +83,11 @@ PUB main() | sz, format, str1, str2
     ser.pos_xy(0, 0)
 
     ' You can specify the format inline:
-    ser.printf5(@"Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\n\r", ...
+    ser.printf(@"Test literal: %%  char: %c  dec: %d  hex: %x  str: %s  str: %s\n\r", ...
                 "A", -1000, $DEADBEEF, str1, str2)
 
     '   or use a pre-defined format:
-    ser.printf5(format, "A", -1000, $DEADBEEF, str1, str2)
+    ser.printf(format, "A", -1000, $DEADBEEF, str1, str2)
 
     ' Print to a buffer (for use in e.g., a file written to SD, or
     '   other external memory, etc)
