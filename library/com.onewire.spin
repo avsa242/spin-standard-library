@@ -1,12 +1,12 @@
 {
-    --------------------------------------------
-    Filename: com.onewire.spin2
-    Description: OneWire Bus engine
-    Author: Jesse Burt
-    Created July 15, 2006
-    Updated Oct 15, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+----------------------------------------------------------------------------------------------------
+    Filename:       com.onewire.spin
+    Description:    OneWire Bus engine
+    Author:         Jesse Burt
+    Started:        Jul 15, 2006
+    Updated:        Jan 11, 2025
+    Copyright (c) 2025 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 
     NOTE: This is based on OneWire.spin,
     originally by Cam Thompson
@@ -20,13 +20,15 @@ CON
     OW_WRITE    = (3 << 16)
     OW_READ     = (4 << 16)
     OW_SEARCH   = (5 << 16)
-    OW_CRC8     = (6 << 16)
+    OW_ALSEARCH = (6 << 16)
+    OW_CRC8     = (7 << 16)
 
 ' OneWire Bus commands
     SEARCH_ROM  = $F0
     RD_ROM      = $33
     MATCH_ROM   = $55
     SKIP_ROM    = $CC
+    ALARM_SEARCH= $ec
 
 ' Search flags
     CHECK_CRC   = $100
@@ -34,21 +36,25 @@ CON
     GOOD        = 0
     PRESENT     = 1
 
+
 OBJ
 
-    crc : "math.crc"
+    crc:    "math.crc"
+
 
 VAR
 
     long _cog
     long _command, _cmd_ret
 
-PUB null{}
+
+PUB null()
 ' This is not a top-level object
+
 
 PUB init(OW_PIN): status | pin, usec
 ' Initialize OneWire engine
-    deinit{}                                    ' stop an existing instance
+    deinit()                                    ' stop an existing instance
     status := _cog := cognew(@getcmd, @_command) + 1
 
     ' set pin to use for 1-wire interface and calculate usec delay
@@ -57,53 +63,64 @@ PUB init(OW_PIN): status | pin, usec
         usec := (clkfreq + 999_999) / 1_000_000
         ow_cmd(OW_SETUP + @pin)
 
-PUB deinit{}
+
+PUB deinit()
 ' Deinitialize
     if (_cog)
         cogstop(_cog - 1)
         _cog := 0
     _command := 0
 
+
 PUB crc8(nr_bytes, ptr_buff): outcrc
 ' Calculate CRC of nr_bytes of data at ptr_buff
     return ow_cmd(OW_CRC8 + @nr_bytes)
 
-PUB rd_byte{}: ow2byte
+
+PUB rd_byte(): ow2byte
 ' Read a byte from the bus
     return rd_bits(8)
 
-PUB rd_long{}: ow2long
+
+PUB rd_long(): ow2long
 ' Read a long from the bus
     return rd_bits(32)
 
-PUB rd_word{}: ow2word
+
+PUB rd_word(): ow2word
 ' Read a word from the bus
     return rd_bits(16)
+
 
 PUB rd_bits(nr_bits): ow2bits
 ' Read nr_bits from the bus
     return ow_cmd(OW_READ + @nr_bits)
+
 
 PUB rdblock_lsbf(ptr_buff, nr_bytes) | bytenum
 ' Read block of bytes from bus, least-significant byte first
     repeat bytenum from 0 to nr_bytes-1
         byte[ptr_buff][bytenum] := rd_bits(8)
 
+
 PUB rdblock_msbf(ptr_buff, nr_bytes) | bytenum
 ' Read block of bytes from bus, most-significant byte first
     repeat bytenum from nr_bytes-1 to 0
         byte[ptr_buff][bytenum] := rd_bits(8)
 
+
 PUB rd_addr(ptr_addr)
 ' Read 64-bit address from the bus
     rdblock_lsbf(ptr_addr, 8)
 
-PUB reset{}: pres
+
+PUB reset(): pres
 ' Send Reset signal to bus
 '   Returns:
 '       TRUE (-1): a device is present
 '       FALSE (0): no device present, or bus is busy
     return (ow_cmd(OW_RESET) == PRESENT)
+
 
 PUB search(flags, max_addrs, ptr_addr): nr_devs
 ' Search bus for devices
@@ -117,41 +134,63 @@ PUB search(flags, max_addrs, ptr_addr): nr_devs
 '   Returns: number of devices found
     return ow_cmd(OW_SEARCH + @flags)
 
+
+PUB search_alarm(flags, max_addrs, ptr_addr): nr_devs
+' Search bus for devices
+'   flags:
+'       bits[7..0]: restrict search to family code
+'       bits[8]: if set, return only devices with a valid CRC
+'   max_addrs: maximum number of 64-bit addresses to find
+'   ptr_addr: pointer to buffer for storing found addresses (LSW-first)
+'       NOTE: buffer must be a minimum of (max_addrs * 8) bytes
+'
+'   Returns: number of devices found
+    return ow_cmd(OW_ALSEARCH + @flags)
+
+
 PUB wr_bits(byte2ow, nr_bits)
 ' Write nr_bits of byte2ow to bus (LSB-first)
     ow_cmd(OW_WRITE + @byte2ow)
+
 
 PUB wr_byte(byte2ow)
 ' Write byte to bus
     wr_bits(byte2ow, 8)
 
+
 PUB wr_long(long2ow)
 ' Write long to bus
     wr_bits(long2ow, 32)
 
+
 PUB wr_word(word2ow)
 ' Write word to bus
     wr_bits(word2ow, 16)
+
 
 PUB wrblock_lsbf(ptr_buff, nr_bytes) | bytenum
 ' Writeblock of bytes to bus, least-significant byte first
     repeat bytenum from 0 to nr_bytes-1
         wr_bits(byte[ptr_buff][bytenum], 8)
 
+
 PUB wrblock_msbf(ptr_buff, nr_bytes) | bytenum
 ' Write block of bytes to bus, least-significant byte first
     repeat bytenum from nr_bytes-1 to 0
         wr_bits(byte[ptr_buff][bytenum], 8)
 
+
 PUB wr_addr(ptr_addr)
 ' Write 64-bit address to bus
     wrblock_lsbf(ptr_addr, 8)
+
 
 PRI ow_cmd(cmd): cmd_ret
 ' Send command to OneWire PASM engine
     _command := cmd
     repeat while _command                       ' wait until PASM finished
     return _cmd_ret
+
 
 DAT
 
@@ -172,6 +211,7 @@ getCmd                  rdlong  t1, par wz              ' wait for command
                         jmp     #cmd_write
                         jmp     #cmd_read
                         jmp     #cmd_search
+                        jmp     #cmd_asearch
                         jmp     #cmd_crc8
 
 errorExit               neg     value, #1               ' set return to -1
@@ -318,6 +358,85 @@ cmd_search              rdlong  addrl, t2 wz            ' get family code
 :exit                   mov     value, datacnt          ' return number of addresses found
                         jmp     #endcmd
 
+
+cmd_asearch             rdlong  addrl, t2 wz            ' get family code
+                        mov     addrh, #0
+        if_nz           mov     lastunknown, #7         ' if non-zero, restrict search
+        if_z            mov     lastunknown, #0         ' if zero, search all
+
+                        add     t2, #4                  ' get maximum number of addresses
+                        rdlong  datamax, t2
+                        max     datamax, #150 wz
+        if_z            jmp     #:exit
+
+                        add     t2, #4                  ' get data pointer
+                        rdlong  dataptr, t2
+                        mov     datacnt, #0             ' clear address count
+
+:nextAddr               call    #_reset                 ' reset the network
+                        cmp     value, #0 wz            ' exit if no presence
+        if_z            jmp     #:exit
+                        mov     searchbit, #1           ' set initial search bit (1 to 64)
+                        mov     unknown, #0             ' clear unknown marker
+                        mov     addr, addrl             ' get address bits
+                        mov     searchmask, #1          ' set search mask
+
+                        mov     value, #ALARM_SEARCH    ' send alarm search ROM command
+                        call    #_writebyte
+
+:nextBit                mov     bitcnt, #2              ' read two bits
+                        call    #_read
+
+                        cmp     value, #%00 wz          ' 00 - device conflict
+        if_nz           jmp     #:check10
+                        cmp     searchbit, lastunknown wz, wc
+        if_z            or      addr, searchmask
+        if_z            jmp     #:sendbit
+        if_nc           andn    addr, searchmask
+        if_nc           mov     unknown, searchbit
+        if_nc           jmp     #:sendbit
+                        test    addr, searchmask wz
+        if_z            mov     unknown, searchbit
+                        jmp     #:sendbit
+
+:check10                cmp     value, #%10 wz          ' 10 - all devices have 0 bit
+        if_z            andn    addr, searchmask
+        if_z            jmp     #:sendbit
+
+:check01                cmp     value, #%01 wz          ' 01 - all devices have 1 bit
+        if_z            or      addr, searchmask
+        if_z            jmp     #:sendbit
+
+                        jmp     #:exit                  ' 11 - no devices responding
+
+:sendBit                test    addr, searchmask wc     ' send reply bit
+                        muxc    value, #1
+                        mov     bitcnt, #1
+                        call    #_write
+
+                        add     searchbit, #1           ' increment search count
+                        rol     searchmask, #1          ' adjust mask
+                        cmp     searchbit, #33 wz       ' check for upper 32 bits
+        if_z            mov     addrl, addr
+        if_z            mov     addr, addrh
+                        cmp     searchbit, #65 wz       ' repeat for all 64 bits
+        if_nz           jmp     #:nextbit
+
+                        wrlong  addrl, dataptr          ' store address
+                        add     dataptr, #4
+                        mov     addrh, addr
+                        wrlong  addrh, dataptr
+                        add     dataptr, #4
+
+                        add     datacnt, #1             ' increment address count
+                        cmp     datacnt, datamax wc
+                        mov     lastunknown, unknown wz ' update last unknown bit
+        if_nz_and_c     jmp     #:nextaddr              ' repeat if more addresses
+
+:exit                   mov     value, datacnt          ' return number of addresses found
+                        jmp     #endcmd
+
+
 '------------------------------------------------------------------------------
 ' parameters: byte count, address pointer
 ' return:     crc8
@@ -338,7 +457,7 @@ cmd_crc8                rdlong  datacnt, t2             ' get number of bytes
                         xor     t1, value
                         shr     value, #1
                         shr     t1, #1 wc
-        if_c            xor     value, #crc#POLY8_DSMAX
+        if_c            xor     value, #crc.POLY8_DSMAX
                         djnz    bitcnt, #:nextbit
                         djnz    datacnt, #:nextbyte
                         jmp     #endcmd
@@ -475,7 +594,7 @@ dly4usec                res     1                       ' 4 usec delay
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2025 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
