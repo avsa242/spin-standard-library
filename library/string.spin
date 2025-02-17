@@ -4,8 +4,8 @@
     Description:    String processing and formatting
     Author:         Jesse Burt
     Started:        May 29, 2022
-    Updated:        Mar 23, 2024
-    Copyright (c) 2024 - See end of file for terms of use.
+    Updated:        Feb 17, 2025
+    Copyright (c) 2025 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
     NOTE: This is based on code originally written by the following sources:
@@ -284,16 +284,18 @@ PUB hexs(val, digits): ptr | idx
         _tmp_buff[idx++] := lookupz((val <-= 4) & $F : "0".."9", "a".."f")
     return @_tmp_buff
 
+VAR byte ipstr[16]
 PUB iptostr(ip): ptr | tmp, i
 ' Convert 32-bit IP address to "dotted-quad" string representation
 '   ip: 32-bit IP address (LSB-first)
 '   Returns: pointer to string
+    bytefill(@ipstr, 0, 16)
     repeat i from 0 to 3
-        tmp := itoa(    ip.byte[i], ...         ' copy each byte to the end of the string
-                        @_tmp_buff+strsize(@_tmp_buff) )
+        tmp := itoa(ip.byte[i], ...             ' copy each byte to the end of the string
+                    @ipstr+strsize(@ipstr) )
         if ( i < 3 )                            ' place a dot between each octet
-            append(@_tmp_buff, @".")
-    return @_tmp_buff
+            append(@ipstr, @".")
+    return @ipstr
 
 PUB isalpha(ptr_str): flag
 ' Flag indicating entire string is alphabetic
@@ -464,20 +466,21 @@ PUB left(ptr_str, count, clr_a=true): ptr_new
 '   Returns: pointer to substring
     return mid(ptr_str, 0, count, clr_a)
 
+VAR byte macstr[18]
 PUB mactostr(ptr_mac): ptr | tmp, i
 ' Convert 6-byte array to colon-delimited (":") string representation of a MAC address
 '   ptr_mac: pointer to 6-byte array containing integer representation of MAC address
 '   Returns: pointer to string
-    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
+    bytefill(@macstr, 0, 18)
     repeat i from 0 to 5
         itoabp( byte[ptr_mac][i], ...           ' copy each byte to
-                @_tmp_buff+strsize(@_tmp_buff), ...   '   the end of the string
+                @macstr+strsize(@macstr), ...   '   the end of the string
                 IHEX, ...                       ' we want hexadecimal/base-16
                 2, ...                          ' pad width
                 "0")                            ' pad with 0's
         if ( i < 5 )
-            append(@_tmp_buff, @":")
-    return @_tmp_buff
+            append(@macstr, @":")
+    return @macstr
 
 PUB match(ptr_str1, ptr_str2): ismatch
 ' Flag indicating strings match
@@ -879,7 +882,7 @@ PRI ignorespace(ptr_str): ptr_new
 
 DAT
 {
-Copyright 2024 Jesse Burt
+Copyright 2025 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
