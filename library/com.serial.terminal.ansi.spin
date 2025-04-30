@@ -4,8 +4,8 @@
     Description:    ANSI-compatible serial terminal
     Author:         Jesse Burt
     Started:        Nov 9, 2020
-    Updated:        Mar 17, 2024
-    Copyright (c) 2024 - See end of file for terms of use.
+    Updated:        Apr 30, 2025
+    Copyright (c) 2025 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
     Fsys        RX max bitrate  TX max bitrate
@@ -70,7 +70,8 @@ PUB gets(ptr_buff)
 '   ptr_str: pointer to buffer in which to store received string
 '   NOTE: ptr_str must point to a large enough buffer for entire string
 '       plus a zero terminator
-    gets_max(ptr_buff, -1)
+    gets_max(ptr_buff, posx)
+
 
 PUB strinmax = gets_max
 PUB rx_str_max = gets_max
@@ -105,7 +106,7 @@ PUB gets_max(ptr_str, max_len): len | ch
 
 DAT
 {
-Copyright 2024 Jesse Burt
+Copyright 2025 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
