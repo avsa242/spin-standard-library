@@ -4,8 +4,8 @@
     Description:    Demo of the string object types functions
     Author:         Jesse Burt
     Started:        Jan 5, 2016
-    Updated:        Jan 21, 2024
-    Copyright (c) 2024 - See end of file for terms of use.
+    Updated:        May 3, 2025
+    Copyright (c) 2025 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
     NOTE: This is based on Types.spin,
@@ -40,15 +40,15 @@ PUB main()
 
 PUB test_string(ptr_str)
 ' Test a string for various types
-    ser.printf1(@"String: %s\n\r", ptr_str)
+    ser.printf(@"String: '%s'\n\r", ptr_str)
 
     ser.strln(@"----------------------")
-    ser.printf1(@"  Alphanumeric: %s\n\r", outcome(str.isalphanum(ptr_str)))
-    ser.printf1(@"         Alpha: %s\n\r", outcome(str.isalpha(ptr_str)))
-    ser.printf1(@"         Digit: %s\n\r", outcome(str.isdigit(ptr_str)))
-    ser.printf1(@"         Lower: %s\n\r", outcome(str.islower(ptr_str)))
-    ser.printf1(@"         Upper: %s\n\r", outcome(str.isupper(ptr_str)))
-    ser.printf1(@"         Space: %s\n\r", outcome(str.isspace(ptr_str)))
+    ser.printf(@"  Alphanumeric: %s\n\r", outcome(str.isalphanum(ptr_str)))
+    ser.printf(@"         Alpha: %s\n\r", outcome(str.isalpha(ptr_str)))
+    ser.printf(@"         Digit: %s\n\r", outcome(str.isdigit(ptr_str)))
+    ser.printf(@"         Lower: %s\n\r", outcome(str.islower(ptr_str)))
+    ser.printf(@"         Upper: %s\n\r", outcome(str.isupper(ptr_str)))
+    ser.printf(@"         Space: %s\n\r", outcome(str.isspace(ptr_str)))
     ser.strln(@"----------------------")
     ser.newline()
 
@@ -63,7 +63,7 @@ PUB outcome(val): p
 
 DAT
 {
-Copyright 2024 Jesse Burt
+Copyright 2025 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
