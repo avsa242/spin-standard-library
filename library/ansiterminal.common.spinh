@@ -8,7 +8,7 @@
         putdec(num) - Output a decimal number to the terminal
     Author:         Jesse Burt
     Started:        Jun 18, 2019
-    Updated:        May 4, 2025
+    Updated:        Aug 19, 2025
     Copyright (c) 2025 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
@@ -138,7 +138,7 @@ PUB bgcolor_24bpp(bcolor)
 '   Valid values: $00_00_00_00..$ff_ff_ff_00 (RR_GG_BB 24bpp, left-justified)
     _bgcolor := bcolor
     csi()
-    puts(string("48;2;"))                       ' BG color
+    puts(@"48;2;")                              ' BG color
     putdec(bcolor.byte[3])                      ' R
     putchar(";")
     putdec(bcolor.byte[2])                      ' G
@@ -286,9 +286,9 @@ PUB curs_pos_report_ena(enabled)
 ' Enable/disable mouse cursor position reporting
     csi()
     if (enabled)
-        puts(string("?1000;1006;1015h"))
+        puts(@"?1000;1006;1015h")
     else
-        puts(string("?1000;1006;1015l"))
+        puts(@"?1000;1006;1015l")
 
 
 PUB curs_down_rows = curs_down_rows
@@ -318,7 +318,7 @@ PUB curs_up_lines(lines)
 
 PUB cursorprevline = curs_prev_line
 PUB curs_prev_row = curs_prev_line
-PUB curs_prev_line(rows)
+PUB curs_prev_line()
 ' Move cursor to beginning of previous row
     csi()
     putdec(1)
@@ -362,7 +362,7 @@ PUB fgcolor_24bpp(fcolor)
 '   Valid values: $00_00_00_00..$ff_ff_ff_00 (RR_GG_BB 24bpp, left-justified)
     _fgcolor := fcolor
     csi()
-    puts(string("38;2;"))                       ' FG color
+    puts(@"38;2;")                              ' FG color
     putdec(fcolor.byte[3])                      ' R
     putchar(";")
     putdec(fcolor.byte[2])                      ' G
@@ -446,7 +446,7 @@ PUB move_right()
 PUB move_right_cols(cols)
 ' Move cursor forward/right 1 or more columns
     csi()
-    putdec(columns)
+    putdec(cols)
     putchar("C")
 
 
@@ -538,7 +538,7 @@ PUB scroll_up()
 
 
 PUB scroll_up_rows = scroll_up_rows
-PUB scroll_up_lines(lines)
+PUB scroll_up_lines(lines=1)
 ' Scroll display up 1 or more lines
     csi()
     putdec(lines)
@@ -546,7 +546,7 @@ PUB scroll_up_lines(lines)
 
 
 PUB semigfx = semi_gfx_ena
-PUB semi_gfx_ena(enabled)
+PUB semi_gfx_ena(enabled=1)
 ' Enable semi-graphics (e.g., line-drawing) mode
     if (enabled)
         puts(string(ESC, "(", "0"))
