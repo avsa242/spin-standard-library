@@ -4,7 +4,7 @@
     Description:    String processing and formatting
     Author:         Jesse Burt
     Started:        May 29, 2022
-    Updated:        Aug 10, 2025
+    Updated:        Sep 27, 2025
     Copyright (c) 2025 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
@@ -34,8 +34,6 @@ OBJ
     ctype:  "char.type"
 
 VAR
-
-    long _ptr                                   ' scratch buffer current pointer
 
     word _tokenstr
 
@@ -96,6 +94,7 @@ PUB atoib(ptr_str, base): val | n, digit
 
 PUB bin(val, digits): bin_str
 ' Convert binary value to string representation
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
     itoabp(val, @_tmp_buff, IBIN, digits, "0")
     return @_tmp_buff
 
@@ -107,7 +106,6 @@ PUB clear(ptr_str)
 PUB clear_scratch_buff()
 ' Clear the scratch/working buffer, and reset the pointer
     bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
-    _ptr := 0
 
 
 PUB compare(ptr_str1, ptr_str2, case_s=0): cmpres
@@ -171,6 +169,7 @@ PUB dec(val): dec_str
 ' Convert decimal value to string representation
 '   val: value to convert
 '   Returns: pointer to string representation of value
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
     itoa(val, @_tmp_buff)
     return @_tmp_buff
 
@@ -179,6 +178,7 @@ PUB decpads(val, digits): dec_str
 ' Convert decimal value to string representation, with space padding
 '   val: value to convert
 '   Returns: pointer to string representation of value
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
     itoap(val, @_tmp_buff, digits, " ")
     return @_tmp_buff
 
@@ -187,6 +187,7 @@ PUB decpadz(val, digits): dec_str
 ' Convert decimal value to string representation, with zero padding
 '   val: value to convert
 '   Returns: pointer to string representation of value
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
     itoap(val, @_tmp_buff, digits, "0")
     return @_tmp_buff
 
@@ -292,6 +293,7 @@ PUB getfieldcount(ptr_str, delim): nr_flds | char, idx
 
 PUB hex(val, digits): hex_str
 ' Convert hexadecimal value to string representation
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
     itoabp(val, @_tmp_buff, IHEX, digits, "0")
     return @_tmp_buff
 
@@ -517,14 +519,14 @@ PUB itoap(num, ptr_dest, digits, pad_ch): ptr | numlen, byte tmp[33]
             bytemove(ptr_dest, @tmp, numlen)
     return @tmp
 
-PUB left(ptr_str, count, clr_a=true): ptr_new
+PUB left(ptr_str, count): p
 ' Copy left-most characters
 '   ptr_str: source string
 '   count: left-most number of chars from source to copy
 '   clr_a: (optional) flag indicating the scratch/working buffer should be cleared after
 '       (default is true if unspecified)
 '   Returns: pointer to substring
-    return mid(ptr_str, 0, count, clr_a)
+    return mid(ptr_str, 0, count)
 
 VAR byte _macstr[18]
 PUB mactostr(ptr_mac): ptr | tmp, i
@@ -550,7 +552,7 @@ PUB match(ptr_str1, ptr_str2): ismatch
     return (compare(ptr_str1, ptr_str2, true) == 0)
 
 
-PUB mid(ptr_str, start, len, clr_a=true): p_new
+PUB mid(ptr_str, start, len): p
 ' Copy substring of characters
 '   ptr_str: source string
 '   start: offset within source string to start copying
@@ -558,17 +560,11 @@ PUB mid(ptr_str, start, len, clr_a=true): p_new
 '   clr_a: (optional) flag indicating the scratch/working buffer should be cleared after
 '       (default is true if unspecified)
 '   Returns: pointer to substring, or -1 if the string is too large to fit in the scratch buffer
-    if ( (_ptr + len) => FIELDSZ_MAX )
-        return -1                               ' error: not enough space in working buffer
+    bytefill(@_tmp_buff, 0, FIELDSZ_MAX)
+    bytemove(@_tmp_buff, (ptr_str + start), len)' copy the substring into it
+    _tmp_buff[len] := NUL                       ' null-terminate it
 
-    p_new := @_tmp_buff+_ptr                    ' adjust for current working buffer pointer
-    bytemove(p_new, (ptr_str + start), len)     ' copy the substring into it
-    byte[p_new][len] := NUL                     ' null-terminate it
-    _ptr += len+1                               ' advance pointer by substr length + null
-
-    if ( clr_a )
-        clear_scratch_buff()                    ' clear the scratch buffer if asked (default: yes)
-
+    return @_tmp_buff
 
 PUB replace(ptr_str, ptr_substr, ptr_newsubstr): ptr_next | size
 ' Replace the first occurrence of a string
@@ -623,14 +619,14 @@ PUB reverse(ptr_str) | c, k
         byte[ptr_str++] := byte[k]
         byte[k--] := c
 
-PUB right(ptr_str, count, clr_a=true): ptr_new
+PUB right(ptr_str, count): p
 ' Copy rightmost characters
 '   ptr_str: source string
 '   count: right-most number of chars from source to copy
 '   clr_a: (optional) flag indicating the scratch/working buffer should be cleared after
 '       (default is true if unspecified)
 '   Returns: pointer to substring
-    return mid(ptr_str, strsize(ptr_str) - count, count, clr_a)
+    return mid(ptr_str, strsize(ptr_str) - count, count)
 
 PUB sprintf(ptr_str, fmt, ptr_args): index | pad, len, maxlen, minlen, bi, leftj, strtype, sorg, arg
 ' Print string to buffer, with specified formatting
