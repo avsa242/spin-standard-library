@@ -4,7 +4,7 @@
     Description:    PASM I2C engine
     Author:         Jesse Burt
     Started:        Mar 9, 2019
-    Updated:        May 4, 2026
+    Updated:        May 5, 2026
     Copyright (c) 2026 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 
@@ -249,7 +249,10 @@ cmd_exit            mov     t0,         #CMD_IDLE   '
 
 i2c_start
 ' Start condition (S), (Sr)
-                    andn    dira,       sclmask     ' ensure SCL is floating first
+                    andn    dira,       sdamask     '
+                    andn    dira,       sclmask     ' float bus pins
+:waitcs             test    sclmask,    ina     wz  ' clock stretch: wait for slave to release SCL
+        if_z        jmp     #:waitcs
                     call    #delay
                     or      dira,       sdamask
                     call    #delay
@@ -263,6 +266,8 @@ i2c_stop
                     call    #delay
                     andn    dira,       sclmask     ' float SCL
                     call    #delay
+:waitcs             test    sclmask,    ina     wz  ' clock stretch: wait for slave to release SCL
+        if_z        jmp     #:waitcs
                     andn    dira,       sdamask     ' float SDA
                     call    #delay
                     jmp     #cmd_exit
@@ -280,8 +285,8 @@ i2c_read
                     shr     c0,         #16
 :bytes              andn    dira,       sdamask     ' release bus
                     andn    dira,       sclmask
-:rd_waitcs          test    sclmask,    ina     wz  ' clock stretch: wait for slave to release SCL
-        if_z        jmp     #:rd_waitcs
+:waitcs             test    sclmask,    ina     wz  ' clock stretch: wait for slave to release SCL
+        if_z        jmp     #:waitcs
 
                     mov     t2,         #0          ' init byte to 0
                     mov     c1,         #8          ' read 8 bits
@@ -343,8 +348,8 @@ i2c_write
                     call    #delay                  '  - release bus to slave device
                     andn    dira,       sclmask     ' /
                     call    #delay
-:wr_waitack         test    sclmask,    ina     wz  ' clock stretch: wait for slave device
-    if_z            jmp     #:wr_waitack
+:waitcs             test    sclmask,    ina     wz  ' clock stretch: wait for slave to release SCL
+    if_z            jmp     #:waitcs
                     test    sdamask,    ina     wc  ' read ACK bit
     if_c            mov     ackbit,     #NAK        ' high=NAK
                     or      dira,       sclmask
