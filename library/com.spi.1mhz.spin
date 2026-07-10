@@ -1,23 +1,24 @@
 {
-    --------------------------------------------
-    Filename: com.spi.1mhz.spin
-    Author: Jesse Burt
-    Description: 1MHz SPI engine (PASM core)
-        @80MHz Fsys:
-            Write speed: 1MHz actual (40% duty - 0.4uS H : 0.6uS L)
-            Read speed: 1.052MHz actual (31% duty - 0.3uS H : 0.65 L)
+----------------------------------------------------------------------------------------------------
+    Filename:       com.spi.1mhz.spin
+    Description:    1MHz SPI engine (PASM core)
+    Author:         Jesse Burt
+    Started:        2009
+    Updated:        Aug 28, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
+
+    NOTE: This is based on SPI_Asm.spin, originally by Beau Schwabe.
+
+    Timing specifications (@80MHz Fsys):
+        Write speed: 1MHz actual (40% duty - 0.4uS H : 0.6uS L)
+        Read speed: 1.052MHz actual (31% duty - 0.3uS H : 0.65 L)
         Inter-byte times:
             wrblock(), wr_word(), wr_long(): 61uS
             wr_bytex(): 88uS
             Read: 72uS
-    Started 2009
-    Updated Apr 22, 2023
-    See end of file for terms of use.
-    --------------------------------------------
-
-    NOTE: This is based on SPI_Asm.spin,
-        originally by Beau Schwabe
 }
+
 
 VAR
 
@@ -113,13 +114,13 @@ PUB rdblock_msbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
 PUB wrbits_lsbf(val, nr_bits) | SCK, MOSI, MISO
 ' Write arbitrary number of bits to SPI bus, least-significant byte first
 '   nr_bits: 1 to 32
-    longmove(@SCK, @_SCK, 4)
+    longmove(@SCK, @_SCK, 3)
         shiftout(MOSI, SCK, LSBFIRST, nr_bits, val)
 
 PUB wrbits_msbf(val, nr_bits) | SCK, MOSI, MISO
 ' Write arbitrary number of bits to SPI bus, most-significant byte first
 '   nr_bits: 1 to 32
-    longmove(@SCK, @_SCK, 4)
+    longmove(@SCK, @_SCK, 3)
         shiftout(MOSI, SCK, MSBFIRST, nr_bits, val)
 
 PUB wrblock_lsbf(ptr_buff, nr_bytes) | SCK, MOSI, MISO, b_num, tmp
@@ -393,7 +394,7 @@ arg4            long    0
 DAT
 
 {
-Copyright 2023 Jesse Burt
+Copyright 2026 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
