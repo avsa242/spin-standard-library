@@ -1,25 +1,25 @@
 {
-    --------------------------------------------
-    Filename: sensor.gyroscope.common.spinh
-    Author: Jesse Burt
-    Description: Routines common to all sensor.gyroscope device drivers
-    Copyright (c) 2023
-    Started Aug 31, 2022
-    Updated Jan 7, 2023
-    See end of file for terms of use.
-    --------------------------------------------
+----------------------------------------------------------------------------------------------------
+    Filename:       sensor.gyroscope.common.spinh
+    Description:    Routines common to all sensor.gyroscope device drivers
+    Author:         Jesse Burt
+    Started:        Aug 31, 2022
+    Updated:        Sep 22, 2026
+    Copyright (c) 2026 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 
     NOTE: This file must be included by the compiler using the
         #include preprocessor directive, _outside_ of any existing
         block designators (CON, VAR, OBJ, PUB, PRI, DAT)
 }
 
-VAR
+var
 
-    long _gres
+    long _gres, _gres_rads_sec
     long _gbias[GYRO_DOF]
 
-PUB calibrate_gyro{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[GYRO_DOF], samples
+
+pub calibrate_gyro() | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[GYRO_DOF], samples
 ' Calibrate the gyroscope
     longfill(@axis, 0, 10)                      ' initialize vars to 0
 
@@ -37,7 +37,7 @@ PUB calibrate_gyro{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[GYRO_DOF],
     time.msleep(100)                            ' let the gyro settle after changing the rate
     { accumulate and average approx. 1sec worth of samples }
     repeat samples
-        repeat until gyro_data_rdy{}
+        repeat until gyro_data_rdy()
         gyro_data(@tmpx, @tmpy, @tmpz)
         tmp[X_AXIS] += tmpx
         tmp[Y_AXIS] += tmpy
@@ -54,7 +54,8 @@ PUB calibrate_gyro{} | axis, orig_scl, orig_dr, tmpx, tmpy, tmpz, tmp[GYRO_DOF],
     gyro_scale(orig_scl)
     gyro_data_rate(orig_dr)
 
-PUB gyro_dps(gx, gy, gz) | tmp[GYRO_DOF]
+
+pub gyro_dps(gx, gy, gz) | tmp[GYRO_DOF]
 ' Read the Gyroscope output registers and scale the outputs to
 '   micro degrees per second
     gyro_data(@tmp[X_AXIS], @tmp[Y_AXIS], @tmp[Z_AXIS])
@@ -62,7 +63,29 @@ PUB gyro_dps(gx, gy, gz) | tmp[GYRO_DOF]
     long[gy] := gyro_word2dps(tmp[Y_AXIS])
     long[gz] := gyro_word2dps(tmp[Z_AXIS])
 
-PUB gyro_word2dps(gyro_word): gyro_dps
+
+pub gyro_word2dps(gyro_word): gyro_dps
 ' Convert gyroscope ADC word to degrees per second
     return (gyro_word * _gres)
+
+
+dat
+{
+Copyright 2026 Jesse Burt
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+}
 
