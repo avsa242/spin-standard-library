@@ -4,8 +4,8 @@
     Description:    Cogless I2C engine
     Author:         Jesse Burt
     Started:        Jun 9, 2019
-    Updated:        Feb 18, 2024
-    Copyright (c) 2024 - See end of file for terms of use.
+    Updated:        Sep 22, 2026
+    Copyright (c) 2026 - See end of file for terms of use.
 ---------------------------------------------------------------------------------------------------
 
     Timings:
@@ -156,7 +156,7 @@ PUB rdblock_msbf(ptr_buff, nr_bytes, ackbit) | tmp, lastb, bnum, bh, bl
             dira[_SCL] := 1
 
         { output ACK bit }
-        dira[_SDA] := !((bnum == lastb) & ackbit)
+        dira[_SDA] := !((bnum == 0) & ackbit)
         dira[_SCL] := 0
         dira[_SCL] := 1
 #endif
@@ -311,7 +311,7 @@ PUB wrblock_msbf(ptr_buff, nr_bytes): ackbit | tmp, lastb, bnum, bh, bl
 
 DAT
 {
-Copyright 2024 Jesse Burt
+Copyright 2026 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
